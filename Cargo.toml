@@ -126,3 +126,13 @@ notify = { version = "7", default-features = false, features = [
 egui_commonmark = { version = "0.22", features = ["pulldown_cmark"] }
 rfd = "0.15"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# Release profile applies workspace-wide. Cargo only honours [profile.*] in the
+# ROOT manifest (profiles in a member crate are ignored with a warning), so the
+# ffmdx release-size settings that ff-mdx-app / ff-mdx-installer used to declare
+# live here. Affects `cargo build --release` only (not debug/test builds).
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

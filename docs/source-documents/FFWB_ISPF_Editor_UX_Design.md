@@ -113,13 +113,13 @@ Controls scrolling behaviour.
 
 Common values:
 
-| Value | Meaning |
-|---------|---------|
-| CSR | Cursor position |
-| PAGE | Full page |
-| HALF | Half page |
-| DATA | Entire dataset |
-| Number | Fixed line count |
+│ Value │ Meaning │
+│---------│---------│
+│ CSR │ Cursor position │
+│ PAGE │ Full page │
+│ HALF │ Half page │
+│ DATA │ Entire dataset │
+│ Number │ Fixed line count │
 
 ---
 
@@ -140,19 +140,19 @@ Used for line commands.
 
 ### Typical Commands
 
-| Command | Function |
-|-----------|-----------|
-| I | Insert |
-| D | Delete |
-| R | Repeat |
-| M | Move |
-| C | Copy |
-| A | After |
-| B | Before |
-| X | Exclude |
-| CC | Block Copy Start |
-| MM | Block Move Start |
- | 
+│ Command │ Function │
+│-----------│-----------│
+│ I │ Insert │
+│ D │ Delete │
+│ R │ Repeat │
+│ M │ Move │
+│ C │ Copy │
+│ A │ After │
+│ B │ Before │
+│ X │ Exclude │
+│ CC │ Block Copy Start │
+│ MM │ Block Move Start │
+ │ 
 
 The user enters commands and presses ENTER.
 
@@ -360,14 +360,14 @@ Collapsed dataset sections.
 
 Traditional ISPF colours:
 
-| Element | Typical Colour |
-|----------|----------------|
-| Commands | Turquoise |
-| Input Fields | Green |
-| Errors | Red |
-| Headers | White |
-| Protected Areas | Blue |
-| Messages | Yellow |
+│ Element │ Typical Colour │
+│----------│----------------│
+│ Commands │ Turquoise │
+│ Input Fields │ Green │
+│ Errors │ Red │
+│ Headers │ White │
+│ Protected Areas │ Blue │
+│ Messages │ Yellow │
 
 ---
 
@@ -388,15 +388,15 @@ Traditional ISPF colours:
 
 # 7. EGUI Widget Mapping
 
-| ISPF Concept | EGUI Widget |
-|--------------|------------|
-| Command Line | TextEdit |
-| Scroll Field | ComboBox |
-| Prefix Area | Small TextEdit |
-| Data Area | Virtualised Grid |
-| Function Keys | Docked Toolbar |
-| Message Area | Status Bar |
-| Dataset Boundary Lines | Styled Rows |
+│ ISPF Concept │ EGUI Widget │
+│--------------│------------│
+│ Command Line │ TextEdit │
+│ Scroll Field │ ComboBox │
+│ Prefix Area │ Small TextEdit │
+│ Data Area │ Virtualised Grid │
+│ Function Keys │ Docked Toolbar │
+│ Message Area │ Status Bar │
+│ Dataset Boundary Lines │ Styled Rows │
 
 ---
 

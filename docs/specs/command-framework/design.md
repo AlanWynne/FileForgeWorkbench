@@ -1958,3 +1958,178 @@ No `ff-command` API change. No new crate.
 - A broad behaviour-preservation sweep: the existing shell command tests (EDIT,
   FILES, END, RETURN, THEME, SWAP, FIND, EXCLUDE, WORKSPACE, TIME, ... and the
   menu/menu-name/fastpath suites) stay green unchanged.
+
+---
+
+## Unified Command Dispatch -- one front door (B080, Phase 3 task 7)
+
+CONFORMANCE delta against EXISTING criteria (Req 2.1 single entry point, 2.7 no
+UI mutates state outside the framework, 8.3 ordered Target_Resolution chain, 8.4
+backward compatibility, 9.2/9.7 one verb/arg split at one boundary). NO new
+acceptance criteria. This closes bug B080 and the wiring-standard.md "Command
+Registration is temporarily weaker" caveat. It BUILDS ON the existing framework
+(`resolve_target` / `CommandTarget`, `open_menu_by_name`, `navigate_to`); it adds
+NO second dispatcher and NO parallel navigation stack.
+
+### The problem
+
+The TYPED seam (`run_command_line` -> `handle_command`) never calls
+`resolve_target` and jumps straight into a ~60-branch if-ladder; the KEY/MENU
+seams DO call `resolve_target`, but `ShellTargetResolver::builtin_workspace_target`
+is a `None` stub, so every built-in verb falls through to the SAME ladder. The
+three seams converge by accident, not by contract, and the Req 9.7 single
+verb/arg split does not exist (each ladder arm re-parses its own argument).
+
+### The target shape -- one shell-side front door
+
+All three seams call ONE `dispatch_command_string(raw)`:
+
+1. stage 1 -- `try_current_menu_option(raw)` (Req 8.3 stage 1).
+2. stage 1b -- `resolve_pom_option_key` / `try_chained_fastpath` (shell-local).
+3. split -- ONE `(verb, arg)` split via the `verb_arg` rule (Req 9.7): the first
+   token is the case-insensitive verb, the trimmed remainder is the
+   case-PRESERVED Argument_String (B062).
+4. resolve -- `ff_command::resolve_target(raw, &ShellTargetResolver)` where
+   `builtin_workspace_target` is NO LONGER a stub: it classifies built-in verbs
+   via a verb dispatch TABLE keyed on the verb token, returning a `Function`
+   target (with the Req 9.2 `arg` folded into params) or a `CustomWorkspace`
+   target (FILES/CONFIG/LOG/PLUGINS/MACROS/COMMANDS/KEYS/KINDS/MENUS/SEARCH/THEME
+   editor). Menu-opening verbs (POM, SETTINGS) stay on the existing stage-3
+   `menu_name_target`.
+5. dispatch -- `dispatch_command_target(target)`, else the ff-command-semantics
+   engine terminal stage, else unresolved error.
+
+The TYPED and KEY paths both call `dispatch_command_string` INSIDE the single
+`begin_command_line()` / `finish_command_line()` wrap, so the
+Command_Line_Outcome pass stays the one decision point (Req 13.1). The KEY path
+performs its Req 9.8 field-merge FIRST (the only string synthesis), then hands
+the merged string in. The MENU path keeps dispatching an inline
+`[options.target]` directly (Req 10.6); only a STRING option enters the front
+door.
+
+### Divergence decisions (D1-D11; full enumeration in the task artifact)
+
+CONVERGE (make the single specified behaviour): D1 typed path through
+`resolve_target`; D3 one verb/arg split -> `params.arg`; D6/D7 stage-1
+current-menu Option_Key + POM fastpath run before `resolve_target` on ALL seams
+(the key/menu path adopts the typed path's correct ordering, Req 8.3);
+D9 verb-token table removes every cross-arm ordering hazard (COMMAND vs COMMANDS,
+SPLIT DETACH vs SPLIT, EXCLUDE ALL vs EXCLUDE, RESET BARE vs RESET -- each becomes
+a sub-parse inside one entry).
+
+PRESERVE (real behaviour, unchanged): D2 key-path field-merge (Req 9.8);
+D4 single outcome wrap at the outermost submit; D5 B062 case rule; D8
+chained-fastpath + `=`-origin semantics (segments re-dispatch through the one
+door); D10 inline menu target dispatched directly; D11 history recorded once at
+the boundary (the executed/merged line).
+
+Owner-confirmed ambiguities: A1 stage-1-first ordering for all seams; A2 record
+the executed (post-merge) line; A3 the field-merge is the only string synthesis.
+All three preserve current typed-path behaviour and make the other seams match.
+
+### Incremental migration (each step behaviour-preserving, scoped-test-green)
+
+Step 0 scaffold the front door as pure indirection (stage 1/1b then
+`handle_command`); route both submit paths through it. Step 1 add the single
+`(verb, arg)` split -> `params.arg`. Step 2 implement `builtin_workspace_target`
+for the CustomWorkspace/navigation family and delete those ladder arms. Step 3
+Function family. Step 4 manager families (nav, exclude/show, find, profile,
+scroll) as single delegating entries. Step 5 split/detach/swap + workspace. Step
+6 standalone + scrm. Step 7 retire the empty ladder segments. Each step keeps
+BOTH the table entry and the ladder arm reachable until the entry is test-proven;
+the 454 shell tests are the Req 8.4 backstop at every step.
+
+### Verification
+
+New tests prove the unification (Req 2.1/2.7/8.3): typed and key paths reach the
+same handler for a built-in verb; the typed path resolves a user Command_Definition
+like the key path; `builtin_workspace_target` classifies a nav verb (stub gone);
+one verb/arg split populates `params.arg`; stage-1 current-menu Option_Key
+precedes `resolve_target` on the key path; the verb table has no COMMAND-vs-COMMANDS
+order dependency. See docs/quality/TCR.md (ff-desktop) for the rows.
+
+Full enumeration and verb inventory: the dispatch-unify task artifact
+(divergences D1-D11 + verb-table map + ordering-hazard table).
+
+
+---
+
+## Design Delta: Confirmable commands + interactive flag + universal confirm switch (Requirement 16, CR-CH-053 follow-up)
+
+A Confirmable_Command (one that normally opens a confirmation dialog, e.g. RESET
+BARE) must remain usable from non-interactive sources (macros, batch, automation)
+and inside chains, without hanging on a dialog and without silently performing a
+destructive action. Three pieces, all command-level (no dispatch-mechanism change):
+
+### 1. Interactive flag on the dispatch (source-derived)
+
+Thread a boolean `interactive` through the command dispatch, set from the SOURCE
+of the command, NOT from chaining:
+- typed `Command ===>` Enter path -> interactive = true
+- macro / Lua (`ScriptingBridge`) -> interactive = false
+- batch (`--batch`) -> interactive = false
+- future automation/AI driver -> interactive = false
+
+Mechanically this is a field carried alongside the command (e.g. in
+`ExecutionContext` / `CommandParams`, or a parameter on the shell dispatch entry).
+The default for the existing typed path is `true` (no behaviour change). The batch
+runner and the macro engine already KNOW they are non-interactive (batch-execution
+Req 3.5 already special-cases GUI-requiring commands), so they set it `false`.
+
+### 2. Universal confirm switch (one shared parser)
+
+A Confirmable_Command accepts a trailing `-Y`/`--yes` (pre-confirm) or
+`-N`/`--no` (pre-cancel), case-insensitive, parsed by ONE shared helper (mirrors
+the alias-table "one place" discipline) so every confirmable verb spells the
+switch identically. The helper returns an enum, e.g.
+`ConfirmIntent { Confirm, Cancel, Unspecified }`, and strips the switch from the
+argument string before the command parses its own args.
+
+### 3. The decision table (shared helper)
+
+A Confirmable_Command, before opening its dialog, consults one helper with
+`(interactive, ConfirmIntent)`:
+
+| interactive | ConfirmIntent | Action |
+|-------------|---------------|--------|
+| true  | Unspecified | open the confirmation dialog (today's behaviour) |
+| true  | Confirm (`-Y`) | perform headless, no dialog |
+| true  | Cancel (`-N`)  | record cancel, do nothing |
+| false | Unspecified | ASSUME CANCEL: do nothing, record "needs -Y", continue (fail-safe) |
+| false | Confirm (`-Y`) | perform headless |
+| false | Cancel (`-N`)  | record cancel, do nothing |
+
+The "assume cancel + continue" cell is the key safety rule: a non-interactive
+source that did not pre-confirm never triggers the destructive action and never
+blocks. It reconciles with batch-execution Req 3.5 (which fails such a command
+with Step_Return_Code 8) by treating it as a recorded skip that continues, aligned
+with the chain continue-on-error policy (command-environments Req 11.7); the batch
+return-code model still records the skip.
+
+### Chaining interaction
+
+`;`-chaining is context-neutral sugar: each segment inherits the chain's source
+`interactive` flag. A typed chain is interactive (a confirmable segment opens its
+dialog, the human answers, the chain continues); a macro/batch chain is
+non-interactive (the "assume cancel + continue" cell applies per confirmable
+segment). Chaining is permitted in macros/batch (a `;`-line == successive lines).
+
+### First consumer: RESET BARE
+
+RESET BARE is the first Confirmable_Command. Today it unconditionally opens the
+confirmation dialog (`reset_bare_confirm`). Under this requirement:
+- `RESET BARE` typed -> dialog (unchanged).
+- `RESET BARE -Y` -> performs the reset headless (resolve target, archive, reset),
+  no dialog, in any context.
+- `RESET BARE` from a macro/batch with no `-Y` -> assume cancel, record a status,
+  continue.
+The `-Y`/`-N` parse happens in FFCMD's RESET BARE handler (FFCMD owns RESET BARE,
+per the E8 RESET/RESET BARE ownership boundary), via the shared confirm helper.
+
+### Scope / sequencing
+
+Gate now; implement alongside E10 (chaining) since chaining is what makes the
+non-interactive path reachable from a single typed line via a macro. The shared
+helper + the `interactive` flag land first (small), then RESET BARE adopts it as
+the reference consumer; future confirmables (overwrite-SAVE, delete) adopt the
+same helper. No `CommandTarget` / `resolve_target` / navigation-stack change.

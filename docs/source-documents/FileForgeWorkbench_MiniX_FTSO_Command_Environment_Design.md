@@ -49,28 +49,28 @@ FileForgeWorkbench should implement an extensible command environment with the f
 
 ```text
 +-----------------------------------------------------------+
-|                    FileForgeWorkbench                     |
-|                                                           |
-|  +----------------------+    +-------------------------+  |
-|  | FTSO Command Shell   |    | Graphical FFWB Panels   |  |
-|  +----------+-----------+    +------------+------------+  |
-|             |                             |               |
-|             +--------------+--------------+               |
-|                            |                              |
-|                  +---------v----------+                   |
-|                  | Command Dispatcher |                   |
-|                  +---------+----------+                   |
-|                            |                              |
-|          +-----------------+------------------+           |
-|          |                 |                  |           |
-|  +-------v------+  +-------v-------+  +-------v--------+  |
-|  | MiniX       |  | Plugin        |  | Host Command   |  |
-|  | Services    |  | Commands      |  | Adapter        |  |
-|  +-------+------+  +---------------+  +----------------+  |
-|          |                                                |
-|  +-------v---------------------------------------------+  |
-|  | VFS, catalogue, datasets, JES, VSAM, GDG, security |  |
-|  +-----------------------------------------------------+  |
+│                    FileForgeWorkbench                     │
+│                                                           │
+│  +----------------------+    +-------------------------+  │
+│  │ FTSO Command Shell   │    │ Graphical FFWB Panels   │  │
+│  +----------+-----------+    +------------+------------+  │
+│             │                             │               │
+│             +--------------+--------------+               │
+│                            │                              │
+│                  +---------v----------+                   │
+│                  │ Command Dispatcher │                   │
+│                  +---------+----------+                   │
+│                            │                              │
+│          +-----------------+------------------+           │
+│          │                 │                  │           │
+│  +-------v------+  +-------v-------+  +-------v--------+  │
+│  │ MiniX       │  │ Plugin        │  │ Host Command   │  │
+│  │ Services    │  │ Commands      │  │ Adapter        │  │
+│  +-------+------+  +---------------+  +----------------+  │
+│          │                                                │
+│  +-------v---------------------------------------------+  │
+│  │ VFS, catalogue, datasets, JES, VSAM, GDG, security │  │
+│  +-----------------------------------------------------+  │
 +-----------------------------------------------------------+
 ```
 
@@ -115,18 +115,18 @@ Compatibility claims shall be made only for commands and behaviours explicitly c
 
 ## 6. Terminology
 
-| Term | Meaning in this design |
-|---|---|
-| **FFWB** | FileForgeWorkbench. |
-| **MiniX** | The proposed portable runtime and service environment behind FTSO. This name is provisional and must not imply that FFWB embeds or derives from the MINIX operating system. |
-| **FTSO** | FileForge Time Sharing Option, the proposed FFWB command environment. |
-| **Command provider** | A built-in module or plugin that registers one or more commands. |
-| **Command dispatcher** | The service that parses, resolves, authorises, invokes, and reports the result of a command. |
-| **VFS** | The FileForgeWorkbench virtual filesystem and dataset abstraction. |
-| **Dataset reference** | A mainframe-style dataset name, optionally including a member or GDG relative generation. |
-| **Host path** | A native Windows, Linux, or other operating-system filesystem path. |
-| **Job** | A unit of work submitted to the MiniX job execution service. |
-| **Session** | An isolated interactive or non-interactive FTSO execution context. |
+│ Term │ Meaning in this design │
+│---│---│
+│ **FFWB** │ FileForgeWorkbench. │
+│ **MiniX** │ The proposed portable runtime and service environment behind FTSO. This name is provisional and must not imply that FFWB embeds or derives from the MINIX operating system. │
+│ **FTSO** │ FileForge Time Sharing Option, the proposed FFWB command environment. │
+│ **Command provider** │ A built-in module or plugin that registers one or more commands. │
+│ **Command dispatcher** │ The service that parses, resolves, authorises, invokes, and reports the result of a command. │
+│ **VFS** │ The FileForgeWorkbench virtual filesystem and dataset abstraction. │
+│ **Dataset reference** │ A mainframe-style dataset name, optionally including a member or GDG relative generation. │
+│ **Host path** │ A native Windows, Linux, or other operating-system filesystem path. │
+│ **Job** │ A unit of work submitted to the MiniX job execution service. │
+│ **Session** │ An isolated interactive or non-interactive FTSO execution context. │
 
 ---
 
@@ -522,8 +522,8 @@ Pipelines are useful but must be record-aware.
 Proposed examples:
 
 ```text
-LISTCAT LEVEL(ALAN) | FILTER "COBOL"
-READ 'ALAN.INPUT' | SORT KEY(1,10,ASC) | WRITE 'ALAN.OUTPUT'
+LISTCAT LEVEL(ALAN) │ FILTER "COBOL"
+READ 'ALAN.INPUT' │ SORT KEY(1,10,ASC) │ WRITE 'ALAN.OUTPUT'
 ```
 
 The pipeline implementation shall distinguish at least:
@@ -902,96 +902,96 @@ These sketches are non-binding. Their purpose is to demonstrate separation betwe
 
 ### 21.1 Core shell
 
-| ID | Requirement |
-|---|---|
-| FTSO-FR-001 | The system shall provide an interactive FTSO command shell within FileForgeWorkbench. |
-| FTSO-FR-002 | The shell shall submit parsed commands to a central command dispatcher. |
-| FTSO-FR-003 | The shell shall support quoted operands, named options, subcommands, and command continuation. |
-| FTSO-FR-004 | The shell shall provide context-sensitive help derived from command metadata. |
-| FTSO-FR-005 | The shell shall maintain command history under the active security policy. |
-| FTSO-FR-006 | The shell shall support command cancellation. |
-| FTSO-FR-007 | The shell shall support multiple isolated sessions. |
-| FTSO-FR-008 | The system shall support interactive and non-interactive command execution through the same dispatcher. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-FR-001 │ The system shall provide an interactive FTSO command shell within FileForgeWorkbench. │
+│ FTSO-FR-002 │ The shell shall submit parsed commands to a central command dispatcher. │
+│ FTSO-FR-003 │ The shell shall support quoted operands, named options, subcommands, and command continuation. │
+│ FTSO-FR-004 │ The shell shall provide context-sensitive help derived from command metadata. │
+│ FTSO-FR-005 │ The shell shall maintain command history under the active security policy. │
+│ FTSO-FR-006 │ The shell shall support command cancellation. │
+│ FTSO-FR-007 │ The shell shall support multiple isolated sessions. │
+│ FTSO-FR-008 │ The system shall support interactive and non-interactive command execution through the same dispatcher. │
 
 ### 21.2 Command registration
 
-| ID | Requirement |
-|---|---|
-| FTSO-FR-010 | Commands shall be registered using command descriptors. |
-| FTSO-FR-011 | A command descriptor shall identify syntax, help, provider, capabilities, and stream types. |
-| FTSO-FR-012 | The registry shall support namespaced commands. |
-| FTSO-FR-013 | The registry shall reject or explicitly resolve ambiguous command names. |
-| FTSO-FR-014 | Plugins shall be able to register commands through the supported plugin API. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-FR-010 │ Commands shall be registered using command descriptors. │
+│ FTSO-FR-011 │ A command descriptor shall identify syntax, help, provider, capabilities, and stream types. │
+│ FTSO-FR-012 │ The registry shall support namespaced commands. │
+│ FTSO-FR-013 │ The registry shall reject or explicitly resolve ambiguous command names. │
+│ FTSO-FR-014 │ Plugins shall be able to register commands through the supported plugin API. │
 
 ### 21.3 MiniX integration
 
-| ID | Requirement |
-|---|---|
-| FTSO-FR-020 | Dataset commands shall use the FileForgeWorkbench VFS and dataset services. |
-| FTSO-FR-021 | Catalogue commands shall use the shared MiniX catalogue service. |
-| FTSO-FR-022 | Job commands shall use the shared MiniX job entry service. |
-| FTSO-FR-023 | Spool commands and graphical job views shall use the same spool service. |
-| FTSO-FR-024 | GDG commands shall resolve generations through the shared GDG service. |
-| FTSO-FR-025 | VSAM and IDCAMS-like commands shall use shared typed service operations. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-FR-020 │ Dataset commands shall use the FileForgeWorkbench VFS and dataset services. │
+│ FTSO-FR-021 │ Catalogue commands shall use the shared MiniX catalogue service. │
+│ FTSO-FR-022 │ Job commands shall use the shared MiniX job entry service. │
+│ FTSO-FR-023 │ Spool commands and graphical job views shall use the same spool service. │
+│ FTSO-FR-024 │ GDG commands shall resolve generations through the shared GDG service. │
+│ FTSO-FR-025 │ VSAM and IDCAMS-like commands shall use shared typed service operations. │
 
 ### 21.4 Record integrity
 
-| ID | Requirement |
-|---|---|
-| FTSO-FR-030 | Record-oriented commands shall preserve logical record boundaries. |
-| FTSO-FR-031 | Commands shall not introduce line terminators into FB or VB datasets unless explicitly requested by a conversion operation. |
-| FTSO-FR-032 | Imports into fixed-record datasets shall require a defined policy for short and oversized input records. |
-| FTSO-FR-033 | Pipelines shall declare and validate stream types. |
-| FTSO-FR-034 | Conversion between text, byte, and record streams shall be explicit and testable. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-FR-030 │ Record-oriented commands shall preserve logical record boundaries. │
+│ FTSO-FR-031 │ Commands shall not introduce line terminators into FB or VB datasets unless explicitly requested by a conversion operation. │
+│ FTSO-FR-032 │ Imports into fixed-record datasets shall require a defined policy for short and oversized input records. │
+│ FTSO-FR-033 │ Pipelines shall declare and validate stream types. │
+│ FTSO-FR-034 │ Conversion between text, byte, and record streams shall be explicit and testable. │
 
 ### 21.5 Host integration
 
-| ID | Requirement |
-|---|---|
-| FTSO-FR-040 | Native operating-system commands shall require an explicit host-command invocation. |
-| FTSO-FR-041 | Host command execution shall be governed by workspace security policy. |
-| FTSO-FR-042 | Host commands shall execute with a controlled environment and working directory. |
-| FTSO-FR-043 | The host adapter shall support cancellation and process-tree termination where supported by the host platform. |
-| FTSO-FR-044 | Host command output shall be distinguishable from FTSO command output. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-FR-040 │ Native operating-system commands shall require an explicit host-command invocation. │
+│ FTSO-FR-041 │ Host command execution shall be governed by workspace security policy. │
+│ FTSO-FR-042 │ Host commands shall execute with a controlled environment and working directory. │
+│ FTSO-FR-043 │ The host adapter shall support cancellation and process-tree termination where supported by the host platform. │
+│ FTSO-FR-044 │ Host command output shall be distinguishable from FTSO command output. │
 
 ### 21.6 Scripting
 
-| ID | Requirement |
-|---|---|
-| FTSO-FR-050 | The system shall support execution of FTSO command files. |
-| FTSO-FR-051 | Scripts shall be able to inspect a command's structured completion status. |
-| FTSO-FR-052 | Script execution shall be subject to the same authorisation checks as interactive execution. |
-| FTSO-FR-053 | Script cancellation shall propagate to active commands. |
-| FTSO-FR-054 | Script diagnostics shall identify the script name, line, and command associated with a failure. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-FR-050 │ The system shall support execution of FTSO command files. │
+│ FTSO-FR-051 │ Scripts shall be able to inspect a command's structured completion status. │
+│ FTSO-FR-052 │ Script execution shall be subject to the same authorisation checks as interactive execution. │
+│ FTSO-FR-053 │ Script cancellation shall propagate to active commands. │
+│ FTSO-FR-054 │ Script diagnostics shall identify the script name, line, and command associated with a failure. │
 
 ### 21.7 Diagnostics and audit
 
-| ID | Requirement |
-|---|---|
-| FTSO-FR-060 | Every command shall return a structured completion result. |
-| FTSO-FR-061 | Diagnostics shall include severity, message identifier, and human-readable text. |
-| FTSO-FR-062 | Commands marked as auditable shall produce an audit event. |
-| FTSO-FR-063 | Secret operands shall be redacted from history, logs, diagnostics, and audit output. |
-| FTSO-FR-064 | Related command, job, service, and audit events shall share a correlation identifier. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-FR-060 │ Every command shall return a structured completion result. │
+│ FTSO-FR-061 │ Diagnostics shall include severity, message identifier, and human-readable text. │
+│ FTSO-FR-062 │ Commands marked as auditable shall produce an audit event. │
+│ FTSO-FR-063 │ Secret operands shall be redacted from history, logs, diagnostics, and audit output. │
+│ FTSO-FR-064 │ Related command, job, service, and audit events shall share a correlation identifier. │
 
 ---
 
 ## 22. Non-functional Requirements
 
-| ID | Requirement |
-|---|---|
-| FTSO-NFR-001 | Core commands shall behave consistently on all supported FFWB host platforms. |
-| FTSO-NFR-002 | The shell shall remain responsive while long-running commands execute. |
-| FTSO-NFR-003 | Command output shall be streamable and shall not require the complete result to be held in memory. |
-| FTSO-NFR-004 | The architecture shall permit commands and service implementations to be unit tested without a terminal UI. |
-| FTSO-NFR-005 | The parser and dispatcher shall be fuzz-testable with untrusted command input. |
-| FTSO-NFR-006 | The host command adapter shall be isolated from the core MiniX service implementation. |
-| FTSO-NFR-007 | Command descriptors and compatibility profiles shall be versioned. |
-| FTSO-NFR-008 | Plugin failures shall not corrupt the command registry or another session. |
-| FTSO-NFR-009 | Output rendering shall support large result sets through paging, streaming, or virtualisation. |
-| FTSO-NFR-010 | The terminal shall support keyboard-only operation. |
-| FTSO-NFR-011 | User-visible terminology shall remain consistent across command help, panels, messages, and documentation. |
-| FTSO-NFR-012 | The implementation shall use British or South African English in project-authored user-facing documentation unless a compatibility profile requires fixed command terminology. |
+│ ID │ Requirement │
+│---│---│
+│ FTSO-NFR-001 │ Core commands shall behave consistently on all supported FFWB host platforms. │
+│ FTSO-NFR-002 │ The shell shall remain responsive while long-running commands execute. │
+│ FTSO-NFR-003 │ Command output shall be streamable and shall not require the complete result to be held in memory. │
+│ FTSO-NFR-004 │ The architecture shall permit commands and service implementations to be unit tested without a terminal UI. │
+│ FTSO-NFR-005 │ The parser and dispatcher shall be fuzz-testable with untrusted command input. │
+│ FTSO-NFR-006 │ The host command adapter shall be isolated from the core MiniX service implementation. │
+│ FTSO-NFR-007 │ Command descriptors and compatibility profiles shall be versioned. │
+│ FTSO-NFR-008 │ Plugin failures shall not corrupt the command registry or another session. │
+│ FTSO-NFR-009 │ Output rendering shall support large result sets through paging, streaming, or virtualisation. │
+│ FTSO-NFR-010 │ The terminal shall support keyboard-only operation. │
+│ FTSO-NFR-011 │ User-visible terminology shall remain consistent across command help, panels, messages, and documentation. │
+│ FTSO-NFR-012 │ The implementation shall use British or South African English in project-authored user-facing documentation unless a compatibility profile requires fixed command terminology. │
 
 ---
 
@@ -1123,17 +1123,17 @@ No compatibility claim shall rely solely on command-name similarity.
 
 ## 26. Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Scope expands into full z/OS emulation | Delivery becomes impractical | Maintain explicit non-goals and implement only service-backed use cases. |
-| Users assume full TSO compatibility | Incorrect expectations and scripts | Label compatibility levels and document behavioural differences. |
-| Host execution bypasses security | Data loss or system compromise | Require explicit `HOST`, capabilities, policy controls, redaction, and audit. |
-| Dataset records are treated as text lines | Record corruption | Use typed record streams and explicit import/export conversion. |
-| Plugin commands conflict | Ambiguous or unsafe execution | Use namespaces, stable provider IDs, and explicit precedence. |
-| Long-running commands freeze the UI | Poor usability | Use asynchronous execution, streaming output, and cancellation. |
-| MiniX name creates confusion | Branding or legal concerns | Treat the name as provisional and perform a naming review. |
-| GUI and terminal behaviours diverge | Inconsistent results | Route both through common MiniX services and command contracts. |
-| Compatibility quirks pollute the core | Reduced maintainability | Isolate quirks in versioned compatibility profiles and adapters. |
+│ Risk │ Impact │ Mitigation │
+│---│---│---│
+│ Scope expands into full z/OS emulation │ Delivery becomes impractical │ Maintain explicit non-goals and implement only service-backed use cases. │
+│ Users assume full TSO compatibility │ Incorrect expectations and scripts │ Label compatibility levels and document behavioural differences. │
+│ Host execution bypasses security │ Data loss or system compromise │ Require explicit `HOST`, capabilities, policy controls, redaction, and audit. │
+│ Dataset records are treated as text lines │ Record corruption │ Use typed record streams and explicit import/export conversion. │
+│ Plugin commands conflict │ Ambiguous or unsafe execution │ Use namespaces, stable provider IDs, and explicit precedence. │
+│ Long-running commands freeze the UI │ Poor usability │ Use asynchronous execution, streaming output, and cancellation. │
+│ MiniX name creates confusion │ Branding or legal concerns │ Treat the name as provisional and perform a naming review. │
+│ GUI and terminal behaviours diverge │ Inconsistent results │ Route both through common MiniX services and command contracts. │
+│ Compatibility quirks pollute the core │ Reduced maintainability │ Isolate quirks in versioned compatibility profiles and adapters. │
 
 ---
 
@@ -1181,11 +1181,11 @@ The recommended design is:
 
 ```text
 FTSO Command Shell
-        |
+        │
 Command Dispatcher and Provider Registry
-        |
+        │
 MiniX Service Environment
-        |
+        │
 FFWB VFS, catalogue, record, GDG, VSAM, JES, spool, and security services
 ```
 

@@ -79,12 +79,12 @@ until `ff-jes` exists).
 Take CR-CH-012's menu-restore slice: run the light gate for Req 21.4 (confirm the
 criterion, add the TCR row), then TDD -- write the failing round-trip test +
 invert the skip test, implement the single restore arm via `open_menu_by_name`,
-run `verify.ps1` FULL nextest, rebuild ffwb.exe, flip CR-CH-012 -> DONE, commit+push.
+run `ffwb-gate.ps1` FULL nextest, rebuild ffwb.exe, flip CR-CH-012 -> DONE, commit+push.
 
 ## Operating reminders (from this session)
 - verify gate: `C:\tools\powershell7\pwsh.exe -NoProfile -ExecutionPolicy Bypass
-  -File tools\powershell\verify.ps1`; CLEAN = `tools/logs/ai-review.log` empty +
-  done-marker exit 0. Full run ~4.5 min; monitor `tools/logs/verify.progress.txt`.
+  -File tools\ffwb-gate.ps1`; CLEAN = `tools/logs/ffwb-gate.review.log` empty +
+  done-marker exit 0. Full run ~4.5 min; monitor `tools/logs/ffwb-gate.progress.txt`.
   Do NOT poll with many background sleeps while it runs -- they starve the
   nextest CPU and stall it; wait in one longer interval, then read the marker.
 - Terminal quirk: `execute_pwsh` echo is garbled and returns exit -1 spuriously;

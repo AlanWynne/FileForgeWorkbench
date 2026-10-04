@@ -18,7 +18,7 @@ impl WorkbenchShell {
     /// `menus_dir()` / `themes_dir()`: a test override when set, else the real
     /// `<User_Data_Dir>/keymaps/` (falling back to the platform data dir).
     pub(super) fn keymaps_dir(&self) -> PathBuf {
-        if let Some(dir) = &self.keymaps_dir_override {
+        if let Some(dir) = &self.dir_overrides.keymaps {
             return dir.clone();
         }
         if let Ok(udd) = ff_session::UserDataDir::resolve(None) {

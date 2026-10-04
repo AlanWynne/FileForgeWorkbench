@@ -109,17 +109,17 @@ metadata.db
 
 The plugin SHOULD support the following databases.
 
-| Database | Priority |
-|-----------|-----------|
-| SQLite | Mandatory |
-| PostgreSQL | High |
-| SQL Server | High |
-| MySQL | High |
-| MariaDB | High |
-| DB2 LUW | Medium |
-| DB2 z/OS | High |
-| Oracle | Medium |
-| SAP HANA | Medium |
+│ Database │ Priority │
+│-----------│-----------│
+│ SQLite │ Mandatory │
+│ PostgreSQL │ High │
+│ SQL Server │ High │
+│ MySQL │ High │
+│ MariaDB │ High │
+│ DB2 LUW │ Medium │
+│ DB2 z/OS │ High │
+│ Oracle │ Medium │
+│ SAP HANA │ Medium │
 
 ---
 

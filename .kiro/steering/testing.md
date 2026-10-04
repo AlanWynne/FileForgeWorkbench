@@ -201,10 +201,10 @@ The canonical gate is `tools\ffwb-gate.ps1` (the merged, portable replacement fo
 the former `allcargo.bat` + `powershell\verify.ps1`, which duplicated each other's
 work). It runs three steps -- `cargo fmt --check`, `cargo clippy --workspace`, and
 the test suite -- EXACTLY ONCE each, capturing each step's output to `tools\logs\`.
-It writes a combined `tools\logs\gate.combined.log` (every message EXCEPT per-test
-`... ok` / nextest `PASS` lines and blank lines -- so group/summary successes,
-warnings, and errors remain) and accumulates problems into
-`tools\logs\ai-review.log` (an empty file means the gate is clean).
+It writes a combined `tools\logs\ffwb-gate.final.report.log` (every message EXCEPT
+per-test `... ok` / nextest `PASS` lines and blank lines -- so group/summary
+successes, warnings, and errors remain) and accumulates problems into
+`tools\logs\ffwb-gate.review.log` (an empty file means the gate is clean).
 
 The repo root is derived from the script's own location, so it is portable: pull
 the repo on any machine and run it unchanged. A sibling `tools\ffwb-gate.sh`
@@ -247,7 +247,7 @@ the `ff-desktop` dependency closure (`cargo metadata` minus `cargo tree -p
 ff-desktop`) -- so it NEVER drifts: a crate wired into ff-desktop automatically
 re-enters `-AppOnly`, and no shipping crate is ever silently skipped. If the
 derivation fails, `-AppOnly` falls back to the full `--workspace` (never a wrong
-subset). The chosen scope is recorded per run in `verify.history.csv` (a `scope`
+subset). The chosen scope is recorded per run in `ffwb-gate.history.csv` (a `scope`
 column) and drives a scope-aware ETA.
 
 Rules:
@@ -259,8 +259,8 @@ Rules:
   outside Kiro and reports the result back.
 - **Completion is two-staged.** Kiro certifies "code-complete pending full gate"
   when its scoped checks are clean; the task is "done" only after the owner runs
-  the full `ffwb-gate.ps1` and confirms a clean run (empty `ai-review.log`). A clean
-  scoped run is NOT sufficient to claim "done" -- but it IS all Kiro runs.
+  the full `ffwb-gate.ps1` and confirms a clean run (empty `ffwb-gate.review.log`).
+  A clean scoped run is NOT sufficient to claim "done" -- but it IS all Kiro runs.
 - The full run still matters for the not-yet-integrated ("orphan") crates and for
   proptests keeping their mandated >=100 iterations; that is precisely why it is
   run manually by the owner rather than skipped.
@@ -275,7 +275,7 @@ This replaces Kiro ever running the full gate:
    `pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1`
    (Linux/macOS: `./tools/ffwb-gate.sh`)
 3. The OWNER runs the full gate manually and either replies "clean" or pastes the
-   contents of `tools\logs\ai-review.log` / the failing output.
+   contents of `tools\logs\ffwb-gate.review.log` / the failing output.
 4. Kiro acts on that feedback: if clean, the task is DONE; if failures, Kiro fixes
    them (scoped checks only) and hands off again at step 1.
 Kiro must NOT proceed to declare a task/phase/CR complete until step 3 returns

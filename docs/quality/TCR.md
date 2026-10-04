@@ -2345,6 +2345,128 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-command` | ✅ | `command_target_tests.rs::unresolved_string_returns_error_naming_input`, `execute_function_target_with_invalid_id_fails` | Req 8.8: unresolved string returns an error naming it, no panic/mutation |
 | `ff-command` | ✅ | `command_target_tests.rs::menu_and_custom_workspace_and_captured_external_are_visible`, `function_macro_and_detached_external_are_not_visible` | Req 8.9: produces_visible_workspace classification queryable without executing |
 
+### B080 -- Unified Command Dispatch (one front door; Phase 3 task 7)
+
+> Conformance fix: the typed command path now routes through `resolve_target`
+> like the menu/key seams; `builtin_workspace_target` becomes a verb-table
+> classifier instead of a `None` stub. NOT a new requirement -- these rows prove
+> the already-existing Req 2.1/2.7/8.3/8.4/9.2/9.7 hold after the fix. Rows are
+> NOT COVERED until the migration lands the tests, then flip to PASS.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | Req 2.1: `typed_and_key_paths_reach_same_handler_for_builtin_verb` -- the typed and key seams reach ONE handler for a built-in verb (single entry point) |
+| `ff-desktop` | 🔴 | -- | Req 2.7: `no_ui_mutates_state_outside_front_door` -- command-line/menu/key state changes route through `dispatch_command_string` |
+| `ff-desktop` | 🔴 | -- | Req 8.3: `builtin_workspace_target_classifies_nav_verb` -- built-in verbs classified by `resolve_target` (stub removed) |
+| `ff-desktop` | 🔴 | -- | Req 8.4: `typed_path_resolves_user_definition_like_key_path` -- every string that resolves today resolves equivalently via the one door |
+| `ff-desktop` | 🔴 | -- | Req 9.2/9.7: `single_verb_arg_split_populates_arg_param` -- one verb/arg split at the dispatch boundary feeds `params.arg` |
+| `ff-desktop` | 🔴 | -- | Req 8.3 stage order: `stage1_current_menu_option_precedes_resolve_target_on_key_path` -- current-menu Option_Key precedes later stages on all seams |
+| `ff-desktop` | 🔴 | -- | Req 8.10: `verb_table_has_no_order_dependency_for_command_vs_commands` -- verb table removes branch-order shadowing hazards |
+
+### CR-CH-053 -- Command Environments (framework + FFCMD + FFEDIT; FFLINE named-only)
+
+> Phase-1 scope: environment framework + FFCMD (= existing resolve_target) +
+> FFEDIT (editor command-line verbs migrated off the shared ladder). FFLINE
+> named-only; all other FF* environments vision-only. NOT COVERED until the
+> E0-E7 migration lands the tests, then flip to PASS. Criteria from
+> docs/specs/command-environments/requirements.md.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | command-environments Req 1.1: Command_Environment is a named claim-or-fall-through resolver |
+| `ff-desktop` | 🔴 | -- | command-environments Req 1.2: FFCMD base IS the existing resolve_target/ShellTargetResolver (no rewrite) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 1.3: Environment_Registry exposes active env, name lookup, FFCMD base |
+| `ff-desktop` | 🔴 | -- | command-environments Req 1.4: registry feeds the one front door, not a second dispatcher |
+| `ff-desktop` | ✅ | `shell/environment.rs::environment_is_supplied_by_kind`, `active_environment_routes_through_kind` | command-environments Req 2.1: active env SUPPLIED BY the focused kind as a kind attribute (via BuiltinKind::from_tab_kind), handler does not enumerate kinds; default FFCMD |
+| `ff-desktop` | 🔴 | -- | command-environments Req 2.2: split/detached active env follows the focused region/window Context |
+| `ff-desktop` | 🔴 | -- | command-environments Req 2.3: FFCMD base reachable as fallback regardless of active env |
+| `ff-desktop` | 🔴 | -- | command-environments Req 2a.1: a verb name may be owned by multiple environments, each its own implementation (no global definition) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 2a.2: the active environment's implementation runs (FFEDIT.FIND searches buffer; FFNAV.FIND locates a file) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 2a.3: context-dependent verbs are formalised, not changed (backward compat) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 2a.4 (ownership principle): a verb is owned by the environment in whose CONTEXT it is meaningful (buffer verbs SAVE/CANCEL/UNDO/REDO/FIND/... -> FFEDIT; theme/menu/key/kind/config edits -> that Context's env; workbench verbs -> FFCMD); same name resolves to different impls by active env; no global SAVE |
+| `ff-desktop` | 🔴 | -- | command-environments Req 2a.5: FFCMD has nothing of its own to save -- no `FFCMD.SAVE`; SAVE exists only in environments with a working copy; SAVE with no save-capable env active resolves to nothing/unresolved like any unowned verb |
+| `ff-desktop` | ✅ | `tests_command::{non_editor_bare_x_still_exits, editor_bare_x_excludes_does_not_exit}`, `commands_ladder_a::try_exit_family` (X/EXIT/QUIT/=X/LOGOFF -> file.exit) | command-environments Req 2a.6: `X` (and the EXIT family) are FFCMD-owned exit verbs; the active env gets first crack (editor bare `X` = FFEDIT EXCLUDE); FFCMD receives X/EXIT only when the env declines |
+| `ff-desktop` | ✅ | `shell/commands.rs::run_command_ladder` (FFEDIT gate before try_commands_a) + `tests_command::{editor_bare_x_excludes_does_not_exit, non_editor_bare_x_still_exits, editor_ffedit_verb_still_resolves_after_gate_move}` | command-environments Req 3.1 (E8): active env gets first crack before FFCMD; X/RETURN/EXIT are ordinary FFCMD verbs received after the env declines; no "exit family" handler branch (E8b will fold the remaining `=` handling) |
+| `ff-desktop` | ✅ | `tests_command::editor_equals_x_exits_not_exclude`, `environment::equals_prefixed_command_bypasses_the_active_environment` | command-environments Req 3.2 (E8 narrow rule): a `=`-prefixed string is not offered to the active environment (gate skipped when `cmd` starts with `=`); FULL one-place `=` unification deferred to E8b |
+| `ff-desktop` | ✅ | `tests_command::editor_equals_x_exits_not_exclude` | command-environments Req 3.2a (E8): `=X` in the editor does RETURN/EXIT (reaches FFCMD's `X`), NOT FFEDIT EXCLUDE; only the BARE `X` is environment-sensitive |
+| `ff-desktop` | 🔴 | -- | command-environments Req 3.3: active-env step inserted in the one front door; no second dispatcher/nav stack |
+| `ff-desktop` | 🔴 | -- | command-environments Req 3.4: CommandTarget and resolve_target unchanged |
+| `ff-desktop` | ✅ | `tests_command::{editor_bare_x_excludes_does_not_exit, non_editor_bare_x_still_exits, editor_equals_x_exits_not_exclude, exit_family_from_non_menu_context_dispatches_file_exit_not_pom_return}` (953 scoped tests pass) | command-environments Req 4.1 (E8): no observable change for any command that resolves today, WITH ONE deliberate exception -- bare `X` on an editor Context now runs FFEDIT EXCLUDE (was close/exit); non-editor `X` and `=X` unchanged |
+| `ff-desktop` | ✅ | `shell` nav/exclude/find/profile/scroll unit tests (946 behaviour-preserving tests pass post-migration) | command-environments Req 4.2: editor verb result identical to current ladder incl. B062 case rule |
+| `ff-desktop` | ✅ | `tests_command::reset_bare_command_opens_confirmation_dialog`, `tests_misc::{reset_bare_bare_resolves_single_default_target, reset_bare_unknown_named_profile_errors_without_dialog}` (RESET BARE still reaches FFCMD on an editor Context -- the RESET/RESET BARE ownership boundary) | command-environments Req 4.3 (E8): workbench verb result identical to today -- the active env declines (or declines `RESET BARE` specifically) and FFCMD handles it unchanged |
+| `ff-desktop` | ✅ | `tests_command::{editor_bare_x_excludes_does_not_exit, non_editor_bare_x_still_exits}`, `environment::ffedit_shadows_ffcmd_x_but_not_the_other_exit_verbs` | command-environments Req 5.1 (E8): active-wins shadowing -- bare `X` on an editor Context runs FFEDIT EXCLUDE; on a non-editor Context FFEDIT declines so FFCMD receives `X` (close/exit) |
+| `ff-desktop` | 🔲 | `tests_command::editor_equals_x_exits_not_exclude` covers (b) | command-environments Req 5.2 (E8): shadowed FFCMD verb reachable without changing Context -- (b) `=X` routes past the env to FFCMD `X` is TESTED; (a) macro address is deferred to the macro ADDRESS slice (task 10), MANUAL until then |
+| `ff-desktop` | ✅ | `environment::{ffedit_shadows_ffcmd_x_but_not_the_other_exit_verbs, equals_prefixed_command_bypasses_the_active_environment}` | command-environments Req 5.3 (E8): FFCMD's own verbs (X/RETURN/EXIT) are not universal -- bare `X` IS shadowable by the active env while the `=`-prefixed form is routed past the env; EXIT/QUIT/LOGOFF/RETURN are not FFEDIT verbs so FFEDIT declines them |
+| `ff-desktop` | ✅ | `shell/dispatch.rs::ffedit_claim` + nav/exclude/find/profile/scroll unit tests | command-environments Req 6.1: FFEDIT owns the enumerated editor command-line verbs (LOCATE/TOP/BOTTOM/UP/DOWN/LEFT/RIGHT/SORT, EXCLUDE/SHOW/RESET, FIND/RFIND/CHANGE/RCHANGE, CAPS/NULLS/STATS/LOCK/PROFILE/HILITE, SCROLL) |
+| `ff-desktop` | ✅ | `shell/dispatch.rs::ffedit_claim` delegates to nav_manager/exclude_manager/find_manager/edit_profile | command-environments Req 6.2: FFEDIT delegates to existing managers; does not front the Command_Engine |
+| `ff-desktop` | ✅ | `shell/commands.rs::run_command_ladder` (FFEDIT claim precedes try_commands_b2 + engine terminal) | command-environments Req 6.2a: FFEDIT claims its verbs before FFCMD and before the Command_Engine terminal (today's precedence preserved) |
+| `ff-desktop` | ✅ | `shell` nav/exclude/find/profile/scroll unit tests (946 pass post-migration) | command-environments Req 6.3: FFEDIT verb observable result identical to the ladder arm (incl. arg parsing) |
+| `ff-desktop` | ✅ | `shell/environment.rs::active_environment_routes_through_kind` (editor TabKind -> FfEdit) | command-environments Req 6.4: FFEDIT active exactly when the focused Context is an editor |
+| `ff-desktop` | ✅ | `shell/environment.rs::alias_table_resolves_surface_to_canonical` (X -> EXCLUDE, INCLUDE -> SHOW) | command-environments Req 6a.1: environment resolves surface-form alias -> canonical verb before dispatch (behaviour on canonical; EXCLUDE/X is this) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 6a.2: canonical verb is recorded/persisted/used internally; alias is command-line input only (type CHERCHER, store FIND) |
+| `ff-desktop` | ✅ | `shell/environment.rs::alias_table_resolves_surface_to_canonical` (case-insensitive) + `AliasTable::ffedit_english` asserts collisions at construction | command-environments Req 6a.3: alias table case-insensitive (B062), rejects collisions at load |
+| `ff-desktop` | 🔴 | -- | command-environments Req 6a.4: aliases respect prelude/shadowing precedence (cannot shadow EXIT family / Option_Key) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 6a.5: localized alias sets (CR-NR-103) load into the same tables per locale, no new mechanism, no behaviour impact |
+| `ff-desktop` | 🔴 | -- | command-environments Req 7.1: FFLINE named as a sibling environment of FFEDIT |
+| `ff-desktop` | 🔴 | -- | command-environments Req 7.2: FFLINE intake unchanged (prefix area -> Command_Engine), not via the front door |
+| `ff-desktop` | 🔴 | -- | command-environments Req 7.3: no line-command behaviour change in phase 1 (FFLINE naming only) |
+| `ff-desktop` | ✅ | `shell/environment.rs::environment_is_supplied_by_kind` (Files/Catalogs -> FfNav), `active_environment_routes_through_kind` | command-environments Req 7a.1: FFNAV named for the file-navigator Contexts; active-env derivation maps them to FFNAV |
+| `ff-desktop` | 🔴 | -- | command-environments Req 7a.2: FFNAV command handling unchanged in phase 1 (navigator verbs incl. its FIND stay as today; not built) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 7a.3: FFNAV being named makes the per-environment verb model concrete (FFEDIT.FIND vs FFNAV.FIND), no behaviour change |
+| `ff-desktop` | 🔴 | -- | command-environments Req 8.1: macro ADDRESS routes to the named env via Scripting_Bridge + Alias_Map (TSO=FFCMD, ISREDIT=FFEDIT) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 8.2: addressed-env == active-env is a redundant no-op |
+| `ff-desktop` | 🔴 | -- | command-environments Req 8.3: dispatch outcome return code maps to macro RC |
+| `ff-desktop` | 🔴 | -- | command-environments Req 8.4: interactive address prefix DEFERRED (macros-only in phase 1) -- non-requirement |
+| `ff-desktop` | ✅ | `shell/environment.rs::environment_for_kind` + `environment_is_supplied_by_kind` (kind supplies env; handler goes through BuiltinKind, not a TabKind match) | command-environments Req 9.1: new kind declares its env name as a kind attribute; handler dispatches to it with no handler/front-door change |
+| `ff-desktop` | 🔴 | -- | command-environments Req 9.2: the kind's env attribute is DATA (name), not code; selection/reconfiguration allowed, RESET-BARE recoverable |
+| `ff-desktop` | 🔴 | -- | command-environments Req 9.3: built-in environments (FFCMD/FFEDIT) are code-only, not replaceable via configuration (like CR-CH-021 built-ins) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 9.4: a NEW executable environment is a PLUGIN capability (plugin API + permission model), not a config edit |
+| `ff-desktop` | 🔴 | -- | command-environments Req 9.5: per-verb customization via a shadowing layered environment (Req 5), not wholesale built-in replacement |
+| `ff-desktop` | 🔴 | -- | command-environments Req 9.6: phase-1 builds no env beyond framework + FFCMD + FFEDIT (FFLINE/FFNAV named-only) |
+| `ff-desktop` | ✅ | `tests_command::{editor_save_on_clean_buffer_is_noop, editor_save_on_dirty_untitled_errors_and_stays}`; `dispatch_ffedit::ffedit_save` | command-environments Req 10.1 (E9): FFEDIT owns SAVE, dirty-aware + STAYS in editor -- clean=no-op, dirty=write+clear flag/save point (delegates `save_active_tab`), write-fail=stay+error; not confirmable |
+| `ff-desktop` | 🔴 | -- | command-environments Req 10.2 (E9): FFEDIT owns dirty-aware END/CANCEL/RETURN -- clean delegates to nav_end/nav_return; dirty END saves-then-leaves, dirty CANCEL/RETURN confirm-discard; FFEDIT-owned in editor, FFCMD/universal nav elsewhere |
+| `ff-desktop` | 🔴 | -- | command-environments Req 10.3 (E9): END dirty save-fail -> STAY in editor + surface error, do NOT leave (never lose changes) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 10.4 (E9): CANCEL/RETURN dirty-discard is a Confirmable_Command (cmd-framework Req 16) -- interactive dialog; -Y discard+leave; -N stay; non-interactive+no-switch assume-cancel+continue |
+| `ff-desktop` | 🔴 | -- | command-environments Req 10.5 (E9): FFCMD owns no buffer SAVE; no editor active -> SAVE unresolved + END/RETURN plain FFCMD/universal nav unchanged |
+| `ff-desktop` | 🔴 | -- | command-environments Req 10.6 (E9): UNDO (keyboard-only inline, needs extraction refactor) + REDO (does not exist, new feature needs own gate) DEFERRED; recorded for owner decision |
+| `ff-desktop` | 🔴 | -- | command-environments Req 10.7 (E9): TDD per table row/verb; SAVE + clean-buffer leave behaviour-preserving; dirty END save-then-leave + CANCEL/RETURN confirm-discard are the NEW behaviour |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.1 (E10): each editing Context (Theme/Menus/Keys/Kinds/Config) owns a SAVE in its own env that persists THAT Context's working copy; no global/FFCMD SAVE |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.2 (E10): typed SAVE on an editing Context performs the SAME persistence as that Context's Save button, through the SAME code path (command parity) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.3 (E10): `;`-chaining with a HANDLER-OWNED splitter + per-segment loop -- handler splits once, dispatches each segment left-to-right through the one front door (env->FFCMD->engine); an environment never receives more than one already-split segment and never owns the split/advance bookkeeping |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.4 (E10): the `;` splitter is QUOTE-AWARE -- a `;` inside a quoted argument is not a separator |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.5 (E10): active environment re-evaluated per segment -- when a segment navigates away (e.g. `...; =0` -> POM), LATER segments resolve in the environment that was SWITCHED TO, not the entry environment |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.6 (E10): `=` scopes to its OWN `;` segment; it does not force the remaining chain to the base |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.7 (E10): chain error policy is continue-on-error (best-effort); each segment status surfaced; no stop modifier this slice |
+| `ff-desktop` | 🔴 | -- | command-environments Req 11.8 (E10): chaining adds no second dispatcher -- a pre-split feeding the one front door per segment; CommandTarget/nav stack/env model unchanged |
+
+### Phase (keyboard-command-unification) -- CR-CH-054 (keyboard shortcuts resolve to commands; FFEDIT CUA verbs)
+
+> command-framework Req 17 (keyboard->command dispatch + reserved-key table) +
+> command-environments Req 12 (FFEDIT COPY/CUT/PASTE/SELECT-ALL/UNDO/REDO with
+> cursor-then-line-command source/destination precedence + FFLINE coupling +
+> ff-clipboard backend). Layered: slice 1 wiring+SAVE(+UNDO extract); slice 2 new
+> buffer commands + REDO. The Ctrl+S point-fix (Req 17.4) is DONE.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | command-framework Req 17.1 (CR-CH-054): a bound chord resolves to a command string + dispatches through the one front door -> active env; chord == typed verb |
+| `ff-desktop` | 🔴 | -- | command-framework Req 17.2: Reserved_CUA_Set (Ctrl+Z/Y/C/X/V/A/S -> UNDO/REDO/COPY/CUT/PASTE/SELECT ALL/SAVE) works everywhere, not user-overridable |
+| `ff-desktop` | 🔴 | -- | command-framework Req 17.3: non-reserved Ctrl/Alt chords user-configurable via keys editor/TOML (Req 5.6); no new mechanism |
+| `ff-desktop` | ✅ | `tests_focus::ctrl_s_on_clean_editor_is_noop_via_ffedit_save` | command-framework Req 17.4 (Ctrl+S point-fix DONE): Ctrl+S dispatches SAVE -> FFEDIT dirty-aware; inline handlers retired as the slice lands (editor Ctrl+Z/C, Ctrl+Shift+P/F remaining) |
+| `ff-desktop` | 🔴 | -- | command-framework Req 17.5: a chord to a verb the active env doesn't own resolves as typing would (no forced existence) |
+| `ff-desktop` | 🔴 | -- | command-framework Req 17.6: egui TextEdit native CUA editing (Command Field) unaffected; reserved set targets the FFEDIT buffer only |
+| `ff-desktop` | 🔴 | -- | command-framework Req 17.7: no second dispatcher; CommandTarget/resolve_target/nav stack unchanged |
+| `ff-desktop` | 🔴 | -- | command-framework Req 17.8: slice ordering (1 wiring+SAVE+UNDO-extract; 2 CUT/PASTE/SELECT-ALL/COPY + REDO + ff-clipboard) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.1 (CR-CH-054): FFEDIT owns COPY/CUT/PASTE/SELECT-ALL/UNDO/REDO (editor-buffer verbs) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.2: COPY/CUT source precedence -- cursor selection -> `C`/`CC` line block (whole lines) -> no-op; COPY->clipboard, CUT->clipboard+delete(dirty+undo) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.3: `C`/`CC` block is the CLIPBOARD source (distinct from ISPF in-document C...A/B); markers cleared after COPY/CUT |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.4: PASTE destination precedence -- cursor-in-editor -> at cursor; else `A`/`B` -> whole-line insert after/before (line-granular); cursor wins tie-break; `A`/`B` cleared after, clipboard retained |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.5: source/destination read from Cursor_Context + FFLINE markers (no explicit area param); line-command layer exposes `C`/`CC` + `A`/`B` accessors |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.6: clipboard backed by `ff-clipboard` (wires in orphan crate) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.7: SELECT ALL = whole-buffer Cursor_Context selection |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.8: UNDO extracts the inline Ctrl+Z logic into a verb; REDO is a NEW feature (no redo stack today), built in slice 2 w/ undo-redo-transactions |
+| `ff-desktop` | 🔴 | -- | command-environments Req 12.9: verbs reachable by reserved keys AND typing, identical result; one front door, no second dispatcher |
+
 ### Phase DB -- Command Configurator (CR-NR-052, new sub-project)
 
 | Crate | Status | Test files | Notes |
@@ -2630,7 +2752,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔲 | Manual: modern explorer renders indent guides, disclosure glyphs, selection/focus-ring via file_tree.* palette | Req 24.7: modern presentation via theme file_tree.* palette; grouping information preserved |
 | `ff-desktop` | ✅ | `nav_model::tests::{split_catalog_uri_path_*, apply_child_data_populates_and_maps_uris}`, `catalog_registry::tests::dataset_node_*` | Req 24.8: catalog roots modelled generically (CatalogRoot via provider list()/dataset list) in Slice A; no mainframe qualifier/duality semantics (Slice B) |
 | `ff-desktop` | ✅ | `explorer_view::tests::{first_row_id_is_the_first_visible_node, next_row_id_advances_then_returns_none_past_last}` (Tab focus-transfer helpers); Command ===> retained | Req 24.9: persistent shell Command ===> retained on File Explorer Context; Tab focus-transfer re-pointed at the ff-file-tree node list; dispatch unchanged |
-| `ff-desktop` | ✅ | verify.ps1 FULL clean across the Slice A commits; new tests added, none weakened | Req 24.10: cargo test (affected crates) + verify.ps1 clean; tests added (not weakened) for the ff-file-tree-backed behaviour |
+| `ff-desktop` | ✅ | ffwb-gate.ps1 FULL clean across the Slice A commits; new tests added, none weakened | Req 24.10: cargo test (affected crates) + ffwb-gate.ps1 clean; tests added (not weakened) for the ff-file-tree-backed behaviour |
 | `ff-file-tree` | ✅ | `nav_model::tests` confirm the shell-side NodeId -> ResourceUri side table approach (no model change needed) | Req 24.11: no ff-file-tree model extension required -- shell keeps the side table, model stays canonical |
 
 ### Phase (theme-command) -- THEME Command Parity (theme-and-appearance Req 17)
@@ -2688,7 +2810,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | 🔴 | -- | Req 14.1: workspace resolves a single egui major-minor version (no two egui versions in Cargo.lock) |
 | `ff-desktop` | 🔴 | -- | Req 14.2: workspace egui and eframe upgraded to 0.31 |
 | `ff-desktop` | 🔴 | -- | Req 14.3: egui-file-dialog is published 0.9.x; vendor patch removed |
-| `ff-desktop` | 🔴 | -- | Req 14.4: after upgrade the full workspace builds, clippy -D warnings clean, and the full test suite passes (verify.ps1 clean) with no behaviour change |
+| `ff-desktop` | 🔴 | -- | Req 14.4: after upgrade the full workspace builds, clippy -D warnings clean, and the full test suite passes (ffwb-gate.ps1 clean) with no behaviour change |
 | `ff-desktop` | 🔴 | -- | Req 14.5: ff-desktop carries egui_kittest dev-dependency at 0.31.x |
 | `ff-desktop` | 🔴 | -- | Req 14.6: headless egui_kittest harness test renders the Menus Editor and injects Tab, asserting focused-widget order |
 | `ff-desktop` | 🔴 | -- | Req 14.7: Tab focus visits every Menus Editor control once in visual order (no widget skipped) then wraps to the command line |
@@ -2860,8 +2982,8 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `tab_manager.rs::tests::layout_tree_is_single_leaf_on_new` (leaf mirrors store, group 0 focused) | layout-and-docking Req 12.2/12.3: flat `TabState` store keyed by `TabId` unchanged; tree references tabs by id; a `focused_group` names the sole leaf |
 | `ff-desktop` | ✅ | `tab_manager.rs::tests::active_tab_resolves_through_focused_group_for_all_indices` | layout-and-docking Req 12.4: `active_tab()`/`active_tab_mut()`/`active_index()` resolve through the focused group and return the same tab as today (no call-site changes) |
 | `ff-desktop` | ✅ | `tab_manager.rs::tests::{layout_tree_mirrors_store_after_each_operation, layout_tree_mirrors_store_through_detach_redock_primitives}` | layout-and-docking Req 12.5: every lifecycle op (open/new/close/remove_at/insert_at/move_tab/set_active) keeps the single leaf consistent with the store; detach/redock + bare-SWAP toggle preserved |
-| `ff-desktop` | ✅ | code review: no session_manager change; verify.ps1 CLEAN (session round-trip tests unchanged) | layout-and-docking Req 12.6: session format unchanged (flat tab list persisted; leaf implied on load); tree persistence deferred to Slice 2c |
-| `ff-desktop` | ✅ | verify.ps1 CLEAN (FULL nextest) with NO existing test modified -- the behaviour-identical proof | layout-and-docking Req 12.7: NO user-visible change (no split command/render/key/menu; tab bar/Title_Line/Command Field/focus order unchanged) -- proven by the full existing suite passing unchanged |
+| `ff-desktop` | ✅ | code review: no session_manager change; ffwb-gate.ps1 CLEAN (session round-trip tests unchanged) | layout-and-docking Req 12.6: session format unchanged (flat tab list persisted; leaf implied on load); tree persistence deferred to Slice 2c |
+| `ff-desktop` | ✅ | ffwb-gate.ps1 CLEAN (FULL nextest) with NO existing test modified -- the behaviour-identical proof | layout-and-docking Req 12.7: NO user-visible change (no split command/render/key/menu; tab bar/Title_Line/Command Field/focus order unchanged) -- proven by the full existing suite passing unchanged |
 | `ff-desktop` | ✅ | `tab_manager.rs::tests::{layout_tree_is_single_leaf_on_new, layout_tree_mirrors_store_after_each_operation, layout_tree_mirrors_store_through_detach_redock_primitives}` | layout-and-docking Req 12.8: unit tests prove the single-leaf invariant + resolve-through-focused-group equivalence after each lifecycle operation |
 
 ### Phase (window-split) -- Visible in-window split, two Tab_Groups (CR-NR-092, B046 Slice 2b)
@@ -2881,7 +3003,7 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-desktop` | ✅ | `shell::tests::full_shell_focus_flips_focused_group`; `tab_manager::tests::focus_other_group_flips_focus_and_active_tab_follows` | layout-and-docking Req 13.7: a command/key (`FOCUS`/`FOCUS OTHER`) moves focus between the two groups, updating the Focused_Group |
 | `ff-desktop` | ✅ | `shell::tests::full_shell_split_renders_two_regions_and_command_acts_on_focused`; `tab_manager::tests::opening_a_tab_while_split_targets_the_focused_group` | layout-and-docking Req 13.8: while split, the command line / keys / new-tab opens act on the Focused_Group's active tab (Slice 2a focus model) |
 | `ff-desktop` | ✅ | `shell::tests::{full_shell_unsplit_collapses_preserving_survivor, full_shell_end_while_split_collapses}`; `tab_manager::tests::{unsplit_collapses_to_single_leaf_preserving_survivor, closing_last_tab_of_a_group_auto_collapses}` | layout-and-docking Req 13.9: `UNSPLIT` / END-on-split / closing a group's last tab collapses to a single Leaf, preserving the survivor |
-| `ff-desktop` | ✅ | `shell::tests::{full_shell_focus_and_unsplit_on_unsplit_are_noops_with_status, full_shell_split_detach_still_detaches_not_splits}`; verify.ps1 CLEAN FULL (unsplit path = Slice 2a) | layout-and-docking Req 13.10: split NOT persisted in 2b (opens unsplit on restart); unsplit behaviour identical to Slice 2a |
+| `ff-desktop` | ✅ | `shell::tests::{full_shell_focus_and_unsplit_on_unsplit_are_noops_with_status, full_shell_split_detach_still_detaches_not_splits}`; ffwb-gate.ps1 CLEAN FULL (unsplit path = Slice 2a) | layout-and-docking Req 13.10: split NOT persisted in 2b (opens unsplit on restart); unsplit behaviour identical to Slice 2a |
 | `ff-desktop` | ✅ | unit (`tab_manager::tests::*split*`) + full-shell egui_kittest (`shell::tests::full_shell_split_*`) -- both layers covered | layout-and-docking Req 13.11: split model ops unit-tested + full-shell egui_kittest for the rendered two-region behaviour |
 
 ### Phase (window-split-2c) -- Split rework Slice 2c: nesting + drag-move + persistence + detached fold-in (CR-NR-093, B046 Slice 2c)
@@ -2982,7 +3104,7 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell/tests.rs::home_context_title_line_shows_app_banner`, `full_shell_tab_reaches_settings_as_first_menu_item` | menu-workspace Req 18.3/18.5: Home renders via the single shared menu renderer; no distinct POM render path; title line unchanged |
 | `ff-desktop` | ✅ | `shell/tests.rs::end_from_drilled_menu_restores_home_context`, `home_context_resolves_to_pom_keymap_context` | menu-workspace Req 18.4/18.6: always-present Home guarantee + END/RETURN fallback + `pom` keymap context preserved after unification |
 | `ff-desktop` | ✅ | `shell/tests.rs::home_context_persists_as_menu_pom_descriptor` | menu-workspace Req 18.7/18.8: Home persists as `Menu{name:pom}`; legacy POM sessions still restore; overlapping enums reconciled (legacy read-only) |
-| `ff-desktop` | ✅ | full ff-desktop suite via `verify.ps1` (nextest) -- POM/menu tests retargeted off the removed kind pass | menu-workspace Req 18.9: unification is behaviour-preserving -- existing menu/POM tests pass (retargeted off the removed kind) |
+| `ff-desktop` | ✅ | full ff-desktop suite via `ffwb-gate.ps1` (nextest) -- POM/menu tests retargeted off the removed kind pass | menu-workspace Req 18.9: unification is behaviour-preserving -- existing menu/POM tests pass (retargeted off the removed kind) |
 
 ### Phase (menu-desc-layout) -- description-driven menu layout (menu-workspace Req 16.7-16.11, CR-CH-032)
 
@@ -3001,7 +3123,7 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell::tests::{enter_path_clears_command_field_after_success, key_command_clears_command_field_after_success, unresolved_or_errored_command_restores_field_for_correction}` | command-framework Req 13.1/13.2 (Slice 1): field disposition applied on both Enter and key-forward paths via the Command_Line_Outcome; an UNRESOLVED command keeps the field for correction |
 | `ff-desktop` | ✅ | `shell::tests::{key_command_clears_command_field_after_success, unresolved_or_errored_command_restores_field_for_correction}` | command-framework Req 13.3 (Slice 1): default outcome = `Clear` on success, `Restore` original text when the command left an `open_error` (covers unresolved typo AND resolved-but-failed) |
 | `ff-desktop` | ✅ | `shell::tests::key_command_retrieve_keeps_recalled_field` | command-framework Req 13.4 (Slice 1): a command returns an explicit `CommandLineOutcome` (`Clear`/`Restore`/`Set`/`Leave`); RETRIEVE returns `Set(<recalled>)`; fixes `1` remaining after `1` + F9 (Req 9.9 revised) |
-| `ff-desktop` | ✅ | full ff-desktop command/history/swap suite via `verify.ps1` (377 tests pass unchanged) | command-framework Req 13.8 (Slice 1): additive/behaviour-preserving -- a command returning no outcome gets the default; only the intended clear-on-success changes |
+| `ff-desktop` | ✅ | full ff-desktop command/history/swap suite via `ffwb-gate.ps1` (377 tests pass unchanged) | command-framework Req 13.8 (Slice 1): additive/behaviour-preserving -- a command returning no outcome gets the default; only the intended clear-on-success changes |
 | `ff-desktop` | ✅ | `shell::command_line_outcome::tests::{outcome_data_shape_round_trips_all_variants, outcome_data_shape_set_requires_text, invalid_shape_maps_to_default, outcome_data_action_is_case_insensitive, outcome_data_survives_toml_round_trip, outcome_data_action_tags_are_stable}` | command-framework Req 13.5 (Slice 2): serialisable `{action,text?}` Outcome_Data_Shape; total lossless round-trip to/from the native enum; invalid/absent -> None (caller default), no panic |
 | `ff-desktop` | ✅ | `shell/command_line_outcome.rs` doc comments + `outcome_data_survives_toml_round_trip` | command-framework Req 13.6 (Slice 2, docs half) / 13.7: data shape documented as the public boundary for future Lua/REXX/External bridges; per-engine bridge enforcement is Slice 3+ (deferred until each engine executes) |
 
@@ -3066,7 +3188,7 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `shell::tests::clicking_pom_settings_option_opens_settings_menu_in_place` | command-framework Req 14.3: each command owns its effect (in-place nav vs new tab), decided by the handler (`open_menu_by_name`), not the affordance (Effect_Ownership) |
 | `ff-desktop` | ✅ | `shell::tests::dispatch_menu_target_pom_opens_home_context`, `clicking_pom_settings_option_opens_settings_menu_in_place` | command-framework Req 14.4: the `open_named_menu` router removed as a routing decision; folded into the command handlers (B075 behaviour preserved) |
 | `ff-desktop` | ✅ | full `menu` suite incl. `unknown_token_is_unresolved_not_a_menu`, `settings_t_chains_to_theme_editor` | command-framework Req 14.5: Target_Resolution chain (Req 8.3), shadowing rule (Req 8.10), and Command_Line_Outcome (Req 13) unchanged by the convergence |
-| `ff-desktop` | ✅ | full `menu` suite (184 passed, 0 failed); verify.ps1 FULL | command-framework Req 14.6: behaviour-preserving -- existing command-framework / menu-workspace / workspace-kinds tests stay green |
+| `ff-desktop` | ✅ | full `menu` suite (184 passed, 0 failed); ffwb-gate.ps1 FULL | command-framework Req 14.6: behaviour-preserving -- existing command-framework / menu-workspace / workspace-kinds tests stay green |
 
 ### Phase (title-chrome-align) -- CR-CH-042 (single config-driven centered title; short POM tab; POM command)
 
@@ -3104,8 +3226,26 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `command_config::tests::shell_resolver_*` + `shell::tests::unknown_token_is_unresolved_not_a_menu` | command-framework Req 15.5: resolution order + shadowing (Req 8.3/8.10) preserved; built-in beats same-named menu; case-insensitive |
 | `ff-desktop` | ✅ | `shell::tests::typed_settings_still_opens_settings_menu_in_place`, `clicking_pom_settings_option_opens_settings_menu_in_place` | command-framework Req 15.6: classified target routed through the same dispatch split; Command_Line_Outcome (Req 13) unchanged |
 | `ff-desktop` | ✅ | `shell::tests::unknown_token_is_unresolved_not_a_menu` + CommandEngine tests | command-framework Req 15.7: unresolved-command error + CommandEngine fallthrough preserved for the verbs the shell still owns |
-| `ff-desktop` | ✅ | full `pom` suite (54 passed) + verify.ps1 FULL | command-framework Req 15.8: behaviour-preserving -- existing shell/menu/fastpath tests stay green (POM arm removal) |
+| `ff-desktop` | ✅ | full `pom` suite (54 passed) + ffwb-gate.ps1 FULL | command-framework Req 15.8: behaviour-preserving -- existing shell/menu/fastpath tests stay green (POM arm removal) |
 | `ff-desktop` | ✅ | `shell::tests::typed_pom_resolves_as_menu_name_opens_home_context`, `keyword_less_pom_menu_name_opens_home_context` | menu-workspace Req 20.5 (revised): typing `POM` opens the Home Context via Menu_Name resolution (no bespoke arm); START retained |
+
+### Phase (confirmable-commands) -- CR-CH-053 follow-up (command-framework Req 16: universal confirm switch + interactive flag)
+
+> Gate done; impl pending (alongside command-environments E10 chaining). Command-level
+> contract: a Confirmable_Command (RESET BARE first) takes a universal `-Y`/`-N` and
+> reacts to a source-derived `interactive` flag; non-interactive + no switch = assume
+> cancel + record + continue (fail-safe, reconciles batch-execution Req 3.5).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` / `ff-command` | 🔴 | -- | command-framework Req 16.1: Confirmable_Command accepts universal `-Y`/`--yes`, `-N`/`--no` (case-insensitive) via one shared parser (no per-command spelling) |
+| `ff-desktop` / `ff-command` | 🔴 | -- | command-framework Req 16.2: dispatch carries an `interactive` flag derived from the SOURCE (typed=true; macro/batch/automation=false), NOT from chaining |
+| `ff-desktop` | 🔴 | -- | command-framework Req 16.3: interactive + no switch -> open the confirmation dialog as today (standalone or typed-chain segment) |
+| `ff-desktop` | 🔴 | -- | command-framework Req 16.4: with a Confirm_Switch, no dialog -- `-Y` acts headless, `-N` records cancel; holds in both contexts |
+| `ff-desktop` | 🔴 | -- | command-framework Req 16.5: non-interactive + no switch -> no dialog, ASSUME CANCEL (do nothing, record "needs -Y"), continue; batch return code reflects the skip |
+| `ff-desktop` | 🔴 | -- | command-framework Req 16.6: `;`-chaining does not change confirm behaviour -- each segment inherits the source `interactive` flag; chaining allowed in macros/batch |
+| `ff-desktop` / `ff-command` | 🔴 | -- | command-framework Req 16.7: command-level contract -- dispatcher threads the flag, the command (in its owning env) decides via the shared helper; no new dispatcher / no CommandTarget change |
+| `ff-desktop` | 🔴 | -- | command-framework Req 16.8: reconciles batch-execution Req 3.5 -- a confirmable with no `-Y` in batch is a recorded skip that continues (not a hang); `-Y` lets it run |
 
 ### Phase (cmdline-history-arrows) -- CR-NR-096 (Up/Down arrow history stepping on a focused command field)
 
@@ -3216,7 +3356,7 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | `scrm_viewer_panel::tests::current_screen_text_reflects_capture`; `shell::tests::capture_replay_opens_viewer_when_collection_exists` | Req 10.1-10.8 (shell): replay navigation + selectable-text screen render in the viewer |
 | `ff-desktop` | 🔴 | -- | Req 18.2-18.3: capture does not visibly interrupt; async export/off-frame write |
 | `ff-screen-model` / `ff-scrm` | ✅ | crate structure: SCRM engine lives entirely in `ff-screen-model` + `ff-scrm`; ff-desktop holds only thin Context/command wiring (verified in Cargo.toml deps + module map) | Req 19.1/19.2/19.5/19.6: SCRM engine in new crates; ff-desktop depends on them only for thin wiring; ScreenProvider seam is the extraction template; no parallel dispatch/nav/focus/persistence mechanism |
-| `ff-desktop` | 🔲 | Behaviour-preserving panel extraction waves (design.md Wave 4+) tracked in `docs/project-management/ffdesktop-decomposition-baseline.md`; each wave = verify.ps1 CLEAN + before/after line/rebuild measurement. Baseline recorded 2026-09-26 (54,545 lines, 5.17 s incr rebuild). Wave 1 (ff-theme-editor) DONE 2026-09-29 (owner-confirmed full verify.ps1 CLEAN): ff-desktop 54,545 -> 54,120 (-425); scoped gate CLEAN (nextest -p ff-desktop 1225/1225, clippy -D warnings, fmt). Wave 2 (ff-toolchain-panel) SCOPED CLEAN 2026-09-29 (toolchain_panel.rs 559 -> 15; ff-desktop 54,120 -> ~53,576; nextest -p ff-toolchain-panel -p ff-desktop 1225/1225), owner full gate pending. Wave 3 (ff-catalog-registry, DECOMP.3) DONE 2026-09-30, owner-confirmed full verify.ps1 CLEAN (9452/9452, empty ai-review.log): catalog_registry.rs 801 -> 13 thin `pub use` adapter; ff-desktop ~53,576 -> ~52,788 (-788); the crate holds the model + 22 tests egui-free. Wave 4 (ff-catalog-dialog, DECOMP.4) SCOPED CLEAN 2026-09-30 (catalog_manager_dialog.rs 1292 -> 12 thin `pub use` adapter; ff-desktop ~52,788 -> ~51,508 (-1280); crate sliced into new_dialog/edit_dialog/delete_dialog with 44 tests; fmt -p exit 0, clippy -p ff-catalog-dialog -p ff-desktop -D warnings exit 0, nextest -p ff-catalog-dialog -p ff-desktop 1191/1191), owner full verify.ps1 pending. Wave 5 (explorer substrate, DECOMP.5) SCOPED CLEAN 2026-10-01: FOUR crates extracted leaves-first -- ff-context-menu (context_menu.rs 317 -> 3), ff-posix-provider (posix_provider.rs 407 -> 3, prereq leaf for nav_model tests), ff-nav-model (nav_model.rs 836 -> 3), ff-explorer-view (explorer_view.rs 1086 -> 3; lib ~767 non-test lines, over the 400 guideline -- known follow-up, not re-sliced); each a thin `pub use` adapter. Also fixed a pre-existing egui-0.33 gate blocker in ff-desktop (egui_kittest 0.31 -> 0.33, egui-file-dialog 0.9 -> 0.12, egui_kittest/egui 0.33 API + deprecation migration). fmt -p exit 0, clippy -p ff-explorer-view -p ff-nav-model -p ff-context-menu -p ff-posix-provider -p ff-desktop --tests -D warnings exit 0, nextest same set 1147/1147; owner full verify.ps1 pending (may surface the same egui-0.33 pins in orphan crates outside ff-desktop's closure). Next candidate: editor_panel.rs substrate (DECOMP.6). | Req 19.3/19.4: each extraction wave is behaviour-preserving (full gate green, no observable change) and reduces ff-desktop size, measured before/after (ongoing -- one row per wave) |
+| `ff-desktop` | 🔲 | Behaviour-preserving panel extraction waves (design.md Wave 4+) tracked in `docs/project-management/ffdesktop-decomposition-baseline.md`; each wave = ffwb-gate.ps1 CLEAN + before/after line/rebuild measurement. Baseline recorded 2026-09-26 (54,545 lines, 5.17 s incr rebuild). Wave 1 (ff-theme-editor) DONE 2026-09-29 (owner-confirmed full ffwb-gate.ps1 CLEAN): ff-desktop 54,545 -> 54,120 (-425); scoped gate CLEAN (nextest -p ff-desktop 1225/1225, clippy -D warnings, fmt). Wave 2 (ff-toolchain-panel) SCOPED CLEAN 2026-09-29 (toolchain_panel.rs 559 -> 15; ff-desktop 54,120 -> ~53,576; nextest -p ff-toolchain-panel -p ff-desktop 1225/1225), owner full gate pending. Wave 3 (ff-catalog-registry, DECOMP.3) DONE 2026-09-30, owner-confirmed full ffwb-gate.ps1 CLEAN (9452/9452, empty ai-review.log): catalog_registry.rs 801 -> 13 thin `pub use` adapter; ff-desktop ~53,576 -> ~52,788 (-788); the crate holds the model + 22 tests egui-free. Wave 4 (ff-catalog-dialog, DECOMP.4) SCOPED CLEAN 2026-09-30 (catalog_manager_dialog.rs 1292 -> 12 thin `pub use` adapter; ff-desktop ~52,788 -> ~51,508 (-1280); crate sliced into new_dialog/edit_dialog/delete_dialog with 44 tests; fmt -p exit 0, clippy -p ff-catalog-dialog -p ff-desktop -D warnings exit 0, nextest -p ff-catalog-dialog -p ff-desktop 1191/1191), owner full ffwb-gate.ps1 pending. Wave 5 (explorer substrate, DECOMP.5) SCOPED CLEAN 2026-10-01: FOUR crates extracted leaves-first -- ff-context-menu (context_menu.rs 317 -> 3), ff-posix-provider (posix_provider.rs 407 -> 3, prereq leaf for nav_model tests), ff-nav-model (nav_model.rs 836 -> 3), ff-explorer-view (explorer_view.rs 1086 -> 3; lib ~767 non-test lines, over the 400 guideline -- known follow-up, not re-sliced); each a thin `pub use` adapter. Also fixed a pre-existing egui-0.33 gate blocker in ff-desktop (egui_kittest 0.31 -> 0.33, egui-file-dialog 0.9 -> 0.12, egui_kittest/egui 0.33 API + deprecation migration). fmt -p exit 0, clippy -p ff-explorer-view -p ff-nav-model -p ff-context-menu -p ff-posix-provider -p ff-desktop --tests -D warnings exit 0, nextest same set 1147/1147; owner full ffwb-gate.ps1 pending (may surface the same egui-0.33 pins in orphan crates outside ff-desktop's closure). Next candidate: editor_panel.rs substrate (DECOMP.6). | Req 19.3/19.4: each extraction wave is behaviour-preserving (full gate green, no observable change) and reduces ff-desktop size, measured before/after (ongoing -- one row per wave) |
 | `ff-scrm` | ✅ | `pdf_protected::tests::{protected_pdf_is_encrypted, protected_pdf_has_pdf_header, protected_pdf_accepts_optional_user_password, content_hash_is_embedded_value}` | Req 20.1-20.5 (engine): owner-password encryption + copy-allow/edit-lock permissions + optional user password + embedded content hash |
 | `ff-desktop` | ✅ | `shell::tests::{capture_export_pdf_protected_writes_encrypted_pdf, capture_export_pdf_protected_default_owner_password}` | Req 20.1, 20.2, 20.7 (command): CAPTURE EXPORT PDF PROTECTED writes an /Encrypt-locked PDF |
 | `ff-desktop` | 🔴 | -- | Req 20.4a: optional digital signature (deferred configurable add-on) |
@@ -3308,3 +3448,53 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 6.1-6.4: render via ff-md-style egui mapping; HTML export via build_standalone_html_with_css + emit_css; re-render on style/mode change; no independent styling |
 | `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 7.1-7.4: cut-down About/Help surface reachable from toolbar; Ctrl+O/F5 stay hardcoded; ff-keys deferral recorded; no ff-keys dependency |
 | `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 8.1-8.4: dependency allow-list enforced (no editor/command/vfs/toolchain/plugin/layout deps); cut-down feature set; preserve existing behaviours (scan, F5, drag-drop, filter, export) |
+
+<!-- CR-NR-103: Localization / i18n -- Fluent catalogue + ui.locale key + per-locale alias loader. Gate authored; implementation NOT started. -->
+
+### Localization / i18n (CR-NR-103, Phase (localization)) -- NOT COVERED (implementation not started)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-config` | 🔴 | -- | localization Req 1.1: `ui.locale` key registered in core schema as String, default "en" |
+| `ff-config` | 🔴 | -- | localization Req 1.2: `ui.locale` constrains accepted values via allowed_values limited to shipped locales |
+| `ff-config` | 🔴 | -- | localization Req 1.3: with no user override, effective locale is default "en" (Identity_Base) |
+| `ff-config` | 🔴 | -- | localization Req 1.4: `ui.locale` change notified via existing CallbackRegistry::on_reload, no new config mechanism |
+| `ff-config` | 🔴 | -- | localization Req 1.5: `ui.locale` reload callback reloads BOTH message catalogue and per-locale/per-environment alias catalogue |
+| `ff-config` | 🔴 | -- | localization Req 1.6: out-of-schema locale falls back to "en" and logs WARN (defence-in-depth) |
+| `ff-i18n` | 🔴 | -- | localization Req 2.1: Fluent (fluent-bundle/fluent + unic-langid) catalogue mechanism with `{ $arg }` placeables |
+| `ff-i18n` | 🔴 | -- | localization Req 2.2: Message_Catalogue authored as per-locale `.ftl` DATA files, not compiled into Rust |
+| `ff-i18n` | 🔴 | -- | localization Req 2.3: `.ftl` files for the active locale loaded into a Fluent bundle at startup and on `ui.locale` reload |
+| `ff-i18n` | 🔴 | -- | localization Req 2.4: `.ftl` parse error retains prior catalogue (or Identity_Base), WARNs, never crashes/blank |
+| `ff-i18n` | 🔴 | -- | localization Req 2.5: English Identity_Base catalogue always present, loadable with no other locale installed |
+| `ff-i18n` | 🔴 | -- | localization Req 3.1: Catalogue_Lookup_Seam exposes `t(key)` and argument-bearing `t_args(key, args)` |
+| `ff-i18n` | 🔴 | -- | localization Req 3.2: key present in active locale returns that locale's string; absent falls back to Identity_Base English |
+| `ff-i18n` | 🔴 | -- | localization Req 3.3: key absent in both active + Identity_Base returns the key itself and WARNs (never blank) |
+| `ff-i18n` | 🔴 | -- | localization Req 3.4: seam callable from egui render code without changing egui APIs (literal -> `t("key")` swap) |
+| `ff-i18n` | 🔴 | -- | localization Req 3.5: Catalogue_Lookup_Seam is GUI-free in its own crate, usable by non-GUI crates/tests |
+| `ff-desktop` | 🔴 | -- | localization Req 4.1: localise only user-facing TEXT (chrome, labels, menu titles/descriptions, status/error, help, dialogs, buttons) |
+| `ff-desktop` | 🔴 | -- | localization Req 4.2: do NOT localise command VERBS / stable identifiers (canonical verbs, menu `command` values, config keys, Topic_Key, command_id) |
+| `ff-desktop` | 🔴 | -- | localization Req 4.3: where text + verb coexist, only the description localises; `command` value unchanged (verb/text split) |
+| `ff-desktop` | 🔴 | -- | localization Req 4.4: no displayed text derived by matching on a translated string; text resolved FROM a key, never used AS a key |
+| `ff-desktop` | 🔴 | -- | localization Req 5.1: localized alias data loads into the EXISTING per-environment AliasTable, no new mechanism, behaviour-neutral |
+| `ff-desktop` | 🔴 | -- | localization Req 5.2: one Alias_Catalogue per locale, loaded on selection; a different locale loads a different catalogue (not a union) |
+| `ff-desktop` | 🔴 | -- | localization Req 5.3: a per-locale catalogue is organised PER ENVIRONMENT; same surface form may map to different canonicals per environment |
+| `ff-desktop` | 🔴 | -- | localization Req 5.4: no per-row locale indicator; the single `ui.locale` selection determines which catalogue loads |
+| `ff-desktop` | 🔴 | -- | localization Req 5.5: English canonical verbs resolvable in every locale (base English + locale overlay); FIND and CHERCHER both -> FIND |
+| `ff-desktop` | 🔴 | -- | localization Req 5.6: within-environment alias collision rejected with diagnostic; Identity_Base retained; collision scoped per environment |
+| `ff-help` | 🔴 | -- | localization Req 6.1: help loader resolves a per-locale content directory, reusing the existing loader shape, no parse/model change |
+| `ff-help` | 🔴 | -- | localization Req 6.2: active-locale help directory loaded; topic absent for the locale falls back to English Identity_Base content |
+| `ff-help` | 🔴 | -- | localization Req 6.3: Topic_Key / cross-reference keys unlocalised; only topic body/title prose localised |
+| `ff-help` | 🔴 | -- | localization Req 6.4: on locale change, subsequently displayed topics resolve against the new locale's directory (hot-reload) |
+| `ff-desktop` | 🔴 | -- | localization Req 7.1: menu TITLE/option DESCRIPTIONS displayed from the Message_Catalogue keyed by menu+option, out of the parsed menu model |
+| `ff-desktop` | 🔴 | -- | localization Req 7.2: built-in menus stay code-only (DEFAULT_*_TOML); no translated menu file written to disk |
+| `ff-desktop` | 🔴 | -- | localization Req 7.3: menu option `command` values not localised; only TITLE/DESCRIPTION prose localised |
+| `ff-desktop` | 🔴 | -- | localization Req 7.4: missing menu title/description key falls back to Identity_Base English text (menus always render) |
+| `ff-desktop` | 🔴 | -- | localization Req 8.1: Catalogue_Lookup_Seam available to plugin-authored UI through the SAME seam (no plugin-specific mechanism) |
+| `ff-desktop` | 🔴 | -- | localization Req 8.2: plugin-authored command environment localises its aliases through the same per-environment Alias_Catalogue model |
+| `ff-desktop` | 🔴 | -- | localization Req 8.3: plugin localisation grants no capability outside the existing plugin permission/security model |
+| `ff-desktop` | 🔴 | -- | localization Req 9.1: interpolated user-facing message is a Fluent entry with named placeables via `t_args`, not a `format!` literal |
+| `ff-desktop` | 🔴 | -- | localization Req 9.2: embedded command verb passed as a NON-translated placeable argument; prose localises, verb stays English |
+| `ff-desktop` | 🔴 | -- | localization Req 9.3: `thiserror`-sourced message localised at the display boundary, not at the error source |
+| `ff-desktop` | 🔴 | -- | localization Req 10.1: no second dispatcher / nav stack / persistence format / per-Context focus mechanism; builds ON existing seams only |
+| `ff-desktop` | 🔴 | -- | localization Req 10.2: additive to behaviour; with `ui.locale` = "en" the workbench renders/behaves identically to pre-localization |
+| `ff-desktop` | 🔴 | -- | localization Req 10.3: recorded/persisted value is always the canonical English verb regardless of active locale |

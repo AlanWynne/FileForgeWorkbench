@@ -31,9 +31,15 @@ CASES = [
         r'C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -Command "cargo --version"',
         "allow",
     ),
-    # Bare toolchain -> allow
-    ("cargo test -p ff-desktop", "allow"),
-    ("type tools\\logs\\out.txt", "allow"),
+    # Clean wrapper around a toolchain command -> allow
+    (
+        r'C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -Command "cargo test -p ff-desktop"',
+        "allow",
+    ),
+    # Bare toolchain -> ASK now (no command runs bare in the interactive shell;
+    # the bare lane was the remaining PSReadLine-poisoning channel).
+    ("cargo test -p ff-desktop", "ask"),
+    ("type tools\\logs\\out.txt", "ask"),
     # git/gh are NOT bare-allowed (they were the unprotected lane that swallowed
     # commands); they must route to the clean non-interactive wrapper -> ask.
     ("git status", "ask"),

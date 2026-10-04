@@ -63,3 +63,7 @@ docs/source-documents/IBM-Manuals/
 
 # ── Kiro AI internal config files ────────────────────────────────────────────
 **/.config.kiro
+
+# ── Python bytecode cache (tools/python helper scripts) ──────────────────────
+__pycache__/
+*.pyc

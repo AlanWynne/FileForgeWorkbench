@@ -36,15 +36,15 @@ Is it file inspection (read / find / count / grep)?
     -> YES: use a dedicated tool (read_file / grep_search / list_directory /
             file_search). Do NOT touch the shell at all.
     -> NO: continue.
-Is it a bare project-toolchain command (cargo / rustc / rustup / python / py),
-or `type <logfile>` to read a log back?
-    -> YES: run it directly, single-purpose, no ';' and no piped formatting.
-    -> NO: run it via the NON-INTERACTIVE pwsh7 wrapper (see below), OR put the
-           logic in a tools/ script and run the script + read its log.
-           NOTE: `git` and `gh` go HERE, not the YES branch. They are frequently
-           long (commit messages, many flags, paths) and sometimes interactive
-           (pager, editor, prompts) -- exactly what trips the PSReadLine mangling
-           -- so they MUST go through the non-interactive pwsh7 wrapper.
+Does the command run a program (toolchain, git, gh, a script, anything)?
+    -> ALWAYS run it via the NON-INTERACTIVE pwsh7 wrapper (see below), OR put
+       the logic in a tools/ script and run that script via the wrapper + read
+       its log. There is NO bare exception any more: even cargo / rustc / rustup
+       / python / py / type MUST go through the wrapper. A bare command still
+       executes in the interactive PSReadLine session, so a poisoned buffer glues
+       stale text onto it and yields `Exit Code: -1`; `-NonInteractive` is the
+       only thing that stops that, and the guard now classifies every bare
+       leader (toolchain, git, gh) as `ask` with the wrapped form in its reason.
 ```
 
 ### The rules (each is now MECHANICALLY ENFORCED -- see the guard hook below)
@@ -54,17 +54,34 @@ or `type <logfile>` to read a log back?
    `Select-String`, `Get-ChildItem`, `Measure-Object`. Most "count lines / find
    files / read a file" needs have a tool and never touch the terminal.
 
-2. **Use pwsh 7, non-interactively, for any non-toolchain shell command.** Run it
+2. **Use pwsh 7, non-interactively, for EVERY shell command.** Run it
    EXACTLY as:
    `C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -Command "<command>"`
    pwsh7 removes the Postgres/credentials banner (the 5.1 machine profile is not
    loaded); `-NonInteractive` stops the PSReadLine echo/prediction that causes the
    character-by-character mangling; `-NoProfile` keeps the session clean and fast.
-   Bare short, non-interactive toolchain leaders
-   (`cargo`/`rustc`/`rustup`/`python`/`py`/`type`) are the ONLY exception and may
-   run without the wrapper. `git` and `gh` are NOT exceptions: they were the one
-   unprotected lane where a command got swallowed by the terminal, so they MUST
-   use the wrapper like any other command.
+   There is NO bare-command exception: `cargo`/`rustc`/`rustup`/`python`/`py`/
+   `type`, like `git` and `gh`, MUST all use the wrapper. The bare lane was the
+   remaining way a command got swallowed by the terminal -- a bare command runs
+   in the interactive session, so a poisoned buffer corrupts even a clean short
+   command. The guard now classifies any bare leader as `ask` and hands back the
+   exact wrapped form to run.
+
+   `-NonInteractive` stops the PSReadLine echo/prediction mangling; it does NOT
+   auto-answer a command's OWN confirmation prompt. A cmdlet or program that
+   issues its own prompt (a `ShouldProcess` confirmation, an overwrite query, a
+   credential/consent request) will STALL under `-NonInteractive` with no way to
+   answer. Therefore EVERY command MUST also carry the explicit no-prompt switches
+   that pre-empt its own prompts, for example:
+   - `Remove-Item -Force` (add `-Recurse` for directories);
+   - `-Confirm:$false` on any cmdlet that supports `-Confirm`
+     (e.g. `Stop-Process -Confirm:$false`);
+   - `-Force` on `New-Item` / `Copy-Item` / `Move-Item` where an overwrite could
+     be queried;
+   - `--yes` / `-y` on package managers and `gh` where a confirmation is possible;
+   - NEVER an interactive flag (`-i` / `--interactive`) on `git` or any tool.
+   The goal is that the FIRST invocation already cannot block on input -- do not
+   run a prompting form and then react to the stall.
 
 3. **One command, one job.** NEVER `;`-chain steps, NEVER pipe into
    `Format-Table`/`Select-Object`, NEVER put inline `$( ... )` subexpressions on
@@ -90,14 +107,16 @@ or `type <logfile>` to read a log back?
 tool. Before ANY shell command runs, it invokes
 `tools/python/pwsh_command_guard.py`, which classifies the command:
 
-- **allow (silent)** -- the clean pwsh7 wrapper form, or a bare safe toolchain
-  leader (`cargo`/`rustc`/`rustup`/`python`/`py`/`type`). `git` and `gh` are NOT
-  on this list -- they must use the clean wrapper and so classify as `ask` when
-  run bare.
-- **ask (owner confirms first)** -- a bare inspection cmdlet
+- **allow (silent)** -- ONLY the clean, non-interactive pwsh7 wrapper form. It is
+  the only form that cannot be corrupted by a poisoned interactive buffer, so it
+  is the only form allowed to run without a prompt.
+- **ask (owner confirms first)** -- any bare command, including a bare toolchain
+  leader (`cargo`/`rustc`/`rustup`/`python`/`py`/`type`), a bare `git`/`gh`
+  command, a bare inspection cmdlet
   (`Get-Content`/`Select-String`/`Get-ChildItem`/`Measure-Object` or an alias), a
-  `Format-Table`/`Select-Object` pipe, a bare `git`/`gh` command, or any other
-  command that is neither the clean wrapper nor a safe toolchain leader.
+  `Format-Table`/`Select-Object` pipe, or any other non-wrapper command. For a
+  bare toolchain/other leader the reason string carries the ready-to-run wrapped
+  form; for an inspection cmdlet it points to the dedicated tool to use instead.
 - **block (exit 2, command does not run)** -- a `;`-chained line, or a
   process-kill (`Stop-Process`/`taskkill`/`kill`) glued onto a command.
 

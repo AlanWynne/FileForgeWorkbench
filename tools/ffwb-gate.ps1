@@ -241,6 +241,7 @@ function Write-Progress-Snapshot {
     $lines = @(
         "phase        : $Phase",
         "mode         : $mode   runner: $runner   scope: $scope",
+        "started      : $($overallStart.ToString('HH:mm:ss'))",
         "phase_elapsed: $(Format-Hms $elapsed)",
         "total_elapsed: $(Format-Hms $overall)",
         "updated      : $((Get-Date).ToString('HH:mm:ss'))"
@@ -389,8 +390,9 @@ function Invoke-TestStep {
             $extra = "tests_run   : (compiling test binaries...)"
         }
         if ($EtaSeconds) {
-            $remain = [math]::Max(0, [int]($EtaSeconds - ((Get-Date) - $stepStart).TotalSeconds))
-            $extra += "`r`neta_test    : ~$(Format-Hms ([TimeSpan]::FromSeconds($EtaSeconds))) (median); ~${remain}s remaining"
+            $estEnd = $stepStart.AddSeconds($EtaSeconds)
+            $extra += "`r`ntest_started: $($stepStart.ToString('HH:mm:ss'))"
+            $extra += "`r`nest_end     : $($estEnd.ToString('HH:mm:ss'))  (median ~$(Format-Hms ([TimeSpan]::FromSeconds($EtaSeconds))))"
         }
         Write-Progress-Snapshot -Phase $Name -PhaseStart $stepStart -Extra $extra
         Start-Sleep -Seconds 5

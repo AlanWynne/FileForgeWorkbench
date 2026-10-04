@@ -26,6 +26,7 @@ The following specs exist under `docs/specs/`:
 - clipboard-operations
 - command-completion
 - command-configurator
+- command-environments (CR-CH-053: Command Environment model, REXX ADDRESS-inspired -- framework + FFCMD + FFEDIT built, FFLINE named-only, rest vision-only; see environments-vision.md)
 - command-framework
 - command-semantics
 - command-palette
@@ -68,6 +69,7 @@ The following specs exist under `docs/specs/`:
 - layout-and-docking
 - line-commands
 - line-wrap-toggle
+- localization (CR-NR-103: i18n -- convertible UI language via message catalogue + locale config; command verbs stay source-language, descriptions/chrome translate. Forward-build directive effective now (write extraction-friendly); audit + framework gate pending. See localization-vision.md)
 - logging-subsystem
 - lua-macro-engine
 - markdown-rendering (CR-NR-101: configurable Markdown element styling -- TOML config consumed by FFWB + ffmdx + HTML/PDF export; composes ff-theme Colour_Tokens, owns markdown typography/layout; requirements drafted, gate pending)

@@ -604,3 +604,40 @@ gate is approved.
           (behaviour-preserving). verify.ps1 CLEAN FULL nextest; rebuild ffwb.exe;
           update TCR Req 15; update project-master.
     - Covers: command-framework Requirement 15 (behaviour-preserving)
+
+
+## Phase confirmable-commands (CR-CH-053 follow-up, Requirement 16) -- universal confirm switch + interactive flag
+
+Gate done; implement alongside command-environments E10 (chaining), since chaining
+is what makes the non-interactive path reachable from a single typed line via a
+macro. Command-level contract; no dispatch-mechanism change. TDD, scoped checks.
+
+- [ ] CC.1 Add the `interactive` flag to the command dispatch, source-derived: the
+      typed `Command ===>` Enter path sets it true; the macro/Lua `ScriptingBridge`
+      and the batch (`--batch`) runner set it false. Default true for the existing
+      typed path (behaviour-preserving). Validates: Requirement 16.2.
+- [ ] CC.2 Add the shared confirm-switch parser: a helper that strips a trailing
+      `-Y`/`--yes` or `-N`/`--no` (case-insensitive) from a command argument string
+      and returns `ConfirmIntent { Confirm, Cancel, Unspecified }`. Validates:
+      Requirement 16.1.
+- [ ] CC.3 Add the shared decision helper taking `(interactive, ConfirmIntent)` and
+      returning the action (open-dialog / act-headless / assume-cancel) per the
+      Requirement 16 decision table; the assume-cancel path records a status naming
+      the command and "needs -Y" and does nothing. Validates: Requirement 16.3,
+      16.4, 16.5, 16.7.
+- [ ] CC.4 Adopt the helper in RESET BARE (first Confirmable_Command, FFCMD-owned):
+      `RESET BARE` typed -> dialog (unchanged); `RESET BARE -Y` -> headless reset,
+      no dialog; `RESET BARE` from macro/batch with no `-Y` -> assume cancel +
+      record + continue. Parse `-Y`/`-N` in the FFCMD RESET BARE handler via CC.2.
+      Validates: Requirement 16.1, 16.4, 16.5.
+- [ ] CC.5 Reconcile with batch-execution Req 3.5: a confirmable with no `-Y` in
+      batch is a recorded skip that continues (not a hang); the batch return-code
+      model records it. Validates: Requirement 16.5, 16.8.
+- [ ] CC.6 Tests (red before green): RESET BARE typed opens dialog; RESET BARE -Y
+      performs headless (no dialog); RESET BARE from a non-interactive source with
+      no switch does nothing + records needs-`-Y` + continues; a typed `;`-chain
+      with a confirmable mid-chain opens the dialog and continues after; the
+      confirm-switch parser + decision table unit tests. Validates: Requirement 16
+      (all criteria).
+- [ ] CC.7 Update `docs/quality/TCR.md`: set the command-framework Req 16 rows to
+      their correct status. Validates: Requirement 16 (all criteria).

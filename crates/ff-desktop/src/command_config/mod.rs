@@ -31,7 +31,7 @@ pub mod store;
 
 use serde::{Deserialize, Serialize};
 
-use ff_command::{CommandTarget, TargetResolver};
+use ff_command::{CommandTarget, TargetParams, TargetResolver, TargetValue};
 
 /// One user-authored command definition.
 ///
@@ -105,11 +105,16 @@ impl TargetResolver for UserCommandStore<'_> {
 /// 3. `is_registered_command` -- a registered `Command_ID`, so a bare command
 ///    id resolves to a `Function` target (command-framework Requirement 8.3).
 ///
-/// `builtin_workspace_target` deliberately returns `None`: built-in workspace
-/// verbs and fastpaths (FILES, =2, SETTINGS, ...) keep their existing shell
-/// handling via fall-through, preserving observable behaviour for every command
-/// string that resolves today (command-framework Requirement 8.4,
-/// menu-workspace Requirement 10.2).
+/// `builtin_workspace_target` classifies the CustomWorkspace / navigation family
+/// (B080, Step 2): the in-scope verbs FILES / =FILES, FILE CATALOGS / CATALOGS,
+/// CONFIG [<ns>], COMMANDS, LOG, PLUGINS, MACROS, GSEARCH / SEARCH, KEYS [<kind>],
+/// KINDS, MENUS, and bare THEME resolve to `CommandTarget::CustomWorkspace` so the
+/// TYPED path reaches the SAME classification the key/menu path uses (one front
+/// door, Req 2.1; ordered chain, Req 8.3). It returns `None` for every OTHER verb
+/// so user menus / macros / registered ids still resolve at later stages and
+/// non-migrated verbs fall through to the existing shell ladder, preserving
+/// observable behaviour for every command string that resolves today
+/// (command-framework Requirement 8.4, menu-workspace Requirement 10.2).
 ///
 /// CR-CH-025: `menu_name_target` resolves a bare token to a `Menu` target when
 /// it names a resolvable menu (a user `menus/<name>.toml` that exists, or a
@@ -125,6 +130,109 @@ pub struct ShellTargetResolver<'a> {
 /// Compiled built-in menu names that always resolve (no file required).
 /// Mirrors the code-only Recovery_Baseline menus (menu-workspace Req 12).
 const BUILTIN_MENU_NAMES: &[&str] = &["pom", "settings"];
+
+/// Classify a built-in CustomWorkspace / navigation verb (B080, Step 2) to its
+/// `CommandTarget::CustomWorkspace`, or `None` when `input` is NOT one of the
+/// in-scope verbs. A free function (not a method) so it is unit-testable without
+/// a registry and keeps the `TargetResolver` impl thin.
+///
+/// The verb is matched case-insensitively; a trailing Argument_String keeps its
+/// case except where the verb's shell method lowercases it (CONFIG namespace).
+/// The `workspace_kind` strings are the EXPLICIT, stable Step-2 vocabulary that
+/// the `dispatch_command_target` CustomWorkspace arm matches on and routes to the
+/// SAME shell method the ladder arm calls (identical observable result, Req 8.4).
+///
+/// Returns `None` for every verb not in the table so non-migrated verbs fall
+/// through to the ladder and user menus / macros still resolve at later stages
+/// (no over-claim). THEME is the one verb where a non-empty argument means DO NOT
+/// claim: bare `THEME` opens the Theme editor (claimed here), but `THEME <name>`
+/// is a theme-apply action owned by the ladder (falls through).
+///
+/// Validates: command-framework Requirement 8.3 (stage 2), 8.4, 9.2, 9.7
+pub(crate) fn builtin_workspace_target_for(input: &str) -> Option<CommandTarget> {
+    let trimmed = input.trim();
+    // The single Req 9.7 split: first whitespace-delimited token is the verb
+    // (case-insensitive), the trimmed remainder is the case-preserved arg (B062).
+    let (verb, arg) = trimmed
+        .split_once(char::is_whitespace)
+        .map(|(h, r)| (h, r.trim()))
+        .unwrap_or((trimmed, ""));
+
+    let custom = |workspace_kind: &str| {
+        Some(CommandTarget::CustomWorkspace {
+            workspace_kind: workspace_kind.to_string(),
+            params: TargetParams::new(),
+        })
+    };
+
+    // Case-insensitive verb comparison helper.
+    let is = |name: &str| verb.eq_ignore_ascii_case(name);
+
+    // =FILES is a single token (no whitespace), so it arrives as the verb.
+    if is("=FILES") {
+        return custom("file_explorer");
+    }
+    // FILE CATALOGS is the ONLY two-word in-scope verb.
+    if is("FILE") && arg.eq_ignore_ascii_case("CATALOGS") {
+        return custom("files");
+    }
+    // CONFIG [<namespace>]: claim with or without an arg; fold a non-empty
+    // namespace (LOWERCASED, mirroring the ladder's `open_config_view`) into
+    // params under `namespace`.
+    if is("CONFIG") {
+        if arg.is_empty() {
+            return custom("config");
+        }
+        let mut params = TargetParams::new();
+        params.insert(
+            "namespace".to_string(),
+            TargetValue::String(arg.to_lowercase()),
+        );
+        return Some(CommandTarget::CustomWorkspace {
+            workspace_kind: "config".to_string(),
+            params,
+        });
+    }
+    // KEYS [<kind>]: claim with or without an arg; fold a non-empty kind
+    // (case PRESERVED) into params under `kind`.
+    if is("KEYS") {
+        if arg.is_empty() {
+            return custom("keys");
+        }
+        let mut params = TargetParams::new();
+        params.insert("kind".to_string(), TargetValue::String(arg.to_string()));
+        return Some(CommandTarget::CustomWorkspace {
+            workspace_kind: "keys".to_string(),
+            params,
+        });
+    }
+    // THEME: bare only. A non-empty arg is the theme-apply action (ladder).
+    if is("THEME") {
+        if arg.is_empty() {
+            return custom("theme_editor");
+        }
+        return None;
+    }
+
+    // The remaining verbs claim ONLY when the arg is EMPTY, mirroring the
+    // ladder's exact `upper == "..."` match (so e.g. `COMMANDS foo` is NOT
+    // claimed here and falls through to the ladder / later stages).
+    if !arg.is_empty() {
+        return None;
+    }
+    match () {
+        _ if is("FILES") => custom("file_explorer"),
+        _ if is("CATALOGS") => custom("files"),
+        _ if is("COMMANDS") => custom("command_configurator"),
+        _ if is("LOG") => custom("event_log"),
+        _ if is("PLUGINS") => custom("plugin_manager"),
+        _ if is("MACROS") => custom("macro_library"),
+        _ if is("GSEARCH") || is("SEARCH") => custom("search"),
+        _ if is("KINDS") => custom("kinds"),
+        _ if is("MENUS") => custom("menus"),
+        _ => None,
+    }
+}
 
 impl<'a> ShellTargetResolver<'a> {
     /// Create a resolver over the given definitions, command registry, and the
@@ -164,8 +272,8 @@ impl TargetResolver for ShellTargetResolver<'_> {
         self.find(input).map(|d| d.target.clone())
     }
 
-    fn builtin_workspace_target(&self, _input: &str) -> Option<CommandTarget> {
-        None
+    fn builtin_workspace_target(&self, input: &str) -> Option<CommandTarget> {
+        builtin_workspace_target_for(input)
     }
 
     fn is_registered_command(&self, input: &str) -> bool {
@@ -260,6 +368,114 @@ command_id = "file.save"
         let def: CommandDefinition = toml::from_str(toml).expect("parse");
         assert_eq!(def.category, "user");
         assert!(def.description.is_none());
+    }
+
+    // === B080 Step 2: builtin_workspace_target classifier ===================
+
+    // Validates: command-framework Requirement 8.3 (stage 2) -- built-in
+    // workspace verbs are classified by resolve_target (the None stub removed).
+    #[test]
+    fn builtin_workspace_target_classifies_nav_verb() {
+        // FILES -> file_explorer CustomWorkspace, no params; case-insensitive.
+        let expect_fe = Some(CommandTarget::CustomWorkspace {
+            workspace_kind: "file_explorer".to_string(),
+            params: TargetParams::new(),
+        });
+        assert_eq!(builtin_workspace_target_for("FILES"), expect_fe);
+        assert_eq!(builtin_workspace_target_for("files"), expect_fe);
+
+        // CONFIG <ns> folds a LOWERCASED namespace into params.
+        let mut cfg_params = TargetParams::new();
+        cfg_params.insert(
+            "namespace".to_string(),
+            TargetValue::String("core".to_string()),
+        );
+        assert_eq!(
+            builtin_workspace_target_for("CONFIG Core"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "config".to_string(),
+                params: cfg_params,
+            }),
+            "CONFIG <ns> lowercases and folds the namespace into params"
+        );
+        // Bare CONFIG claims with no params.
+        assert_eq!(
+            builtin_workspace_target_for("CONFIG"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "config".to_string(),
+                params: TargetParams::new(),
+            })
+        );
+
+        // KEYS <kind> preserves the arg case.
+        let mut keys_params = TargetParams::new();
+        keys_params.insert(
+            "kind".to_string(),
+            TargetValue::String("Editor".to_string()),
+        );
+        assert_eq!(
+            builtin_workspace_target_for("KEYS Editor"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "keys".to_string(),
+                params: keys_params,
+            }),
+            "KEYS <kind> preserves the argument case"
+        );
+
+        // =FILES single token and FILE CATALOGS two-word verb.
+        assert_eq!(
+            builtin_workspace_target_for("=FILES"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "file_explorer".to_string(),
+                params: TargetParams::new(),
+            })
+        );
+        assert_eq!(
+            builtin_workspace_target_for("FILE CATALOGS"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "files".to_string(),
+                params: TargetParams::new(),
+            })
+        );
+
+        // THEME: bare claims the editor; THEME <name> is NOT claimed (ladder).
+        assert_eq!(
+            builtin_workspace_target_for("THEME"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "theme_editor".to_string(),
+                params: TargetParams::new(),
+            })
+        );
+        assert_eq!(
+            builtin_workspace_target_for("THEME legacy"),
+            None,
+            "THEME <name> is a theme-apply action owned by the ladder, not claimed"
+        );
+
+        // Exact-match verbs do NOT claim when given a trailing arg (so e.g.
+        // `COMMANDS foo` falls through, matching the ladder's exact match).
+        assert_eq!(builtin_workspace_target_for("COMMANDS foo"), None);
+
+        // No over-claim: an unknown verb is None.
+        assert_eq!(builtin_workspace_target_for("ZXQWV"), None);
+    }
+
+    // Validates: command-framework Requirement 8.3 (stage 2) -- a full
+    // ShellTargetResolver classifies FILES through resolve_target (proving the
+    // former None stub no longer wins).
+    #[test]
+    fn shell_resolver_classifies_builtin_workspace_verb() {
+        let defs: Vec<CommandDefinition> = vec![];
+        let registry = ff_command::CommandRegistry::new();
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let resolver = ShellTargetResolver::new(&defs, &registry, dir.path().to_path_buf());
+        assert_eq!(
+            resolve_target("FILES", &resolver).unwrap(),
+            CommandTarget::CustomWorkspace {
+                workspace_kind: "file_explorer".to_string(),
+                params: TargetParams::new(),
+            }
+        );
     }
 
     // === CR-CH-025: ShellTargetResolver menu-name + macro stages ============

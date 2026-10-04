@@ -25,7 +25,7 @@ This is your live GUI.
 Layer 3 - Text Snapshot Renderer
 A second renderer converts the same ScreenModel into text.
 +---------------------------------------------------------------+
-| FileForge Workbench - Dataset Properties |
+│ FileForge Workbench - Dataset Properties │
 +---------------------------------------------------------------+
 
 Dataset Name . . . . : USER.TEST.PDS
@@ -67,7 +67,7 @@ I would absolutely use Unicode box characters.
 └────────────────────────────────────────────┘
 Fallback option:
 +--------------------------------------------+
-| Dataset Browser |
+│ Dataset Browser │
 +--------------------------------------------+
 For environments where Unicode isn't desired.
 ________________________________________
@@ -107,11 +107,11 @@ screen.txt
 Markdown Output
 # Dataset Properties
 
-| Property | Value |
-|-----------|----------|
-| Dataset | USER.TEST.PDS |
-| RECFM | FB |
-| LRECL | 80 |
+│ Property │ Value │
+│-----------│----------│
+│ Dataset │ USER.TEST.PDS │
+│ RECFM │ FB │
+│ LRECL │ 80 │
  
 Very useful for requirements, issue logging and AI prompts.
 HTML Output

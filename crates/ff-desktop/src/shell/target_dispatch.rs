@@ -89,7 +89,7 @@ impl WorkbenchShell {
     pub(super) fn dispatch_bound_command(&mut self, command: &str) {
         match self.resolve_and_dispatch_command(command) {
             ResolveOutcome::Dispatched => {}
-            ResolveOutcome::FallThrough => self.handle_command(command),
+            ResolveOutcome::FallThrough => self.dispatch_command_string(command),
         }
     }
 
@@ -185,11 +185,93 @@ impl WorkbenchShell {
                 // divergence). (menu-workspace Requirement 10.4, 11.5, 19.5)
                 self.open_menu_by_name(name);
             }
-            CommandTarget::CustomWorkspace { workspace_kind, .. } => {
-                self.open_error = Some(format!(
-                    "Custom workspace target '{workspace_kind}' is not yet runnable via a \
-                     command binding."
-                ));
+            CommandTarget::CustomWorkspace {
+                workspace_kind,
+                params,
+            } => {
+                // B080 Step 2: dispatch the CustomWorkspace / navigation family to
+                // the EXACT shell method the ladder arm calls, so a typed verb and
+                // a key/menu-resolved verb produce the identical observable result
+                // (Req 8.4). The `workspace_kind` strings are the explicit Step-2
+                // vocabulary produced by `builtin_workspace_target_for`. An
+                // out-of-scope CustomWorkspace string keeps the deferred-status
+                // message so a binding never fails silently.
+                use ff_command::TargetValue;
+                use ff_session::session_state::WorkspaceKind;
+                let string_param = |key: &str| match params.get(key) {
+                    Some(TargetValue::String(s)) => Some(s.clone()),
+                    _ => None,
+                };
+                match workspace_kind.as_str() {
+                    "file_explorer" => {
+                        self.nav_to_kind(WorkspaceKind::FileExplorer);
+                        self.open_error = None;
+                    }
+                    "files" => {
+                        self.nav_to_kind(WorkspaceKind::Files);
+                        self.open_error = None;
+                    }
+                    "command_configurator" => {
+                        self.nav_to_kind(WorkspaceKind::CommandConfigurator);
+                        self.open_error = None;
+                    }
+                    "plugin_manager" => {
+                        self.nav_to_kind(WorkspaceKind::PluginManager);
+                        self.open_error = None;
+                    }
+                    "macro_library" => {
+                        self.nav_to_kind(WorkspaceKind::MacroLibrary);
+                        self.open_error = None;
+                    }
+                    "event_log" => {
+                        // Ladder parity: navigate THEN mark all read (same order).
+                        self.nav_to_kind(WorkspaceKind::EventLog);
+                        self.notification_queue
+                            .lock()
+                            .expect("queue")
+                            .mark_all_read();
+                        self.open_error = None;
+                    }
+                    "search" => {
+                        self.open_or_focus_search_panel();
+                        self.open_error = None;
+                    }
+                    "config" => {
+                        // `namespace` is already lowercased by the classifier
+                        // (mirrors the ladder's `open_config_view`). Absent/empty
+                        // -> the unfiltered All-Settings view.
+                        match string_param("namespace").filter(|s| !s.is_empty()) {
+                            Some(ns) => self.open_config_view(Some(ns)),
+                            None => self.open_config_view(None),
+                        }
+                        self.open_error = None;
+                    }
+                    "keys" => {
+                        // `kind` is case-preserved (ladder parity with
+                        // `open_keys_editor`); absent -> bare KEYS.
+                        let kind = string_param("kind");
+                        self.open_keys_editor(kind.as_deref());
+                        self.open_error = None;
+                    }
+                    "kinds" => {
+                        self.open_kinds_editor();
+                        self.open_error = None;
+                    }
+                    "menus" => {
+                        self.open_menus_editor();
+                        self.open_error = None;
+                    }
+                    "theme_editor" => {
+                        self.open_theme_editor();
+                        self.open_error = None;
+                    }
+                    other => {
+                        self.open_error = Some(format!(
+                            "Custom workspace target '{other}' is not yet runnable via a \
+                             command binding."
+                        ));
+                    }
+                }
             }
             CommandTarget::Macro { .. } => {
                 self.open_error =

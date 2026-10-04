@@ -605,3 +605,139 @@ that resolves today resolves identically after.
    command-semantics, and shell tests SHALL continue to hold, adjusted only where
    a test asserted the removed `POM` intercept by its internal shape rather than
    by observable effect (opening the Home Context).
+---
+
+### Requirement 16: Confirmable commands (universal confirm switch + source-derived interactive flag)
+
+**User Story:** As a user, I want a command that normally asks me to confirm
+(e.g. RESET BARE) to still be usable from a macro, a batch run, or a chained
+command line, by either pre-confirming it with a switch or having it safely
+decline when no human can answer -- so that automation never hangs on a dialog
+and never silently performs a destructive action I did not approve.
+
+**Source:** Owner (CR-CH-053 follow-up): "reset bare triggers a popup ... perhaps
+we can make it accept a -y so that the popup is skipped ... we need a guiding
+principle for all commands that trigger a popup ... command chains are normally
+interactive, but they could be put into non-interactive macros ... chaining in a
+macro is just inserting another line." Generalises batch-execution Req 3.5 (a
+GUI-requiring command fails in batch) into a positive, uniform contract.
+
+#### Glossary additions
+
+- **Confirmable_Command**: any command whose normal effect is to open a
+  confirmation dialog / modal before acting (today: RESET BARE; future: a
+  SAVE that would overwrite, a delete, etc.).
+- **Confirm_Switch**: a trailing switch on a Confirmable_Command that pre-answers
+  the confirmation: `-Y` / `--yes` (assume confirm, act headless) and `-N` /
+  `--no` (assume cancel, do nothing). Case-insensitive.
+- **Interactive flag**: a boolean carried on each command dispatch, derived from
+  the SOURCE of the command, NOT from whether it was chained: a command typed and
+  entered at the `Command ===>` line is interactive=true; a command run from a
+  macro, a batch (`--batch`) run, or an automation/AI driver is interactive=false.
+
+#### Acceptance Criteria
+
+1. A Confirmable_Command SHALL accept a universal Confirm_Switch: `-Y`/`--yes`
+   (pre-confirm) and `-N`/`--no` (pre-cancel), matched case-insensitively, parsed
+   by one shared helper so every Confirmable_Command recognises the SAME switch
+   spelling (no per-command invention).
+2. THE command dispatch SHALL carry an Interactive flag derived from the dispatch
+   SOURCE: the typed `Command ===>` Enter path is interactive=true; a macro, a
+   batch run, and any automation driver are interactive=false. The flag SHALL NOT
+   be derived from whether the command was part of a `;`-chain.
+3. WHEN a Confirmable_Command is run with interactive=true AND no Confirm_Switch,
+   it SHALL open its confirmation dialog as today and act only on the user's
+   confirm. (This is unchanged behaviour; it applies whether the command was
+   standalone or a segment of a typed chain -- the human answers the dialog and a
+   typed chain continues after.)
+4. WHEN a Confirmable_Command is run with a Confirm_Switch, it SHALL NOT open a
+   dialog: `-Y` performs the action headless; `-N` records a cancel and does
+   nothing. This holds in BOTH interactive and non-interactive contexts.
+5. WHEN a Confirmable_Command is run with interactive=false AND no Confirm_Switch,
+   it SHALL NOT open a dialog (no human can answer) and SHALL ASSUME CANCEL: the
+   action is NOT performed, a status is recorded that names the command and states
+   that confirmation (`-Y`) is required, and execution continues to the next
+   command (fail-safe; mirrors batch-execution Req 3.5 but as continue-with-skip
+   rather than a hard failure, consistent with the chain continue-on-error policy,
+   command-environments Req 11.7). The Step_Return_Code in batch SHALL reflect the
+   skip per the batch return-code model.
+6. `;`-CHAINING SHALL NOT change a command's confirm behaviour: chaining is
+   context-neutral sugar (command-environments Req 11.3), and each segment
+   inherits the SAME Interactive flag from the chain's source. A typed chain is
+   interactive (dialogs may open and are answered by the human); a macro/batch
+   chain is non-interactive (criterion 5 applies per segment). Chaining SHALL be
+   permitted in macros and batch input (a `;`-chain on one line is equivalent to
+   the same commands on successive lines).
+7. THE Confirm_Switch and Interactive flag SHALL be a COMMAND-LEVEL contract, not
+   a dispatch-mechanism change: the dispatcher threads the Interactive flag and the
+   command (in whichever environment owns it) decides, via the shared helper, among
+   open-dialog / act-headless / assume-cancel. No new dispatcher, no second
+   navigation stack, no change to `CommandTarget` or `resolve_target`.
+8. THE contract SHALL reconcile with batch-execution Req 3.5: a Confirmable_Command
+   with no `-Y` in batch is the SAME "cannot interact" case -- it is skipped with a
+   recorded status/return code rather than hanging; `-Y` lets it run in batch.
+---
+
+### Requirement 17: Keyboard shortcuts resolve to commands through the single dispatch path (CR-CH-054)
+
+**User Story:** As a user, I want every keyboard shortcut to do exactly what the
+equivalent typed command does, so a key and the verb are one behaviour; and as a
+maintainer, I want shortcuts routed through the ONE command front door and the
+Shortcut_Registry rather than scattered hard-coded key checks.
+
+**Source:** [CR-CH-054]. Owner (CR-CH-053 follow-up): "the normal Turbo pascal
+style cut copy and paste versions of the keys should work throughout the app ...
+do we need configuration for assigning commands to all CTRL+, ALT+ keys?" Builds
+ON Requirement 5 (Shortcut_Registry) and Requirement 12 (Cursor_Context); it is
+the "every user action is a command" principle (architecture-brief Principle 2)
+applied to the keyboard, and the generalisation that resolves the scattered inline
+`ctx.input` handlers into the single dispatch path (command-environments Req 3).
+
+#### Glossary additions
+
+- **Reserved_CUA_Set**: the Common-User-Access editing shortcuts that work in
+  every Context and are NOT user-overridable: Ctrl+Z = UNDO, Ctrl+Y = REDO,
+  Ctrl+C = COPY, Ctrl+X = CUT, Ctrl+V = PASTE, Ctrl+A = SELECT ALL, Ctrl+S = SAVE.
+- **Chord_Binding**: a (key-chord -> command string) entry in the Shortcut_Registry.
+- **Inline_Key_Handler**: a hard-coded `ctx.input(|i| i.key_pressed(..) &&
+  i.modifiers..)` check that performs an action directly, bypassing the registry /
+  front door (today: editor Ctrl+Z, editor Ctrl+C, shell Ctrl+S, Ctrl+Shift+P/F).
+
+#### Acceptance Criteria
+
+1. A keyboard chord that is bound SHALL resolve to a COMMAND STRING and be
+   dispatched through the SINGLE front door (`dispatch_command_string` ->
+   active Command_Environment -> FFCMD, command-environments Req 3), so the chord
+   and the typed verb produce the IDENTICAL observable result (the chord is just
+   another way to submit the command). This extends Requirement 5.7 (a chord
+   resolves to a Command_Target and executes it) to route via the one front door.
+2. THE Reserved_CUA_Set SHALL be bound to its command verb (Ctrl+Z=UNDO,
+   Ctrl+Y=REDO, Ctrl+C=COPY, Ctrl+X=CUT, Ctrl+V=PASTE, Ctrl+A=SELECT ALL,
+   Ctrl+S=SAVE), SHALL work in every Context (the active environment decides what
+   the verb means), and SHALL NOT be user-overridable (reserved, Requirement 5.3).
+3. EVERY non-reserved Ctrl/Alt chord SHALL be USER-CONFIGURABLE via the existing
+   keys editor / TOML key map (Requirement 5.6); the keys-editor Ctrl/Alt columns
+   already model these bindings. No new configuration mechanism is introduced.
+4. THE scattered Inline_Key_Handlers SHALL be RETIRED in favour of the registry ->
+   command path: the editor Ctrl+Z, editor Ctrl+C, and shell Ctrl+S inline checks
+   (and other migratable chord handlers) SHALL dispatch their command instead of
+   acting directly. Ctrl+S SHALL dispatch the SAVE command (reaching FFEDIT's
+   dirty-aware SAVE, command-environments Req 10.1), NOT call `save_active_tab`
+   directly -- closing the key/verb divergence. (DONE ahead of the full slice.)
+5. A chord bound to a verb the active environment does NOT own SHALL resolve
+   exactly as typing that verb would (unresolved / no-op as appropriate); binding
+   a chord never forces a verb to exist in an environment that does not own it.
+6. egui's OWN text-widget editing (Ctrl+C/X/V/A/Z inside an `egui::TextEdit` such
+   as the Command Field) SHALL remain native and unaffected; the Reserved_CUA_Set
+   routes to the FFEDIT buffer verbs only when the EDITOR BUFFER (not an egui text
+   widget) is the focused target. (The custom editor is not a `TextEdit`, which is
+   why its CUA keys need explicit command wiring.)
+7. THIS change SHALL add NO second dispatcher and SHALL NOT alter `CommandTarget`
+   / `resolve_target` / the navigation stack: it is chord -> command string ->
+   the existing front door. The verbs it dispatches to are owned by the active
+   environment (command-environments Req 12 defines the FFEDIT CUA verbs).
+8. THE slice ordering: (slice 1) the chord->command dispatch wiring + the verbs
+   whose operations already exist (SAVE; UNDO extracted from the inline handler);
+   (slice 2) the new buffer commands (CUT, PASTE, SELECT ALL, COPY unification)
+   and REDO (a new feature -- no redo stack exists today), with the clipboard
+   backed by the `ff-clipboard` crate. REDO coordinates with undo-redo-transactions.

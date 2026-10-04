@@ -8,7 +8,7 @@ use ff_theme::ColourRGBA;
 
 use crate::tab_state::TabKind;
 
-pub(super) fn config_value_to_toml_value(v: ff_config::ConfigValue) -> Option<toml::Value> {
+pub(crate) fn config_value_to_toml_value(v: ff_config::ConfigValue) -> Option<toml::Value> {
     use ff_config::ConfigValue;
     match v {
         ConfigValue::String(s) => Some(toml::Value::String(s)),
@@ -247,6 +247,30 @@ pub(super) fn verb_arg<'a>(cmd: &'a str, verb: &str) -> Option<&'a str> {
     } else {
         None
     }
+}
+
+/// Perform the single Req 9.7 verb/arg split at the dispatch boundary: return
+/// the first whitespace-delimited token of `cmd` (the verb, to be matched
+/// case-insensitively by callers) and the TRIMMED remainder (the Argument_String,
+/// with its original case PRESERVED -- B062, D5).
+///
+/// This is the EXTRACTING sibling of [`verb_arg`]: `verb_arg` takes a KNOWN verb
+/// and returns only its argument, whereas `split_verb_arg` extracts the verb
+/// token itself. Both share the SAME `split_once(char::is_whitespace)` + `trim`
+/// rule so the two never diverge. The unified front door (`dispatch.rs`) computes
+/// this split once; Steps 2+ feed the verb to the dispatch table and the
+/// case-preserved argument to `params.arg`.
+///
+/// B080 Step 2 classifies the CustomWorkspace / navigation family inside
+/// `builtin_workspace_target_for` (which performs its own equivalent split), so
+/// this boundary helper is not yet wired into the live `handle_command` path --
+/// it is the scaffold the Function-target folding of Step 3 will consume, and is
+/// exercised by the dispatch-boundary unit tests until then.
+#[allow(dead_code)] // wired into the live path in Step 3 (Function-target arg folding).
+pub(super) fn split_verb_arg(cmd: &str) -> (&str, &str) {
+    let c = cmd.trim();
+    let (head, rest) = c.split_once(char::is_whitespace).unwrap_or((c, ""));
+    (head, rest.trim())
 }
 
 /// Parse two single-quoted or bare-word arguments from a CHANGE command tail.

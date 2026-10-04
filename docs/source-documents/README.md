@@ -6,13 +6,13 @@ truth.
 
 ## Suggested categories
 
-| Folder | Contents |
-|--------|----------|
-| `fileforge-editor/` | Requirements and design material inherited from FileForgeEditor |
-| `scintilla/` | Scintilla, Lexilla, and SciTE reference material |
-| `workbench-architecture/` | Platform and architecture briefs |
-| `dataset-catalog/` | Dataset, VFS, and mainframe record-format references |
-| `user-provided/` | Documents supplied during requirements discussions |
+│ Folder │ Contents │
+│--------│----------│
+│ `fileforge-editor/` │ Requirements and design material inherited from FileForgeEditor │
+│ `scintilla/` │ Scintilla, Lexilla, and SciTE reference material │
+│ `workbench-architecture/` │ Platform and architecture briefs │
+│ `dataset-catalog/` │ Dataset, VFS, and mainframe record-format references │
+│ `user-provided/` │ Documents supplied during requirements discussions │
 
 When adding a source, preserve its original filename and record it in
 [`../requirements/source-register.md`](../requirements/source-register.md).

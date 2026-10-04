@@ -30,9 +30,14 @@ mod paint;
 // keep resolving after the move into ff-editor-panel.
 pub(crate) use ff_editor_panel::{
     build_display_list, cursor_byte_position, extract_selected_text, line_char_count,
-    normalise_selection, scroll_by_amount, DisplayRow, GUTTER_CHAR_WIDTH, PREFIX_WIDTH,
+    normalise_selection, scroll_by_amount, DisplayRow, PREFIX_WIDTH,
 };
 use ff_editor_panel::{BASE_FONT_SIZE_PT, BASE_LINE_HEIGHT_PX};
+// GUTTER_CHAR_WIDTH is only referenced by this module's tests (via super::),
+// so re-export it under cfg(test) to avoid an unused-import warning in the
+// production build.
+#[cfg(test)]
+pub(crate) use ff_editor_panel::GUTTER_CHAR_WIDTH;
 
 /// Render the active tab's document into `ui`.
 ///
@@ -407,7 +412,7 @@ mod tests {
         let top_line: u64 = 1;
         let available_top = 0.0_f32;
         let available_left = 0.0_f32;
-        let click_y = available_top + 1.0 * 16.0 + 4.0; // row index 1 → line 2
+        let click_y = available_top + 1.0 * 16.0 + 4.0; // row index 1 -> line 2
         let click_x = available_left + super::GUTTER_CHAR_WIDTH + 2.0 * 8.0 + 2.0; // col 3
 
         let clicked_line_idx = ((click_y - available_top) / 16.0).floor() as u64;

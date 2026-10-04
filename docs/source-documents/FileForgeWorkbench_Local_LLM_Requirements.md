@@ -2,15 +2,17 @@
 
 ## 1. Document Control
 
-| Field | Value |
-|---|---|
-| Document title | FileForgeWorkbench Local LLM and AI Assistant Requirements |
-| Project | FileForgeWorkbench |
-| Document type | Software Requirements and Architecture Specification |
-| Status | Draft for incorporation into the project requirements baseline |
-| Version | 1.0 |
-| Date | 2026-09-05 |
-| Licence consideration | Project licence and third-party model/runtime licences shall be assessed independently |
+```text
+│ Field │ Value │
+│---│---│
+│ Document title │ FileForgeWorkbench Local LLM and AI Assistant Requirements │
+│ Project │ FileForgeWorkbench │
+│ Document type │ Software Requirements and Architecture Specification │
+│ Status │ Draft for incorporation into the project requirements baseline │
+│ Version │ 1.0 │
+│ Date │ 2026-09-05 │
+│ Licence consideration │ Project licence and third-party model/runtime licences shall be assessed independently │
+```text
 
 ## 2. Purpose
 
@@ -87,29 +89,29 @@ AI tools shall receive only the minimum context and permissions required for the
 
 ```text
 +------------------------------------------------------------+
-|                    FileForgeWorkbench                      |
-|                                                            |
-|  +----------------+    +-------------------------------+   |
-|  | Editor and UI  |--->| AI Assistant Orchestrator     |   |
-|  +----------------+    +---------------+---------------+   |
-|                                      |                    |
-|                     +----------------+----------------+   |
-|                     | Provider Abstraction Interface  |   |
-|                     +----------+--------------+-------+   |
-|                                |              |           |
-|                 +--------------+--+       +---+---------+ |
-|                 | Local Provider  |       | Approved     | |
-|                 | Adapter         |       | Remote       | |
-|                 +--------+--------+       | Adapter      | |
-|                          |                +-------------+ |
-|  +-----------------------+----------------------------+   |
-|  | Retrieval, policy, prompt, audit, and tool services |   |
-|  +----------+------------------+-----------------------+   |
-|             |                  |                           |
-|      +------v------+    +------v------------------+        |
-|      | Local Model |    | Local Document Index   |        |
-|      | Runtime     |    | and Metadata Store     |        |
-|      +-------------+    +-------------------------+        |
+│                    FileForgeWorkbench                      │
+│                                                            │
+│  +----------------+    +-------------------------------+   │
+│  │ Editor and UI  │--->│ AI Assistant Orchestrator     │   │
+│  +----------------+    +---------------+---------------+   │
+│                                        │                   │
+│                     +----------------+----------------+    │
+│                     │ Provider Abstraction Interface  │    │
+│                     +----------+--------------+-------+    │
+│                                │              │            │
+│                 +--------------+--+       +---+---------+  │
+│                 │ Local Provider  │       │ Approved    │  │
+│                 │ Adapter         │       │ Remote      │  │
+│                 +--------+--------+       │ Adapter     │  │
+│                          │                +-------------+  │
+│  +-----------------------+----------------------------+    │
+│  │ Retrieval, policy, prompt, audit, and tool services │   │
+│  +----------+------------------+-----------------------+   │
+│             │                  │                           │
+│      +------v------+    +------v------------------+        │
+│      │ Local Model │    │ Local Document Index    │        │
+│      │ Runtime     │    │ and Metadata Store      │        │
+│      +-------------+    +-------------------------+        │
 +------------------------------------------------------------+
 ```
 
@@ -258,7 +260,7 @@ AI tools shall receive only the minimum context and permissions required for the
 
 **EARS requirement:** When the user requests requirements extraction or generation, the system shall produce proposed uniquely identifiable requirements using configured EARS templates.
 
-#### FFW-AI-FR-041: Source traceability
+#### FFW-AI-FR-041: Source traceability74
 
 **EARS requirement:** When an extracted requirement is based on indexed source material, the system shall associate the proposed requirement with the relevant source reference and passage location.
 
@@ -590,18 +592,18 @@ Later increments may add controlled edit proposals, deeper repository context, p
 
 ## 14. Risks and Mitigations
 
-| Risk | Required mitigation |
-|---|---|
-| Hallucinated technical guidance | Label generated content, provide sources, preserve deterministic validation, and require user review. |
-| Exposure of sensitive files | Use local-first processing, explicit context, exclusions, secret detection, endpoint controls, and minimal context. |
-| Prompt injection from indexed documents | Treat retrieved text as untrusted data and enforce non-overridable policy boundaries. |
-| Excessive workstation resource use | Support small or quantised models, background workers, limits, cancellation, and graceful failure. |
-| Vendor or runtime lock-in | Use a provider abstraction and portable request and response models. |
-| Model licence incompatibility | Maintain a model registry and complete licence review before bundling or recommendation. |
-| Non-reproducible output | Record model, provider, template, source, and timestamp metadata for accepted artefacts. |
-| Unsafe generated commands | Use review, allow-lists, schemas, permission checks, and explicit execution actions. |
-| Stale retrieval index | Detect content changes and support incremental re-indexing. |
-| AI feature blocks core work | Isolate failures and make the complete subsystem optional. |
+│ Risk │ Required mitigation │
+│---│---│
+│ Hallucinated technical guidance │ Label generated content, provide sources, preserve deterministic validation, and require user review. │
+│ Exposure of sensitive files │ Use local-first processing, explicit context, exclusions, secret detection, endpoint controls, and minimal context. │
+│ Prompt injection from indexed documents │ Treat retrieved text as untrusted data and enforce non-overridable policy boundaries. │
+│ Excessive workstation resource use │ Support small or quantised models, background workers, limits, cancellation, and graceful failure. │
+│ Vendor or runtime lock-in │ Use a provider abstraction and portable request and response models. │
+│ Model licence incompatibility │ Maintain a model registry and complete licence review before bundling or recommendation. │
+│ Non-reproducible output │ Record model, provider, template, source, and timestamp metadata for accepted artefacts. │
+│ Unsafe generated commands │ Use review, allow-lists, schemas, permission checks, and explicit execution actions. │
+│ Stale retrieval index │ Detect content changes and support incremental re-indexing. │
+│ AI feature blocks core work │ Isolate failures and make the complete subsystem optional. │
 
 ## 15. Phased Delivery Recommendation
 
@@ -672,18 +674,18 @@ The following decisions shall be resolved during detailed design:
 
 ## 18. Traceability Summary
 
-| Objective | Primary requirements |
-|---|---|
-| Optional AI capability | FFW-AI-FR-001, FFW-AI-NFR-030 |
-| Local-first privacy | FFW-AI-FR-010 to FFW-AI-FR-015, FFW-AI-NFR-010 to FFW-AI-NFR-012 |
-| Provider neutrality | FFW-AI-FR-002 to FFW-AI-FR-006, FFW-AI-NFR-050 |
-| Grounded answers | FFW-AI-FR-020 to FFW-AI-FR-026 |
-| Mainframe assistance | FFW-AI-FR-030 to FFW-AI-FR-036 |
-| Requirements engineering | FFW-AI-FR-040 to FFW-AI-FR-043 |
-| Test automation | FFW-AI-FR-050 to FFW-AI-FR-053 |
-| Human-controlled changes | FFW-AI-FR-060 to FFW-AI-FR-064 |
-| Secure operation | FFW-AI-NFR-001 to FFW-AI-NFR-005 |
-| Licence compliance | FFW-AI-LIC-001 to FFW-AI-LIC-005 |
+│ Objective │ Primary requirements │
+│---│---│
+│ Optional AI capability │ FFW-AI-FR-001, FFW-AI-NFR-030 │
+│ Local-first privacy │ FFW-AI-FR-010 to FFW-AI-FR-015, FFW-AI-NFR-010 to FFW-AI-NFR-012 │
+│ Provider neutrality │ FFW-AI-FR-002 to FFW-AI-FR-006, FFW-AI-NFR-050 │
+│ Grounded answers │ FFW-AI-FR-020 to FFW-AI-FR-026 │
+│ Mainframe assistance │ FFW-AI-FR-030 to FFW-AI-FR-036 │
+│ Requirements engineering │ FFW-AI-FR-040 to FFW-AI-FR-043 │
+│ Test automation │ FFW-AI-FR-050 to FFW-AI-FR-053 │
+│ Human-controlled changes │ FFW-AI-FR-060 to FFW-AI-FR-064 │
+│ Secure operation │ FFW-AI-NFR-001 to FFW-AI-NFR-005 │
+│ Licence compliance │ FFW-AI-LIC-001 to FFW-AI-LIC-005 │
 
 ---
 

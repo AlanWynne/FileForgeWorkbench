@@ -1143,56 +1143,6 @@ impl TabManager {
         let _ = runtime;
     }
 
-    /// Open the Theme Editor tab, activating an existing one rather than
-    /// inserting a duplicate.
-    /// Validates: theme-and-appearance Requirement 20.1
-    // CR-CH-022: navigation now transforms in place (navigate_to); this
-    // dedicated-tab opener is retained for session restore and potential
-    // detached-window use, but is not called by the in-place navigation path.
-    #[allow(dead_code)]
-    pub fn open_theme_editor_tab(&mut self, runtime: &Runtime) {
-        if let Some(idx) = self
-            .tabs
-            .iter()
-            .position(|t| t.kind == TabKind::ThemeEditor)
-        {
-            self.activate(idx);
-            return;
-        }
-        let document = ff_document_model::new_document();
-        let id = TabId(self.next_id);
-        self.next_id += 1;
-        let tab = crate::tab_state::TabState::theme_editor(id, document);
-        self.tabs.push(tab);
-        self.activate(self.tabs.len() - 1);
-        let _ = runtime;
-    }
-
-    /// Open the Menus Editor tab, activating an existing one rather than
-    /// inserting a duplicate.
-    ///
-    /// Validates: menu-workspace Requirement 13.1 (CR-NR-075)
-    // CR-CH-022: retained for session restore / detached windows; in-place
-    // navigation (navigate_to) does not use it.
-    #[allow(dead_code)]
-    pub fn open_menus_editor_tab(&mut self, runtime: &Runtime) {
-        if let Some(idx) = self
-            .tabs
-            .iter()
-            .position(|t| t.kind == TabKind::MenusEditor)
-        {
-            self.activate(idx);
-            return;
-        }
-        let document = ff_document_model::new_document();
-        let id = TabId(self.next_id);
-        self.next_id += 1;
-        let tab = crate::tab_state::TabState::menus_editor(id, document);
-        self.tabs.push(tab);
-        self.activate(self.tabs.len() - 1);
-        let _ = runtime;
-    }
-
     /// Open a data-driven Menu Workspace tab backed by `<menus_dir>/<name>.toml`.
     ///
     /// If a Menu Workspace tab already backed by the same file exists, it is
@@ -1250,52 +1200,13 @@ impl TabManager {
         }
     }
 
-    /// Open a data-driven Menu Workspace backed by `<menus_dir>/<name>.toml`,
-    /// transforming the active tab in place when it is a `MenuWorkspace` (this
-    /// includes the Home Context) or a `ConfigPanel` (so the POM -> Settings_Menu
-    /// / Config chain stays on one
-    /// tab and F3/END transforms back to the POM), otherwise
-    /// opening (or activating) a dedicated tab.
-    ///
-    /// Validates: cw-requirements.md Requirement 9.1, 10.4; menu-workspace Req 11.2
-    // CR-CH-022: superseded by the shell reconstruct path (reconstruct_settings_menu
-    // / reconstruct_named_menu drive Menu_Workspace transforms in place). Retained
-    // for reference / potential reuse.
-    #[allow(dead_code)]
-    pub fn open_menu_workspace_here(
-        &mut self,
-        name: &str,
-        menus_dir: &std::path::Path,
-        limits: crate::menu_workspace::OptionLimits,
-        runtime: &Runtime,
-    ) {
-        let active_kind = self.active_tab().kind;
-        let transform_in_place = matches!(
-            active_kind,
-            TabKind::ConfigPanel | TabKind::MenuWorkspace | TabKind::MenusEditor
-        );
-        if transform_in_place {
-            let file_path = menus_dir.join(format!("{name}.toml"));
-            let mw_state =
-                crate::menu_workspace::MenuWorkspaceState::load_with_limits(&file_path, limits);
-            let title = mw_state.tab_title();
-            let tab = &mut self.tabs[self.active];
-            tab.kind = TabKind::MenuWorkspace;
-            tab.title = title;
-            tab.is_home = false;
-            tab.menu_workspace = Some(mw_state);
-        } else {
-            self.open_menu_workspace_tab(name, menus_dir, limits, runtime);
-        }
-    }
-
     ///
     /// If the file is already open (same path), activates the existing tab
     /// instead of opening a duplicate.
     ///
     /// Returns `Err(message)` if the file cannot be read.
     pub fn open_file(&mut self, path: &str, runtime: &Runtime) -> Result<(), String> {
-        // Duplicate detection — activate existing tab if already open.
+        // Duplicate detection -- activate existing tab if already open.
         if let Some(idx) = self
             .tabs
             .iter()

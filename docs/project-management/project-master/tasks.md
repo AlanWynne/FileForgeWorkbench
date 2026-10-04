@@ -1264,7 +1264,7 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [ ] CQ.1 Bump workspace egui+eframe to 0.31; remove vendor/egui-file-dialog patch;
         use published egui-file-dialog 0.9; set egui_kittest dev-dep to 0.31 (Tasks 51-54)
 - [ ] CQ.2 Fix all egui 0.29->0.31 API breakages; restore clean gate (build, clippy,
-        verify.ps1) with no behaviour change (Tasks 55-56)
+        ffwb-gate.ps1) with no behaviour change (Tasks 55-56)
 - [ ] CQ.3 Write the egui_kittest Menus Editor Tab-focus harness; fix the Title/Line/key
         skip; update TCR to PASS (Tasks 57-59)
 
@@ -3174,3 +3174,76 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (markdown-link-nav) | CR-CH-050 PENDING GATE: Markdown Viewer link navigation (custom-file-viewers Req 18 + design delta + tasks 22-24). SETTLED: resolution-only extension on standard Markdown link syntax (no parse change). Standalone-app + pure helpers NOT Task-21-blocked; in-shell seam IS. Queued behind the ff-desktop decoupling. Implementation pending owner approval. |
+
+### Phase (command-environments) -- CR-CH-053 Command Environments (REXX ADDRESS model)
+
+> Multi-environment command model (modelled on REXX/ISPF ADDRESS). FFWB has named
+> Command Environments, each owning the commands relevant to its context; the one
+> B080 front door (`dispatch_command_string`) becomes the environment router
+> (active env -> FFCMD base). PHASE-1 BUILDABLE SCOPE: the framework + FFCMD
+> (= existing resolve_target, no rewrite) + FFEDIT (editor command-line verbs
+> migrated off the shared ladder). FFLINE named-only; all other FF* environments
+> vision-only (`environments-vision.md`). Builds ON the framework: no second
+> dispatcher, no second nav stack, CommandTarget unchanged. Spec:
+> `docs/specs/command-environments/` (requirements Req 1-9, design, tasks 1-12).
+
+- [ ] CE.1 Requirements gate -- command-environments requirements.md (Req 1-9), design.md, tasks.md (1-12), this master phase, TCR NOT COVERED rows (30), specs.md list entry, change-log CR-CH-053. (Authored; awaiting owner approval before any code.)
+- [ ] CE.2 Framework scaffold (E0) -- CommandEnvironment trait + EnvironmentRegistry + active-env derivation from focused TabKind + front-door insertion as pure indirection (empty FFEDIT). Behaviour-neutral. command-environments tasks 1.1-1.3.
+- [ ] CE.3 FFEDIT command-line migration (E1-E5) -- move nav / exclude-show / find / profile / scroll families off `try_commands_b2` into FFEDIT delegating to the existing managers, behaviour-preserving (B062 case rule), each scoped-test-green. command-environments tasks 2-6.
+- [ ] CE.4 FFLINE naming (E6, no code) + ladder retire (E7) -- name FFLINE as the sibling prefix-area environment (intake unchanged); delete the emptied `try_commands_b2` and its call. command-environments tasks 7-8.
+- [ ] CE.5 Shadowing + macro ADDRESS reconciliation -- active-wins shadowing; macro `ADDRESS <env>` via Scripting_Bridge + Alias_Map (TSO=FFCMD, ISREDIT=FFEDIT) + RC, reconciling lua-macro-engine Req 11.11-11.15. command-environments tasks 9-10.
+
+| Status | Count |
+|--------|-------|
+| `[~]` Phase (command-environments) | CR-CH-053: E0-E8 DONE (framework + FFCMD + FFEDIT verb migration + ladder retirement + environment-before-FFCMD ordering + editor X=EXCLUDE). E8 owner-gate CLEAN at E7 (9508/9508); E8 scoped 953/0. E9 13.1 (FFEDIT dirty-aware SAVE) DONE (956/0). REMAINING: E8b (= unification, overlaps CR-CH-052), E9 13.2 (dirty END/CANCEL/RETURN, held for owner), E10 (per-Context SAVE + chaining), tasks 10/11 (macro ADDRESS, plugin boundary). UNDO/REDO deferred to CR-CH-054. |
+
+### Phase (keyboard-command-unification) -- CR-CH-054 keyboard shortcuts resolve to commands
+
+> Every keyboard chord resolves to a command string dispatched through the one
+> front door -> active environment (command-framework Req 17). FFEDIT owns the CUA
+> editing verbs COPY/CUT/PASTE/SELECT-ALL/UNDO/REDO with cursor-then-line-command
+> source/destination precedence + FFLINE coupling + ff-clipboard backend
+> (command-environments Req 12). Reserved CUA set (Ctrl+Z/Y/C/X/V/A/S) everywhere +
+> not overridable; non-reserved configurable (Req 5.6).
+
+- [x] KC.0 Ctrl+S point-fix -- Ctrl+S dispatches SAVE through the front door ->
+      FFEDIT dirty-aware SAVE (not direct save_active_tab). DONE (956/0).
+- [ ] KC.1 Requirements gate -- command-framework Req 17, command-environments Req
+      12, design deltas, command-environments tasks.md Task 16, TCR rows. (Authored;
+      awaiting owner approval before slice-1 code.)
+- [ ] KC.2 Slice 1 -- chord->command dispatch wiring (reserved CUA set + non-reserved
+      configurable); retire the scattered inline key handlers; extract UNDO from the
+      inline Ctrl+Z into a verb.
+- [ ] KC.3 Slice 2 -- COPY/CUT (cursor / `C`/`CC` source), PASTE (cursor / `A`/`B`
+      destination), SELECT ALL, REDO (new feature + redo stack), ff-clipboard wired
+      in, FFLINE `C`/`CC` + `A`/`B` accessors exposed.
+
+| Status | Count |
+|--------|-------|
+| `[~]` Phase (keyboard-command-unification) | CR-CH-054 GATE AUTHORED: keyboard->command dispatch (cmd-framework Req 17) + FFEDIT CUA verbs (command-environments Req 12). Ctrl+S point-fix DONE (956/0); slices 1-2 pending owner approval. |
+
+### Phase (localization) -- CR-NR-103 Localization / i18n (Fluent catalogue + ui.locale + per-locale alias data)
+
+> Additive presentation layer making FFWB convertible to other human languages.
+> A new GUI-free `ff-i18n` crate (Fluent `fluent-bundle` + `unic-langid`) owns
+> per-locale `.ftl` catalogues + a `t("key")` lookup seam; a `ui.locale` key
+> (String, default "en", hot-reload via the existing ff-config CallbackRegistry)
+> selects the active locale and reloads BOTH the message catalogue and the
+> per-locale, per-environment alias catalogues into the EXISTING AliasTable (no
+> new mechanism). Verbs stay English (command-environments Req 6a); only
+> descriptions/chrome/labels/messages/help translate. NARROW first gate: mechanism
+> + ui.locale + English base + lookup seam + alias loader, proven with English;
+> per-crate string extraction is INCREMENTAL (audit's 7-step order); other-language
+> DATA is the LAST capstone. Builds ON existing seams: no second dispatcher, no
+> second nav stack, no new persistence format. Spec:
+> `docs/specs/localization/` (requirements Req 1-10, design, tasks 1-10).
+
+- [ ] L10N.1 Requirements gate -- localization requirements.md (Req 1-10), design.md (ff-i18n crate, Fluent-over-gettext, ui.locale wiring, seam/help/menu/alias integration, framework-conformance), tasks.md (1-10), this master phase, TCR NOT COVERED rows, change-log CR-NR-103. (Authored; awaiting owner approval before any code.)
+- [ ] L10N.2 Mechanism + config + English base (Phase 1) -- `ff-i18n` crate (Fluent bundles, Locale, Catalogue, `t`/`t_args` seam, English Identity_Base, parse-error retention); `ui.locale` key in ff-config (keys.rs + schema.rs + on_reload callback + out-of-schema fallback); ship `i18n/en/` baseline + seam smoke test. Delivers Req 1-3.
+- [ ] L10N.3 Per-environment, per-locale alias LOADER (Phase 1) -- overlay per-environment surface-form -> canonical-verb rows onto the existing `AliasTable` (base English + locale overlay); no per-row locale tag; within-environment collision rejection; canonical verb stays recorded/persisted. Delivers Req 5, 10.3.
+- [ ] L10N.4 Incremental extraction (Phase 2) -- menu `DEFAULT_*_TOML` titles/descriptions via the parsed menu model; help per-locale directories in `ff-help` content loader; clean dialog/panel crates; `ff-desktop` render literals; hard status/error messages via Fluent placeables (embedded verb as non-translated arg); plugin UI + plugin-env aliases through the same seam. Delivers Req 4, 6, 7, 8, 9, 10.1-10.2.
+- [ ] L10N.5 Capstone -- build out other-language catalogue DATA (fr, de): per-locale `.ftl` message catalogues + per-locale, per-environment alias catalogues + per-locale help directories; add each language to the `ui.locale` allowed_values. DATA only, no new mechanism; depends on L10N.4 being substantially complete. Delivers Req 1.2, 2.2, 5, 6. LAST.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (localization) | CR-NR-103 GATE AUTHORED: localization/i18n (requirements Req 1-10, design, tasks 1-10). Fluent catalogue mechanism + `ui.locale` (default "en") + `t()` lookup seam + per-locale/per-environment alias loader into the existing AliasTable. NARROW first gate (mechanism + English base, proven with English); incremental per-crate extraction; other-language DATA is the LAST capstone. Additive layer, no framework change. Pending owner approval before any code. |

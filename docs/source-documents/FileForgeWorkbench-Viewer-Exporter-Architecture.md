@@ -23,13 +23,13 @@ integration patterns for all current and future viewer/exporter crates.
 All viewer and exporter crates follow the `ff-` prefix convention used
 throughout the FFWB workspace:
 
-| Pattern | Purpose |
-|---|---|
-| `ff-<format>-viewer` | Library: parse, render, watch a specific format |
-| `ff-<format>-export` | Library: export content to a specific output format |
-| `ff-<name>-app` | Binary: standalone egui application |
-| `ff-<name>-installer` | Binary: self-extracting egui installer |
-| `ff-<name>-plugin` | Library: `FileForgePlugin` + `FileViewer` impl for FFWB |
+│ Pattern │ Purpose │
+│---│---│
+│ `ff-<format>-viewer` │ Library: parse, render, watch a specific format │
+│ `ff-<format>-export` │ Library: export content to a specific output format │
+│ `ff-<name>-app` │ Binary: standalone egui application │
+│ `ff-<name>-installer` │ Binary: self-extracting egui installer │
+│ `ff-<name>-plugin` │ Library: `FileForgePlugin` + `FileViewer` impl for FFWB │
 
 ---
 
@@ -192,14 +192,14 @@ ff-viewers ───────────────────────
 
 Following the same pattern, future crates would be:
 
-| Crate | Format | Notes |
-|---|---|---|
-| `ff-html-viewer` | HTML | render HTML files in FFWB viewer panel |
-| `ff-pdf-viewer` | PDF | render PDF pages via `lopdf` or `pdfium` |
-| `ff-csv-viewer` | CSV/TSV | already partially in `ff-viewers/built_in/csv_table.rs` |
-| `ff-image-viewer` | PNG/JPG/GIF | already partially in `ff-viewers/built_in/image.rs` |
-| `ff-rst-viewer` | reStructuredText | for Python project docs |
-| `ff-asciidoc-viewer` | AsciiDoc | technical documentation format |
+│ Crate │ Format │ Notes │
+│---│---│---│
+│ `ff-html-viewer` │ HTML │ render HTML files in FFWB viewer panel │
+│ `ff-pdf-viewer` │ PDF │ render PDF pages via `lopdf` or `pdfium` │
+│ `ff-csv-viewer` │ CSV/TSV │ already partially in `ff-viewers/built_in/csv_table.rs` │
+│ `ff-image-viewer` │ PNG/JPG/GIF │ already partially in `ff-viewers/built_in/image.rs` │
+│ `ff-rst-viewer` │ reStructuredText │ for Python project docs │
+│ `ff-asciidoc-viewer` │ AsciiDoc │ technical documentation format │
 
 Each would follow the same structure:
 - `ff-<format>-viewer` lib crate (no egui)

@@ -1,0 +1,132 @@
+On branch decomp-and-scrm-wave
+Your branch is ahead of 'origin/decomp-and-scrm-wave' by 1 commit.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .gitignore
+	modified:   .kiro/steering/specs.md
+	modified:   .kiro/steering/testing.md
+	modified:   .kiro/steering/tooling.md
+	modified:   .kiro/steering/workflow.md
+	modified:   Cargo.toml
+	deleted:    allcargo.bat
+	modified:   crates/ff-desktop/src/command_config/mod.rs
+	modified:   crates/ff-desktop/src/editor_panel/mod.rs
+	deleted:    crates/ff-desktop/src/panel_layout.rs
+	modified:   crates/ff-desktop/src/shell/commands.rs
+	modified:   crates/ff-desktop/src/shell/helpers.rs
+	modified:   crates/ff-desktop/src/shell/keys_editor.rs
+	modified:   crates/ff-desktop/src/shell/kinds_editor.rs
+	modified:   crates/ff-desktop/src/shell/mod.rs
+	modified:   crates/ff-desktop/src/shell/nav_stack.rs
+	modified:   crates/ff-desktop/src/shell/render.rs
+	modified:   crates/ff-desktop/src/shell/render_chrome.rs
+	modified:   crates/ff-desktop/src/shell/target_dispatch.rs
+	deleted:    crates/ff-desktop/src/shell/tests.rs
+	modified:   crates/ff-desktop/src/shell/update.rs
+	modified:   crates/ff-desktop/src/tab_manager.rs
+	modified:   crates/ff-mdx-app/Cargo.toml
+	modified:   crates/ff-mdx-installer/Cargo.toml
+	modified:   docs/project-management/core-acceptance-test-plan.md
+	modified:   docs/project-management/project-master/tasks.md
+	modified:   docs/quality/TCR.md
+	deleted:    docs/source-documents/Edit_Entry_Panel.txt
+	modified:   docs/source-documents/FFWB_ISPF_Editor_UX_Design.md
+	modified:   docs/source-documents/FileForgeWorkbench Database Plugin Specification.md
+	modified:   docs/source-documents/FileForgeWorkbench-Screen-Snapshot-Architecture.MD
+	modified:   docs/source-documents/FileForgeWorkbench-Viewer-Exporter-Architecture.md
+	modified:   docs/source-documents/FileForgeWorkbench_Local_LLM_Requirements.md
+	modified:   docs/source-documents/FileForgeWorkbench_MiniX_FTSO_Command_Environment_Design.md
+	deleted:    docs/source-documents/ISPF_Command_Shell.txt
+	modified:   docs/source-documents/Markdown-Viewer-and-WYSIWYG-Markdown-Editor.md
+	modified:   docs/source-documents/README.md
+	deleted:    docs/source-documents/SDSF_MENU.txt
+	deleted:    docs/source-documents/Utility_Selection_Panel.txt
+	modified:   docs/specs/command-framework/design.md
+	modified:   docs/specs/command-framework/requirements.md
+	modified:   docs/specs/command-framework/tasks.md
+	modified:   docs/status/bugs.md
+	modified:   docs/status/change-log.md
+	modified:   docs/working-notes/SESSION-STATE.md
+	modified:   docs/working-notes/session-state-2026-09-22.md
+	modified:   tools/ffwb-gate.ps1
+	modified:   tools/python/__pycache__/pwsh_command_guard.cpython-313.pyc
+	modified:   tools/python/pwsh_command_guard.py
+	modified:   tools/python/pwsh_command_guard_selftest.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.agents/tasks/b080-step7-reroute/
+	.agents/tasks/command-environments/
+	.agents/tasks/dispatch-unify/
+	.agents/tasks/ffdesktop-phase2-task22/
+	.agents/tasks/ffdesktop-simplification-review/
+	.agents/tasks/localization-i18n-audit/
+	.agents/tasks/simplification-reassessment/
+	.agents/tasks/simplify-splits/
+	crates/ff-desktop/src/shell/actions.rs
+	crates/ff-desktop/src/shell/commands_fastpath.rs
+	crates/ff-desktop/src/shell/commands_ladder_a.rs
+	crates/ff-desktop/src/shell/commands_ladder_b.rs
+	crates/ff-desktop/src/shell/commands_ladder_c.rs
+	crates/ff-desktop/src/shell/commands_menu.rs
+	crates/ff-desktop/src/shell/commands_scrm.rs
+	crates/ff-desktop/src/shell/commands_session.rs
+	crates/ff-desktop/src/shell/commands_theme.rs
+	crates/ff-desktop/src/shell/construct.rs
+	crates/ff-desktop/src/shell/dispatch_ffedit.rs
+	crates/ff-desktop/src/shell/environment.rs
+	crates/ff-desktop/src/shell/handlers.rs
+	crates/ff-desktop/src/shell/mod_helpers.rs
+	crates/ff-desktop/src/shell/nav_reconstruct.rs
+	crates/ff-desktop/src/shell/render_body.rs
+	crates/ff-desktop/src/shell/render_body_arms.rs
+	crates/ff-desktop/src/shell/render_command_line.rs
+	crates/ff-desktop/src/shell/render_nav.rs
+	crates/ff-desktop/src/shell/render_nav_expand.rs
+	crates/ff-desktop/src/shell/render_nav_ops.rs
+	crates/ff-desktop/src/shell/render_split.rs
+	crates/ff-desktop/src/shell/render_split_region.rs
+	crates/ff-desktop/src/shell/render_status.rs
+	crates/ff-desktop/src/shell/render_tab_bar.rs
+	crates/ff-desktop/src/shell/render_theme.rs
+	crates/ff-desktop/src/shell/state.rs
+	crates/ff-desktop/src/shell/state_groups.rs
+	crates/ff-desktop/src/shell/tests_command.rs
+	crates/ff-desktop/src/shell/tests_common.rs
+	crates/ff-desktop/src/shell/tests_focus.rs
+	crates/ff-desktop/src/shell/tests_menu_workspace.rs
+	crates/ff-desktop/src/shell/tests_misc.rs
+	crates/ff-desktop/src/shell/tests_nav.rs
+	crates/ff-desktop/src/shell/tests_scrm.rs
+	crates/ff-desktop/src/shell/tests_session.rs
+	crates/ff-desktop/src/shell/tests_split_detach.rs
+	crates/ff-desktop/src/shell/titles.rs
+	crates/ff-desktop/src/shell/types.rs
+	crates/ff-desktop/src/shell/update_dialogs.rs
+	crates/ff-desktop/src/shell/update_dialogs_catalog.rs
+	crates/ff-desktop/src/shell/update_floating.rs
+	crates/ff-desktop/src/shell/update_input.rs
+	crates/ff-desktop/src/shell/update_keys.rs
+	crates/ff-desktop/src/shell/update_startup.rs
+	crates/ff-desktop/src/shell/workspace_io.rs
+	docs/source-documents/Edit_Entry_Panel.md
+	docs/source-documents/FFWB-Editor-Configuration-and-concenrs.md
+	docs/source-documents/FFWB_ISPF_Editor_UX_Design-Ammendments.md
+	docs/source-documents/IEFBR14-JES.md
+	docs/source-documents/ISPF_Command_Shell.md
+	docs/source-documents/JCL-SYSIN-SYSPRINT-SYSERR.md
+	docs/source-documents/Product-Documentation.md
+	docs/source-documents/SDSF_MENU.md
+	docs/source-documents/Utility_Selection_Panel-000.md
+	docs/source-documents/Utility_Selection_Panel.md
+	docs/specs/command-environments/
+	docs/specs/localization/
+	docs/status/RESUME-ffdesktop-simplification.md
+	git-status.txt
+	tools/python/check_line_limits.py
+	tools/python/verify_test_split.py
+
+no changes added to commit (use "git add" and/or "git commit -a")

@@ -17,7 +17,7 @@ impl WorkbenchShell {
     /// real `<User_Data_Dir>/workspace-kinds/` (falling back to the platform data
     /// dir). Mirrors `keymaps_dir()` / `menus_dir()`.
     pub(super) fn workspace_kinds_dir(&self) -> PathBuf {
-        if let Some(dir) = &self.workspace_kinds_dir_override {
+        if let Some(dir) = &self.dir_overrides.workspace_kinds {
             return dir.clone();
         }
         if let Ok(udd) = ff_session::UserDataDir::resolve(None) {

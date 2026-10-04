@@ -4,15 +4,15 @@ Below is a Markdown requirements document that would fit well into the FileForge
 # Markdown Viewer and WYSIWYG Markdown Editor
 # Software Requirements Specification
 
-| Property | Value |
-|-----------|-----------|
-| Project | FileForgeWorkbench (FFWB) |
-| Component | Markdown Services |
-| Version | 1.0 |
-| Status | Draft |
-| Classification | Functional Specification |
-| Author | Alan Wynne |
-| Date | 2026-09-26 |
+│ Property │ Value │
+│-----------│-----------│
+│ Project │ FileForgeWorkbench (FFWB) │
+│ Component │ Markdown Services │
+│ Version │ 1.0 │
+│ Status │ Draft │
+│ Classification │ Functional Specification │
+│ Author │ Alan Wynne │
+│ Date │ 2026-09-26 │
 
 ---
 
@@ -91,22 +91,22 @@ Future releases may provide:
 
 ```text
 +---------------------+
-| Markdown Document   |
+│ Markdown Document   │
 +----------+----------+
-           |
+           │
            v
 +---------------------+
-| Markdown Parser     |
+│ Markdown Parser     │
 +----------+----------+
-           |
+           │
            v
 +---------------------+
-| Viewer Renderer     |
+│ Viewer Renderer     │
 +----------+----------+
-           |
+           │
            v
 +---------------------+
-| egui Presentation   |
+│ egui Presentation   │
 +---------------------+
 
 5. Functional Requirements
@@ -252,7 +252,7 @@ FR-MDP-002 Side-by-Side View
 The editor shall support:
 
 +----------------+----------------+
-| Markdown       | Preview        |
+│ Markdown       │ Preview        │
 +----------------+----------------+
 
 FR-MDP-003 Refresh Model

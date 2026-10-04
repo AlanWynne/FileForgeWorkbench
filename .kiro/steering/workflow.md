@@ -27,6 +27,45 @@ the logging action. Do this silently unless the user asks.
 | **TASK / IMPLEMENTATION** | Approved follow-up after a gate -- "implement", "code it", "write the test", "do it" | No new log entry; go to code mode (section 4) |
 | **REFACTOR** | Code-quality change, no observable behaviour change | No log unless behaviour changes; use code mode (section 4) |
 
+### 0a. Session continuity check -- WRONG-WINDOW GUARD (runs before classification)
+
+Multiple chat windows are often open at once, each a separate session working a
+different task. A prompt typed into the wrong window would otherwise be logged,
+gated, and acted on against the wrong work. Before classifying, apply this
+NARROW guard -- it is a safety net for the costly mistake, NOT a check on every
+prompt.
+
+PAUSE and ask ONE short confirming question ONLY when ALL THREE hold:
+
+1. **Mutating intent** -- the prompt would change source or docs (it classifies
+   as BUG, NEW REQUIREMENT, CHANGE REQUEST, TASK / IMPLEMENTATION, or REFACTOR).
+   A QUESTION / DISCUSSION prompt NEVER triggers the guard -- answer it directly.
+2. **Topic disconnect** -- the prompt is not a plausible continuation of THIS
+   session's recent work (different subsystem, crate, spec sub-project, bug id,
+   or feature than the last few turns and any open task list).
+3. **In-flight work** -- this session has live context that a stray prompt would
+   corrupt: an open task list, a running or paused workflow, an active gate, or
+   uncommitted focus on a specific area.
+
+When all three hold, ask (do not act, do not log):
+
+> This session has been working on `<current focus>`. Your prompt is about
+> `<new topic>`, which looks unrelated. Continue here, or did you mean another
+> window?
+
+Then wait for the answer. If the user confirms "continue here", proceed with
+normal triage (the prompt is a genuine pivot). If the user says it was meant for
+another window, discard it -- do NOT log it, gate it, or act on it.
+
+Do NOT fire the guard when any condition is absent: a pure question, a read-only
+lookup, a prompt that clearly continues the current thread, or a fresh session
+with no in-flight work all proceed straight to classification. One disconnected,
+mutating prompt against live work is the only case worth the interruption.
+
+To keep the guard accurate and to help the owner's own discipline, maintain an
+up-to-date SESSION TITLE describing the current focus (via the session-info
+mechanism) so each window is self-identifying in the window list.
+
 ### Logging formats
 
 BUG -- append to the `docs/status/bugs.md` Bug Table (next `B###` id):
@@ -266,9 +305,9 @@ Definition of done (code):
   TCR updated for every criterion touched; docs updated where behaviour changed;
   no secrets/artefacts/unrelated changes. At this point Kiro STOPS and hands off.
 - **Done (owner-confirmed)**: the owner has run the full `ffwb-gate.ps1` gate
-  manually outside Kiro and reported it clean (empty `ai-review.log`). Only then
-  is the task DONE. Kiro never runs the full gate itself and never claims "done"
-  on scoped checks alone -- it claims "code-complete pending full gate".
+  manually outside Kiro and reported it clean (empty `ffwb-gate.review.log`). Only
+  then is the task DONE. Kiro never runs the full gate itself and never claims
+  "done" on scoped checks alone -- it claims "code-complete pending full gate".
 
 Stop for human review when: requirements are contradictory or materially
 ambiguous; a public interface or persisted format must change; an architecture

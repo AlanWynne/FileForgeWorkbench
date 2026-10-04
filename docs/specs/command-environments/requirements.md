@@ -1,0 +1,623 @@
+# Requirements Document -- Command Environments (CR-CH-053)
+
+## Introduction
+
+This sub-project defines the Command Environment model for FileForgeWorkbench,
+modelled on the REXX/ISPF ADDRESS pattern: FFWB is not one giant command set but
+a set of named environments, each owning the commands relevant to its context.
+A user (or macro) works within an environment based on what they are doing; the
+active Workspace Context selects the active environment; an always-present base
+environment is the fallback; an explicit address targets a specific environment.
+
+The FULL intended catalogue of FFWB environments (FFCMD, FFEDIT, FFLINE,
+FFBROWSE, FFAMS, FFJES, FFJOB, FFSQL, FFCICS, FFVFS, FFADMIN, FFDEBUG, FFMON,
+FFLIB) and their IBM equivalents are documented in `environments-vision.md` (a
+vision/reference document). This requirements document is the AUTHORITATIVE home
+for the environment MODEL and ROUTER, and it is deliberately PHASE-1 SCOPED.
+
+### Phase-1 buildable scope
+
+Only the environment FRAMEWORK plus the two environments that already exist in
+the running app are BUILT by this gate:
+
+- **FFCMD** -- the shell/workbench base environment. It ALREADY EXISTS: it is
+  `ff_command::resolve_target` driven by `ShellTargetResolver` /
+  `builtin_workspace_target_for`. No rewrite; CR-CH-053 names it FFCMD and treats
+  it as the always-present base.
+- **FFEDIT** -- the editor command-line verbs that bug B080 correctly left on the
+  shell ladder (`commands_ladder_b2.rs`). CR-CH-053 gives them their home as the
+  FFEDIT environment, migrated off the shared ladder.
+
+**FFLINE** (prefix-area line commands) and **FFNAV** (the file-navigator
+environment, whose FIND locates a file rather than searching a buffer) are
+NAMED/MODELED only in phase 1. FFLINE's intake (prefix gutter ->
+`ff-command-semantics` Command_Engine) already works and is not rebuilt; FFNAV's
+file-navigator command handling stays wherever it is today and is not migrated.
+Both are named so the model is coherent and the active-env derivation accounts
+for them, but neither is BUILT as a first-class environment in phase 1. Every
+OTHER environment in the catalogue is VISION-ONLY: no criterion here requires
+building it; each registers when its consuming subsystem is built.
+
+### Framework-conformance stance
+
+This model BUILDS ON the existing framework and adds NO second dispatcher and NO
+second navigation stack. FFCMD IS `resolve_target`. The router inserts ONE
+active-environment step into the single B080 front door
+(`dispatch_command_string`) BEFORE `resolve_target`; the existing prelude
+(stage-1 current-menu Option_Key, EXIT family, POM/chained fastpaths) stays FIRST
+and unshadowable. The `CommandTarget` enum is unchanged. This does NOT implement
+CR-CH-052 (`=` / X / =X navigation-ladder semantics) and does NOT design the
+database tool or any other future environment.
+
+### Source references
+
+- **[CR-CH-053]** = this change request (owner: the REXX ADDRESS multi-environment
+  model for FFWB).
+- **[B080]** = the single command-dispatch front door (`dispatch_command_string`),
+  the plumbing this model generalises.
+- **[WB]** = Workbench Architecture Brief, command-driven architecture.
+- **design-proposal** = `.agents/tasks/command-environments/design-proposal.md`.
+
+### Cross-references
+
+- `command-framework` Req 2 (single dispatch), Req 5 (Shortcut_Registry), Req 6
+  (Scripting_Bridge), Req 8 (CommandTarget + ordered Target_Resolution chain, 8.3
+  / 8.4 / 8.10 shadowing), Req 9 (one verb/arg split), Req 10 (Navigation_Stack).
+- `command-semantics` Req 1-3 (Command_Engine, scope resolution, Primary_Command
+  parser) -- the EDITOR verb vocabulary and the FFLINE intake path.
+- `lua-macro-engine` Req 11.11-11.15 (TSO / ISPEXEC / ISREDIT host command
+  environments, `ADDRESS <env>`, `RC`) -- the macro addressing surface this model
+  reconciles with (does not duplicate).
+- `environments-vision.md` -- the FF* environment catalogue.
+
+## Glossary
+
+| Term | Definition | Source |
+|------|-----------|--------|
+| **Command_Environment** | A named resolver+executor owning a command vocabulary for a context; it may CLAIM a submitted command string (handle it) or fall through. | [CR-CH-053] |
+| **Environment_Registry** | The shell-owned collection of environments: the FFCMD base plus zero or more Context environments; derives the Active_Environment and resolves a name for addressing. | [CR-CH-053] |
+| **Active_Environment** | The environment selected by the currently FOCUSED Workspace Context. | [CR-CH-053] |
+| **Base_Environment (FFCMD)** | The always-present fallback environment; it IS `resolve_target` / `ShellTargetResolver`. Owns the Context-opener/workbench verbs. | [B080] |
+| **FFEDIT** | The editor command-line environment: LOCATE/FIND/CHANGE/EXCLUDE/SORT/profile/scroll verbs acting on the active editor buffer via the existing managers. | [CR-CH-053] |
+| **FFLINE** | The prefix-area line-command environment (D/DD/M/C/CC/A/B...), a sibling of FFEDIT; intake is the prefix gutter -> Command_Engine, NOT the command line. Named/modeled only in phase 1. | [CR-CH-053] |
+| **FFNAV** | The file-navigator environment (FilesPanel / FileExplorerPanel / catalog Contexts); owns navigator verbs incl. its OWN FIND (locate a file, not search a buffer). Named/modeled only in phase 1; its command handling is not migrated. | [CR-CH-053] |
+| **Address** | Directing a command to a named environment regardless of the active one (REXX ADDRESS). Phase 1: macros only. | [lua-macro-engine Req 11.12] |
+| **Alias_Map** | The mapping of mainframe environment names onto FF* names for addressing: TSO -> FFCMD, ISREDIT -> FFEDIT (future IDCAMS -> FFAMS, SDSF -> FFJES, ...). | [CR-CH-053] |
+
+---
+
+## Requirements
+
+### Requirement 1: Command Environment model
+
+**User Story:** As a workbench developer, I want commands grouped into named
+environments owned by their context, so that each context exposes only the
+commands that make sense for it, mirroring the IBM mainframe multi-environment
+model.
+
+#### Acceptance Criteria
+
+1. THE framework SHALL define a Command_Environment as a named resolver that, given
+   a submitted command string, either CLAIMS it (executes it and reports an
+   outcome) or declines (falls through to the next environment).
+2. THE FFCMD environment SHALL be the always-present Base_Environment, and it
+   SHALL BE the existing `resolve_target` / `ShellTargetResolver` chain -- no
+   rewrite and no second classifier is introduced for it.
+3. THE framework SHALL maintain an Environment_Registry containing the FFCMD base
+   and zero or more Context environments, exposing: the Active_Environment for the
+   focused Context, lookup of an environment by name (for addressing), and the
+   FFCMD base as fallback.
+4. THE Environment_Registry SHALL NOT be a second dispatcher: it SHALL feed the
+   single front door (`dispatch_command_string`), not run a parallel dispatch path.
+
+### Requirement 2: Active environment derivation
+
+**User Story:** As a user, I want the command line to understand the commands of
+whatever I am currently working in, without my having to declare it.
+
+#### Acceptance Criteria
+
+1. THE Active_Environment SHALL be SUPPLIED BY the focused Workspace Context's
+   KIND as a kind ATTRIBUTE (a named reference), NOT determined by a central
+   hardcoded match in the command handler. The command handler SHALL ask the
+   focused kind for its command-environment name and use it; it SHALL NOT
+   enumerate the set of kinds. WHEN a kind supplies no environment, THE
+   Active_Environment SHALL default to the FFCMD base. (This inverts the
+   dependency: a new kind declares its environment and plugs in with NO change to
+   the handler -- see Requirement 9.) The phase-1 kinds declare: editor Contexts
+   (FileEditor / Untitled) -> FFEDIT; file-navigator Contexts (FilesPanel /
+   FileExplorerPanel / catalog) -> FFNAV (NAMED now, see Requirement 7a); every
+   other kind -> FFCMD base. These mappings are the KINDS declaring their
+   environment, not the handler's knowledge.
+2. WHERE the Workbench is split or a Workspace is detached, THE Active_Environment
+   SHALL follow the FOCUSED region/window's Context (not an arbitrary tab).
+3. THE FFCMD base SHALL remain reachable as the fallback regardless of the
+   Active_Environment, so a workbench verb typed while another environment is
+   active still resolves (the base-environment relay).
+
+### Requirement 2a: Per-environment verb ownership (same name, different command)
+
+**User Story:** As a mainframe-minded user, I want a verb like FIND to mean what
+it should IN THE CONTEXT I am in -- find text in the open file in the editor, find
+a file in the navigator -- the way the same verb differs between ISPF Edit and
+other environments.
+
+#### Acceptance Criteria
+
+1. A verb NAME (e.g. FIND, LOCATE, SAVE, X) MAY be owned by MORE THAN ONE
+   Command_Environment, each with its OWN implementation; there is NO single global
+   definition of such a verb.
+2. WHEN a verb owned by multiple environments is submitted, THE Active_Environment's
+   implementation SHALL run (e.g. FIND in FFEDIT searches the open file; FIND in
+   FFNAV locates a file; SAVE in FFEDIT writes the active buffer; SAVE in the Theme
+   Editor Context writes the theme working copy). The environment IS the namespace.
+3. THIS SHALL NOT change today's observable behaviour (Requirement 4), save for the
+   explicitly-listed exceptions in Requirement 4: where a verb already behaves
+   differently by context today, the environment model FORMALISES that
+   context-dependence rather than altering it.
+4. OWNERSHIP PRINCIPLE: a verb SHALL be owned by the Command_Environment in whose
+   CONTEXT it is meaningful. A verb that acts on the active editor buffer (SAVE,
+   CANCEL, UNDO, REDO, FIND, CHANGE, EXCLUDE, the profile/scroll verbs) is owned by
+   FFEDIT; a verb that acts on a Context's working copy (a theme / menu / key map /
+   kind config / configuration edit) is owned by THAT Context's environment; a verb
+   that acts on the workbench (open a Workspace, navigate menus, FILES, CONFIG) is
+   owned by FFCMD. The same name (SAVE) therefore resolves to different
+   implementations by active environment; there is no context-free global SAVE.
+5. FFCMD (the base) HAS NOTHING OF ITS OWN TO SAVE: saving is always SOME context's
+   save (a buffer, a theme, a menu, a config), so there SHALL be no `FFCMD.SAVE`.
+   SAVE exists only in environments that hold a working copy. WHEN SAVE is typed
+   with no save-capable environment active, it SHALL NOT silently fall through to a
+   base SAVE (there is none); it resolves to nothing / an unresolved-command result
+   exactly as any other unowned verb.
+6. WITHIN FFCMD, `X` and `RETURN` are ALIASES for `EXIT` (close the Workspace /
+   exit when it is the last), resolved by FFCMD's own alias resolution the same way
+   FFEDIT resolves X -> EXCLUDE. These are FFCMD-owned verbs: the active environment
+   gets first crack (so bare `X` in the editor is FFEDIT EXCLUDE), and FFCMD
+   receives `X` / `RETURN` / `EXIT` only when the active environment rejects them.
+   The close-the-application effect MAY be performed by an upper layer FFCMD calls.
+
+### Requirement 3: The front-door environment router
+
+**User Story:** As a maintainer, I want environments resolved through the one
+existing command front door, so there is a single dispatch path, not several.
+
+#### Acceptance Criteria
+
+1. THE command handler SHALL NOT special-case individual verbs. It SHALL take the
+   command-line string and offer it to resolvers in a FIXED ORDER, each of which
+   either CLAIMS the string (handles it) or REJECTS it (the handler continues to
+   the next). The order is: (a) the `=` universal rule (criterion 3.2) FIRST; (b)
+   the History_Record and the Menu_Context-only fastpaths (stage-1 current-menu
+   Option_Key, POM / chained -- inert outside a menu Context); (c) the
+   Active_Environment (e.g. FFEDIT when an editor Context is focused) -- the active
+   environment gets FIRST CRACK at the verb; (d) the FFCMD base (`resolve_target`
+   and the workbench verbs it owns), which RECEIVES ANY STRING THE ACTIVE
+   ENVIRONMENT REJECTED; (e) the Command_Engine terminal as the final fallback.
+   There is NO privileged "exit family" branch: `X` / `RETURN` / `EXIT` / `QUIT` /
+   `LOGOFF` are ordinary FFCMD verbs that FFCMD receives when the active
+   environment does not claim them. (The close-the-application side-effect of
+   `EXIT` may be performed by an UPPER layer that FFCMD calls, but FFCMD is the
+   resolver that RECEIVES the string -- it is not a handler special case.)
+2. THE `=` prefix is a SINGLE UNIVERSAL RULE handled in ONE place, BEFORE the
+   Active_Environment is consulted: WHEN `=` is the FIRST character of the command
+   string, THE handler SHALL drop the current tab's Navigation_Stack (return to the
+   POM top) and then dispatch the REMAINDER of the string as an FFCMD / base
+   command from that top. Semantically `=` means "not your business, environment --
+   this is FFCMD, go back to POM". The Active_Environment therefore NEVER receives a
+   `=`-prefixed string (the environment is skipped for that command). This
+   generalises the existing `=`-origin rule (command-framework Req 10.2) to all
+   environments.
+2a. CONSEQUENCE for FFEDIT (and every environment): because `=` is stripped and
+   rerouted before the environment is consulted, a `=`-prefixed command in the
+   editor behaves as the FFCMD/base command -- e.g. `=X` in the editor does the
+   SAME as RETURN/EXIT (drop to POM, run `X` as the base verb), NOT FFEDIT's
+   EXCLUDE. Only the BARE form (`X`) is environment-sensitive (FFEDIT EXCLUDE).
+3. THE router SHALL insert the Active_Environment step into the SAME single front
+   door, AFTER the `=`/history/menu-fastpath universal steps and BEFORE the FFCMD
+   base; it SHALL NOT create a second dispatcher and SHALL NOT add a second
+   navigation stack.
+4. THE `CommandTarget` enum and `resolve_target` SHALL be unchanged by this model.
+
+### Requirement 4: Backward compatibility
+
+**User Story:** As a user, I want every command that works today to keep working
+identically after environments are introduced.
+
+#### Acceptance Criteria
+
+1. THE introduction of Command_Environments SHALL NOT change the observable result
+   of any command string that resolves today (mirrors command-framework Req 8.4),
+   WITH ONE DELIBERATE EXCEPTION: bare `X` typed on an editor Context, which today
+   is claimed as a close/exit (`X` resolves to the base exit) before the editor
+   verbs are reached, SHALL now run FFEDIT's EXCLUDE (Req 5.1). This is an intended
+   correction -- in the editor `X` is the ISPF EXCLUDE line/primary command, and
+   the active environment must get first crack at it before FFCMD. The base
+   exit/return remains reachable in the editor via `=X` (Req 3.2 / 3.2a / 5.2b) and
+   via END/RETURN. On every NON-editor Context bare `X` is unchanged (it is
+   rejected by the active environment and FFCMD receives it, close/exit as today).
+2. WHEN an editor command-line verb (FIND, CHANGE, LOCATE, ..., and bare `X` =
+   EXCLUDE per criterion 4.1) is submitted on an editor Context, THE result SHALL
+   be identical to the current shell-ladder behaviour of that FFEDIT verb,
+   including the B062 rule (verb matched case-insensitively, Argument_String case
+   preserved).
+3. WHEN a workbench verb (FILES, CONFIG, ...) is submitted, THE result SHALL be
+   identical to today: the active environment rejects it and FFCMD = `resolve_target`
+   handles it, unchanged.
+
+### Requirement 5: Shadowing (active-wins)
+
+**User Story:** As a user, I want the environment I am working in to take
+precedence for a shared verb name, with the base reachable by addressing.
+
+#### Acceptance Criteria
+
+1. WHEN a verb name exists in BOTH the Active_Environment and the FFCMD base, THE
+   Active_Environment SHALL claim it (active-wins), mirroring the earlier-stage-wins
+   shadowing rule of command-framework Req 8.10. The showcase collision is bare
+   `X`: in an editor Context the Active_Environment is FFEDIT, so bare `X` SHALL
+   run FFEDIT's EXCLUDE; in a non-editor Context FFEDIT is not active (it rejects
+   `X`), so FFCMD receives `X` and performs the close/exit exactly as today.
+2. THE FFCMD instance of a shadowed verb SHALL remain reachable WITHOUT changing
+   the focused Context by: (a) phase 1 -- an explicit macro address; AND (b) the
+   `=` universal prefix -- `=X` (and any `=<verb>`) is stripped-and-rerouted to
+   FFCMD/POM BEFORE the environment is consulted (Req 3.2), so `=X` always reaches
+   FFCMD's `X` (close/exit) regardless of the active environment. This gives an
+   in-editor keyboard escape hatch to the base verb without leaving the editor.
+3. THE universal steps (criterion 3.2 / 3.1b: the `=` rule, the History_Record,
+   and the Menu_Context-only fastpaths) SHALL take precedence over BOTH environments
+   and SHALL NOT be shadowable. FFCMD's own verbs (including `X` / `RETURN` /
+   `EXIT`) are NOT universal -- they are the base that receives whatever the active
+   environment rejects, so the bare verb `X` IS shadowable by the Active_Environment
+   (criterion 5.1); the `=`-prefixed form is routed past the environment by the
+   universal `=` rule, not by any FFCMD precedence (criterion 5.2b).
+
+### Requirement 6: The FFEDIT environment
+
+**User Story:** As an editor user, I want the editor's command-line commands to
+live in the editor's own environment rather than the shell command set.
+
+#### Acceptance Criteria
+
+1. THE framework SHALL provide an FFEDIT Command_Environment that owns the editor
+   command-line verbs: LOCATE, TOP, BOTTOM, UP, DOWN, LEFT, RIGHT, SORT, EXCLUDE
+   (and alias X), SHOW (and alias INCLUDE), RESET, FIND, RFIND, CHANGE, RCHANGE,
+   CAPS, NULLS, STATS, LOCK, PROFILE, HILITE, SCROLL.
+2. THE FFEDIT environment SHALL execute each verb against the active editor through
+   the EXISTING managers (navigation, exclude/show, find, edit profile, scroll
+   amount) -- it SHALL NOT reimplement their logic and SHALL NOT front the
+   Command_Engine in phase 1.
+2a. WHEN an editor Context is active, THE FFEDIT environment SHALL CLAIM its owned
+   verbs (Requirement 6.1) at the active-environment step -- i.e. BEFORE the FFCMD
+   base and BEFORE the Command_Engine terminal fallback -- preserving today's
+   precedence in which the shell-ladder arm handled these verbs ahead of the
+   engine. The Command_Engine remains the final fallback for input FFEDIT does not
+   claim (e.g. the prefix-area/line-command path and any engine-only primary
+   command), so FFEDIT and the Command_Engine are not two competing executors of
+   the same command-line verb.
+3. THE observable result of every FFEDIT verb SHALL be identical to its current
+   shell-ladder arm (Requirement 4), including argument parsing (e.g. CHANGE's
+   two-argument quoting) and the B062 case rule.
+4. THE FFEDIT environment SHALL be the Active_Environment exactly when the focused
+   Context is an editor Context (Requirement 2.1).
+
+### Requirement 6a: Verb aliases resolve to a canonical verb (localization-ready)
+
+**User Story:** As a user in a localized install, I want to type a command verb
+in my own language (CHERCHER, SUCHEN) and have it behave exactly as the canonical
+verb (FIND), so localization can extend to the VERBS without changing behaviour.
+
+#### Acceptance Criteria
+
+1. EACH Command_Environment SHALL resolve a typed surface form (alias) to a single
+   CANONICAL verb via a per-environment ALIAS TABLE, BEFORE dispatch. The
+   behaviour lives on the CANONICAL verb; the handler SHALL NOT see the alias, so
+   `CHERCHER 'foo'` and `FIND 'foo'` take the IDENTICAL code path and produce the
+   IDENTICAL result (behaviour-neutral). The existing one-behaviour aliases
+   (EXCLUDE/X, SHOW/INCLUDE) ARE this mechanism (surface forms of one canonical
+   verb).
+2. THE CANONICAL verb SHALL be what is RECORDED, PERSISTED, and used internally
+   (command history, macro `command=` values, menu option `command` values,
+   keybindings, session/Workspace descriptors). Aliases are COMMAND-LINE INPUT
+   convenience only: typing an alias records/persists the canonical verb (type
+   `CHERCHER`, store `FIND`), so a macro or saved workspace does not break when
+   the locale changes.
+3. THE alias table SHALL be matched case-insensitively (B062) and SHALL reject
+   collisions at load (an alias equal to another verb's canonical name or alias in
+   the same environment is an error), using the same conflict discipline as the
+   Shortcut_Registry.
+4. Aliases SHALL respect the prelude/shadowing precedence: an alias SHALL NOT let
+   a user shadow a prelude-owned verb (EXIT family, menu Option_Key), and
+   active-wins shadowing (Requirement 5) applies to canonical verbs.
+5. LOCALIZED alias sets (CR-NR-103) SHALL load into these SAME per-environment
+   alias tables per locale, adding NO new mechanism -- localization extends to
+   verbs purely as additional alias DATA, with no behaviour impact. (Phase 1
+   builds the alias-resolution MECHANISM with the existing English aliases;
+   per-locale alias data arrives with CR-NR-103.)
+6. ALIAS DATA SHALL be organised as ONE catalogue PER LOCALE, selected and loaded
+   when the active locale is chosen -- NOT a monolithic union of all locales
+   preloaded. Selecting a different locale loads a DIFFERENT alias catalogue into
+   the tables, so only the useful (active-locale) surface forms are resident. This
+   has NO per-entry locale indicator: the locale is chosen once (the `ui.locale`
+   config key), and that selection determines which catalogue loads; individual
+   alias rows carry no language tag.
+   A per-locale catalogue SHALL itself be organised PER ENVIRONMENT: because the
+   alias table is per-environment (criterion 6a.1), a locale's catalogue is a SET
+   of per-environment alias tables (e.g. French FFEDIT verbs, French FFCMD verbs,
+   French FFNAV verbs), and each loads into the CORRESPONDING environment's table.
+   The SAME surface form MAY map to a DIFFERENT canonical verb in a different
+   environment within the same locale (as English `X` -> EXCLUDE in FFEDIT but
+   EXIT in FFCMD), and the collision rule (criterion 6a.3) is scoped WITHIN one
+   environment's table, not across environments. The dimension is therefore
+   per-environment-per-locale, not one flat per-locale list.
+7. THE English CANONICAL verb names SHALL remain resolvable in EVERY locale (as
+   identity entries), with the active locale's surface forms LAYERED ON TOP (base
+   English + locale overlay), NOT a full replacement of English. In a French
+   install both `FIND` and `CHERCHER` resolve to the canonical `FIND`. A surface
+   form that collides across the base and overlay layers is caught by the
+   load-time collision rule (criterion 6a.3).
+
+### Requirement 7: The FFLINE environment (named/modeled only in phase 1)
+
+**User Story:** As an architect, I want the prefix-area line commands recognised
+as their own environment so the model is coherent and a future macro can address
+them, without rebuilding the working line-command path now.
+
+#### Acceptance Criteria
+
+1. THE framework SHALL NAME FFLINE as a Command_Environment that is a SIBLING of
+   FFEDIT, conceptually active together with FFEDIT when an editor Context is
+   focused.
+2. THE FFLINE intake SHALL remain UNCHANGED in phase 1: line commands enter via the
+   prefix area and run through the `ff-command-semantics` Command_Engine; FFLINE
+   SHALL NOT be routed through the command-line front door.
+3. THERE SHALL BE no line-command behaviour change in phase 1: FFLINE is a naming
+   and modeling act only, so a future `ADDRESS FFLINE` has a defined target.
+
+### Requirement 7a: The FFNAV environment (named/modeled only in phase 1)
+
+**User Story:** As an architect, I want the file-navigator recognised as its own
+environment (its FIND locates a file, distinct from FFEDIT's FIND), so the model
+is correct, without migrating the navigator's command handling now.
+
+#### Acceptance Criteria
+
+1. THE framework SHALL NAME FFNAV as the Command_Environment for the
+   file-navigator Contexts (FilesPanel / FileExplorerPanel / catalog), and the
+   active-env derivation (Requirement 2.1) SHALL map those Contexts to FFNAV.
+2. THE FFNAV command handling SHALL remain UNCHANGED in phase 1: navigator verbs
+   (including its own FIND / LOCATE) stay wherever they are handled today; FFNAV
+   is not built as a first-class resolver and no navigator behaviour changes.
+3. FFNAV being named SHALL make the per-environment verb model (Requirement 2a)
+   concrete: FFEDIT.FIND and FFNAV.FIND are distinct, each selected by the active
+   Context, with no behaviour change in phase 1.
+
+### Requirement 8: Addressing (macros; interactive prefix deferred)
+
+**User Story:** As a macro author, I want to direct a command to a specific
+environment the way REXX ADDRESS does.
+
+#### Acceptance Criteria
+
+1. WHEN a macro addresses an environment (REXX `ADDRESS <env>` / the Lua binding),
+   THE command SHALL be routed to the named FFWB Command_Environment through the
+   existing Scripting_Bridge (command-framework Req 6), reconciled with the
+   already-specified TSO / ISPEXEC / ISREDIT host command environments
+   (lua-macro-engine Req 11.11-11.14) via the Alias_Map (TSO -> FFCMD, ISREDIT ->
+   FFEDIT).
+2. WHEN the addressed environment EQUALS the Active_Environment, THE address SHALL
+   be redundant: the command SHALL execute identically with or without it.
+3. THE environment dispatch outcome SHALL carry a return code that the
+   Scripting_Bridge maps to the macro `RC` (lua-macro-engine Req 11.15).
+4. WHEN a command line begins with a token that happens to match an environment
+   name, THE phase-1 front door SHALL treat the whole line as an ordinary command
+   (NO interactive address-prefix parsing); interactive addressing is a deferred
+   future extension and the `parse_address_prefix` seam SHALL be reserved but
+   inert in phase 1. (This pins the deferral as a testable behaviour: an
+   environment-named leading token is not special-cased at the command line.)
+
+### Requirement 9: Future-context template
+
+**User Story:** As a developer adding a future context (database tool, JES, ...),
+I want a defined, minimal way to give it its own environment.
+
+#### Acceptance Criteria
+
+1. A new Workspace Context SHALL get its Command_Environment by declaring the
+   environment NAME as a KIND ATTRIBUTE (Requirement 2.1); the command handler
+   SHALL dispatch to whatever environment the focused kind supplies, with NO
+   change to the handler or the single front door when a new kind is added.
+2. THE kind's command-environment attribute SHALL be DATA (a name/reference), NOT
+   executable code. Selecting or reconfiguring WHICH environment a kind uses
+   (including a user reconfiguring it) is permitted and is recoverable via RESET
+   BARE like other kind attributes.
+3. THE built-in environments (FFCMD, FFEDIT) SHALL be CODE-ONLY and SHALL NOT be
+   REPLACEABLE via configuration -- exactly as built-in menus/themes are code-only
+   (CR-CH-021). A kind attribute MAY point at a different existing environment,
+   but it SHALL NOT supply an environment's executable command implementations.
+4. Authoring a NEW environment with new executable command behaviour SHALL be a
+   PLUGIN capability (it registers an environment through the plugin API and is
+   subject to the plugin permission/security model), NOT a configuration edit.
+   (Owner: "if somebody wants the editor to have a different command interface,
+   they copy the Editor Plugin and build their own.")
+5. Per-VERB customization (adding or overriding specific verbs) SHALL be via a
+   layered user environment that SHADOWS the base (Requirement 5), where the new
+   verbs are themselves commands/macros subject to the existing command + plugin
+   security model -- NOT by replacing a built-in environment wholesale.
+6. THIS gate SHALL NOT build any environment beyond the framework, FFCMD, and
+   FFEDIT (FFLINE/FFNAV named-only); every other environment in
+   `environments-vision.md` is vision-only until its consuming subsystem is built.
+### Requirement 10: Editor-buffer verb ownership (E9)
+
+**User Story:** As an editor user, I want the commands that act on the open
+buffer (save it, discard its changes, undo/redo its edits) to belong to the
+editor's own environment, so they resolve by context like every other editor
+verb -- not as workbench commands that happen to look at the active tab.
+
+#### Acceptance Criteria
+
+1. FFEDIT SHALL own the editor-BUFFER verb SAVE (write the active buffer to its
+   file), by the ownership principle (Requirement 2a.4): it is meaningful only in
+   an editor Context's buffer, not in FFCMD's workbench context. SAVE is
+   DIRTY-AWARE and STAYS in the editor (never leaves):
+
+   | Verb | Clean buffer | Dirty buffer |
+   |------|--------------|--------------|
+   | SAVE | NO-OP (nothing changed since last save; no write, no flag reset) | write the file, STAY in the editor, clear the dirty flag + save point |
+
+   The Dirty state is `TabState.is_modified` (same flag the leave verbs use). The
+   dirty write delegates to the existing save operation
+   (`tab_manager::save_active_tab`, which writes, clears `is_modified`, and sets
+   the document save point). IF the write FAILS (read-only / disk error), SAVE
+   STAYS in the editor and surfaces the error (it stays regardless, so no leave to
+   suppress). SAVE is NOT a Confirmable_Command (saving is not destructive). The
+   only change from today is the CLEAN no-op guard (skip the write when
+   `!is_modified`).
+2. FFEDIT SHALL own the editor-leave verbs END / CANCEL / RETURN when an editor
+   Context is active (its own dirty-aware versions), per this table. The Dirty
+   state is the active tab's modified-since-save flag (`TabState.is_modified`; a
+   never-saved buffer with content counts as dirty):
+
+   | Verb | Clean buffer | Dirty buffer |
+   |------|--------------|--------------|
+   | END | return up one level (`nav_end`) | SAVE, then return up one level (no dialog) |
+   | CANCEL | return up one level (`nav_end`) | CONFIRM dialog ("changes will be lost"): confirm -> up one level WITHOUT saving; cancel -> stay in editor |
+   | RETURN | return to top / POM (`nav_return`) | CONFIRM dialog ("changes will be lost"): confirm -> to top WITHOUT saving; cancel -> stay in editor |
+
+   On a CLEAN buffer all three delegate to the EXISTING navigation primitive
+   (unchanged from today). This REPLACES the earlier draft criterion that END /
+   RETURN stay plain navigation: in an editor Context they are dirty-aware FFEDIT
+   verbs; everywhere else they remain FFCMD / universal navigation (same name,
+   environment-specific behaviour -- Requirement 2a).
+3. WHEN END is run on a DIRTY buffer, THE save SHALL be attempted first; IF the
+   save FAILS (e.g. read-only file, write error), THE command SHALL STAY in the
+   editor, surface the error, and NOT leave (never lose changes by leaving after a
+   failed save). IF the save succeeds, THE command leaves (up one level).
+4. THE CANCEL / RETURN dirty-discard is a Confirmable_Command (command-framework
+   Requirement 16): interactive + no switch -> the confirm dialog; `-Y` -> discard
+   + leave headless; `-N` -> stay; non-interactive + no switch -> assume cancel
+   (stay, do not discard, record "needs -Y"), continue. (The `-Y`/`-N` + interactive
+   -flag infrastructure is command-framework Req 16 / Phase confirmable-commands;
+   until it lands, the INTERACTIVE dialog path is implemented and is the behaviour
+   for typed use.)
+5. FFCMD SHALL NOT own a buffer SAVE: there is no context-free buffer to save
+   (Requirement 2a.5). WHEN no editor Context is active, SAVE resolves to nothing /
+   unresolved like any unowned verb, and END / RETURN are plain FFCMD / universal
+   navigation exactly as today (FFEDIT not active -> not claimed).
+6. UNDO and REDO are DEFERRED from this slice (owner-flagged scope finding): UNDO
+   today is a keyboard-only inline handler (Ctrl+Z in `editor_panel/input.rs`), not
+   a reusable command -- claiming it as an FFEDIT verb is an EXTRACTION refactor;
+   REDO does NOT EXIST (no redo stack / logic / handler) -- adding it is a NEW
+   feature requiring its own gate (undo-redo-transactions). Neither is built in
+   this slice; both are recorded for a separate owner decision. (The ownership
+   principle still says they BELONG to FFEDIT once they exist as commands.)
+7. THIS slice SHALL be TDD'd (red before green) per table row and per verb; the
+   SAVE verb and the CLEAN-buffer END/CANCEL/RETURN paths SHALL be behaviour-
+   preserving relative to today; the DIRTY-buffer END (save-then-leave) and
+   CANCEL/RETURN (confirm-discard) are the NEW behaviour this requirement adds.
+
+### Requirement 11: Per-Context SAVE + command chaining (E10)
+
+**User Story:** As a user, I want SAVE to persist whatever I am editing (a theme,
+a menu, a key map, a kind, a configuration -- or a buffer), and I want to chain
+several commands on one line and have each run in turn.
+
+#### Acceptance Criteria
+
+1. EACH editing Context (Theme Editor, Menus Editor, Keys Editor, Kinds Editor,
+   Config/Settings editor) SHALL own a SAVE in its OWN Command_Environment that
+   persists THAT Context's working copy (the theme, menu TOML, key map, kind
+   config, or configuration edit). SAVE therefore resolves to the
+   context-appropriate implementation by Active_Environment (Requirement 2a.2/2a.4);
+   there is no global SAVE and no FFCMD SAVE (Requirement 2a.5).
+2. WHEN SAVE is typed on an editing Context whose command environment owns SAVE,
+   THE command-line SAVE SHALL perform the SAME persistence as that Context's
+   existing Save affordance (button/menu), through the SAME code path (command
+   parity): the typed SAVE and the Save button are one path, not two.
+3. THE command line SHALL support CHAINING multiple commands separated by `;`.
+   THE SPLITTER AND THE PER-SEGMENT LOOP ARE HANDLER-OWNED: the handler splits the
+   submitted string into segments ONCE and dispatches each segment, in
+   left-to-right order, through the SAME single front door (env -> FFCMD -> engine)
+   as if each had been typed and entered on its own. A Command_Environment NEVER
+   receives more than ONE already-split segment and NEVER owns the split or the
+   "advance to the next segment" bookkeeping -- it remains a pure claim-or-reject
+   resolver on a single segment. (This keeps ONE splitter with consistent quoting
+   for every environment, rather than each environment splitting its own way.)
+4. THE `;` splitter SHALL be QUOTE-AWARE: a `;` inside a quoted argument (e.g.
+   `FIND ';'` or `CHANGE 'a;b' 'c'`) SHALL NOT be treated as a segment separator.
+5. THE Active_Environment SHALL be RE-EVALUATED per segment, because an earlier
+   segment can change the focused Context: WHEN a segment navigates away (e.g.
+   `...; =0` returns to the POM), the LATER segments SHALL resolve in the
+   environment that was SWITCHED TO (the now-active Context), NOT the environment
+   that was active when the line was submitted. A segment is always dispatched
+   against whatever environment is active AT THE MOMENT it runs.
+6. THE `=` universal rule (Requirement 3.2) SHALL scope to its OWN `;` segment: a
+   `=`-prefixed segment drops the ladder and runs that segment from the POM base;
+   it SHALL NOT force the remaining segments of the chain to the base.
+7. THE chain error policy SHALL be: a segment that fails (e.g. a FIND that reports
+   NOT FOUND, or a rejected/unresolved verb) SHALL be recorded (its status
+   surfaced) and the chain SHALL CONTINUE with the next segment (best-effort,
+   ISPF-like), UNLESS a later-specified explicit stop modifier is provided (no stop
+   modifier is defined in this slice; continue-on-error is the phase default).
+8. CHAINING SHALL add NO second dispatcher: it is a pre-split that feeds the one
+   existing front door once per segment; `CommandTarget`, the navigation stack, and
+   the environment model are unchanged by it.
+### Requirement 12: FFEDIT CUA editing verbs -- COPY / CUT / PASTE / SELECT ALL / UNDO / REDO (CR-CH-054)
+
+**User Story:** As an editor user, I want the standard editing commands (copy,
+cut, paste, select-all, undo, redo) to be FFEDIT verbs that act on the active
+buffer, usable both by their reserved keys (command-framework Req 17) and by
+typing, and that honour BOTH the cursor selection and the ISPF line-command
+markers.
+
+**Source:** [CR-CH-054]. Owner: "copy and cut can also take input from the line
+commands, c cc ... if there is no selection in the cursor context they should
+look at the line command context ... paste should have a similar action ... take
+the paste direction from an 'A' or 'B' in the line command space." Builds on the
+ownership principle (Requirement 2a.4) and Cursor_Context (command-framework
+Req 12); the keyboard binding is command-framework Req 17.
+
+#### Acceptance Criteria
+
+1. FFEDIT SHALL own the CUA editing verbs COPY, CUT, PASTE, SELECT ALL, UNDO,
+   REDO; they act on the active editor buffer and resolve by Active_Environment
+   (Requirement 2a.4). Outside an editor Context they are not FFEDIT verbs.
+2. COPY/CUT SELECTION SOURCE precedence: (a) IF a Cursor_Context selection is
+   present -> operate on that selection (stream/character granular); (b) ELSE IF a
+   pending line-command block (`C`/`CC` markers) selects one or more lines ->
+   operate on those WHOLE lines; (c) ELSE no-op (status: nothing selected). COPY
+   writes the taken content to the clipboard; CUT writes it to the clipboard AND
+   deletes it from the buffer (marking the buffer dirty and pushing an undo entry).
+3. WHEN COPY/CUT consume a `C`/`CC` line block, the block is the CLIPBOARD SOURCE
+   (option a): the marked lines are copied/cut to the OS clipboard -- this is
+   distinct from the ISPF in-document `C`/`CC` + `A`/`B` move/copy. The `C`/`CC`
+   markers SHALL be CLEARED after a COPY or CUT that consumed them.
+4. PASTE DESTINATION precedence: (a) IF the cursor is in the editing space ->
+   insert the clipboard at the cursor (stream insert); (b) ELSE IF a pending
+   line-command destination marker (`A` = after / `B` = before) is set -> insert
+   the clipboard content as WHOLE LINE(S) after/before the marked line; (c) ELSE
+   no-op. The `A`/`B` paste is ALWAYS line-granular (clipboard text split on
+   newlines, inserted as whole lines, regardless of how it was copied). The
+   cursor-in-editing-space destination ALWAYS WINS the tie-break over a pending
+   `A`/`B` marker. The `A`/`B` marker SHALL be CLEARED after the paste; the
+   CLIPBOARD CONTENT is RETAINED (paste again is allowed).
+5. THE selection source and paste destination SHALL be read from the existing
+   context inputs -- the Cursor_Context (command-framework Req 12) for the cursor
+   selection/position, and the line-command (FFLINE) state for the `C`/`CC` source
+   and `A`/`B` destination markers. The verbs take NO explicit area parameter.
+   This requires the line-command layer to EXPOSE accessors for the pending
+   `C`/`CC` source block and the pending `A`/`B` destination marker (a small,
+   deliberate FFLINE -> FFEDIT coupling; the markers are context inputs, same
+   category as the cursor selection).
+6. CLIPBOARD operations SHALL be backed by the `ff-clipboard` crate (wiring in a
+   currently-orphan crate), not a bespoke clipboard access path.
+7. SELECT ALL SHALL select the whole buffer (as the Cursor_Context selection), so
+   a subsequent COPY/CUT operates on the entire document via criterion 2(a).
+8. UNDO SHALL undo the last buffer edit; today the undo logic is an inline
+   keyboard handler (Ctrl+Z in `editor_panel/input.rs`) -- this requirement
+   EXTRACTS it into the UNDO verb so the key and the verb share one path. REDO is
+   a NEW feature (no redo stack exists today); it SHALL be built as part of this
+   requirement's slice 2, coordinating with undo-redo-transactions. Until REDO
+   exists, Ctrl+Y resolves to REDO but has nothing to redo.
+9. THESE verbs SHALL be reachable by both the reserved keys (command-framework
+   Req 17.2) and by typing; the key and the typed verb produce the identical
+   result. No second dispatcher; dispatched through the one front door.

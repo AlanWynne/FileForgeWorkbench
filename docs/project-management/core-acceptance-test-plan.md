@@ -47,7 +47,7 @@ Row status legend:
   so testing is structured, not deferred to a separate list.
 
 Coverage note: much logic has automated coverage (per-crate `cargo test` +
-`verify.ps1`); this plan is the MANUAL / end-to-end pass over the running app.
+`ffwb-gate.ps1`); this plan is the MANUAL / end-to-end pass over the running app.
 
 Priority: rows marked (REQUIRED) gate CORE sign-off; (OPTIONAL) are desirable but
 not blocking.

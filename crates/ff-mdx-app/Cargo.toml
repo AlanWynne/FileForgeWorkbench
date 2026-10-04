@@ -24,8 +24,6 @@ egui_kittest = { version = "0.33", features = ["eframe"] }
 tempfile.workspace = true
 pretty_assertions.workspace = true
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
+# NOTE: release-profile settings live in the workspace-root Cargo.toml.
+# Cargo ignores [profile.*] in a non-root manifest (and warns), so they are not
+# repeated here.
