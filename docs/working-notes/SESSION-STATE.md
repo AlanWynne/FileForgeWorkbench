@@ -467,3 +467,64 @@ run worktree-based workflows against this repo, and B080 Step 7 stays HELD.
   All simplify/* worktrees and branches cleaned up.
 - Nothing committed by me this session beyond what was already in the log; no
   functional change left behind by the aborted Step 7 attempts.
+
+---
+
+## B080 STEP 7 -- RESCOPED to OPTION A (menu-bar reroute only); deletion folded into CR-CH-052
+
+After four failed workflow attempts (two owner-restarts to clear a wedged
+terminal/build-lock; one uncommitted-baseline block now resolved by commit
+e444cfc being committed+pushed), Step 7 was done DIRECTLY in the main checkout
+(owner runs the scoped cargo). During implementation a CRITICAL correction to
+the plan surfaced and the owner rescoped the work.
+
+### What SHIPPED (behaviour-neutral, Option A) -- code-complete pending owner gate
+- `crates/ff-desktop/src/shell/render_chrome.rs`: the THREE menu-BAR click sites
+  (dynamic THEME-list child, non-menu option button, peeked submenu child) now
+  dispatch through the single front door `dispatch_command_string` instead of
+  `handle_command`. This gives menu-bar command parity: a clicked verb resolves
+  via `resolve_target` (same observable open as the typed line) rather than the
+  ladder arm. Each site carries a `B080 Step 7` comment.
+- `crates/ff-desktop/src/shell/tests_focus.rs`: ONE additive test
+  `b080_menu_bar_front_door_matches_typed_path_for_in_scope_verbs` -- for each
+  in-scope verb (FILES/CATALOGS/CONFIG/KEYS/KINDS/COMMANDS/LOG/PLUGINS/MACROS/
+  MENUS/THEME) it asserts `dispatch_command_string(verb)` lands on the SAME
+  active-tab Kind as `handle_command(verb)` and sets no open_error, proving the
+  reroute is behaviour-preserving. (SEARCH omitted deliberately -- it focuses an
+  existing panel rather than a tab Kind.)
+- Diff is exactly those 2 files. CHECKPOINT 1 (reroute only, arms present) was
+  owner-confirmed GREEN (fmt/check/clippy/test -p ff-desktop clean, ~955/0).
+  Owner must re-run the scoped checks after the added test (expect +1 test), then
+  commit (stage ONLY these 2 files by name -- the working tree has unrelated
+  pre-existing noise: D EditorConfigProperties/ReloadEvent/Self/bool/{/git-status.txt,
+  M change-log.md [now also my CR-CH-052 fold-in note], untracked .worktrees/ +
+  localization task dir) and run the full ffwb-gate.ps1.
+
+### What was NOT done, and WHY (the critical correction)
+The plan said the reroute makes the 11 CustomWorkspace/nav ladder arms dead and
+deletable. THAT IS WRONG. The arms are the LIVE production handler for POM-option
+navigation, chained fastpath, and START reconstruction: `resolve_pom_option_key`
+(commands.rs) resolves a POM key (1/2/6/8/...) to an in-scope verb and calls
+`handle_command(&pom_command)`, which does NOT run `resolve_target` and so lands
+on the ladder arm -- the commands.rs ~L150-153 comment says so explicitly. The
+plan's Deliverable 3 self-contradicted (kept POM recursion direct, yet claimed
+the arms it feeds are dead). Deleting them would break POM options + chained nav
++ START.
+
+### Owner decision (2026-10-04): OPTION A
+Ship ONLY the behaviour-neutral menu-bar reroute now; KEEP the arms; FOLD the
+deletion into CR-CH-052. The deletion requires first routing the POM-option /
+chained / START nav callers through the front door, which is a behaviour change
+(front door runs resolve_target -> user-command shadowing + `=`/ladder-drop) that
+belongs with CR-CH-052's `=`/X/nav-semantics redefinition. CR-CH-052's change-log
+entry now carries a "FOLDED IN" note owning (a) rerouting those nav callers and
+(b) deleting the then-dead arms. Driver: owner's principle that POM is just a
+MenuWorkspace with no specialised actions -- the menu-bar click and the POM/menu
+option key must reach a menu option's command via the SAME front door.
+
+### decomp-and-scrm-wave state (2026-10-04)
+In sync with origin at the commit level (origin/decomp-and-scrm-wave = e444cfc,
+pushed). Working tree holds the 2 Step-7 files (to commit) PLUS unrelated
+pre-existing noise listed above (NOT to be swept into the Step-7 commit; owner to
+triage separately -- the junk-named D files EditorConfigProperties/ReloadEvent/
+Self/bool/{ look like stray tracked artifacts worth a cleanup commit of their own).

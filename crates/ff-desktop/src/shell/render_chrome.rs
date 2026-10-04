@@ -169,14 +169,19 @@ impl WorkbenchShell {
                         // theme name (description), dispatch `THEME <name>`.
                         for child in children {
                             if ui.button(child.description.clone()).clicked() {
-                                self.handle_command(&child.command);
+                                // B080 Step 7: route menu-bar clicks through the
+                                // single front door so a clicked verb resolves via
+                                // resolve_target (identical observable open to the
+                                // typed line), not the superseded ladder arm.
+                                self.dispatch_command_string(&child.command);
                                 ui.close();
                             }
                         }
                     } else if peeked.is_empty() {
                         // Non-menu command: one item that dispatches it (Req 17.4).
                         if ui.button(option.command.clone()).clicked() {
-                            self.handle_command(&option.command);
+                            // B080 Step 7: front-door dispatch (see above).
+                            self.dispatch_command_string(&option.command);
                             ui.close();
                         }
                     } else {
@@ -186,7 +191,8 @@ impl WorkbenchShell {
                         // top-level buttons.
                         for child in &peeked {
                             if ui.button(child.command.clone()).clicked() {
-                                self.handle_command(&child.command);
+                                // B080 Step 7: front-door dispatch (see above).
+                                self.dispatch_command_string(&child.command);
                                 ui.close();
                             }
                         }

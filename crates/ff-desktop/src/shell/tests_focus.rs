@@ -2238,3 +2238,62 @@ fn full_shell_scrm_viewer_first_tab_focuses_first_control() {
         "first Tab in the SCRM viewer must focus the reported first interior, not a phantom stop"
     );
 }
+
+// === B080 Step 7: menu-bar reroute through the single front door ============
+//
+// The menu-bar click sites in render_chrome.rs now dispatch an in-scope
+// workspace verb through the front door `dispatch_command_string` (which runs
+// resolve_target) instead of calling `handle_command` directly. This test
+// proves the reroute is behaviour-preserving: for every in-scope verb, the
+// front-door path lands on the SAME active-tab Kind as the pre-reroute typed
+// path (`handle_command`). Two fresh shells per verb, compared.
+//
+// Validates: menu-and-statusbar Requirement 16.15 (B056 menu-bar command
+// parity); command-framework Requirement 2.1, 8.4 (one front door reaches the
+// same classification as the direct path).
+#[test]
+fn b080_menu_bar_front_door_matches_typed_path_for_in_scope_verbs() {
+    use crate::tab_state::TabKind;
+
+    // Each in-scope workspace verb and the Kind it must open. These are exactly
+    // the verbs `builtin_workspace_target_for` classifies and whose superseded
+    // ladder arms Step 7 deletes.
+    let cases: &[(&str, TabKind)] = &[
+        ("FILES", TabKind::FileExplorerPanel),
+        ("CATALOGS", TabKind::FilesPanel),
+        ("CONFIG", TabKind::ConfigPanel),
+        ("KEYS", TabKind::KeysEditor),
+        ("KINDS", TabKind::KindsEditor),
+        ("COMMANDS", TabKind::CommandConfigurator),
+        ("LOG", TabKind::EventLog),
+        ("PLUGINS", TabKind::PluginManager),
+        ("MACROS", TabKind::MacroLibrary),
+        ("MENUS", TabKind::MenusEditor),
+        ("THEME", TabKind::ThemeEditor),
+    ];
+
+    for (verb, expected_kind) in cases {
+        // Front-door path (what a rerouted menu-bar click now runs).
+        let mut via_front_door = make_shell();
+        via_front_door.dispatch_command_string(verb);
+        let front_kind = via_front_door.tabs.active_tab().kind;
+
+        // Pre-reroute typed path (handle_command) for the same verb.
+        let mut via_handle = make_shell();
+        via_handle.handle_command(verb);
+        let handle_kind = via_handle.tabs.active_tab().kind;
+
+        assert_eq!(
+            front_kind, *expected_kind,
+            "front-door dispatch of {verb} must open {expected_kind:?} (the menu-bar reroute target)"
+        );
+        assert_eq!(
+            front_kind, handle_kind,
+            "front-door dispatch of {verb} must match the typed handle_command path (behaviour-preserving reroute)"
+        );
+        assert!(
+            via_front_door.open_error.is_none(),
+            "front-door dispatch of {verb} must not set an open_error"
+        );
+    }
+}
