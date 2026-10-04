@@ -54,14 +54,14 @@ TDD applies: write the failing test first, then the minimum implementation, per
         behaviour at `ui.locale = "en"` is unchanged. Satisfies Req 3.2, 10.2.
 
 - [ ] 4. Per-environment, per-locale alias-catalogue LOADER (no new mechanism)
-  - [ ] 4.1 Implement the loader that overlays a per-environment set of
+  - [x] 4.1 Implement the loader that overlays a per-environment set of
         surface-form -> canonical-verb rows onto the EXISTING `AliasTable`
         (base English + locale overlay), one catalogue per locale, organised per
         environment. Satisfies Req 5.1, 5.2, 5.3, 5.5.
-  - [ ] 4.2 Enforce NO per-row locale tag (the `ui.locale` selection picks the
+  - [x] 4.2 Enforce NO per-row locale tag (the `ui.locale` selection picks the
         catalogue) and reject within-environment collisions with a diagnostic,
         retaining the Identity_Base. Satisfies Req 5.4, 5.6.
-  - [ ] 4.3 Assert the canonical English verb remains the recorded/persisted value
+  - [x] 4.3 Assert the canonical English verb remains the recorded/persisted value
         regardless of locale. Satisfies Req 10.3.
 
 ## Phase 2 -- Incremental extraction (audit's recommended order)

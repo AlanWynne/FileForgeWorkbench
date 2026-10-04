@@ -117,7 +117,14 @@ pub(crate) fn active_environment(kind: TabKind, is_home: bool) -> EnvironmentKin
 pub(crate) struct AliasTable {
     /// (surface-form-UPPERCASED, canonical-verb) pairs. Kept as a small Vec; verb
     /// counts are tiny and this avoids a HashMap dependency for E0.
-    entries: Vec<(&'static str, &'static str)>,
+    ///
+    /// Stored as OWNED `String` (not `&'static str`) so that a per-locale alias
+    /// overlay -- which arrives as runtime DATA (CR-NR-103 fixtures now, on-disk
+    /// catalogues in Phase 3) -- can be layered ON TOP of the English base
+    /// entries without leaking memory on each locale switch (localization
+    /// Requirement 5.5). The English/no-overlay case is byte-identical: the
+    /// seed data is the same literals, merely `.to_string()`-ed at construction.
+    entries: Vec<(String, String)>,
 }
 
 impl AliasTable {
@@ -159,18 +166,18 @@ impl AliasTable {
             // today, REDO does not exist) so they are NOT in the table yet.
             ("SAVE", "SAVE"),
         ];
-        let mut entries: Vec<(&'static str, &'static str)> = Vec::with_capacity(raw.len());
+        let mut entries: Vec<(String, String)> = Vec::with_capacity(raw.len());
         for &(surface, canonical) in raw {
-            if let Some((_, existing)) = entries.iter().find(|(s, _)| *s == surface) {
+            if let Some((_, existing)) = entries.iter().find(|(s, _)| s == surface) {
                 // Collision: the same surface form maps to two canonicals -- an
                 // authoring error (Requirement 6a.3).
                 assert_eq!(
-                    *existing, canonical,
+                    existing, canonical,
                     "alias collision: surface form '{surface}' maps to both \
                      '{existing}' and '{canonical}'"
                 );
             }
-            entries.push((surface, canonical));
+            entries.push((surface.to_string(), canonical.to_string()));
         }
         Self { entries }
     }
@@ -180,12 +187,81 @@ impl AliasTable {
     /// CANONICAL verb; the canonical verb is what is recorded/persisted.
     ///
     /// Validates: command-environments Requirement 6a.1, 6a.2
-    pub(crate) fn canonical_verb(&self, surface: &str) -> Option<&'static str> {
+    pub(crate) fn canonical_verb(&self, surface: &str) -> Option<&str> {
         let s = surface.trim();
         self.entries
             .iter()
             .find(|(form, _)| form.eq_ignore_ascii_case(s))
-            .map(|(_, canonical)| *canonical)
+            .map(|(_, canonical)| canonical.as_str())
+    }
+
+    /// Overlay a locale's `(surface-form -> canonical-verb)` rows ON TOP of this
+    /// table's existing English base entries (base English + locale overlay, NOT
+    /// a replacement -- localization Requirement 5.5). A localized surface form
+    /// added here resolves through the IDENTICAL `canonical_verb` seam to the
+    /// SAME canonical English verb, so dispatch is behaviour-neutral (Req 5.1).
+    ///
+    /// The overlay is FALLIBLE and RECOVERABLE (localization Requirement 5.6):
+    /// on a within-this-table collision -- an incoming surface form that already
+    /// resolves (case-insensitively) to a DIFFERENT canonical, whether that
+    /// existing mapping is a base identity, a base alias, or an earlier row in
+    /// this same overlay -- it returns `Err` and leaves `self` UNCHANGED (the
+    /// Identity_Base is retained). An incoming row that duplicates an identical
+    /// existing `(surface -> same canonical)` mapping is a harmless no-op, not a
+    /// collision (mirrors the `ffedit_english` authoring discipline). The
+    /// collision check is scoped WITHIN this one environment's table.
+    ///
+    /// `environment_name` is used only for the diagnostic in the returned error.
+    ///
+    /// Validates: localization Requirement 5.1, 5.5, 5.6, 10.3;
+    /// command-environments Requirement 6a.3, 6a.5, 6a.7
+    // Consumed by the Phase 3 locale-switch loader (Task 10) and by the Task 4
+    // unit tests; a non-test build sees no caller yet, like the ahead-of-consumer
+    // `CommandEnvironment` trait below.
+    #[allow(dead_code)]
+    pub(crate) fn apply_locale_overlay(
+        &mut self,
+        environment_name: &str,
+        rows: &[(String, String)],
+    ) -> Result<(), super::alias_overlay::AliasOverlayError> {
+        use super::alias_overlay::AliasOverlayError;
+
+        // Validate the WHOLE overlay against a scratch copy first, so a collision
+        // leaves `self` untouched (Identity_Base retained, Req 5.6). Only on full
+        // success do we commit the scratch copy back.
+        let mut scratch = self.entries.clone();
+        for (surface, canonical) in rows {
+            let surface_trimmed = surface.trim();
+            if let Some((_, existing)) = scratch
+                .iter()
+                .find(|(form, _)| form.eq_ignore_ascii_case(surface_trimmed))
+            {
+                if existing == canonical {
+                    // Identical mapping already present -- harmless no-op.
+                    continue;
+                }
+                return Err(AliasOverlayError::Collision {
+                    environment: environment_name.to_string(),
+                    surface: surface_trimmed.to_string(),
+                    existing: existing.clone(),
+                    incoming: canonical.clone(),
+                });
+            }
+            scratch.push((surface_trimmed.to_string(), canonical.to_string()));
+        }
+        self.entries = scratch;
+        Ok(())
+    }
+
+    /// Build an EMPTY alias table (no base entries). Test-only helper used to
+    /// model a second environment's base when exercising the per-environment
+    /// loader (localization Req 5.3) without touching that environment's real
+    /// dispatch wiring.
+    #[cfg(test)]
+    pub(crate) fn empty_for_test() -> Self {
+        Self {
+            entries: Vec::new(),
+        }
     }
 }
 

@@ -1773,6 +1773,7 @@ dependencies = [
  "rfd 0.17.2",
  "serde",
  "tempfile",
+ "thiserror 2.0.20",
  "tokio",
  "toml 0.8.23",
  "winres",

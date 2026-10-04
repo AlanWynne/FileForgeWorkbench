@@ -3475,12 +3475,12 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | 🔴 | -- | localization Req 4.2: do NOT localise command VERBS / stable identifiers (canonical verbs, menu `command` values, config keys, Topic_Key, command_id) |
 | `ff-desktop` | 🔴 | -- | localization Req 4.3: where text + verb coexist, only the description localises; `command` value unchanged (verb/text split) |
 | `ff-desktop` | 🔴 | -- | localization Req 4.4: no displayed text derived by matching on a translated string; text resolved FROM a key, never used AS a key |
-| `ff-desktop` | 🔴 | -- | localization Req 5.1: localized alias data loads into the EXISTING per-environment AliasTable, no new mechanism, behaviour-neutral |
-| `ff-desktop` | 🔴 | -- | localization Req 5.2: one Alias_Catalogue per locale, loaded on selection; a different locale loads a different catalogue (not a union) |
-| `ff-desktop` | 🔴 | -- | localization Req 5.3: a per-locale catalogue is organised PER ENVIRONMENT; same surface form may map to different canonicals per environment |
-| `ff-desktop` | 🔴 | -- | localization Req 5.4: no per-row locale indicator; the single `ui.locale` selection determines which catalogue loads |
-| `ff-desktop` | 🔴 | -- | localization Req 5.5: English canonical verbs resolvable in every locale (base English + locale overlay); FIND and CHERCHER both -> FIND |
-| `ff-desktop` | 🔴 | -- | localization Req 5.6: within-environment alias collision rejected with diagnostic; Identity_Base retained; collision scoped per environment |
+| `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::{overlay_layers_locale_surface_on_top_of_english_base, overlay_resolves_through_identical_canonical_code_path, english_only_no_overlay_is_behaviour_identical}` | localization Req 5.1: localized alias data loads into the EXISTING per-environment AliasTable, no new mechanism, behaviour-neutral |
+| `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::selecting_a_different_locale_loads_a_different_catalogue_not_a_union` | localization Req 5.2: one Alias_Catalogue per locale, loaded on selection; a different locale loads a different catalogue (not a union) |
+| `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::per_locale_catalogue_is_organised_per_environment` | localization Req 5.3: a per-locale catalogue is organised PER ENVIRONMENT; same surface form may map to different canonicals per environment |
+| `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::overlay_rows_carry_no_per_row_locale_tag` | localization Req 5.4: no per-row locale indicator; the single `ui.locale` selection determines which catalogue loads |
+| `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::english_canonical_remains_resolvable_in_every_locale` | localization Req 5.5: English canonical verbs resolvable in every locale (base English + locale overlay); FIND and CHERCHER both -> FIND |
+| `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::{within_environment_collision_is_rejected_and_identity_base_retained, overlay_surface_colliding_with_base_canonical_is_rejected, collision_check_is_scoped_within_one_environment}` | localization Req 5.6: within-environment alias collision rejected with diagnostic; Identity_Base retained; collision scoped per environment |
 | `ff-help` | 🔴 | -- | localization Req 6.1: help loader resolves a per-locale content directory, reusing the existing loader shape, no parse/model change |
 | `ff-help` | 🔴 | -- | localization Req 6.2: active-locale help directory loaded; topic absent for the locale falls back to English Identity_Base content |
 | `ff-help` | 🔴 | -- | localization Req 6.3: Topic_Key / cross-reference keys unlocalised; only topic body/title prose localised |
@@ -3497,4 +3497,4 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | 🔴 | -- | localization Req 9.3: `thiserror`-sourced message localised at the display boundary, not at the error source |
 | `ff-desktop` | 🔴 | -- | localization Req 10.1: no second dispatcher / nav stack / persistence format / per-Context focus mechanism; builds ON existing seams only |
 | `ff-desktop` | 🔴 | -- | localization Req 10.2: additive to behaviour; with `ui.locale` = "en" the workbench renders/behaves identically to pre-localization |
-| `ff-desktop` | 🔴 | -- | localization Req 10.3: recorded/persisted value is always the canonical English verb regardless of active locale |
+| `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::canonical_verb_is_the_recorded_persisted_value_regardless_of_locale` | localization Req 10.3: recorded/persisted value is always the canonical English verb regardless of active locale |

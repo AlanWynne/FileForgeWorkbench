@@ -34,6 +34,7 @@ pub(crate) use crate::scroll_amount::ScrollAmount;
 // against `default_menubar_menu()` instead.
 
 mod actions;
+mod alias_overlay;
 mod command_line_outcome;
 mod commands;
 mod commands_fastpath;
