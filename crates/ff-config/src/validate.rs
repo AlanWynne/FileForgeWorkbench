@@ -109,7 +109,7 @@ fn check_constraints(value: &ConfigValue, constraints: &Constraints) -> Option<S
     // Allowed values (enum validation)
     if let Some(ref allowed) = constraints.allowed_values {
         if !allowed.contains(value) {
-            return Some("value is not in allowed set".to_string());
+            return Some(format!("value {:?} is not in allowed set", value));
         }
     }
 
