@@ -74,6 +74,18 @@ pub mod accessibility {
     pub const REDUCE_MOTION: &str = "accessibility.reduce_motion";
 }
 
+/// User-interface configuration keys.
+pub mod ui {
+    /// Key for the active UI language locale (BCP-47, e.g. `en`, `fr`, `de`).
+    ///
+    /// Selects which Message_Catalogue and per-locale Alias_Catalogue are
+    /// active. Defaults to `"en"` (the always-present Identity_Base) and is
+    /// hot-reloadable via the existing `CallbackRegistry`.
+    ///
+    /// Validates: localization Requirement 1.1
+    pub const LOCALE: &str = "ui.locale";
+}
+
 /// Menu Workspace configuration keys.
 pub mod menu {
     /// Advisory option-count limit for a Menu_File. Above this count the menu
@@ -165,6 +177,12 @@ mod tests {
     }
 
     #[test]
+    fn ui_keys_are_valid_dot_separated_paths() {
+        // Validates: localization Requirement 1.1 -- ui.locale key path
+        assert_valid_key(ui::LOCALE, "ui");
+    }
+
+    #[test]
     fn menu_keys_are_valid_dot_separated_paths() {
         // Validates: menu-workspace Requirement 9.1 -- option limit config keys
         assert_valid_key(menu::SOFT_OPTION_LIMIT, "menu");
@@ -195,6 +213,7 @@ mod tests {
             accessibility::REDUCE_MOTION,
             menu::SOFT_OPTION_LIMIT,
             menu::HARD_OPTION_LIMIT,
+            ui::LOCALE,
         ];
 
         let unique: std::collections::HashSet<&str> = all_keys.iter().copied().collect();

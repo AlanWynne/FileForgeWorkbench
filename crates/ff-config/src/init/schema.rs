@@ -150,6 +150,22 @@ pub fn register_core_schema(schema: &mut SchemaRegistry) {
             description: "Default virtual file system provider".to_string(),
             constraints: None,
         },
+        // The active UI language locale. Default "en" is the always-present
+        // Identity_Base; `allowed_values` is pinned to the shipped locales
+        // (initially "en" only). Each added language appends its locale here.
+        // Validates: localization Requirement 1.1, 1.2, 1.3
+        SchemaEntry {
+            key: crate::keys::ui::LOCALE.to_string(),
+            value_type: ValueType::String,
+            default: ConfigValue::String("en".to_string()),
+            description: "Active UI language locale (BCP-47, e.g. en, fr, de)".to_string(),
+            constraints: Some(crate::schema::Constraints {
+                min: None,
+                max: None,
+                allowed_values: Some(vec![ConfigValue::String("en".to_string())]),
+                pattern: None,
+            }),
+        },
     ];
 
     for entry in entries {
@@ -192,5 +208,50 @@ pub fn register_catalog_schema(
         schema
             .register(entry)
             .expect("catalog schema entries must not conflict");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::SchemaRegistry;
+    use crate::validate::{validate_value, ValidationResult};
+
+    // Validates: localization Requirement 1.1, 1.3 -- ui.locale is a String with default "en".
+    #[test]
+    fn ui_locale_entry_is_string_defaulting_to_en() {
+        let mut schema = SchemaRegistry::new();
+        register_core_schema(&mut schema);
+
+        let entry = schema
+            .get(crate::keys::ui::LOCALE)
+            .expect("ui.locale must be registered in core schema");
+        assert_eq!(entry.value_type, ValueType::String);
+        assert_eq!(entry.default, ConfigValue::String("en".to_string()));
+    }
+
+    // Validates: localization Requirement 1.2 -- the shipped-locale allowed_values
+    // accepts "en" and rejects an unshipped locale (falling back to the default).
+    #[test]
+    fn ui_locale_allowed_values_accepts_en_and_rejects_unknown() {
+        let mut schema = SchemaRegistry::new();
+        register_core_schema(&mut schema);
+        let entry = schema
+            .get(crate::keys::ui::LOCALE)
+            .expect("ui.locale must be registered in core schema");
+
+        // "en" is a shipped locale -- passes validation.
+        match validate_value(&ConfigValue::String("en".to_string()), entry) {
+            ValidationResult::Valid(v) => assert_eq!(v, ConfigValue::String("en".to_string())),
+            ValidationResult::DefaultApplied { .. } => panic!("expected Valid for en"),
+        }
+
+        // "fr" is not yet shipped -- rejected, default "en" applied.
+        match validate_value(&ConfigValue::String("fr".to_string()), entry) {
+            ValidationResult::DefaultApplied { default, .. } => {
+                assert_eq!(default, ConfigValue::String("en".to_string()));
+            }
+            ValidationResult::Valid(_) => panic!("expected DefaultApplied for unshipped locale"),
+        }
     }
 }

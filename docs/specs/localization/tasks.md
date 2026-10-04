@@ -28,17 +28,24 @@ TDD applies: write the failing test first, then the minimum implementation, per
   - [x] 1.5 Hold the active catalogue behind a shared swappable handle so lookup
         is a free call with no per-call catalogue threading. Satisfies Req 3.4.
 
-- [ ] 2. Add the `ui.locale` config key in `ff-config`
-  - [ ] 2.1 Add the `ui` namespace + `LOCALE` constant in `keys.rs` (satisfies
+- [x] 2. Add the `ui.locale` config key in `ff-config`
+  - [x] 2.1 Add the `ui` namespace + `LOCALE` constant in `keys.rs` (satisfies
         the dot-path key tests). Satisfies Req 1.1.
-  - [ ] 2.2 Register the `ui.locale` `SchemaEntry` in `register_core_schema`
+  - [x] 2.2 Register the `ui.locale` `SchemaEntry` in `register_core_schema`
         (String, default `"en"`, `allowed_values` pinned to shipped locales =
         `["en"]`). Satisfies Req 1.1, 1.2, 1.3.
-  - [ ] 2.3 Register the `CallbackRegistry::on_reload(&["ui.locale"], ...)`
+  - [x] 2.3 Register the `CallbackRegistry::on_reload(&["ui.locale"], ...)`
         handler that reloads BOTH the Message_Catalogue and the Alias_Catalogue
         on a locale change. Satisfies Req 1.4, 1.5.
-  - [ ] 2.4 Add the defence-in-depth fallback: an out-of-schema locale value
+    - NOTE: `ff-config::on_locale_reload` registers the callback on the existing
+      `CallbackRegistry` keyed on `ui.locale`; the concrete reload target (the
+      ff-i18n catalogue swap + the per-environment alias loader) is a
+      workbench-supplied closure wired in Task 4 / Task 8. The callback-fires
+      behaviour is proven with a spy in `locale_reload.rs` tests.
+  - [x] 2.4 Add the defence-in-depth fallback: an out-of-schema locale value
         falls back to `"en"` and WARNs. Satisfies Req 1.6.
+    - NOTE: Reuses the existing `validate_table` allowed_values path (applies the
+      schema default and logs a WARN naming the key); no parallel path added.
 
 - [x] 3. Ship the English Identity_Base catalogue and prove the seam
   - [x] 3.1 Author the initial `i18n/en/` `.ftl` catalogue (the baseline keys the

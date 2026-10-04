@@ -3449,18 +3449,18 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 7.1-7.4: cut-down About/Help surface reachable from toolbar; Ctrl+O/F5 stay hardcoded; ff-keys deferral recorded; no ff-keys dependency |
 | `ff-mdx-app` | 🔴 | -- | ffmdx-app Req 8.1-8.4: dependency allow-list enforced (no editor/command/vfs/toolchain/plugin/layout deps); cut-down feature set; preserve existing behaviours (scan, F5, drag-drop, filter, export) |
 
-<!-- CR-NR-103: Localization / i18n -- Fluent catalogue + ui.locale key + per-locale alias loader. Gate authored; implementation NOT started. -->
+<!-- CR-NR-103: Localization / i18n -- Fluent catalogue + ui.locale key + per-locale alias loader. Phase 1 in progress: Task 1/3 (ff-i18n) + Task 2 (ff-config ui.locale) landed; Task 4 (alias loader) + Phase 2 extraction pending. -->
 
-### Localization / i18n (CR-NR-103, Phase (localization)) -- NOT COVERED (implementation not started)
+### Localization / i18n (CR-NR-103, Phase (localization)) -- PHASE 1 IN PROGRESS (ff-i18n + ui.locale landed; alias loader + extraction pending)
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-config` | 🔴 | -- | localization Req 1.1: `ui.locale` key registered in core schema as String, default "en" |
-| `ff-config` | 🔴 | -- | localization Req 1.2: `ui.locale` constrains accepted values via allowed_values limited to shipped locales |
-| `ff-config` | 🔴 | -- | localization Req 1.3: with no user override, effective locale is default "en" (Identity_Base) |
-| `ff-config` | 🔴 | -- | localization Req 1.4: `ui.locale` change notified via existing CallbackRegistry::on_reload, no new config mechanism |
-| `ff-config` | 🔴 | -- | localization Req 1.5: `ui.locale` reload callback reloads BOTH message catalogue and per-locale/per-environment alias catalogue |
-| `ff-config` | 🔴 | -- | localization Req 1.6: out-of-schema locale falls back to "en" and logs WARN (defence-in-depth) |
+| `ff-config` | ✅ | `crates/ff-config/src/keys.rs::tests::ui_keys_are_valid_dot_separated_paths`, `crates/ff-config/src/init/schema.rs::tests::ui_locale_entry_is_string_defaulting_to_en` | localization Req 1.1: `ui.locale` key registered in core schema as String, default "en" |
+| `ff-config` | ✅ | `crates/ff-config/src/init/schema.rs::tests::ui_locale_allowed_values_accepts_en_and_rejects_unknown` | localization Req 1.2: `ui.locale` constrains accepted values via allowed_values limited to shipped locales |
+| `ff-config` | ✅ | `crates/ff-config/src/init/mod.rs::tests::ui_locale_defaults_to_en_when_unset` | localization Req 1.3: with no user override, effective locale is default "en" (Identity_Base) |
+| `ff-config` | ✅ | `crates/ff-config/src/locale_reload.rs::tests::{ui_locale_change_fires_reload_action, unrelated_key_change_does_not_fire_locale_reload_action}` | localization Req 1.4: `ui.locale` change notified via existing CallbackRegistry::on_reload (via `on_locale_reload`), no new config mechanism |
+| `ff-config` | ✅ | `crates/ff-config/src/locale_reload.rs::tests::ui_locale_change_fires_reload_action` (reload-action seam proven via spy; the concrete message+alias catalogue reload targets are wired by the workbench in Task 4/Task 8) | localization Req 1.5: `ui.locale` reload callback reloads BOTH message catalogue and per-locale/per-environment alias catalogue |
+| `ff-config` | ✅ | `crates/ff-config/src/init/mod.rs::tests::ui_locale_out_of_schema_value_falls_back_to_en` | localization Req 1.6: out-of-schema locale falls back to "en" and logs WARN (defence-in-depth, via existing validate_table path) |
 | `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.1: Fluent (fluent-bundle/fluent + unic-langid) catalogue mechanism with `{ $arg }` placeables |
 | `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.2: Message_Catalogue authored as per-locale `.ftl` DATA files, not compiled into Rust |
 | `ff-i18n` | ✅ | `crates/ff-i18n/src/tests.rs` | localization Req 2.3: `.ftl` files for the active locale loaded into a Fluent bundle at startup and on `ui.locale` reload |

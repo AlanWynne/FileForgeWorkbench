@@ -24,6 +24,7 @@ pub mod init;
 pub mod keys;
 pub mod layer;
 pub mod loader;
+pub mod locale_reload;
 pub mod merger;
 pub mod namespace;
 pub mod paths;
@@ -50,6 +51,7 @@ pub use init::{
     ConfigInitOptions,
 };
 pub use layer::ConfigLayer;
+pub use locale_reload::on_locale_reload;
 pub use merger::{merge_layers, merge_layers_with_locked};
 pub use namespace::{
     is_reserved_namespace, plugin_namespace_prefix, validate_plugin_name, RESERVED_NAMESPACES,

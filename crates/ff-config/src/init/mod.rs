@@ -522,6 +522,50 @@ mod tests {
         assert_eq!(handle.get_string("theme.active").unwrap(), "default");
         assert_eq!(handle.get_int("theme.font_size").unwrap(), 14);
         assert_eq!(handle.get_string("vfs.default_provider").unwrap(), "local");
+        // Validates: localization Requirement 1.3 -- unset ui.locale defaults to "en"
+        assert_eq!(handle.get_string("ui.locale").unwrap(), "en");
+    }
+
+    // Validates: localization Requirement 1.3 -- when no layer sets ui.locale,
+    // the effective locale is the Identity_Base default "en".
+    #[test]
+    fn ui_locale_defaults_to_en_when_unset() {
+        let mut schema = SchemaRegistry::new();
+        register_core_schema(&mut schema);
+        let manager = ReloadManager::new(Vec::new(), schema);
+        let handle = ConfigHandle::new(manager);
+
+        assert_eq!(handle.get_string("ui.locale").unwrap(), "en");
+    }
+
+    // Validates: localization Requirement 1.6 -- a configured ui.locale that is
+    // not a shipped locale (defence-in-depth) falls back to the Identity_Base
+    // "en" via the existing allowed_values validation path.
+    #[test]
+    fn ui_locale_out_of_schema_value_falls_back_to_en() {
+        use crate::value::{ConfigTable, ConfigValue};
+
+        let mut schema = SchemaRegistry::new();
+        register_core_schema(&mut schema);
+
+        // Simulate a user layer that set ui.locale to an unshipped locale.
+        let mut ui_table = ConfigTable::new();
+        ui_table.insert("locale".to_string(), ConfigValue::String("xx".to_string()));
+        let mut root = ConfigTable::new();
+        root.insert("ui".to_string(), ConfigValue::Table(ui_table));
+
+        let layers = vec![LayerData {
+            layer: ConfigLayer::User,
+            source_path: PathBuf::from("user.toml"),
+            values: root,
+        }];
+        let manager = ReloadManager::new(layers, schema);
+        let handle = ConfigHandle::new(manager);
+
+        // The unshipped locale is rejected by allowed_values validation and the
+        // schema default "en" is applied instead (a WARN naming the key is
+        // emitted by validate_table).
+        assert_eq!(handle.get_string("ui.locale").unwrap(), "en");
     }
 
     // ========================================================================
@@ -746,9 +790,11 @@ mod tests {
         assert!(schema.get("theme.active").is_some());
         assert!(schema.get("theme.font_size").is_some());
         assert!(schema.get("vfs.default_provider").is_some());
+        // Validates: localization Requirement 1.1 -- ui.locale registered in core schema
+        assert!(schema.get("ui.locale").is_some());
 
-        // Total: 13 core entries
-        assert_eq!(schema.len(), 13);
+        // Total: 14 core entries
+        assert_eq!(schema.len(), 14);
     }
 
     // Validates: Requirement 9.1 -- register_core_schema is idempotent (can be called twice)
