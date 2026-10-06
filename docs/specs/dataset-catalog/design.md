@@ -2031,3 +2031,72 @@ requires an explicit codec and encoding policy. Validated by
 `data_fidelity_binary_content_survives_round_trip` (all non-newline byte
 values survive RECFM=U round-trip byte-for-byte; newline is the explicit
 record-boundary separator for RECFM=U at the VFS layer).
+
+---
+
+## Volume Split (CR-CH-057)
+
+This section records the design delta for the catalog-as-locator split (CR-CH-057), coordinated with the new [volume-model](./../volume-model/design.md) spec. It never contradicts an existing decision; where a prior decision is touched, the touch is called out explicitly.
+
+### Catalog becomes a pure locator
+
+Previously a Catalog owned a Repository 1:1 and a dataset carried a raw `storage_path` into that Repository. Under the split, the physical Repository is promoted into a first-class **Volume** (owned by the `ff-volume` crate), and the Catalog is reduced to a metadata locator: it maps a DSN to a Dataset entry and records which Volume(s) the dataset resides on via a DatasetVolume association. The Catalog never owns bytes (ADR-002). This is the same model the project source doc `FFWB_Storage_and_Catalog_Data_Model.md` prescribes (ADR-001/ADR-002), which the earlier ratified spec flattened.
+
+> **Decision touched (called out):** the earlier Repository Layout (Requirement 4) and UUID-Based Physical Object Layout (Requirement 20) described the catalog as owning the physical layout. Under CR-CH-057 that physical-container role belongs to the Volume. The repository DIRECTORY layout itself (storage/ pds/ gdg/ temp/ or UUID objects/) is unchanged; only its OWNER moves from Catalog to Volume. No existing layout rule is contradicted.
+
+### Schema v4 tables
+
+Two tables are added at schema v4 (Requirement 32.1, 32.2):
+
+```text
+volumes(
+  volume_id    INTEGER PRIMARY KEY,
+  volser       TEXT UNIQUE NOT NULL,
+  storage_uri  TEXT NOT NULL,          -- promoted Repository root
+  status       TEXT NOT NULL,          -- Online | Offline
+  access_mode  TEXT NOT NULL,          -- ReadWrite | ReadOnly
+  total_units  INTEGER,                -- capacity in tracks/cylinders
+  used_units   INTEGER
+)
+
+dataset_volumes(
+  dataset_id      INTEGER NOT NULL REFERENCES datasets(id),
+  volume_id       INTEGER NOT NULL REFERENCES volumes(volume_id),
+  sequence_number INTEGER NOT NULL,
+  is_primary      BOOLEAN NOT NULL,
+  locator         TEXT NOT NULL,       -- opaque per-volume location
+  PRIMARY KEY (dataset_id, sequence_number)
+)
+```
+
+The Volume ROW type is persisted by the catalog, but the Volume TYPE and its behaviour (status, access-mode, geometry, capacity) are owned by `ff-volume`; the catalog does not redefine them (Requirement 32.8).
+
+### Resolution path change
+
+Resolution gains one indirection: Dataset -> DatasetVolume (by `sequence_number`) -> Volume -> `locator`, with an Online check on each required Volume (Requirement 32.3). For a single-volume dataset there is exactly one `dataset_volumes` row, so the path is a single hop. This replaces the direct `datasets.storage_path` read.
+
+### Dual-read migration of `storage_path`
+
+The schema v4 forward migration (Requirement 32.5) is mechanical and moves NO bytes (ADR-003):
+1. For each existing mounted catalog/Repository, insert a `volumes` row whose `storage_uri` is the current Repository root, VOLSER derived from the catalog name (or prompted once), status Online.
+2. For each existing `datasets` row, insert a `dataset_volumes` row with `locator = storage_path`, `sequence_number = 1`, `is_primary = true`.
+3. `storage_path` is retained read-only during the transition window; resolution reads DatasetVolume first and falls back to `storage_path` only for rows not yet migrated (dual-read).
+
+### Dependency on `ff-volume`
+
+`ff-dscatalog` gains a dependency on `ff-volume` (catalog depends on volume; the reverse is prohibited, keeping the DAG acyclic and ADR-002 enforceable). See [dataset-ownership-model](./../dataset-ownership-model/requirements.md) Requirement 21 and Requirement 7.7.
+
+### Uncataloged (VOL=SER + UNIT) resolution
+
+An Uncataloged_Dataset exists on a Volume with no `datasets`/`dataset_volumes` row and is resolved by explicit VOL=SER + UNIT through the `ff-volume` layer, bypassing the catalog row entirely (Requirement 32.7). This is the resolution path that a straight rename could not express and is a primary justification for the split.
+
+### Framework seams
+
+- Each Volume maps to a VFS StorageProvider URI via its `storage_uri` (ADR-001), building ON the existing `ff-vfs` StorageProvider seam (unchanged).
+- `DEFINE VOLUME`, volume listing/VTOC, and VOL=SER allocation are commands resolved through the single command-dispatch path (volume-model design.md).
+
+### No design changes required
+
+- The DSN parsing, naming validation, PDS member, and GDG designs are unchanged by this split.
+- The SQLite WAL mode, parameterized-query, and export/import designs are unchanged (the archive now also carries the `volumes`/`dataset_volumes` rows).
+- No change to the VFS provider trait surface is required by this delta.

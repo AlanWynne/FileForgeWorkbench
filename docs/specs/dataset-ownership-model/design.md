@@ -63,7 +63,12 @@ ff-dataset-allocator
 
 ff-dataset-catalog
     ├── ff-vfs (implements VfsProvider trait)
+    ├── ff-volume (Volume entity + VOLSER + geometry + extents + DatasetVolume -- added by CR-CH-057)
     └── ff-vsam-services (for VSAM dataset initialization -- optional)
+
+ff-volume (added by CR-CH-057)
+    ├── ff-vfs (Volume maps to a StorageProvider URI, ADR-001)
+    └── (no domain crate dependencies -- never depends on ff-dataset-catalog/-allocator/-idcams)
 
 ff-vsam-services
     ├── ff-vfs (implements VfsProvider under scheme "vsam")
@@ -81,6 +86,7 @@ ff-vfs
 | `ff-dataset-catalog` | `ff-idcams`, `ff-dataset-allocator` |
 | `ff-vsam-services` | `ff-idcams`, `ff-dataset-allocator` |
 | `ff-dataset-allocator` | `ff-idcams` |
+| `ff-volume` (CR-CH-057) | `ff-idcams`, `ff-dataset-catalog`, `ff-dataset-allocator`, `ff-vsam-services` |
 
 ### Interface Contract Design
 
@@ -211,6 +217,7 @@ A tracking matrix records which subsystem specs have been updated:
 | `ff-dataset-allocator` (dataset-allocator) | ✅ Aligned | Req 2 AC 8 already states catalog-only API access |
 | `ff-vfs` (virtual-file-system) | ✅ No changes needed | Correctly owns only abstraction layer |
 | `ff-vsam-services` | 🔴 Not yet created | Future crate -- trait interface defined in this governance doc |
+| `ff-volume` (volume-model) | 🔴 Not yet created | Future crate (CR-CH-057): owns the Volume entity; `ff-dataset-catalog` depends on it; ownership boundary in Req 21, dependency rule in Req 7.7 |
 
 ---
 

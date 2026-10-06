@@ -40,9 +40,13 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 - **Dataset**: A named data resource in the mainframe naming convention. Identified by a Dataset_Name (DSN) composed of qualifiers separated by dots. [DSC]
 - **Dataset_Name (DSN)**: A string of 1–8 character qualifiers separated by dots, maximum 44 characters total. Each qualifier starts with an alphabetic or national character (A-Z, @, #, $) followed by alphanumeric or national characters. [DSC]
 - **High_Level_Qualifier (HLQ)**: The first qualifier in a Dataset_Name, typically representing an owner or project (e.g., `PAYROLL` in `PAYROLL.INPUT.FILE`). [DSC]
-- **Catalog**: A SQLite database that maps Dataset_Names to physical file locations within a Repository. A workbench session can have multiple catalogs mounted simultaneously. [DSC]
-- **Catalog_Database**: The SQLite file (`catalog.db`) at the root of a Repository, containing the metadata for all datasets in that catalog. [DSC]
-- **Repository**: A directory structure on the local filesystem that physically stores dataset content, organized into `storage/`, `pds/`, `gdg/`, and `temp/` subdirectories. [DSC]
+- **Catalog**: A metadata locator that maps a Dataset_Name to a Dataset entry and the Volume(s) it resides on plus an opaque per-volume locator. It does NOT physically contain dataset bytes (ADR-002). A workbench session can have multiple catalogs mounted simultaneously. [DSC] (Amended by CR-CH-057 -- Volume split; was: a SQLite database that maps Dataset_Names to physical file locations within a Repository.)
+- **Catalog_Database**: The SQLite file (`catalog.db`) that persists catalog metadata -- dataset entries, the `volumes` and `dataset_volumes` tables (schema v4), GDG metadata, and locators. It persists metadata only, never dataset bytes (ADR-002). [DSC] (Amended by CR-CH-057 -- Volume split; was: the file at the root of a Repository containing the metadata for all datasets in that catalog.)
+- **Repository**: The physical directory layout (`storage/`, `pds/`, `gdg/`, `temp/`, or the UUID `datasets/objects/` layout) that physically stores dataset content. This physical-container role is now OWNED BY A VOLUME (ADR-001), not by the Catalog. [DSC] (Amended by CR-CH-057 -- Volume split; was: a directory structure that physically stores dataset content and is owned 1:1 by a catalog.)
+- **Volume**: The first-class physical container (promoted Repository) identified by a VOLSER, with a status, access mode, and capacity counters, that physically holds datasets. Owned by the `ff-volume` crate. See [volume-model](./../volume-model/requirements.md). [DSC] (Added by CR-CH-057.)
+- **VOLSER (Volume_Serial)**: The unique serial that identifies a Volume within a storage system. See [volume-model](./../volume-model/requirements.md). [DSC] (Added by CR-CH-057.)
+- **DatasetVolume**: The association from a Dataset to one or more Volumes, carrying a sequence number, an is-primary flag, and an opaque per-volume locator. It replaces the dataset `storage_path` as the authoritative location. [DSC] (Added by CR-CH-057.)
+- **Uncataloged_Dataset**: A dataset that physically exists on a Volume with no catalog entry, resolvable only by explicit VOL=SER plus UNIT. [DSC] (Added by CR-CH-057.)
 - **Sequential_Dataset (PS)**: A dataset type representing a single flat file -- equivalent to a regular file. Stored as one physical file in the repository's `storage/` directory. [DSC]
 - **Partitioned_Dataset (PDS)**: A dataset type representing a library of members -- equivalent to a directory of files. Each member is an independently addressable unit. Stored as a directory in the repository's `pds/` directory. [DSC]
 - **Partitioned_Dataset_Extended (PDSE)**: A modern variant of PDS with enhanced capabilities (no directory block limit, member-level locking, dynamic space release). Functionally treated identically to PDS in the local emulation. [DSC]
@@ -59,7 +63,7 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 - **Unmount**: The act of hiding a Catalog from the current session without deleting it -- its datasets become invisible and unresolvable. [DSC]
 - **Catalog_Export**: Packaging a catalog's database and repository into a portable archive (ZIP) for sharing or backup. [DSC]
 - **Catalog_Import**: Restoring a catalog from a previously exported archive into a new repository location. [DSC]
-- **Dataset_Resolution**: Looking up a Dataset_Name in mounted catalogs and returning the physical path to the underlying file content. [DSC]
+- **Dataset_Resolution**: Looking up a Dataset_Name in mounted catalogs and following Dataset -> DatasetVolume (by sequence) -> Volume -> locator, after verifying each required Volume is Online. [DSC] (Amended by CR-CH-057 -- Volume split; was: looking up a Dataset_Name and returning the physical path to the underlying file content.)
 - **Properties_Panel**: A UI panel displaying dataset attributes (DSN, type, RECFM, LRECL, BLKSIZE, DSORG, creation date, modification date, physical path). [DSC]
 - **Context_Menu**: A right-click menu on catalog tree nodes offering operations appropriate to the node type (catalog, dataset, PDS member). [DSC]
 
@@ -82,6 +86,8 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 7. WHEN the catalog database file does not exist at the repository root, THE system SHALL create it with the correct schema upon first mount or catalog creation.
 8. THE Catalog_Database SHALL store a `catalog_metadata` table containing: `key` (TEXT PRIMARY KEY), `value` (TEXT) -- for catalog-level properties (catalog name, version, creation date, description).
 9. ALL database operations SHALL use parameterized queries to prevent SQL injection from user-supplied dataset names or paths.
+
+> **Amended by CR-CH-057 -- Volume split:** At schema v4 the Catalog_Database gains a `volumes` table and a `dataset_volumes` table (see Requirement 32), and the `datasets.storage_path` column (criterion 2 above) is SUPERSEDED as the authoritative location by the DatasetVolume (volume_id, locator) pair. `storage_path` is retained read-only for the dual-read migration window (Requirement 32.5); existing criteria 1-9 are otherwise unchanged.
 
 ---
 
@@ -197,6 +203,8 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 **Source:** [DSC] §8 -- Dataset CRUD operations. [DSC, WB]
 
 > **Ownership Clarification (ADR-001):** This requirement defines the **low-level catalog CRUD API** -- the primitives that create/delete/rename catalog entries and their associated physical storage. JCL-driven allocation workflows (parsing DD statements, interpreting DISP semantics, applying defaults, symbolic substitution) are owned by `ff-dsalloc` (Dataset Allocator). The allocator invokes these catalog primitives to execute allocation; it does not duplicate them.
+
+> **Amended by CR-CH-057 -- Volume split:** Allocation now records the target Volume via a DatasetVolume association (Requirement 32.2); the physical storage of a dataset belongs to the resolved Volume (ADR-002), not to the Catalog. The CRUD primitives in this requirement operate on catalog metadata and delegate physical placement to the Volume layer (`ff-volume`). The space-allocation metadata (primary/secondary extents, SPACE units, max extents) and the x37-style capacity failure are specified in the [volume-model](./../volume-model/requirements.md) spec (Requirements 4-7) and surfaced via Requirement 32. Existing criteria 1-11 below are otherwise unchanged.
 
 #### Acceptance Criteria
 
@@ -814,3 +822,29 @@ that only handle local catalogs can be updated minimally.
 
 31.9 ALL existing tests for catalog mount, unmount, resolve, and configuration round-trip SHALL
 continue to pass after this change with no observable behaviour difference for local catalogs.
+
+---
+
+### Requirement 32: Volume Binding and Catalog-as-Locator
+
+**User Story:** As a mainframe developer, I want the catalog to be a pure metadata locator that records which Volume(s) a dataset lives on, so that FFWB can express shared Volumes, multivolume datasets, and uncataloged datasets, and so that catalogs never physically contain dataset bytes.
+
+**Source:** `docs/source-documents/dataset-catalog/FFWB_Storage_and_Catalog_Data_Model.md` ADR-001 (volumes first-class), ADR-002 (catalogs hold metadata only), ADR-003 (metadata-only renames), section 9 (resolution algorithm); recommendation section 5.3; CR-CH-057. Cross-references [volume-model](./../volume-model/requirements.md) Requirements 1, 2, 8, 9 and [dataset-ownership-model](./../dataset-ownership-model/requirements.md) Requirement 21. Content was rephrased for compliance with licensing restrictions.
+
+#### Acceptance Criteria
+
+32.1 THE Catalog_Database SHALL store a `volumes` table at schema v4 containing at minimum: `volume_id` (primary key), `volser` (TEXT UNIQUE NOT NULL), `storage_uri` (TEXT NOT NULL -- the promoted Repository root), `status` (TEXT -- Online/Offline), `access_mode` (TEXT -- ReadWrite/ReadOnly), and capacity counters (total/used in tracks or cylinders). (Volume semantics are owned by volume-model Requirements 1, 2.)
+
+32.2 THE Catalog_Database SHALL store a `dataset_volumes` table at schema v4 containing at minimum: `dataset_id` (FOREIGN KEY referencing datasets), `volume_id` (FOREIGN KEY referencing volumes), `sequence_number` (INTEGER NOT NULL), `is_primary` (BOOLEAN NOT NULL), and `locator` (TEXT NOT NULL -- the opaque per-volume location), replacing the dataset `storage_path` as the authoritative location.
+
+32.3 WHEN resolving a Dataset_Name, THE catalog SHALL follow Dataset -> DatasetVolume (by sequence_number) -> Volume -> locator, and SHALL verify that each required Volume is Online, returning a reported error identifying the first unavailable Volume otherwise. (Online check per volume-model Requirement 2.4.)
+
+32.4 THE catalog SHALL NOT physically contain dataset bytes -- the bytes belong to the resolved Volume's storage (ADR-002); the Catalog_Database SHALL persist dataset metadata and DatasetVolume locators only.
+
+32.5 THE schema v4 migration SHALL, for each existing mounted catalog, create a Volume whose `storage_uri` is the current Repository root, and for each existing `datasets` row insert a `dataset_volumes` row with `locator` set to the existing `storage_path`; it SHALL preserve `storage_path` for dual-read during the transition window, and NO dataset bytes SHALL move (metadata only, ADR-003).
+
+32.6 THE catalog SHALL permit, at the schema level, many catalogs to register datasets on one shared Volume AND one dataset to reside on multiple Volumes (multivolume via an ordered DatasetVolume sequence). (Cardinality per volume-model Requirement 9.2, 9.3.)
+
+32.7 THE catalog SHALL support an Uncataloged_Dataset that physically exists on a Volume with no catalog entry, resolvable by explicit VOL=SER plus UNIT through a resolution path that does not require a catalog row. (Per volume-model Requirement 9.4, 9.5.)
+
+32.8 THE Volume entity used by the catalog SHALL be owned by the `ff-volume` crate on which `ff-dscatalog` depends; the catalog SHALL NOT redefine the Volume type. (Ownership per dataset-ownership-model Requirement 21.)

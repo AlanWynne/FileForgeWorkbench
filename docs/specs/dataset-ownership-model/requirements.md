@@ -156,6 +156,7 @@ The individual subsystem specs (`dataset-catalog`, `dataset-allocator`, `IDCAMS-
 4. WHEN a prohibited dependency is introduced (detectable via `cargo tree` or CI dependency analysis), THE build pipeline SHALL flag it as an architectural violation.
 5. THE ff-dataset-allocator crate SHALL NOT depend on ff-idcams -- allocation is a lower-level service that IDCAMS orchestrates, not the reverse.
 6. TRAIT-BASED indirection SHALL be used at dependency boundaries: ff-dataset-allocator SHALL depend on a `CatalogService` trait (defined in ff-dataset-catalog or a shared interface crate), not on ff-dataset-catalog's concrete implementation types directly. This enables testing and future refactoring without circular dependencies.
+7. (Added by CR-CH-057.) THE permitted dependency chain SHALL include the `ff-volume` layer as the layer `ff-dataset-catalog` depends on for Volume data: `ff-idcams -> ff-dataset-allocator -> ff-dataset-catalog -> ff-volume -> storage providers`. The `ff-volume` crate SHALL NOT depend on `ff-dataset-catalog`, `ff-dataset-allocator`, or `ff-idcams`, so the DAG stays acyclic and ADR-002 (catalogs never own bytes) remains enforceable by construction. See Requirement 21.
 
 ---
 
@@ -377,3 +378,21 @@ The individual subsystem specs (`dataset-catalog`, `dataset-allocator`, `IDCAMS-
 3. THE new subsystem's dependency direction SHALL be appended to the dependency chain without creating cycles -- the DAG property of the dependency graph SHALL be preserved.
 4. THE architectural fitness function (Requirement 18) SHALL be extended to cover the new subsystem's constraints within the same PR that introduces the new crate.
 5. IF the new subsystem requires capabilities not currently exposed by an existing trait interface, THE required trait methods SHALL be added to the owning subsystem's public API through a PR to that subsystem -- the new subsystem SHALL NOT work around missing APIs by accessing internals directly.
+
+---
+
+### Requirement 21: ff-volume Ownership Boundary (CR-CH-057)
+
+**User Story:** As a platform architect, I want the new Volume layer to have a single authoritative owner and a prohibited-dependency rule, so that the "split, not rename" direction keeps catalogs free of dataset bytes (ADR-002) and the dependency graph acyclic.
+
+> **Note -- ADR amendment stub (do NOT rewrite existing ADRs):** This requirement is an ADR-001 amendment pointer for the Volume entity introduced by CR-NR-105 / CR-CH-057. It records the new ownership boundary and the ADR-002 invariant at the ownership layer; a full ownership ADR amendment for the Volume entity is still needed (owner confirms the `ff-volume` crate at implementation). The source model for the Volume entity is `docs/source-documents/dataset-catalog/FFWB_Storage_and_Catalog_Data_Model.md` ADR-001/ADR-002. See [volume-model](./../volume-model/requirements.md) and [dataset-catalog](./../dataset-catalog/requirements.md) Requirement 32.
+
+**Source:** ADR-001 amendment via CR-CH-057; `FFWB_Storage_and_Catalog_Data_Model.md` ADR-001/ADR-002. Content was rephrased for compliance with licensing restrictions.
+
+#### Acceptance Criteria
+
+1. THE `ff-volume` crate SHALL own: the Volume entity, VOLSER identity, Volume status and access mode, the emulated geometry profile, extent accounting, volume capacity counters, and the DatasetVolume association model.
+2. THE `ff-dataset-catalog` (ff-dscatalog) crate SHALL depend on `ff-volume` and SHALL obtain Volume data through its API; it SHALL NOT redefine the Volume type.
+3. THE `ff-volume` crate SHALL NOT depend on `ff-dataset-catalog`, `ff-dataset-allocator`, or `ff-idcams` -- preserving the acyclic DAG so that ADR-002 is enforceable by construction.
+4. THE catalog SHALL NOT physically contain dataset bytes; physical storage belongs to the Volume (this restates ADR-002 at the ownership layer).
+5. THE physical existence of an Uncataloged_Dataset (resolvable by VOL=SER plus UNIT) SHALL be owned by the Volume layer; the catalog layer SHALL own only cataloged resolution.

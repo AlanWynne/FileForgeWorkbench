@@ -617,3 +617,50 @@ This task plan implements the `ff-dscatalog` crate ? the mainframe dataset files
     - Validates: Requirement 31.3, 31.4, 31.6, 31.9
   - [x] 32.8 Run `cargo test -p ff-dscatalog` -- all existing tests must continue to pass.
     - Validates: Requirement 31.9
+
+---
+
+## Tasks Added by CR-CH-057 -- Volume Model Integration
+
+These tasks integrate the first-class Volume layer (volume-model spec, new `ff-volume` crate) into `ff-dscatalog`: the catalog becomes a pure metadata locator, schema v4 adds `volumes` and `dataset_volumes`, resolution gains the DatasetVolume indirection, and a dual-read migration seeds a Volume per existing Repository without moving bytes. All tasks are `[ ]` (pending owner approval; this is a documentation gate). Follow TDD per `testing.md`.
+
+- [ ] 33. Schema v4 -- volumes + dataset_volumes tables and forward migration
+  - [ ] 33.1 Add the `volumes` table (volume_id, volser UNIQUE, storage_uri, status, access_mode, capacity counters) to the schema and bump SCHEMA_VERSION to 4.
+  - [ ] 33.2 Add the `dataset_volumes` table (dataset_id, volume_id, sequence_number, is_primary, locator) with the DatasetVolume constraints.
+  - [ ] 33.3 Implement the forward migration: seed one Volume per existing catalog/Repository (storage_uri = current root, status Online), and insert a `dataset_volumes` row (locator = storage_path, sequence 1, is_primary) for each existing dataset; preserve `storage_path` for dual-read; move NO bytes.
+    - Validates: Requirement 32.1, 32.2, 32.5
+
+- [ ] 34. Resolution via DatasetVolume indirection + Volume online check
+  - [ ] 34.1 Change `resolve_dsn` to go Dataset -> DatasetVolume (by sequence) -> Volume -> locator, with dual-read fallback to `storage_path` for unmigrated rows.
+  - [ ] 34.2 Verify each required Volume is Online during resolution; report the first unavailable Volume.
+  - [ ] 34.3 Ensure the catalog persists metadata + locators only; no dataset bytes are stored in the catalog database.
+    - Validates: Requirement 32.3, 32.4
+
+- [ ] 35. Depend on `ff-volume`
+  - [ ] 35.1 Add the `ff-volume` dependency to `ff-dscatalog`'s `Cargo.toml`; obtain the Volume type and its behaviour from `ff-volume`; do not redefine the Volume type in the catalog.
+    - Validates: Requirement 32.8
+
+- [ ] 36. Multivolume, shared-volume, and uncataloged (VOL=SER + UNIT) resolution
+  - [ ] 36.1 Permit many catalogs to register datasets on one shared Volume and one dataset to reside on multiple Volumes (ordered DatasetVolume sequence) at the schema level.
+  - [ ] 36.2 Implement the uncataloged resolution path (VOL=SER + UNIT) that resolves a dataset on a Volume with no catalog row.
+    - Validates: Requirement 32.6, 32.7
+
+- [ ] 37. Tests -- migration dual-read, volume resolution, uncataloged resolve, shared-volume registration
+  - [ ] 37.1 Migration test: v3 -> v4 seeds a Volume per Repository, populates dataset_volumes from storage_path, moves no bytes, dual-read still resolves.
+  - [ ] 37.2 Resolution test: resolve via DatasetVolume -> Volume -> locator; offline Volume reports the online-check error.
+  - [ ] 37.3 Uncataloged test: a dataset on a Volume with no catalog row resolves by VOL=SER + UNIT.
+  - [ ] 37.4 Cardinality test: two catalogs register datasets on one shared Volume; one dataset spans two Volumes.
+    - Validates: Requirement 32.1, 32.2, 32.3, 32.4, 32.5, 32.6, 32.7
+
+### Acceptance Criteria Coverage (CR-CH-057)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 32: Volume Binding and Catalog-as-Locator | 32.1 (volumes table) | 33.1, 37.1 |
+| Req 32 | 32.2 (dataset_volumes table) | 33.2, 37.1 |
+| Req 32 | 32.3 (resolution indirection + online check) | 34.1, 34.2, 37.2 |
+| Req 32 | 32.4 (catalog never owns bytes) | 34.3 |
+| Req 32 | 32.5 (dual-read migration, no bytes move) | 33.3, 37.1 |
+| Req 32 | 32.6 (shared volume + multivolume) | 36.1, 37.4 |
+| Req 32 | 32.7 (uncataloged VOL=SER + UNIT) | 36.2, 37.3 |
+| Req 32 | 32.8 (depend on ff-volume; no redefine) | 35.1 |

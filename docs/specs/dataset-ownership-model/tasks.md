@@ -132,6 +132,10 @@ This task plan implements the architectural governance infrastructure for the Da
   - [x] 11.2 `docs/adr/template-dataset-subsystem.md` created with Ownership, Prohibited Dependencies, Trait Interface, Integration Pattern, and Fitness Function Updates sections
     - Validates: Requirement 20 AC 1
 
+- [ ] 12. ff-volume ownership boundary alignment (CR-CH-057)
+  - [ ] 12.1 Extend the architectural fitness function to add `ff-volume` prohibition rules (SHALL NOT depend on ff-dataset-catalog, ff-dataset-allocator, ff-idcams, ff-vsam-services) and the permitted `ff-dataset-catalog -> ff-volume` edge; add the ADR amendment for the Volume entity when the crate is created.
+    - Validates: Requirement 21.1, 21.2, 21.3, 21.4, 21.5; Requirement 7.7
+
 ---
 
 ## Acceptance Criteria Coverage
@@ -197,6 +201,8 @@ This task plan implements the architectural governance infrastructure for the Da
 | Req 20: Future Extensibility | AC 3 (DAG preservation) | Design doc |
 | Req 20: Future Extensibility | AC 4 (fitness function extension) | 10.3, 11.1 |
 | Req 20: Future Extensibility | AC 5 (API extension process) | 11.1 |
+| Req 7: Dependency Direction | AC 7 (ff-volume layer, CR-CH-057) | 12.1 |
+| Req 21: ff-volume Ownership (CR-CH-057) | 21.1-21.5 | 12.1 |
 
 ---
 
