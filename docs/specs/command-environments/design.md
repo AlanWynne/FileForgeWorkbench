@@ -140,6 +140,70 @@ handler reads the attribute; it does not enumerate kinds. FFNAV is named now so
 the model and derivation are correct; only FFEDIT is built as a first-class
 environment in phase 1.
 
+### An environment must have a Context that makes it active (no topical environments)
+
+A Command Environment is a DISPATCH SCOPE tied to a focused Context, not a
+topical grouping of related verbs. The dispatch contract is: the Active_Environment
+(derived from the focused Context's kind) gets first crack; whatever it REJECTS
+falls back to FFCMD, the always-present base (Requirement 5.1, and the E8 ordering
+correction). Therefore an environment is only reachable through normal dispatch if
+some focused Context declares it as its Active_Environment. An environment that no
+kind ever declares could be reached ONLY by explicit addressing (`ADDRESS <name>
+...`), never by the fallback chain -- so for everyday verbs it would be dead.
+
+Consequence (owner decision, this CR): verbs that are issued FROM WITHIN whatever
+Context the user is in -- and have no dedicated focused Context of their own --
+belong in FFCMD, the base reachable from everywhere by fallback. This explicitly
+RULES OUT standing up topical environments for them:
+
+- Window / tab / session management -- SPLIT, DETACH, UNSPLIT, FOCUS, DOCK, SWAP,
+  END, RETURN, WORKSPACE (OPEN/SAVE/CLOSE/ADD ROOT), CLOSE -- are FFCMD verbs.
+  There is no "window Context" that is focused to make a hypothetical FFWIN
+  active, so an FFWIN would never be invoked by fallback; these are FFCMD.
+- Screen capture -- SNAPSHOT, CAPTURE -- are FFCMD verbs for the same reason: no
+  "capture Context" is ever focused, so there is no FFSCRM; they are global
+  commands reached from wherever the user is.
+- Global/utility verbs -- HELP, PFSHOW, TIME, RETRIEVE, RESET BARE -- are FFCMD.
+- Editor-numbering AUTONUM is FFEDIT (the editor Context makes FFEDIT active),
+  consistent with the Step-4 editor-verb family.
+
+A subsystem environment (e.g. a future FFJES, FFSQL) is justified ONLY when a
+focused Context exists for it (a job-monitor Context, a Database Context) that
+makes the environment active while the user is in it. Until that Context exists,
+the subsystem's verbs reached from elsewhere go through FFCMD. This is a VISION
+note here, not a phase-1 deliverable.
+
+### Layered verbs: one surface name, per-environment front-ends delegating to a backend
+
+Because the same verb NAME may be owned by several environments (the FIND example
+above), a verb can present a context-appropriate FRONT END in each environment
+while a single lower-layer SERVICE does the real work. Active-wins selects which
+front end runs; each front end translates its context into a call to the shared
+backend. This is the REXX ADDRESS model applied to a service with both an
+implicit ("here") and an explicit ("there") form.
+
+Worked example -- SUBMIT (VISION; the FFJES backend does not exist in phase 1):
+
+- `FFJES.SUBMIT` -- the real implementation, owning the job submission, active
+  while a focused job-monitor Context exists.
+- `FFEDIT.SUBMIT` -- the editor's front end: submits the CURRENT buffer/member
+  (implicit "here"), delegating to the FFJES backend. Active-wins means that in an
+  editor Context, bare SUBMIT is this one.
+- `FFCMD.SUBMIT <dsname>` -- the base front end: takes an EXPLICIT dataset
+  argument (the "there" form), reachable from anywhere by fallback, delegating to
+  the same FFJES backend.
+
+Each front end is a thin environment-specific resolver+translator; none
+re-implements the service. This keeps a verb's dialects consistent (one backend,
+one observable effect per target) while letting each environment express the
+natural local form. The alias/registry model already supports it: the same
+surface form resolves to a canonical verb PER ENVIRONMENT (Requirement 6a), so
+`SUBMIT` can canonicalise and dispatch differently in FFEDIT vs FFCMD without a
+collision (collisions are rejected only WITHIN one environment, per the
+alias-overlay model). Phase 1 builds none of the FFJES pieces; this records the
+principle so FFCMD / FFEDIT are built with the delegation shape in mind and a
+future FFJES slots in without reshaping the model.
+
 ### Verb aliases resolve to a canonical verb (Requirement 6a)
 
 An environment matches a typed surface form to a CANONICAL verb via a
@@ -461,6 +525,13 @@ rollback discipline).
   the same front door independently.
 - Does NOT design the database tool or any future environment; FFLINE is
   named-only; the interactive address prefix is deferred.
+- NO topical environments (no FFWIN, no FFSCRM): an environment must have a
+  focused Context that makes it active, else it is unreachable by fallback.
+  Window / session / capture / global verbs are FFCMD members (see "An environment
+  must have a Context that makes it active"). Subsystem environments (FFJES,
+  FFSQL) are justified only by a future focused Context and are vision-only; the
+  layered-verb delegation principle (SUBMIT front-ends -> shared backend) is
+  recorded as design guidance, not a phase-1 deliverable or a new criterion.
 
 ## Spec-ownership split (per the design proposal)
 

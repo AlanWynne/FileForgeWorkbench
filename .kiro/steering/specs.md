@@ -93,6 +93,7 @@ The following specs exist under `docs/specs/`:
 - viewport-and-scrolling
 - virtual-catalog-manager
 - virtual-file-system
+- volume-model (CR-NR-105: first-class Volume layer -- VOLSER/status/capacity/emulated geometry/extents-as-metadata/x37 + volume-full failures/DEFINE VOLUME; split not rename; new ff-volume crate; gate authored)
 - whitespace-and-guides
 - workbench-requirements-merge (architecture docs and validation reports -- no deliverable crate)
 - workflow-engine

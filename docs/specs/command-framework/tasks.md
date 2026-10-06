@@ -651,12 +651,12 @@ macro. Command-level contract; no dispatch-mechanism change. TDD, scoped checks.
 > (the dispatch/nav work lives in `ff-desktop`). This block records the
 > command-framework obligation. Do NOT start until the gate is approved.
 
-- [ ] 30. `=` reinitialise-to-POM applied once at the front door
-  - [ ] 30.1 The single front-door `=` step (`shell/dispatch.rs`) reinitialises the
+- [x] 30. `=` reinitialise-to-POM applied once at the front door
+  - [x] 30.1 The single front-door `=` step (`shell/dispatch.rs`) reinitialises the
           active tab to the POM (FFCMD_Root) and runs the remainder against FFCMD,
           BEFORE target resolution and the Active_Environment; the three former
           ad-hoc `=` sites are consolidated into it (menu-workspace tasks 39, 44).
     - Validates: command-framework Requirement 10.2 (revised), 10.14 (new)
-  - [ ] 30.2 Update `docs/quality/TCR.md`: set the CR-CH-052 command-framework Req 10
+  - [x] 30.2 Update `docs/quality/TCR.md`: set the CR-CH-052 command-framework Req 10
           rows to their correct status.
     - Covers: Requirement 10.2 (revised), 10.14
