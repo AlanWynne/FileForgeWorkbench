@@ -67,7 +67,7 @@ proptest! {
         prop_assert_eq!(&original.syntax, &round_tripped.syntax);
         prop_assert_eq!(&original.file_tree, &round_tripped.file_tree);
         prop_assert_eq!(&original.tab_bar, &round_tripped.tab_bar);
-        prop_assert_eq!(&original.chrome, &round_tripped.chrome);
+        prop_assert_eq!(&original.gutter, &round_tripped.gutter);
         prop_assert_eq!(&original.decorations, &round_tripped.decorations);
         prop_assert_eq!(&original.ui, &round_tripped.ui);
         prop_assert_eq!(&original.indicators.find_match, &round_tripped.indicators.find_match);

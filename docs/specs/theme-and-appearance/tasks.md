@@ -355,7 +355,8 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 
 ## Phase CR Tasks
 
-- [ ] 20. OS dark/light mode follow (Phase CR)
+- [x] 20. OS dark/light mode follow (Phase CR)
+  - DONE: all subtasks 20.1-20.5 complete (Phase CR, Req 16). Parent box reconciled (was stale `[ ]` while subtasks were `[x]`).
   - [x] 20.1 Register `theme.follow_os` schema key (boolean, default false) in ff-theme schema registration
     - Covers: Requirement 16.1
   - [x] 20.2 In ff-desktop shell update(), read `ctx.style().visuals.dark_mode` each frame; when `theme.follow_os` is true, call `set_mode(Dark)` or `set_mode(Light)` accordingly without persisting to `theme.mode`
@@ -367,19 +368,13 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
   - [x] 20.5 Write unit tests: `follow_os_false_ignores_os_preference`, `follow_os_true_dark_sets_dark_mode`, `follow_os_true_light_sets_light_mode`, `follow_os_does_not_persist_mode_key`
     - Covers: Requirement 16.1–16.7
 
-- [ ] 21. THEME command and menu command-parity (Requirement 17)
-  - [ ] 21.1 Add a `THEME` intercept to `WorkbenchShell::handle_command` (ff-desktop `shell/commands.rs`): `THEME <mode>` -> `VisualMode::from_str_loose` -> `set_theme(mode)`; bare `THEME` -> report current mode; invalid arg -> clear `open_error` listing valid modes
-    - Covers: Requirement 17.1, 17.2, 17.3, 17.4
-  - [ ] 21.2 Route the Settings menu theme buttons (Dark / Light / High Contrast / Legacy) through `handle_command("THEME <mode>")` instead of calling `set_theme` directly
-    - Covers: Requirement 17.5
-  - [ ] 21.3 Keep `set_theme` surfacing a non-silent message on persist failure (no silent revert)
-    - Covers: Requirement 17.6
-  - [ ] 21.4 Write unit tests: `theme_command_sets_mode`, `theme_command_bare_reports_current`, `theme_command_invalid_arg_errors`, `theme_menu_and_command_same_path`
-    - Covers: Requirement 17.1-17.6
+- [x] 21. THEME command and menu command-parity (Requirement 17)
+  - SUPERSEDED by Task 27 (CR-CH-024, "Consolidate legacy themes + name-based THEME command"): Req 17 was rewritten to a NAME-based `THEME <name>` command with the resolver (`resolve_theme_arg`), bare `THEME` opening the Theme Editor, and the Settings menu items dispatching `THEME ...` via `handle_command` (command parity). Task 27.3-27.8 (all `[x]`) deliver the behaviour this task sketched against the earlier mode-only design; the Phase 27 tests (`theme_command_sets_mode`, `theme_menu_and_command_same_path`, resolver + full-shell egui_kittest) cover Req 17.1-17.7. Nothing here is outstanding; this subtask set is retired, not pending.
 
 ## Phase (theme-editor) Tasks -- File-backed themes + Theme editor (Requirements 18-20, CR-NR-074)
 
-- [ ] 22. Default Legacy built-in palette + reset baseline (Requirement 18)
+- [x] 22. Default Legacy built-in palette + reset baseline (Requirement 18)
+  - DONE: subtasks 22.1-22.4 complete (ff-theme palette + fallback + listing); reset-to-baseline (Req 18.4) delivered as the ff-desktop shell action in task 24.5 (`[x]`). Parent box reconciled (was stale `[ ]`).
   - [x] 22.1 Add `ff_theme::defaults::default_legacy_palette()` (name `"Default Legacy"`, colours identical to `legacy_palette()`, `mode: VisualMode::Legacy`)
     - Covers: Requirement 18.1
   - [x] 22.2 Add `Default Legacy` to `BUILTIN_THEME_NAMES` / `builtin_themes()` in `discovery.rs` so it appears in `list_all_themes`
@@ -390,7 +385,8 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
     - Covers: Requirement 18.1-18.6
     - NOTE: 22.1-22.4 (the ff-theme palette + fallback + listing) done. Reset-to-baseline (Req 18.4) is a ff-desktop shell action implemented with the editor (task 24.5); the ff-theme building blocks are in place.
 
-- [ ] 23. File-backed active theme: themes dir, startup load, hot-reload, config split (Requirement 19)
+- [x] 23. File-backed active theme: themes dir, startup load, hot-reload, config split (Requirement 19)
+  - DONE: all subtasks 23.1-23.9 complete (Phase theme-editor, Req 19). Parent box reconciled (was stale `[ ]` while subtasks were `[x]`). Note: built-in `.toml` materialisation was later changed to code-only built-ins in Task 25 (CR-CH-019); the file-backed USER-theme behaviour here stands.
   - [x] 23.1 Added `theme_defaults::ensure_default_theme_files` (create `themes/`, `write_if_absent` each built-in serialised: default-dark/light/high-contrast/legacy/default-legacy)
     - Covers: Requirement 19.1, 19.2
   - [x] 23.2 Called `ensure_default_theme_files` at first-launch (in `main.rs` startup, before palette resolution)
@@ -410,7 +406,8 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
   - [x] 23.9 Tests: themes dir + built-in files created; not overwritten; load by name; absent -> None; resolver fallback + materialised mode-file load (isolated via FFWB_USER_CONFIG_PATH)
     - Covers: Requirement 19.1-19.9
 
-- [ ] 24. Theme Editor Context (Requirement 20)
+- [x] 24. Theme Editor Context (Requirement 20)
+  - DONE: all subtasks 24.1-24.9 complete (Phase theme-editor, Req 20). Parent box reconciled (was stale `[ ]` while subtasks were `[x]`). The editor was later rebuilt onto the egui-native surface in CR-CH-056 Phase 3 (Task 31) incl. the B081 Save fix + import/export; this original delivery is retained for the record.
   - [x] 24.1 Added `TabKind::ThemeEditor` (tab_state.rs, title `[THEME]`) + `TabState::theme_editor` + `open_theme_editor_tab`. (Session restore: the editor is transient and NOT persisted -- `descriptor_for_tab` returns None; the active THEME persists via theme.active_name, Req 19.7.)
     - Covers: Requirement 20.1
   - [x] 24.2 Added `theme_editor_panel: ThemeEditorState` on `WorkbenchShell`; state holds available themes, selected name, working-copy palette, token->hex buffers, name buffer, advisories, error, pending_reset
@@ -494,22 +491,99 @@ This is a **Wave 6 (UI and Rendering)** sub-project. It depends on `ff-configura
 > `set_active_theme` apply+persist path (command parity). Reuses the
 > Command_Palette popup pattern. No existing behaviour changes.
 
-- [ ] 28. THEME LIST popup + Settings Themes submenu
-  - [ ] 28.1 New popup state modelled on `command_palette::state`: `ThemeListState { open, themes: Vec<String>, selected_index }` with `open(active, themes)` (pre-selects the entry equal to `active`, else 0), `close`, `select_next`/`select_prev` (wrap, guard empty), `selected`; and `ThemeListOutcome { None, Apply(String), Dismissed }`
-    - Covers: Requirement 17.8, 17.9, 17.10
-  - [ ] 28.2 Pure render `render_theme_list(ctx, &mut ThemeListState) -> ThemeListOutcome` modelled on `render_command_palette`: centred fixed Window, ScrollArea of selectable name rows (active row highlighted), Escape/click-outside -> Dismissed, ArrowDown/Up -> select, Enter/row-click -> Apply(name)
-    - Covers: Requirement 17.10
-  - [ ] 28.3 Failing state tests first: `open` pre-selects the active theme (and 0 when the active name is absent); `select_next`/`select_prev` wrap; `selected` returns the highlighted name
-    - Validates: Requirement 17.9, 17.10
-  - [ ] 28.4 Shell field `theme_list_state: ThemeListState`; add `|| self.theme_list_state.open` to the `modal_open` OR (update.rs) so Tab-cycle / function keys / Ctrl+S are suppressed while open
-    - Covers: Requirement 17.12
-  - [ ] 28.5 `THEME LIST` command guard in `handle_command`, ordered BEFORE the `THEME ` prefix and bare `THEME` guards: build the name list from `list_all_themes`, open the popup pre-selecting the active theme (`self.palette.name`)
-    - Covers: Requirement 17.8, 17.9
-  - [ ] 28.6 Per-frame render block (dialogs area of update.rs): when open, call `render_theme_list`; on `Apply(name)` call `self.set_active_theme(&name)` (shared apply+persist path); Dismissed/None do nothing
-    - Covers: Requirement 17.10, 17.11
-  - [ ] 28.7 Settings menu-bar nested `ui.menu_button("Themes", ...)` in `render_chrome.rs`, populated from `list_all_themes`, each item dispatching `THEME <name>` via `handle_command` (command parity); keep the `menu_first_id` capture intact
-    - Covers: Requirement 17.13
-  - [ ] 28.8 Full-shell egui_kittest test: `THEME LIST` opens the popup; ArrowDown then Enter applies a different theme (assert `open_error` is None and the active palette / `theme.active_name` changed); Escape closes without changing the theme. Parity test: the Settings Themes submenu path changes the active theme via the command
-    - Validates: Requirement 17.10, 17.11, 17.13
-  - [ ] 28.9 Update `docs/quality/TCR.md` (Req 17.8-17.13 rows -> PASS); verify.ps1 CLEAN (FULL, nextest); rebuild ffwb.exe
-    - Covers: Requirement 17.8-17.13
+- [x] 28. THEME LIST popup + Settings Themes submenu
+  - SUPERSEDED by CR-NR-080 Slice D (configurable menu-bar). The theme-picker behaviour (Req 17.8-17.13) was DELIVERED via the data-driven menu-bar mechanism rather than a bespoke `ThemeListState` popup: a `THEME LIST` menu option is a DYNAMIC source that generates one child per `list_all_themes` entry at runtime (menu-workspace Req 17.10), and selecting an item dispatches `THEME <name>` via `handle_command` through the shared `set_active_theme` apply+persist path (menu-workspace Req 17.11, command parity). Backed by passing tests `menu_bar_dynamic_theme_list_generates_one_item_per_theme` and `menu_bar_leaf_dispatch_is_command_parity` (see TCR CR-NR-080 Slice D rows, PASS). The original Req 17.8-17.13 bespoke-popup TCR rows remain RED with the recorded NOTE that the menu-bar mechanism satisfies the behaviour; no bespoke popup is needed, so this subtask set is retired, not pending. If a dedicated centred popup is ever wanted as an additional affordance, re-open as a new task.
+
+## Phase (theme-egui-rework) Tasks -- egui-native theme model (CR-CH-056, Req 23/24/25; reworks 1/5/6/8/13/14/18/20)
+
+> FRAMEWORK CHANGE (owner-confirmed). Rework the theme model to be egui-native:
+> a CHROME layer that configures the full `egui::Style`/`Visuals` (serialised via
+> egui's own serde) + RETAINED domain groups egui does not model. Single
+> `apply_to_egui` seam; Solarized Dark/Light defaults; Legacy retrofit (toned
+> primary-menu `#000060`) + new Legacy Soft (`#33FF66` body); versioned TOML with
+> embedded `Style`, v1->v2 load, resolved `base`; Theme Editor rebuilt to edit the
+> egui surface + domain groups + import/export + the B081 Save fix. Five phases
+> (model+egui mapping; built-in instances; editor rebuild incl B081; version+
+> migration+base; docs). Builds ON the existing WorkspaceContext / command-dispatch
+> framework (unchanged). Reference: `.agents/tasks/theme-egui-rework/findings.md`.
+
+### Phase 1 -- Model + egui mapping
+
+- [x] 29. Enable egui serde + chrome layer type + apply_to_egui seam
+  - [x] 29.1 Enable egui's `serde` feature on the egui dependency in the workspace `Cargo.toml` (egui 0.33) so `Style`/`Visuals`/`WidgetVisuals` get serde derives
+    - Covers: Requirement 23.2
+  - [x] 29.2 Add the chrome layer type in `ff-theme` (e.g. `ChromeStyle`) backed by `egui::Style` via egui serde; it carries the full themable `Visuals`/`WidgetVisuals` surface (window/panel fills, per-state fills+strokes+corner radius+expansion, selection, hyperlink, extreme/faint/code bg, warn/error, shadows, dark_mode)
+    - Covers: Requirement 23.1, 23.2
+  - [x] 29.3 Implement `ChromeStyle::apply_to_egui(&self, &mut egui::Style)` as the single wholesale apply (colours + spacing/rounding/shadow from DesignTokens + dark_mode from VisualMode)
+    - Covers: Requirement 23.5, 23.6
+  - [x] 29.4 Change `ThemePalette` to carry the chrome layer; rename the `chrome` domain group to `gutter`; retain syntax/file_tree/decorations/indicators/style_slots/elements/fonts/design/mode/name; add thin UiColours/TabBarColours migration shims if needed
+    - Covers: Requirement 23.1, 23.3
+  - [x] 29.5 Rewrite `WorkbenchShell::apply_theme` (render_theme.rs) to call `apply_to_egui` wholesale and `ctx.set_style`; REMOVE the hardcoded Legacy slider-colour injection at the seam; set `visuals.dark_mode` to match VisualMode
+    - Covers: Requirement 23.5
+  - [x] 29.6 Failing tests first: `apply_to_egui` sets the full `Style`/`Visuals` surface (not just ~15 fields); DesignTokens spacing/rounding/shadow reach `Style`; the Legacy slider colours now come from the Legacy chrome `Style` not the seam
+    - Validates: Requirement 23.5, 23.6
+  - [x] 29.7 Migrate the ~33 chrome read sites in `shell/render_*.rs` (render_theme/render_command_line/render_status/render_split_region/render_tab_bar/render.rs) to read the applied egui `Style`/`Visuals` or the chrome layer instead of flat `palette.ui.*`/`palette.tab_bar.*`/`palette.editor.{accent,foreground,background}`; leave the domain read sites (file-tree category_colour, syntax/gutter via ColourToken) unchanged
+    - Covers: Requirement 23.3, 23.5; Requirement 8.4, 8.5 (re-expressed)
+    - DONE (Phase 1): owner ran full ffwb-gate.ps1 CLEAN. ChromeStyle backed by egui::Style via egui serde; apply_to_egui wholesale seam (Legacy slider injection removed; sliders restored in Phase 2); chrome->gutter rename; ui/tab_bar/editor kept as thin authoring shims; ~33 read sites migrated.
+
+### Phase 2 -- Built-in instances
+
+- [x] 30. Solarized Dark/Light + Legacy retrofit + Legacy Soft (built-in set 4 -> 5)
+  - [x] 30.1 Build the `Default Dark` Solarized Dark instance (bg base03 `#002B36`/base02 `#073642`, fg base0 `#839496`/base1 `#93A1A1`, shared Solarized accents) satisfying the egui-Visuals three-level hierarchy + accent focus ring + accent active tab + accent primary-menu band
+    - Covers: Requirement 18.3, 23.7, 23.8, 23.9, 23.10
+  - [x] 30.2 Build the `Default Light` Solarized Light instance (bg base3 `#FDF6E3`/base2 `#EEE8D5`, fg base00 `#657B83`/base01 `#586E75`, shared accents) satisfying the same chrome contract
+    - Covers: Requirement 18.3, 23.7, 23.8, 23.9, 23.10
+    - NOTE (DONE): Light body fg deepened to `#4E5F64` (not literal base00 `#657B83`) because base00-on-base3 is 4.13:1, below AA; base00/base01 kept for the >=3:1 muted/UI roles (Req 23.11 outranks the literal value; reviewer-verified).
+  - [x] 30.3 Retrofit `Default Legacy` onto the egui `Style`; tone the primary option-menu background `#0000AA` -> `#000060`; keep all other Legacy colours byte-identical
+    - Covers: Requirement 13.2 (amended), 18.3
+    - NOTE (DONE): ISPF slider colours restored INSIDE the Legacy ChromeStyle (no seam hack), closing the Phase 1 deferral.
+  - [x] 30.4 Add the `Legacy Soft` built-in: softer phosphor variant keeping ISPF roles in the domain groups, body green `#00FF00` -> `#33FF66` (+ comparable softening); add it to `discovery::BUILTIN_THEME_NAMES` (set grows 4 -> 5)
+    - Covers: Requirement 18.3
+  - [x] 30.5 Add the `legacy soft` / `legacy-soft` / `legacy_soft` shorthand to the THEME resolver (`resolve_theme_arg` built-in shorthand map)
+    - Covers: Requirement 17.2 (shorthand), 18.3
+  - [x] 30.6 Tests: Solarized Dark/Light chrome hierarchy + accent + `check_theme_contrast` no NEW below-AA pair; High Contrast unchanged (AAA); Legacy primary-menu is `#000060` and everything else byte-identical; Legacy Soft body is `#33FF66`; built-in count is five; `legacy soft` shorthand resolves to `Legacy Soft`
+    - Validates: Requirement 18.3, 23.7, 23.11; 17.2
+    - DONE (Phase 2): owner ran full ffwb-gate.ps1 CLEAN (9581 tests pass). Colour data in defaults_solarized.rs / defaults_legacy_soft.rs; defaults.rs 897 -> 825 lines. Commit be1ec7e.
+
+### Phase 3 -- Theme Editor rebuild (incl. B081)
+
+- [x] 31. Rebuild the Theme Editor for the egui surface + import/export + B081 Save fix
+  - [x] 31.1 Derive the editor's editable surface from the egui `Style`/`Visuals` chrome fields + retained domain groups (replace the fixed `EditableToken::ALL`); prefer generating the chrome field list; retarget the `== 14` count test to the derived count
+    - Covers: Requirement 20.11
+  - [x] 31.2 Add `Export` and `Import` `ThemeEditorAction` variants + UI affordances; apply in `apply_theme_editor_action` (Export = serialise to chosen path; Import = read+validate+write into themes/+refresh); both expressible as commands (parity)
+    - Covers: Requirement 20.12, 24.1, 24.2, 24.5
+  - [x] 31.3 Reject foreign/invalid imports with a clear non-silent message; no corruption of existing themes or the active theme
+    - Covers: Requirement 24.3
+  - [x] 31.4 Fix B081 in the pure render: when Save is pressed with a built-in selected, prompt for (or focus a pre-filled, editable) new unique name and perform Save As; Save is never a silent no-op
+    - Covers: Requirement 20.5 (amended), 20.13; B081
+  - [x] 31.5 Add the full-shell `egui_kittest` test that types a name and presses Save/Save As, asserting a user `.toml` is written and the theme becomes selectable (previously untested interactive render-to-action seam); re-point the Theme Editor first-Tab egui_kittest test if the first control changed
+    - Validates: Requirement 20.13; B081; workspace-conformance (first-Tab)
+    - DONE (Phase 3): owner ran full ffwb-gate.ps1 CLEAN (9595 tests pass, +14 vs Phase 2). editable_surface.rs (derived ~50-token surface); B081 fixed via name_buffer pre-fill (real de-duplicated default) so Save/Copy/Save As enabled from first frame + Save-on-built-in creates a user theme; Export/Import actions + THEME EXPORT/THEME IMPORT command parity; import rejects foreign/invalid + built-in-name shadow; ff_theme::export_theme/parse_native_theme helpers. NOTE: the implementing agent hung TWICE at the end-of-phase test-verification stage after the code was complete; verification completed via the owner's full gate. CLOSES B081.
+
+### Phase 4 -- Version + migration + base
+
+- [x] 32. Versioned TOML, v1->v2 load, version-tolerant Style, base resolution
+  - [x] 32.1 Add the top-level `version` field to the format metadata (and record the egui version the `Style` blob was written against); embed the egui `Style` as a TOML sub-table
+    - Covers: Requirement 25.1, 25.6
+  - [x] 32.2 Loader branches on `version`: absent/v1 -> map present keys into the chrome layer + default-fill the new egui fields; v2 -> native path; no destructive migration (optional re-serialise to v2 on Save)
+    - Covers: Requirement 25.2
+  - [x] 32.3 Version-tolerant `Style` deserialise: missing egui fields take egui/mode defaults, extra/unrecognised egui fields ignored
+    - Covers: Requirement 25.3
+  - [x] 32.4 RESOLVE `base` in the loader (stop discarding it at loader.rs:57): tokens absent from the file inherit from the named base, then the mode default; unresolvable base WARNs + falls back
+    - Covers: Requirement 25.4, 25.5; 14.4, 14.5, 15.5
+  - [x] 32.5 Tests: v1 file loads with default-fill; v2 round-trips (incl. chrome `Style` sub-table + version + base metadata); `Style` with missing/extra fields loads; `base` resolves (inherited tokens come from base, not default); unresolvable base WARNs
+    - Validates: Requirement 25.2, 25.3, 25.4, 25.5, 25.7
+    - DONE (Phase 4): owner ran full ffwb-gate.ps1 CLEAN (9613 tests pass, +18 vs Phase 3). version=2 + egui_version metadata + embedded [chrome_style] sub-table (flat authoring groups stay authoritative, chrome Style derived on load); v1 default-fill backward-compat; version-tolerant Style deserialise; base resolved with depth-16 cycle detection + unresolvable-base WARN/fallback. New: format_version.rs, loader_parse.rs.
+
+### Phase 5 -- Docs + test migration
+
+- [x] 33. Rewrite theme docs egui-native; migrate affected tests; TCR
+  - [x] 33.1 Rewrite the theme-authoring documentation to be egui-native (Style/Visuals vocabulary) with ISPF/Legacy as a retrofit; reflect the Theme vs egui Style/Visuals glossary
+    - Covers: Requirement 23.4 (terminology honesty); documentation.md
+    - DONE (Phase 5): `docs/specs/theme-and-appearance/theme-authoring.md` written egui-native -- Theme = a chrome `egui::Style` (via egui's own serde) PLUS the retained domain groups; ISPF/Legacy framed as ONE retrofitted instance, not the primary vocabulary; includes the Theme vs egui Style/Visuals glossary, the versioned-v2 TOML format (version/egui_version, flat authoring groups authoritative, derived chrome, embedded `[chrome_style]` snapshot), the renamed `gutter` group note, `base` resolution, the five built-ins, and the Copy/Save/Save As/Import/Export + THEME/THEMES commands. ASCII-clean (grep for non-ASCII: no matches).
+  - [x] 33.2 Migrate the ~25-30 existing tests that assert specific chrome FIELDS (ff-theme round-trip/loader/defaults ~20; ff-theme-editor `== 14` + get/set; ff-desktop `palette.ui.*`/`palette.tab_bar.*` focus/POM/menu tests) to assert the chrome `Style`/`Visuals` or the renamed `gutter` group; leave `.mode`/`.name` THEME-command tests unchanged
+    - Covers: Requirement 23.1, 23.3 (test migration)
+    - DONE (Phase 5): AUDIT found NO leftover old-chrome-FIELD tests to migrate -- the migration was completed across Phases 1-4. Evidence: (a) production chrome read sites (`render_tab_bar.rs`, `render_split_region.rs`, `render_command_line.rs`) already read `self.palette.chrome_style.*` accessors, not flat `palette.tab_bar.*`/`palette.ui.*` (Phase 1); (b) the old `chrome` domain group is fully renamed to `gutter` -- grep for `palette.chrome.`/`ChromeColours` in `crates/**/*.rs` finds only the renamed-from comment in `palette.rs`; (c) the hardcoded `== 14` editor-token-count assertions were already migrated to `> 14` (`ff-theme-editor` `lib.rs` + `editable_surface.rs`). The remaining `palette.ui.*`/`palette.tab_bar.*`/`ui.focus_ring` test references assert the RETAINED authoring groups (design C56.2 keeps them authoritative; chrome is DERIVED from them -- `chrome_style.focus_ring = ui.focus_ring`), not removed fields, and the `focus_ring` tests validate accessibility Req 3.1-3.3, not CR-CH-056. `.mode`/`.name` THEME-command tests left unchanged. Nothing migrated, nothing deferred.
+  - [x] 33.3 Update `docs/quality/TCR.md` (Req 23/24/25 rows + reworded 13.2/18.3/20.5/20.11-20.13 rows -> PASS as implemented); run SCOPED `cargo check/test/clippy -p ff-theme -p ff-theme-editor -p ff-desktop` + `cargo fmt`; hand off to the owner for the full `ffwb-gate.ps1`
+    - Covers: Requirement 23, 24, 25 (coverage record)
+    - DONE (Phase 5): TCR CR-CH-056 section carries all Req 23/24/25 rows + the reworded 13.2/18.3/20.5/20.11-20.13 rows as PASS (Req 24.4 is a deliberate OUT-OF-SCOPE exclusion, left RED with a note -- external-format import not implemented this gate). Req 23.4 cites the new authoring guide. SCOPED checks CLEAN: `cargo test -p ff-theme -p ff-theme-editor` (ff-theme 149 unit tests pass, 0 failed; editor + integration green), `cargo clippy -p ff-theme -p ff-theme-editor -- -D warnings` (no warnings), `cargo fmt -p ff-theme -p ff-theme-editor --check` (no diffs), `cargo check -p ff-desktop` (Finished, compiles). Full `ffwb-gate.ps1` handed off to the owner.

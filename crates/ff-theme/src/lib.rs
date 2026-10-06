@@ -63,6 +63,12 @@ pub mod discovery;
 /// Theme TOML loading, inheritance resolution, and validation.
 pub mod loader;
 
+/// Per-group TOML parsing helpers for the theme loader (split from `loader`).
+mod loader_parse;
+
+/// Theme file format version metadata and `base` inheritance resolution.
+pub mod format_version;
+
 /// Theme palette serialisation to TOML format.
 pub mod serialiser;
 
@@ -100,13 +106,17 @@ pub use design_tokens::{
     ShadowDef, ShadowLevel, ShadowScale, SpacingLevel, SpacingScale,
 };
 pub use discovery::{
-    builtin_themes, export_theme, is_builtin_theme, list_all_themes, scan_themes_dir, ThemeInfo,
+    builtin_themes, export_theme, is_builtin_theme, list_all_themes, parse_native_theme,
+    scan_themes_dir, ThemeInfo,
 };
 pub use element::Element;
 pub use error::ThemeError;
 pub use event::ThemeEvent;
 pub use extension::{ExtensionToken, ThemeExtension};
 pub use font::{FontConfig, FontStack};
+pub use format_version::{
+    builtin_palette_by_name, EMBEDDED_EGUI_VERSION, LEGACY_FORMAT_VERSION, THEME_FORMAT_VERSION,
+};
 pub use mode::VisualMode;
 pub use palette::ThemePalette;
 pub use style_slot::{CaseTransform, StyleSlot, StyleSlotTable};

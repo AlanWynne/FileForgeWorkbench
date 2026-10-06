@@ -11,6 +11,10 @@ ff-logging = { path = "../ff-logging" }
 serde = { workspace = true }
 toml = { workspace = true }
 thiserror = { workspace = true }
+# CR-CH-056 (Req 23.1, 23.2): the chrome layer is backed by egui::Style and
+# serialised via egui's own serde derives (the `serde` feature is enabled on the
+# workspace egui dependency).
+egui = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

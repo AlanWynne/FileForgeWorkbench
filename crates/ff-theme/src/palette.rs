@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::chrome_style::ChromeStyle;
 use crate::colour::ColourRGBA;
 use crate::design_tokens::DesignTokens;
 use crate::element::ElementColourMap;
@@ -94,9 +95,12 @@ pub struct TabBarColours {
     pub drop_target: ColourRGBA,
 }
 
-/// Colours for editor chrome elements (line numbers, margins, etc.).
+/// Colours for the editor GUTTER (line numbers, fold margin, cursor row/col,
+/// margin separator). egui does NOT model an editor gutter, so this is a
+/// first-class DOMAIN group (CR-CH-056 Req 23.3). RENAMED from `ChromeColours`
+/// so it does not clash with the new egui-native chrome layer ([`ChromeStyle`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ChromeColours {
+pub struct GutterColours {
     /// Cursor row border.
     pub cursor_row_border: ColourRGBA,
     /// Cursor column indicator.
@@ -204,8 +208,10 @@ pub struct ThemePalette {
     pub file_tree: FileTreeColours,
     /// Tab bar colours.
     pub tab_bar: TabBarColours,
-    /// Editor chrome colours.
-    pub chrome: ChromeColours,
+    /// Editor gutter colours (line numbers, fold margin, cursor row/col).
+    /// RENAMED from `chrome` (CR-CH-056 Req 23.3) to free the name for the new
+    /// egui-native chrome layer below.
+    pub gutter: GutterColours,
     /// Text decoration colours.
     pub decorations: DecorationColours,
     /// Indicator colours.
@@ -220,6 +226,12 @@ pub struct ThemePalette {
     pub design: DesignTokens,
     /// Element colour map.
     pub elements: ElementColourMap,
+    /// egui-native chrome layer (CR-CH-056 Req 23.1): the `egui::Style` this
+    /// Theme produces, plus the FFWB-only chrome colours egui does not model.
+    /// In Phase 1 this is DERIVED from the retained `ui`/`tab_bar`/`editor`
+    /// groups + `design` + `mode` (so appearance is unchanged); later phases
+    /// make it the authoring surface.
+    pub chrome_style: ChromeStyle,
 }
 
 impl ThemePalette {
@@ -262,13 +274,16 @@ impl ThemePalette {
             ColourToken::TabBarModifiedIndicator => self.tab_bar.modified_indicator,
             ColourToken::TabBarCloseButton => self.tab_bar.close_button,
             ColourToken::TabBarDropTargetHighlight => self.tab_bar.drop_target,
-            ColourToken::ChromeCursorRowBorder => self.chrome.cursor_row_border,
-            ColourToken::ChromeCursorColumnIndicator => self.chrome.cursor_column_indicator,
-            ColourToken::ChromeLineNumberForeground => self.chrome.line_number_fg,
-            ColourToken::ChromeLineNumberBackground => self.chrome.line_number_bg,
-            ColourToken::ChromeFoldMarginBackground => self.chrome.fold_margin_bg,
-            ColourToken::ChromeFoldMarginForeground => self.chrome.fold_margin_fg,
-            ColourToken::ChromeMarginSeparator => self.chrome.margin_separator,
+            // CR-CH-056 Req 23.3: the gutter group (formerly `chrome`). The
+            // `ColourToken::Chrome*` variant names are retained so the token API
+            // and every editor-side read site are unchanged.
+            ColourToken::ChromeCursorRowBorder => self.gutter.cursor_row_border,
+            ColourToken::ChromeCursorColumnIndicator => self.gutter.cursor_column_indicator,
+            ColourToken::ChromeLineNumberForeground => self.gutter.line_number_fg,
+            ColourToken::ChromeLineNumberBackground => self.gutter.line_number_bg,
+            ColourToken::ChromeFoldMarginBackground => self.gutter.fold_margin_bg,
+            ColourToken::ChromeFoldMarginForeground => self.gutter.fold_margin_fg,
+            ColourToken::ChromeMarginSeparator => self.gutter.margin_separator,
             ColourToken::DecorationSearchHighlight => self.decorations.search_highlight,
             ColourToken::DecorationErrorUnderline => self.decorations.error_underline,
             ColourToken::DecorationWarningUnderline => self.decorations.warning_underline,
@@ -298,6 +313,25 @@ impl ThemePalette {
             ColourToken::UiPrimaryMenuBackground => self.ui.primary_menu_bg,
             ColourToken::UiFocusRing => self.ui.focus_ring,
         }
+    }
+
+    /// Re-derive the egui-native [`ChromeStyle`] from the flat authoring groups
+    /// (`ui` / `tab_bar` / `editor`) + `design` + `mode`, exactly as the loader
+    /// and the built-in constructors do. The Theme Editor calls this after
+    /// editing a chrome authoring field so the live preview (which applies
+    /// `chrome_style` to egui) reflects the edit; on save the flat groups are
+    /// serialised and the loader re-derives `chrome_style` on load, so chrome
+    /// edits round-trip without a file-format change (CR-CH-056 Req 20.11).
+    ///
+    /// Validates: theme-and-appearance Requirement 20.11, 23.5.
+    pub fn rederive_chrome_style(&mut self) {
+        self.chrome_style = ChromeStyle::from_palette_parts(
+            &self.ui,
+            &self.tab_bar,
+            &self.editor,
+            &self.design,
+            self.mode,
+        );
     }
 }
 

@@ -3,7 +3,7 @@
 //!
 //! Extracted from `ff-desktop`'s `theme_editor_panel.rs` as the first
 //! behaviour-preserving decomposition wave. This crate holds ONLY the pure,
-//! shell-independent part: the editable-token model, the action enum, the
+//! shell-independent part: the editable-surface model, the action enum, the
 //! per-Context UI state, and the `render` free function. It depends solely on
 //! `ff_theme` + `egui` (no `ff-desktop`, no shell types).
 //!
@@ -11,123 +11,32 @@
 //! `apply_theme_editor_action` side effects (file writes, palette swap, config
 //! persist) -- stays in `ff-desktop`, which owns the `WorkspaceContext` trait.
 //!
-//! A simple, fast editor Workspace: pick a theme, edit its visible-chrome
-//! colours as hex, and Copy / Save / Save As / Set Active / Reset. The render
+//! A simple, fast editor Workspace: pick a theme, edit its colours as hex, and
+//! Copy / Save / Save As / Set Active / Reset / Export / Import. The render
 //! function is a free function (mirroring `config_panel::render` and
 //! `command_config::render`) returning a [`ThemeEditorAction`] the shell applies
 //! against the themes directory and the active palette.
 //!
-//! Owner directive: keep it simple first (a token list with hex fields), not a
-//! graphical colour picker.
+//! CR-CH-056 (Phase 3): the editable surface is now DERIVED from the egui
+//! `Style` / `Visuals` chrome fields plus the retained domain groups
+//! ([`editable_surface`], Requirement 20.11), replacing the former fixed
+//! 14-token `ui`/`editor` list; and B081 is fixed -- the New-name field is
+//! PRE-FILLED with a real, de-duplicated name (not placeholder text) when the
+//! editor opens on a built-in, so Save/Save As/Copy are enabled from the first
+//! frame and pressing Save on a built-in performs Save As (Requirement 20.5
+//! amended, 20.13).
 //!
 //! Validates: theme-and-appearance Requirement 20.
 
+mod editable_surface;
+
+pub use editable_surface::EditableToken;
+
 use ff_theme::{ColourRGBA, ThemePalette};
-
-/// The editable chrome tokens exposed by the Theme Editor. Deliberately the
-/// subset that drives the visible chrome (ui + editor groups), so the editor is
-/// simple and fast (Requirement 20.3). More tokens can be added later.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EditableToken {
-    UiPanelBg,
-    UiPanelFg,
-    UiPanelBorder,
-    UiButtonBg,
-    UiButtonFg,
-    UiInputBg,
-    UiInputFg,
-    UiInputBorder,
-    UiMenuBarFg,
-    UiPrimaryMenuBg,
-    UiFocusRing,
-    EditorBackground,
-    EditorForeground,
-    EditorAccent,
-}
-
-impl EditableToken {
-    /// All editable tokens in display order.
-    pub const ALL: &'static [EditableToken] = &[
-        EditableToken::UiPanelBg,
-        EditableToken::UiPanelFg,
-        EditableToken::UiPanelBorder,
-        EditableToken::UiButtonBg,
-        EditableToken::UiButtonFg,
-        EditableToken::UiInputBg,
-        EditableToken::UiInputFg,
-        EditableToken::UiInputBorder,
-        EditableToken::UiMenuBarFg,
-        EditableToken::UiPrimaryMenuBg,
-        EditableToken::UiFocusRing,
-        EditableToken::EditorBackground,
-        EditableToken::EditorForeground,
-        EditableToken::EditorAccent,
-    ];
-
-    /// Human-readable label for the token.
-    pub fn label(self) -> &'static str {
-        match self {
-            EditableToken::UiPanelBg => "Panel background",
-            EditableToken::UiPanelFg => "Panel foreground",
-            EditableToken::UiPanelBorder => "Panel border",
-            EditableToken::UiButtonBg => "Button background",
-            EditableToken::UiButtonFg => "Button foreground",
-            EditableToken::UiInputBg => "Input background",
-            EditableToken::UiInputFg => "Input foreground",
-            EditableToken::UiInputBorder => "Input border",
-            EditableToken::UiMenuBarFg => "Menu bar text",
-            EditableToken::UiPrimaryMenuBg => "Primary menu background",
-            EditableToken::UiFocusRing => "Focus ring",
-            EditableToken::EditorBackground => "Editor background",
-            EditableToken::EditorForeground => "Editor foreground",
-            EditableToken::EditorAccent => "Editor accent",
-        }
-    }
-
-    /// Read the token's current colour from a palette.
-    pub fn get(self, p: &ThemePalette) -> ColourRGBA {
-        match self {
-            EditableToken::UiPanelBg => p.ui.panel_bg,
-            EditableToken::UiPanelFg => p.ui.panel_fg,
-            EditableToken::UiPanelBorder => p.ui.panel_border,
-            EditableToken::UiButtonBg => p.ui.button_bg,
-            EditableToken::UiButtonFg => p.ui.button_fg,
-            EditableToken::UiInputBg => p.ui.input_bg,
-            EditableToken::UiInputFg => p.ui.input_fg,
-            EditableToken::UiInputBorder => p.ui.input_border,
-            EditableToken::UiMenuBarFg => p.ui.menu_bar_fg,
-            EditableToken::UiPrimaryMenuBg => p.ui.primary_menu_bg,
-            EditableToken::UiFocusRing => p.ui.focus_ring,
-            EditableToken::EditorBackground => p.editor.background,
-            EditableToken::EditorForeground => p.editor.foreground,
-            EditableToken::EditorAccent => p.editor.accent,
-        }
-    }
-
-    /// Write the token's colour into a palette.
-    pub fn set(self, p: &mut ThemePalette, c: ColourRGBA) {
-        match self {
-            EditableToken::UiPanelBg => p.ui.panel_bg = c,
-            EditableToken::UiPanelFg => p.ui.panel_fg = c,
-            EditableToken::UiPanelBorder => p.ui.panel_border = c,
-            EditableToken::UiButtonBg => p.ui.button_bg = c,
-            EditableToken::UiButtonFg => p.ui.button_fg = c,
-            EditableToken::UiInputBg => p.ui.input_bg = c,
-            EditableToken::UiInputFg => p.ui.input_fg = c,
-            EditableToken::UiInputBorder => p.ui.input_border = c,
-            EditableToken::UiMenuBarFg => p.ui.menu_bar_fg = c,
-            EditableToken::UiPrimaryMenuBg => p.ui.primary_menu_bg = c,
-            EditableToken::UiFocusRing => p.ui.focus_ring = c,
-            EditableToken::EditorBackground => p.editor.background = c,
-            EditableToken::EditorForeground => p.editor.foreground = c,
-            EditableToken::EditorAccent => p.editor.accent = c,
-        }
-    }
-}
 
 /// An action produced by the Theme Editor render, applied by the shell.
 ///
-/// Validates: theme-and-appearance Requirement 20.4-20.8.
+/// Validates: theme-and-appearance Requirement 20.4-20.8, 20.12.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum ThemeEditorAction {
     /// No action this frame.
@@ -147,6 +56,12 @@ pub enum ThemeEditorAction {
     SetActive(String),
     /// Reset the selected theme's file to its built-in baseline.
     Reset(String),
+    /// Export the selected/active theme to a native FFWB theme file (the shell
+    /// chooses the destination path, e.g. via a file-save picker).
+    Export,
+    /// Import a native FFWB theme file as a selectable user theme (the shell
+    /// chooses the source path, e.g. via a file-open picker).
+    Import,
 }
 
 /// Per-Context UI state for the Theme Editor. Lives on the shell (like
@@ -161,9 +76,11 @@ pub struct ThemeEditorState {
     pub selected: Option<String>,
     /// The working-copy palette being edited (unsaved edits live here).
     pub working: Option<ThemePalette>,
-    /// Per-token hex text-edit buffers, indexed positionally by `EditableToken::ALL`.
+    /// Per-token hex text-edit buffers, indexed positionally by
+    /// [`EditableToken::all`].
     pub hex_buffers: Vec<String>,
-    /// New-name buffer for Copy / Save As.
+    /// New-name buffer for Copy / Save As. PRE-FILLED with a real, de-duplicated
+    /// name on load (B081 fix) so the create actions are enabled immediately.
     pub name_buffer: String,
     /// Contrast advisory messages (below-AA pairs), non-blocking.
     pub advisories: Vec<String>,
@@ -193,16 +110,52 @@ impl ThemeEditorState {
     }
 
     /// Load a theme as the working copy: sets `selected`, `working`, and
-    /// initialises the per-token hex buffers from the palette.
+    /// initialises the per-token hex buffers from the palette. Also PRE-FILLS
+    /// `name_buffer` with a real, de-duplicated default name (B081 fix,
+    /// Requirement 20.5/20.13) so Copy / Save As / Save are enabled from the
+    /// first frame and never a silent no-op.
     pub fn load_working(&mut self, name: &str, palette: ThemePalette) {
-        self.hex_buffers = EditableToken::ALL
+        self.hex_buffers = EditableToken::all()
             .iter()
             .map(|t| t.get(&palette).to_hex())
             .collect();
         self.selected = Some(name.to_string());
         self.working = Some(palette);
         self.error = None;
+        // B081: pre-fill a real, non-empty name (NOT placeholder/hint text) so
+        // the create-a-user-theme buttons are enabled immediately. For a built-in
+        // selection this makes pressing Save a single discoverable Save As.
+        self.name_buffer = self.default_new_name(name);
         self.recompute_advisories();
+    }
+
+    /// Derive a unique, non-empty default name for the New-name field from the
+    /// selected theme name, de-duplicated against the available list. For a
+    /// built-in `Foo`, suggests `Foo Copy`, then `Foo Copy 2`, etc.; for a user
+    /// theme it suggests the same so Save As does not collide.
+    ///
+    /// Validates: theme-and-appearance Requirement 20.4, 20.5, 20.13.
+    pub fn default_new_name(&self, selected: &str) -> String {
+        let base = if selected.trim().is_empty() {
+            "My Theme".to_string()
+        } else {
+            format!("{} Copy", selected.trim())
+        };
+        if !self.name_taken(&base) {
+            return base;
+        }
+        for n in 2..1000 {
+            let candidate = format!("{base} {n}");
+            if !self.name_taken(&candidate) {
+                return candidate;
+            }
+        }
+        base
+    }
+
+    /// True when `name` (case-insensitive) already exists in the available list.
+    fn name_taken(&self, name: &str) -> bool {
+        self.available.iter().any(|n| n.eq_ignore_ascii_case(name))
     }
 
     /// Recompute the contrast advisories for the working palette
@@ -222,7 +175,7 @@ impl ThemeEditorState {
 
 /// Render the Theme Editor Context, returning the action to apply.
 ///
-/// Validates: theme-and-appearance Requirement 20.1, 20.3-20.9.
+/// Validates: theme-and-appearance Requirement 20.1, 20.3-20.9, 20.12.
 pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAction {
     // B052 fix: keep explicit button/selector actions separate from the token
     // editor's commit-on-lost-focus action. A button click must WIN over a
@@ -231,9 +184,6 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
     // fall back to `token_action`.
     let mut action = ThemeEditorAction::None;
     let mut token_action = ThemeEditorAction::None;
-
-    // CR-CH-045 (Req 17.14): the in-body "Theme Editor" title was removed; the
-    // Context title now shows once, centered, on the Title_Line.
 
     // --- Theme selector -------------------------------------------------
     // Reset the reported first-interior id each frame; the combo below sets it
@@ -291,12 +241,16 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
 
     ui.separator();
 
-    // --- Copy / Save As name field -------------------------------------
+    // --- Copy / Save As / Save + Import / Export -----------------------
+    // B081: the name field is PRE-FILLED (by load_working) with a real name, so
+    // name_ok is true from the first frame and Copy / Save As are enabled
+    // immediately. Pressing Save with a built-in selected performs Save As at
+    // the shell (Requirement 20.5 amended, 20.13).
     ui.horizontal(|ui| {
         ui.label("New name:");
         ui.add(
             egui::TextEdit::singleline(&mut state.name_buffer)
-                .hint_text("my-theme")
+                .id(egui::Id::new("theme_editor_name"))
                 .desired_width(180.0),
         );
         let name = state.name_buffer.trim().to_string();
@@ -315,6 +269,17 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
         }
     });
 
+    // Import / Export affordances (Requirement 20.12 / 24): both invoke the
+    // shell commands (the shell owns the file-picker path I/O).
+    ui.horizontal(|ui| {
+        if ui.button("Export...").clicked() {
+            action = ThemeEditorAction::Export;
+        }
+        if ui.button("Import...").clicked() {
+            action = ThemeEditorAction::Import;
+        }
+    });
+
     if let Some(err) = &state.error {
         ui.colored_label(egui::Color32::RED, err);
     }
@@ -326,19 +291,15 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
         // B078: lay each token row out with a plain `ui.horizontal` + fixed
         // widths, NOT an `egui::Grid`. Inside a Grid, `TextEdit::desired_width`
         // is NOT honoured -- the Grid auto-sizes its cells and collapses the
-        // field to a few characters (the reported "4 and a half chars"),
-        // stretching the last column instead. `keys_editor_panel::render` hit
-        // and documented the same issue and fixed it the same way. In a plain
-        // horizontal layout `desired_width`/`add_sized` ARE honoured, so the full
-        // `#RRGGBBAA` value (max 9 chars) is visible. Widths are logical points;
-        // zoom scales them and the glyphs together (set_pixels_per_point), so a
-        // fixed width does not clip at any zoom.
-        const LABEL_WIDTH: f32 = 180.0;
+        // field. In a plain horizontal layout `desired_width` IS honoured, so
+        // the full `#RRGGBBAA` value (max 9 chars) is visible.
+        const LABEL_WIDTH: f32 = 220.0;
         const HEX_FIELD_WIDTH: f32 = 140.0;
+        let tokens = EditableToken::all();
         egui::ScrollArea::vertical()
             .id_salt("theme_editor_tokens")
             .show(ui, |ui| {
-                for (i, token) in EditableToken::ALL.iter().enumerate() {
+                for (i, token) in tokens.iter().enumerate() {
                     // Ensure a buffer exists for this row.
                     if state.hex_buffers.len() <= i {
                         state.hex_buffers.resize(i + 1, String::new());
@@ -412,7 +373,7 @@ mod tests {
     use super::*;
 
     // Validates: Requirement 20.3 -- load_working initialises hex buffers from
-    // the palette in EditableToken order.
+    // the palette in EditableToken::all order.
     #[test]
     fn load_working_initialises_hex_buffers() {
         let mut state = ThemeEditorState::new();
@@ -420,11 +381,11 @@ mod tests {
         state.load_working("Default Legacy", palette.clone());
         assert_eq!(state.selected.as_deref(), Some("Default Legacy"));
         assert!(state.working.is_some());
-        assert_eq!(state.hex_buffers.len(), EditableToken::ALL.len());
-        // First buffer is the panel_bg hex.
+        assert_eq!(state.hex_buffers.len(), EditableToken::all().len());
+        // First buffer is the first derived token's hex.
         assert_eq!(
             state.hex_buffers[0],
-            EditableToken::UiPanelBg.get(&palette).to_hex()
+            EditableToken::all()[0].get(&palette).to_hex()
         );
     }
 
@@ -433,36 +394,66 @@ mod tests {
     fn editable_token_get_set_round_trips() {
         let mut p = ff_theme::defaults::dark_palette();
         let red = ColourRGBA::rgb(255, 0, 0);
-        EditableToken::UiPanelBg.set(&mut p, red);
-        assert_eq!(EditableToken::UiPanelBg.get(&p), red);
-        EditableToken::EditorForeground.set(&mut p, red);
-        assert_eq!(EditableToken::EditorForeground.get(&p), red);
+        let first = EditableToken::all()[0];
+        first.set(&mut p, red);
+        assert_eq!(first.get(&p), red);
     }
 
     // Validates: Requirement 20.9 -- advisories computed from the working palette.
     #[test]
     fn recompute_advisories_reads_working_palette() {
         let mut state = ThemeEditorState::new();
-        // A deliberately low-contrast palette: dark grey text on black.
         let mut p = ff_theme::defaults::default_legacy_palette();
         p.editor.background = ColourRGBA::rgb(0, 0, 0);
         p.editor.foreground = ColourRGBA::rgb(20, 20, 20);
         state.load_working("Test", p);
-        // Advisories may or may not include this specific pair depending on which
-        // pairs check_theme_contrast inspects, but the call must not panic and the
-        // vector must be populated from the working palette without error.
         state.recompute_advisories();
-        // No assertion on count (depends on the checker's pair set); just ensure
-        // it runs and the state is consistent.
         assert!(state.working.is_some());
     }
 
-    // Validates: Requirement 20.3 -- all editable tokens have distinct labels.
+    // Validates: Requirement 20.11 -- all editable tokens have labels and the
+    // derived surface exceeds the former fixed 14-token list.
     #[test]
     fn all_editable_tokens_have_labels() {
-        for t in EditableToken::ALL {
+        for t in EditableToken::all() {
             assert!(!t.label().is_empty());
         }
-        assert_eq!(EditableToken::ALL.len(), 14);
+        assert!(
+            EditableToken::all().len() > 14,
+            "the derived surface replaces the former fixed 14-token list"
+        );
+    }
+
+    // Validates: Requirement 20.5 (amended), 20.13, B081 -- on load_working the
+    // New-name field is PRE-FILLED with a real, non-empty, de-duplicated name
+    // (not placeholder text), so the create actions are enabled from frame one.
+    #[test]
+    fn load_working_prefills_a_real_unique_name() {
+        let mut state = ThemeEditorState::new();
+        state.available = vec!["Default Dark".to_string(), "Default Dark Copy".to_string()];
+        let palette = ff_theme::defaults::dark_palette();
+        state.load_working("Default Dark", palette);
+        assert!(
+            !state.name_buffer.trim().is_empty(),
+            "name_buffer must be a real pre-filled value (B081), enabling Save/Copy"
+        );
+        // It must not collide with an existing name (de-duplicated).
+        assert!(
+            !state
+                .available
+                .iter()
+                .any(|n| n.eq_ignore_ascii_case(state.name_buffer.trim())),
+            "the pre-filled name must be de-duplicated against the available list"
+        );
+    }
+
+    // Validates: Requirement 20.4 -- default_new_name de-duplicates by appending
+    // a numeric suffix when the base name is taken.
+    #[test]
+    fn default_new_name_dedups_with_numeric_suffix() {
+        let mut state = ThemeEditorState::new();
+        state.available = vec!["Legacy Copy".to_string(), "Legacy Copy 2".to_string()];
+        let name = state.default_new_name("Legacy");
+        assert_eq!(name, "Legacy Copy 3");
     }
 }

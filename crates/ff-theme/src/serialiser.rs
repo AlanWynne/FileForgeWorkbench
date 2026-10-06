@@ -21,6 +21,20 @@ pub fn serialise(palette: &ThemePalette) -> String {
     out.push_str(palette.mode.section_name());
     out.push_str("\n\n");
 
+    // CR-CH-056 Req 25.1: the format `version` and the egui version the embedded
+    // `Style` blob was written against. v2 is the egui-native format; the flat
+    // authoring groups below remain AUTHORITATIVE (the chrome is derived from
+    // them on load), and the `[chrome_style]` embed at the end is an additive,
+    // forward-compatible snapshot so v1 readers and the derive-on-load path are
+    // unaffected (Req 25.2/25.6).
+    out.push_str(&format!(
+        "version = {}\n",
+        crate::format_version::THEME_FORMAT_VERSION
+    ));
+    out.push_str(&format!(
+        "egui_version = \"{}\"\n",
+        crate::format_version::EMBEDDED_EGUI_VERSION
+    ));
     out.push_str("name = \"");
     out.push_str(&palette.name);
     out.push_str("\"\n");
@@ -309,7 +323,37 @@ pub fn serialise(palette: &ThemePalette) -> String {
         }
     }
 
+    // CR-CH-056 Req 25.1/25.6/25.7: embed the egui-native chrome `Style` (plus
+    // the FFWB-only chrome extras) as a `[chrome_style]` sub-table, serialised
+    // via egui's own serde derives on `egui::Style`. This is ADDITIVE: the flat
+    // groups above stay authoritative and the chrome is derived on load, so this
+    // embed does not change load behaviour; it records the exact egui Style the
+    // Theme produces (round-trip-stable, Req 25.7) and makes the format
+    // forward-compatible. The embed is wrapped in a single-key table so the
+    // nested `style` serialises as `[chrome_style.style]` (correct nesting). On
+    // the vanishingly unlikely event egui's `Style` cannot be serialised, the
+    // embed is simply omitted (never a hard failure).
+    if let Some(chrome_toml) = serialise_embedded_chrome(palette) {
+        out.push_str("\n# Embedded egui chrome Style (CR-CH-056 Req 25.1) -- derived\n");
+        out.push_str("# from the authoring groups above on load; recorded here for\n");
+        out.push_str("# the record and forward-compatibility.\n");
+        out.push_str(&chrome_toml);
+        if !chrome_toml.ends_with('\n') {
+            out.push('\n');
+        }
+    }
+
     out
+}
+
+/// Serialise the palette's chrome layer as a correctly-nested `[chrome_style]`
+/// TOML fragment (CR-CH-056 Req 25.1). Returns `None` if the egui `Style` cannot
+/// be represented in TOML, in which case the caller omits the embed.
+fn serialise_embedded_chrome(palette: &ThemePalette) -> Option<String> {
+    let mut wrapper = toml::map::Map::new();
+    let value = toml::Value::try_from(&palette.chrome_style).ok()?;
+    wrapper.insert("chrome_style".to_string(), value);
+    toml::to_string(&toml::Value::Table(wrapper)).ok()
 }
 
 /// Write a colour key-value pair to the output buffer.
@@ -398,6 +442,75 @@ mod tests {
         let toml = "name = \"NoMode\"\n";
         let p = load_from_toml(toml, VisualMode::Light).unwrap();
         assert_eq!(p.mode, VisualMode::Light);
+    }
+
+    #[test]
+    fn serialise_writes_version_and_egui_version() {
+        // Validates: Requirement 25.1 -- the serialised file carries a top-level
+        // integer `version` and records the egui version the Style was written
+        // against.
+        let palette = defaults::dark_palette();
+        let toml_str = serialise(&palette);
+        let table: toml::Table = toml_str.parse().expect("valid TOML");
+        assert_eq!(
+            table.get("version").and_then(|v| v.as_integer()),
+            Some(crate::format_version::THEME_FORMAT_VERSION as i64)
+        );
+        assert_eq!(
+            table.get("egui_version").and_then(|v| v.as_str()),
+            Some(crate::format_version::EMBEDDED_EGUI_VERSION)
+        );
+    }
+
+    #[test]
+    fn serialise_embeds_chrome_style_subtable() {
+        // Validates: Requirement 25.6 -- the egui chrome Style is embedded as a
+        // TOML sub-table within the theme file (correctly nested).
+        let palette = defaults::dark_palette();
+        let toml_str = serialise(&palette);
+        let table: toml::Table = toml_str.parse().expect("valid TOML");
+        let chrome = table
+            .get("chrome_style")
+            .and_then(|v| v.as_table())
+            .expect("[chrome_style] present");
+        assert!(
+            chrome.get("style").map(|v| v.is_table()).unwrap_or(false),
+            "the embedded egui Style is a nested [chrome_style.style] table"
+        );
+    }
+
+    #[test]
+    fn v2_round_trip_preserves_theme_including_embedded_style_and_metadata() {
+        // Validates: Requirement 25.7 -- serialise then parse round-trips to an
+        // equivalent Theme including the chrome Style sub-table + version/base
+        // metadata (extends Req 9.2 to the v2 format).
+        let original = defaults::dark_palette();
+        let toml_str = serialise(&original);
+        // version is present and == the current format version.
+        let table: toml::Table = toml_str.parse().unwrap();
+        assert_eq!(
+            table.get("version").and_then(|v| v.as_integer()),
+            Some(crate::format_version::THEME_FORMAT_VERSION as i64)
+        );
+        let round_tripped = load_from_toml(&toml_str, VisualMode::Dark).unwrap();
+        // All authoring groups round-trip.
+        assert_eq!(original.editor, round_tripped.editor);
+        assert_eq!(original.syntax, round_tripped.syntax);
+        assert_eq!(original.ui, round_tripped.ui);
+        assert_eq!(original.tab_bar, round_tripped.tab_bar);
+        // The derived chrome Style round-trips (flat groups are authoritative, so
+        // the chrome is re-derived identically).
+        assert_eq!(
+            original.chrome_style.style.visuals.panel_fill,
+            round_tripped.chrome_style.style.visuals.panel_fill
+        );
+        assert_eq!(
+            original.chrome_style.title_band_bg,
+            round_tripped.chrome_style.title_band_bg
+        );
+        // Serialising the round-tripped palette yields byte-identical TOML
+        // (round-trip stability of the embedded sub-table + metadata).
+        assert_eq!(toml_str, serialise(&round_tripped));
     }
 
     #[test]

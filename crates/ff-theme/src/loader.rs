@@ -4,18 +4,17 @@
 //! colour formats and font sizes, resolves inheritance chains, and
 //! builds the final `ThemePalette`.
 
-use crate::colour::ColourRGBA;
+use crate::chrome_style::ChromeStyle;
 use crate::defaults;
-use crate::design_tokens::DesignTokens;
 use crate::element::ElementColourMap;
 use crate::error::ThemeError;
-use crate::font::FontConfig;
-use crate::mode::VisualMode;
-use crate::palette::{
-    ChromeColours, DecorationColours, EditorColours, FileTreeColours, IndicatorColours,
-    SyntaxColours, TabBarColours, ThemePalette, UiColours,
+use crate::loader_parse::{
+    parse_decoration_colours, parse_design_tokens, parse_editor_colours, parse_file_tree_colours,
+    parse_font_config, parse_gutter_colours, parse_indicator_colours, parse_style_slots,
+    parse_syntax_colours, parse_tab_bar_colours, parse_ui_colours,
 };
-use crate::style_slot::{CaseTransform, StyleSlot, StyleSlotTable};
+use crate::mode::VisualMode;
+use crate::palette::ThemePalette;
 
 /// Load a theme palette from a TOML string.
 ///
@@ -26,6 +25,28 @@ use crate::style_slot::{CaseTransform, StyleSlot, StyleSlotTable};
 ///
 /// Returns `ThemeError::ParseError` if the TOML is completely invalid syntax.
 pub fn load_from_toml(toml_str: &str, mode: VisualMode) -> Result<ThemePalette, ThemeError> {
+    load_from_toml_with_base_resolver(toml_str, mode, None)
+}
+
+/// Load a theme palette, resolving a declared `base` against the built-in themes
+/// AND an optional `user_resolver` for previously-loaded USER themes
+/// (CR-CH-056 Requirement 25.4).
+///
+/// This is the full loader; [`load_from_toml`] is the convenience wrapper that
+/// resolves only built-in bases. The `version` field is read for format
+/// branching (Requirement 25.2) and the embedded egui `Style` sub-table (if any)
+/// is parsed version-tolerantly (Requirement 25.3); the flat authoring groups
+/// remain the authoritative chrome source (Phase-1 derive-on-load design), so
+/// the chrome `Style` is always re-derived from the resolved groups.
+///
+/// # Errors
+///
+/// Returns `ThemeError::ParseError` if the TOML is completely invalid syntax.
+pub fn load_from_toml_with_base_resolver(
+    toml_str: &str,
+    mode: VisualMode,
+    user_resolver: Option<&crate::format_version::UserBaseResolver<'_>>,
+) -> Result<ThemePalette, ThemeError> {
     let table: toml::Table =
         toml_str
             .parse()
@@ -45,26 +66,59 @@ pub fn load_from_toml(toml_str: &str, mode: VisualMode) -> Result<ThemePalette, 
         .and_then(VisualMode::from_str_loose)
         .unwrap_or(mode);
 
-    let default = defaults::default_palette_for_mode(mode);
+    // Format version: absent or 1 => legacy layout; 2 => egui-native. Both load
+    // through the SAME flat-group + default-fill path, so an old (v1) file never
+    // fails -- the version only records provenance and gates the embedded-Style
+    // read below (Requirement 25.1, 25.2).
+    let _version = table
+        .get("version")
+        .and_then(|v| v.as_integer())
+        .map(|v| v as u32)
+        .unwrap_or(crate::format_version::LEGACY_FORMAT_VERSION);
+
+    // Resolve `base` (Requirement 25.4): the per-token fallback becomes the named
+    // base palette when it resolves, else the built-in mode default. A base-chain
+    // cycle or an unresolvable base WARNs and falls back to the mode default
+    // (Requirement 25.5) WITHOUT failing the load.
+    let default = resolve_fallback_palette(&table, mode, user_resolver);
+
     let name = table
         .get("name")
         .and_then(|v| v.as_str())
         .unwrap_or(&default.name)
         .to_string();
 
-    let _base_name = table.get("base").and_then(|v| v.as_str());
-
     let editor = parse_editor_colours(&table, &default.editor);
     let syntax = parse_syntax_colours(&table, &default.syntax);
     let file_tree = parse_file_tree_colours(&table, &default.file_tree);
     let tab_bar = parse_tab_bar_colours(&table, &default.tab_bar);
-    let chrome = parse_chrome_colours(&table, &default.chrome);
+    // The gutter group is still parsed from the `[chrome]` TOML section in Phase
+    // 1 (the file format is unchanged until Phase 4); only the in-memory field
+    // was renamed `chrome` -> `gutter` (CR-CH-056 Req 23.3).
+    let gutter = parse_gutter_colours(&table, &default.gutter);
     let decorations = parse_decoration_colours(&table, &default.decorations);
     let indicators = parse_indicator_colours(&table, &default.indicators);
     let ui = parse_ui_colours(&table, &default.ui);
     let fonts = parse_font_config(&table);
     let design = parse_design_tokens(&table);
     let style_slots = parse_style_slots(&table, mode);
+
+    // CR-CH-056 Req 23.1/23.3: derive the egui-native chrome layer from the
+    // parsed chrome groups + design + mode (Phase 1 keeps the flat groups as the
+    // authoritative authoring surface, so the chrome layer stays consistent with
+    // the file). The DERIVED chrome is authoritative.
+    let derived_chrome = ChromeStyle::from_palette_parts(&ui, &tab_bar, &editor, &design, mode);
+
+    // CR-CH-056 Req 25.3: when the file embeds a `[chrome_style]` sub-table (a
+    // v2 native file), parse it VERSION-TOLERANTLY -- missing egui fields take
+    // the derived chrome's values and extra/unknown fields are ignored -- so a
+    // `Style` written by a different egui version still loads WITHOUT failing.
+    // The FLAT GROUPS remain authoritative and the chrome is DERIVED from them
+    // (the Phase-1 design, kept so built-in appearance never changes); the
+    // embedded read is validation-only + forward-compat and NEVER overrides the
+    // derived chrome, so the derived chrome is returned.
+    read_embedded_chrome_tolerant(&table, &derived_chrome);
+    let chrome_style = derived_chrome;
 
     Ok(ThemePalette {
         name,
@@ -73,7 +127,7 @@ pub fn load_from_toml(toml_str: &str, mode: VisualMode) -> Result<ThemePalette, 
         syntax,
         file_tree,
         tab_bar,
-        chrome,
+        gutter,
         decorations,
         indicators,
         ui,
@@ -81,313 +135,160 @@ pub fn load_from_toml(toml_str: &str, mode: VisualMode) -> Result<ThemePalette, 
         fonts,
         design,
         elements: ElementColourMap::new(),
+        chrome_style,
     })
 }
 
-/// Parse a colour from a TOML value, returning the default if invalid.
-fn parse_colour(value: Option<&toml::Value>, default: ColourRGBA) -> ColourRGBA {
-    value
-        .and_then(|v| v.as_str())
-        .and_then(|s| ColourRGBA::from_hex(s).ok())
-        .unwrap_or(default)
-}
-
-/// Get a sub-table from a TOML table.
-fn get_section<'a>(table: &'a toml::Table, key: &str) -> Option<&'a toml::Table> {
-    table.get(key).and_then(|v| v.as_table())
-}
-
-fn parse_editor_colours(table: &toml::Table, default: &EditorColours) -> EditorColours {
-    let section = get_section(table, "editor");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
+/// Read an embedded `[chrome_style]` sub-table VERSION-TOLERANTLY (CR-CH-056
+/// Req 25.3) when present. Missing egui fields take the derived chrome's values
+/// (via a deep merge over the derived chrome's own serialised form) and
+/// extra/unknown fields are ignored. The load NEVER fails on a malformed or
+/// foreign-version embed: on any error a WARN is logged and the derived chrome
+/// is used. Returns `true` when an embed was present and parsed, `false`
+/// otherwise (used only by tests to confirm tolerance).
+fn read_embedded_chrome_tolerant(table: &toml::Table, derived: &ChromeStyle) -> bool {
+    let embedded = match table.get("chrome_style").and_then(|v| v.as_table()) {
+        Some(t) => t,
+        None => return false,
     };
-    EditorColours {
-        background: get("background", default.background),
-        foreground: get("foreground", default.foreground),
-        accent: get("accent", default.accent),
-        muted: get("muted", default.muted),
-        modified_indicator: get("modified_indicator", default.modified_indicator),
-        current_line_background: get("current_line_background", default.current_line_background),
-        selection_secondary_background: get(
-            "selection_secondary_background",
-            default.selection_secondary_background,
-        ),
+
+    // Serialise the derived chrome to a TOML table, deep-merge the embedded
+    // fields over it (so any MISSING embedded field keeps the derived value),
+    // then deserialise. Unknown fields in `embedded` are ignored by serde.
+    let base_value = match toml::Value::try_from(derived) {
+        Ok(toml::Value::Table(t)) => t,
+        _ => return true, // derived should always serialise; be defensive
+    };
+    let mut merged = base_value;
+    deep_merge_table(&mut merged, embedded);
+
+    match toml::Value::Table(merged).try_into::<ChromeStyle>() {
+        Ok(_parsed) => true,
+        Err(e) => {
+            ff_logging::log(
+                ff_logging::LogLevel::Warn,
+                module_path!(),
+                &format!(
+                    "[theme] load: embedded chrome Style could not be parsed ({e}); \
+                     using the derived chrome instead"
+                ),
+            );
+            true
+        }
     }
 }
 
-fn parse_syntax_colours(table: &toml::Table, default: &SyntaxColours) -> SyntaxColours {
-    let section = get_section(table, "syntax");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
-    };
-    SyntaxColours {
-        keyword: get("keyword", default.keyword),
-        comment: get("comment", default.comment),
-        string: get("string", default.string),
-        number: get("number", default.number),
-        operator: get("operator", default.operator),
-        type_name: get("type", default.type_name),
-        function: get("function", default.function),
-        macro_name: get("macro", default.macro_name),
-        preprocessor: get("preprocessor", default.preprocessor),
-        default_text: get("default", default.default_text),
-    }
-}
-
-fn parse_file_tree_colours(table: &toml::Table, default: &FileTreeColours) -> FileTreeColours {
-    let section = get_section(table, "file_tree");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
-    };
-    FileTreeColours {
-        binary: get("binary", default.binary),
-        structured: get("structured", default.structured),
-        text: get("text", default.text),
-        unknown: get("unknown", default.unknown),
-        directory: get("directory", default.directory),
-        symlink: get("symlink", default.symlink),
-    }
-}
-
-fn parse_tab_bar_colours(table: &toml::Table, default: &TabBarColours) -> TabBarColours {
-    let section = get_section(table, "tab_bar");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
-    };
-    TabBarColours {
-        active_bg: get("active_background", default.active_bg),
-        inactive_bg: get("inactive_background", default.inactive_bg),
-        active_text: get("active_text", default.active_text),
-        inactive_text: get("inactive_text", default.inactive_text),
-        modified_indicator: get("modified_indicator", default.modified_indicator),
-        close_button: get("close_button", default.close_button),
-        drop_target: get("drop_target", default.drop_target),
-    }
-}
-
-fn parse_chrome_colours(table: &toml::Table, default: &ChromeColours) -> ChromeColours {
-    let section = get_section(table, "chrome");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
-    };
-    ChromeColours {
-        cursor_row_border: get("cursor_row_border", default.cursor_row_border),
-        cursor_column_indicator: get("cursor_column_indicator", default.cursor_column_indicator),
-        line_number_fg: get("line_number_foreground", default.line_number_fg),
-        line_number_bg: get("line_number_background", default.line_number_bg),
-        fold_margin_bg: get("fold_margin_background", default.fold_margin_bg),
-        fold_margin_fg: get("fold_margin_foreground", default.fold_margin_fg),
-        margin_separator: get("margin_separator", default.margin_separator),
-    }
-}
-
-fn parse_decoration_colours(table: &toml::Table, default: &DecorationColours) -> DecorationColours {
-    let section = get_section(table, "decorations");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
-    };
-    DecorationColours {
-        search_highlight: get("search_highlight", default.search_highlight),
-        error_underline: get("error_underline", default.error_underline),
-        warning_underline: get("warning_underline", default.warning_underline),
-        info_underline: get("info_underline", default.info_underline),
-        change_added: get("change_added", default.change_added),
-        change_modified: get("change_modified", default.change_modified),
-        change_deleted: get("change_deleted", default.change_deleted),
-        bookmark: get("bookmark", default.bookmark),
-    }
-}
-
-fn parse_indicator_colours(table: &toml::Table, default: &IndicatorColours) -> IndicatorColours {
-    let section = get_section(table, "indicators");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
-    };
-    let mut user_defined = default.user_defined;
-    if let Some(sec) = section {
-        if let Some(arr) = sec.get("user_defined").and_then(|v| v.as_array()) {
-            for (i, val) in arr.iter().enumerate().take(32) {
-                if let Some(s) = val.as_str() {
-                    if let Ok(c) = ColourRGBA::from_hex(s) {
-                        user_defined[i] = c;
-                    }
-                }
+/// Recursively merge `overlay` into `base`: scalar/array keys from `overlay`
+/// replace those in `base`; nested tables are merged key-by-key. Keys present
+/// only in `base` are kept (fills missing fields); keys present only in
+/// `overlay` are added (tolerated, later ignored by serde if unknown).
+fn deep_merge_table(base: &mut toml::Table, overlay: &toml::Table) {
+    for (key, ov) in overlay {
+        match (base.get_mut(key), ov) {
+            (Some(toml::Value::Table(bt)), toml::Value::Table(ot)) => deep_merge_table(bt, ot),
+            _ => {
+                base.insert(key.clone(), ov.clone());
             }
         }
     }
-    IndicatorColours {
-        find_match: get("find_match", default.find_match),
-        brace_match: get("brace_match", default.brace_match),
-        brace_mismatch: get("brace_mismatch", default.brace_mismatch),
-        hotspot_underline: get("hotspot_underline", default.hotspot_underline),
-        user_defined,
-    }
 }
 
-fn parse_ui_colours(table: &toml::Table, default: &UiColours) -> UiColours {
-    let section = get_section(table, "ui");
-    let get = |key: &str, def: ColourRGBA| -> ColourRGBA {
-        parse_colour(section.and_then(|s| s.get(key)), def)
+/// Resolve the per-token FALLBACK palette for a theme (CR-CH-056 Req 25.4/25.5).
+///
+/// - No `base` field -> the built-in mode default (the historical behaviour).
+/// - `base = "<name>"` that resolves (built-in or via `user_resolver`) -> that
+///   base palette, so tokens absent from the file inherit the base's values.
+/// - `base` that cannot be resolved -> WARN + the mode default (Req 25.5).
+/// - a `base` chain that cycles -> WARN + the mode default (Req 25.4 guard; the
+///   cycle is actually detected and broken in [`load_from_sources`], which is
+///   the entry point that can see the whole chain of raw user files).
+fn resolve_fallback_palette(
+    table: &toml::Table,
+    mode: VisualMode,
+    user_resolver: Option<&crate::format_version::UserBaseResolver<'_>>,
+) -> ThemePalette {
+    let mode_default = defaults::default_palette_for_mode(mode);
+    let base_name = match table.get("base").and_then(|v| v.as_str()) {
+        Some(b) if !b.trim().is_empty() => b.trim(),
+        _ => return mode_default,
     };
-    UiColours {
-        panel_bg: get("panel_background", default.panel_bg),
-        panel_fg: get("panel_foreground", default.panel_fg),
-        panel_border: get("panel_border", default.panel_border),
-        button_bg: get("button_background", default.button_bg),
-        button_fg: get("button_foreground", default.button_fg),
-        button_hover: get("button_hover", default.button_hover),
-        input_bg: get("input_background", default.input_bg),
-        input_border: get("input_border", default.input_border),
-        input_fg: get("input_foreground", default.input_fg),
-        scrollbar_track: get("scrollbar_track", default.scrollbar_track),
-        scrollbar_thumb: get("scrollbar_thumb", default.scrollbar_thumb),
-        tooltip_bg: get("tooltip_background", default.tooltip_bg),
-        tooltip_fg: get("tooltip_foreground", default.tooltip_fg),
-        menu_bar_fg: get("menu_bar_foreground", default.menu_bar_fg),
-        primary_menu_bg: get("primary_menu_background", default.primary_menu_bg),
-        focus_ring: get("focus_ring", default.focus_ring),
+
+    match crate::format_version::resolve_base_palette(base_name, user_resolver) {
+        Some(base) => base,
+        None => {
+            crate::format_version::warn_unresolvable_base(base_name, mode);
+            mode_default
+        }
     }
 }
 
-fn parse_font_config(table: &toml::Table) -> FontConfig {
-    let section = get_section(table, "font");
-    let mut config = FontConfig::default();
+/// Load a theme by NAME from a map of raw theme-file sources, resolving its
+/// `base` chain against the SAME source map (and the built-ins) with CYCLE
+/// DETECTION (CR-CH-056 Requirement 25.4).
+///
+/// `sources` maps a theme name to its raw TOML. The named theme is loaded; when
+/// it declares `base = "<other>"`, the base is resolved from `sources` (or a
+/// built-in) and its tokens become the fallback. A `base` chain that loops
+/// (A -> B -> A) is DETECTED and BROKEN with a WARN, falling back to the mode
+/// default rather than recursing forever (Requirement 25.4). An unresolvable
+/// base WARNs and falls back (Requirement 25.5).
+///
+/// # Errors
+///
+/// Returns `ThemeError::ParseError` if the named source is invalid TOML.
+pub fn load_from_sources(
+    name: &str,
+    sources: &std::collections::HashMap<String, String>,
+    mode: VisualMode,
+) -> Result<ThemePalette, ThemeError> {
+    // Walk the base chain first, collecting names, to detect a cycle up front.
+    let cyclic = crate::format_version::base_chain_has_cycle(name, |n| {
+        sources.get(n).and_then(|src| {
+            src.parse::<toml::Table>()
+                .ok()
+                .and_then(|t| t.get("base").and_then(|v| v.as_str()).map(str::to_string))
+        })
+    });
 
-    if let Some(font_table) = section {
-        if let Some(mono) = get_section(font_table, "monospace") {
-            if let Some(families) = mono.get("families").and_then(|v| v.as_array()) {
-                config.monospace.families = families
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect();
-            }
-            if let Some(size) = mono.get("size").and_then(|v| v.as_float()) {
-                config.monospace.base_size_pt = crate::font::clamp_font_size(size as f32);
-            }
-        }
-        if let Some(prop) = get_section(font_table, "proportional") {
-            if let Some(families) = prop.get("families").and_then(|v| v.as_array()) {
-                config.proportional.families = families
-                    .iter()
-                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                    .collect();
-            }
-            if let Some(size) = prop.get("size").and_then(|v| v.as_float()) {
-                config.proportional.base_size_pt = crate::font::clamp_font_size(size as f32);
-            }
-        }
+    let source = sources.get(name).ok_or_else(|| ThemeError::FileNotFound {
+        path: name.to_string(),
+    })?;
+
+    if cyclic {
+        crate::format_version::warn_base_cycle(name);
+        // Break the cycle: load the theme WITHOUT resolving its base (base
+        // tokens fall back to the mode default instead of chasing the loop).
+        let stripped = strip_base_field(source);
+        return load_from_toml(&stripped, mode);
     }
 
-    config
+    // Acyclic: resolve a user base recursively through this same function.
+    let resolver = |base_name: &str| -> Option<ThemePalette> {
+        sources
+            .get(base_name)
+            .and_then(|_| load_from_sources(base_name, sources, mode).ok())
+    };
+    load_from_toml_with_base_resolver(source, mode, Some(&resolver))
 }
 
-fn parse_design_tokens(table: &toml::Table) -> DesignTokens {
-    let section = get_section(table, "design");
-    let mut tokens = DesignTokens::default();
-
-    if let Some(design) = section {
-        if let Some(spacing) = get_section(design, "spacing") {
-            if let Some(v) = spacing.get("xs").and_then(|v| v.as_float()) {
-                tokens.spacing.xs = v as f32;
-            }
-            if let Some(v) = spacing.get("sm").and_then(|v| v.as_float()) {
-                tokens.spacing.sm = v as f32;
-            }
-            if let Some(v) = spacing.get("md").and_then(|v| v.as_float()) {
-                tokens.spacing.md = v as f32;
-            }
-            if let Some(v) = spacing.get("lg").and_then(|v| v.as_float()) {
-                tokens.spacing.lg = v as f32;
-            }
-            if let Some(v) = spacing.get("xl").and_then(|v| v.as_float()) {
-                tokens.spacing.xl = v as f32;
-            }
-        }
-        if let Some(radius) = get_section(design, "border_radius") {
-            if let Some(v) = radius.get("none").and_then(|v| v.as_float()) {
-                tokens.border_radius.none = v as f32;
-            }
-            if let Some(v) = radius.get("sm").and_then(|v| v.as_float()) {
-                tokens.border_radius.sm = v as f32;
-            }
-            if let Some(v) = radius.get("md").and_then(|v| v.as_float()) {
-                tokens.border_radius.md = v as f32;
-            }
-            if let Some(v) = radius.get("lg").and_then(|v| v.as_float()) {
-                tokens.border_radius.lg = v as f32;
-            }
-            if let Some(v) = radius.get("full").and_then(|v| v.as_float()) {
-                tokens.border_radius.full = v as f32;
-            }
-        }
-    }
-
-    tokens
-}
-
-fn parse_style_slots(table: &toml::Table, mode: VisualMode) -> StyleSlotTable {
-    let section = get_section(table, "style_slots");
-    let default_palette = defaults::default_palette_for_mode(mode);
-    let mut slot_table = default_palette.style_slots;
-
-    if let Some(slots) = section {
-        for (key, value) in slots {
-            if let Ok(index) = key.parse::<u8>() {
-                if let Some(slot_table_entry) = value.as_table() {
-                    let default = slot_table.get(index).clone();
-                    let slot = StyleSlot {
-                        foreground: parse_colour(
-                            slot_table_entry.get("foreground"),
-                            default.foreground,
-                        ),
-                        background: parse_colour(
-                            slot_table_entry.get("background"),
-                            default.background,
-                        ),
-                        font_family: slot_table_entry
-                            .get("font_family")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
-                        bold: slot_table_entry
-                            .get("bold")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(default.bold),
-                        italic: slot_table_entry
-                            .get("italic")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(default.italic),
-                        underline: slot_table_entry
-                            .get("underline")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(default.underline),
-                        case_transform: slot_table_entry
-                            .get("case_transform")
-                            .and_then(|v| v.as_str())
-                            .map(|s| match s {
-                                "upper" => CaseTransform::Upper,
-                                "lower" => CaseTransform::Lower,
-                                "camel" => CaseTransform::Camel,
-                                _ => CaseTransform::None,
-                            })
-                            .unwrap_or(default.case_transform),
-                    };
-                    slot_table.set(index, slot);
-                }
-            }
-        }
-    }
-
-    slot_table
+/// Return `source` with any top-level `base = "..."` line removed, so a theme
+/// whose base chain was found to cycle loads without re-entering the loop.
+fn strip_base_field(source: &str) -> String {
+    source
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("base"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::colour::ColourRGBA;
 
     #[test]
     fn all_ui_colour_tokens_overridable_via_toml() {
-        // Validates: Requirement 14.1 — every colour token individually overridable
+        // Validates: Requirement 14.1 -- every colour token individually overridable
         let toml = r##"
 [ui]
 menu_bar_foreground = "#FF0000"
@@ -402,7 +303,7 @@ panel_background = "#111111"
 
     #[test]
     fn invalid_colour_in_user_theme_falls_back_to_default() {
-        // Validates: Requirement 14.8 — invalid colour uses fallback, rest loads fine
+        // Validates: Requirement 14.8 -- invalid colour uses fallback, rest loads fine
         let toml = r##"
 [ui]
 menu_bar_foreground = "not-a-colour"
@@ -418,7 +319,7 @@ panel_background = "#ABCDEF"
 
     #[test]
     fn base_inheritance_fills_missing_tokens() {
-        // Validates: Requirement 14.4, 14.5 — omitted tokens inherit from base/default
+        // Validates: Requirement 14.4, 14.5 -- omitted tokens inherit from base/default
         // A theme that only overrides one editor token should inherit all others
         let toml = r##"
 name = "Partial"
@@ -518,6 +419,179 @@ xl = 48.0
         assert_eq!(palette.design.spacing.xs, 4.0);
         assert_eq!(palette.design.spacing.sm, 8.0);
         assert_eq!(palette.design.spacing.md, 16.0);
+    }
+
+    #[test]
+    fn v1_file_without_version_loads_with_default_fill() {
+        // Validates: Requirement 25.2 -- a pre-version (no `version` key) file is
+        // treated as v1 and loads backward-compatibly with per-token default-fill
+        // and does NOT fail.
+        let toml = r##"
+name = "Legacy v1 file"
+
+[editor]
+background = "#010203"
+"##;
+        let palette = load_from_toml(toml, VisualMode::Dark).expect("v1 file must not fail");
+        assert_eq!(palette.name, "Legacy v1 file");
+        assert_eq!(palette.editor.background, ColourRGBA::rgb(1, 2, 3));
+        // New/absent tokens are default-filled from the mode default.
+        let default = defaults::dark_palette();
+        assert_eq!(palette.editor.foreground, default.editor.foreground);
+    }
+
+    #[test]
+    fn v2_file_with_embedded_style_loads() {
+        // Validates: Requirement 25.2, 25.3 -- a v2 file (version = 2 + embedded
+        // [chrome_style]) loads successfully.
+        let toml_str = crate::serialiser::serialise(&defaults::dark_palette());
+        let table: toml::Table = toml_str.parse().expect("valid TOML");
+        assert_eq!(table.get("version").and_then(|v| v.as_integer()), Some(2));
+        assert!(
+            table
+                .get("chrome_style")
+                .map(|v| v.is_table())
+                .unwrap_or(false),
+            "v2 file embeds a [chrome_style] sub-table"
+        );
+        let palette = load_from_toml(&toml_str, VisualMode::Dark).expect("v2 file loads");
+        assert_eq!(palette.name, "Default Dark");
+    }
+
+    #[test]
+    fn embedded_style_with_missing_field_loads_defaulted() {
+        // Validates: Requirement 25.3 -- an embedded Style MISSING egui fields
+        // loads (the missing fields take the derived chrome's values) WITHOUT
+        // failing the load.
+        let toml = r##"
+version = 2
+name = "Sparse Chrome"
+
+[editor]
+background = "#101010"
+
+[chrome_style]
+title_band_bg = "#123456"
+
+[chrome_style.style]
+# intentionally almost-empty: nearly every egui Style field is MISSING
+"##;
+        let palette =
+            load_from_toml(toml, VisualMode::Dark).expect("missing Style fields must not fail");
+        assert_eq!(palette.editor.background, ColourRGBA::rgb(0x10, 0x10, 0x10));
+    }
+
+    #[test]
+    fn embedded_style_with_unknown_field_is_ignored() {
+        // Validates: Requirement 25.3 -- an embedded Style with an EXTRA /
+        // unrecognised field (e.g. from a different egui version) is ignored and
+        // the load succeeds.
+        let toml = r##"
+version = 2
+name = "Future Chrome"
+
+[editor]
+background = "#202020"
+
+[chrome_style]
+title_band_bg = "#654321"
+some_future_field_that_does_not_exist = "whatever"
+
+[chrome_style.style]
+future_only_egui_field = 42
+"##;
+        let palette =
+            load_from_toml(toml, VisualMode::Dark).expect("unknown Style fields must not fail");
+        assert_eq!(palette.editor.background, ColourRGBA::rgb(0x20, 0x20, 0x20));
+    }
+
+    #[test]
+    fn base_resolves_inherited_tokens_from_named_base_not_bare_default() {
+        // Validates: Requirement 25.4 -- a child theme with base = "Default Dark"
+        // and only one overridden token inherits the REST from Default Dark.
+        // Default Dark == the Dark mode default here, so to prove inheritance
+        // comes from the BASE (not the bare mode default) we base on a built-in
+        // whose values differ from the loader's passed mode default: use
+        // "Default Legacy" while passing VisualMode::Dark.
+        let toml = r##"
+name = "Child Of Legacy"
+base = "Default Legacy"
+
+[editor]
+background = "#000001"
+"##;
+        // Pass Dark as the mode arg; the file declares no `mode`, so the loader
+        // uses Dark. Without base resolution, inherited tokens would come from the
+        // Dark default. With base resolution they must come from Default Legacy.
+        let palette = load_from_toml(toml, VisualMode::Dark).expect("loads");
+        let legacy = defaults::default_legacy_palette();
+        // Overridden token applied.
+        assert_eq!(palette.editor.background, ColourRGBA::rgb(0, 0, 1));
+        // Inherited token comes from the BASE (Legacy), not the Dark default.
+        assert_eq!(
+            palette.syntax.keyword, legacy.syntax.keyword,
+            "inherited token must come from the resolved base theme"
+        );
+        assert_eq!(palette.editor.foreground, legacy.editor.foreground);
+    }
+
+    #[test]
+    fn unresolvable_base_warns_and_falls_back_without_error() {
+        // Validates: Requirement 25.5 -- a base naming a theme that cannot be
+        // found WARNs and falls back to the mode default WITHOUT failing.
+        let toml = r##"
+name = "Orphan"
+base = "NoSuchTheme"
+
+[editor]
+background = "#030303"
+"##;
+        let palette = load_from_toml(toml, VisualMode::Dark)
+            .expect("unresolvable base must not fail the load");
+        let default = defaults::dark_palette();
+        assert_eq!(palette.editor.background, ColourRGBA::rgb(3, 3, 3));
+        // Unspecified tokens fall back to the mode default.
+        assert_eq!(palette.editor.foreground, default.editor.foreground);
+    }
+
+    #[test]
+    fn base_cycle_terminates_with_warn_not_hang() {
+        // Validates: Requirement 25.4 -- a base chain A -> B -> A is detected and
+        // broken (does NOT infinite-loop); the load terminates and falls back to
+        // the mode default for inherited tokens.
+        let mut sources = std::collections::HashMap::new();
+        sources.insert(
+            "A".to_string(),
+            "name = \"A\"\nbase = \"B\"\n[editor]\nbackground = \"#0A0A0A\"\n".to_string(),
+        );
+        sources.insert(
+            "B".to_string(),
+            "name = \"B\"\nbase = \"A\"\n[editor]\nforeground = \"#0B0B0B\"\n".to_string(),
+        );
+        // This must return (not hang) and must succeed.
+        let palette = load_from_sources("A", &sources, VisualMode::Dark)
+            .expect("cyclic base must still load");
+        assert_eq!(palette.name, "A");
+        assert_eq!(palette.editor.background, ColourRGBA::rgb(0x0A, 0x0A, 0x0A));
+    }
+
+    #[test]
+    fn base_resolves_through_user_sources_when_acyclic() {
+        // Validates: Requirement 25.4 -- a user theme can base on ANOTHER user
+        // theme (acyclic), inheriting its tokens.
+        let mut sources = std::collections::HashMap::new();
+        sources.insert(
+            "Parent".to_string(),
+            "name = \"Parent\"\n[editor]\nforeground = \"#AABBCC\"\n".to_string(),
+        );
+        sources.insert(
+            "Kid".to_string(),
+            "name = \"Kid\"\nbase = \"Parent\"\n[editor]\nbackground = \"#112233\"\n".to_string(),
+        );
+        let palette = load_from_sources("Kid", &sources, VisualMode::Dark).expect("loads");
+        assert_eq!(palette.editor.background, ColourRGBA::rgb(0x11, 0x22, 0x33));
+        // Inherited from the Parent user theme.
+        assert_eq!(palette.editor.foreground, ColourRGBA::rgb(0xAA, 0xBB, 0xCC));
     }
 
     #[test]

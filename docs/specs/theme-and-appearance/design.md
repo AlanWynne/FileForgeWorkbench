@@ -94,7 +94,7 @@ graph TD
         DS[Design System<br/>spacing/radius/shadow/anim]
         EL[Element Colour Map<br/>named elements + alpha]
         EXT[Extension Registry<br/>plugin tokens]
-        SER[Serialiser<br/>palette → TOML]
+        SER[Serialiser<br/>palette -> TOML]
         API[Public API<br/>ThemeHandle + accessors]
         EVT[Event Emitter<br/>palette-changed notifications]
     end
@@ -144,7 +144,7 @@ graph TD
 | Component | Responsibility |
 |-----------|---------------|
 | **Theme Loader** | Parse theme TOML files, resolve `base` inheritance chains, merge with defaults |
-| **Theme Validator** | Validate colour formats (#RRGGBB/#RRGGBBAA), font sizes (6.0–72.0), slot indices (0–255) |
+| **Theme Validator** | Validate colour formats (#RRGGBB/#RRGGBBAA), font sizes (6.0-72.0), slot indices (0-255) |
 | **Inheritance Resolver** | Walk the `base` chain to resolve tokens not defined in the active theme |
 | **Mode Resolver** | Select Dark/Light/High-Contrast section from theme data |
 | **Palette Builder** | Assemble the final `ThemePalette` from validated, inherited, mode-resolved values |
@@ -186,7 +186,7 @@ crates/ff-theme/
 │   ├── loader.rs               # Theme TOML loading and inheritance resolution
 │   ├── validator.rs            # Colour/font/slot validation logic
 │   ├── defaults.rs             # Built-in default palettes for all three modes
-│   ├── serialiser.rs           # ThemePalette → TOML serialisation
+│   ├── serialiser.rs           # ThemePalette -> TOML serialisation
 │   ├── extension.rs            # ThemeExtension, plugin token registry
 │   ├── event.rs                # ThemeEvent, consumer notification
 │   ├── token.rs                # ColourToken enum (compile-time token identifiers)
@@ -257,7 +257,7 @@ pub enum VisualMode {
 ```rust
 /// The complete resolved palette for the active theme and mode.
 /// Thread-safe, shareable via Arc. Immutable after construction.
-/// Addresses: Requirement 2, criteria 1–10; Requirement 7, criterion 2
+/// Addresses: Requirement 2, criteria 1-10; Requirement 7, criterion 2
 #[derive(Debug, Clone, PartialEq)]
 pub struct ThemePalette {
     /// Theme metadata
@@ -280,7 +280,7 @@ pub struct ThemePalette {
     pub design: DesignTokens,
     /// Element colour map
     pub elements: ElementColourMap,
-    /// Plugin extension tokens (namespace → token_name → colour)
+    /// Plugin extension tokens (namespace -> token_name -> colour)
     pub extensions: ExtensionColours,
 }
 ```
@@ -401,7 +401,7 @@ pub struct IndicatorsPalette {
     pub brace_match: ColourRGBA,
     pub brace_mismatch: ColourRGBA,
     pub hotspot_underline: ColourRGBA,
-    /// Up to 32 user-defined indicator colours (indexed 0–31).
+    /// Up to 32 user-defined indicator colours (indexed 0-31).
     pub user_defined: [ColourRGBA; 32],
 }
 ```
@@ -464,7 +464,7 @@ pub enum CaseTransform {
 /// The 256-entry indexed style slot table.
 /// Addresses: Requirement 3, criteria 1/3/4
 pub struct StyleSlotTable {
-    /// Slots indexed 0–255. Unset slots inherit from DEFAULT_STYLE_INDEX.
+    /// Slots indexed 0-255. Unset slots inherit from DEFAULT_STYLE_INDEX.
     slots: [StyleSlot; 256],
     /// Tracks which slots have been explicitly defined (vs inherited).
     defined: [bool; 256],
@@ -488,7 +488,7 @@ pub const FOLD_DISPLAY_STYLE_INDEX: u8 = 39;
 
 ```rust
 /// Font configuration for both editor and UI contexts.
-/// Addresses: Requirement 4, criteria 1–5
+/// Addresses: Requirement 4, criteria 1-5
 #[derive(Debug, Clone, PartialEq)]
 pub struct FontConfig {
     /// Monospace font stack for editor content.
@@ -527,7 +527,7 @@ pub const MAX_EFFECTIVE_SIZE_PT: f32 = 128.0;
 
 ```rust
 /// Non-colour design system tokens for consistent UI geometry and motion.
-/// Addresses: Requirement 6, criteria 1–4
+/// Addresses: Requirement 6, criteria 1-4
 #[derive(Debug, Clone, PartialEq)]
 pub struct DesignTokens {
     pub spacing: SpacingScale,
@@ -676,7 +676,7 @@ pub enum ThemeEvent {
         previous_theme: String,
         new_theme: String,
     },
-    /// The visual mode was switched (dark ↔ light ↔ high-contrast).
+    /// The visual mode was switched (dark <-> light <-> high-contrast).
     ModeChanged {
         previous_mode: VisualMode,
         new_mode: VisualMode,
@@ -774,7 +774,7 @@ pub enum ColourToken {
 
 impl ThemeHandle {
     /// Get a colour by compile-time token. Returns a rendering-ready colour.
-    /// Addresses: Requirement 8, criteria 1–7
+    /// Addresses: Requirement 8, criteria 1-7
     pub fn colour(&self, token: ColourToken) -> ColourRGBA;
 }
 ```
@@ -783,7 +783,7 @@ impl ThemeHandle {
 
 ```rust
 impl ThemeHandle {
-    /// Get the style slot at the given index (0–255).
+    /// Get the style slot at the given index (0-255).
     /// Addresses: Requirement 3, criterion 7
     pub fn style_slot(&self, index: u8) -> &StyleSlot;
 
@@ -978,7 +978,7 @@ pub enum ThemeError {
 
     /// Font size outside valid range.
     /// Addresses: Requirement 4, criterion 6
-    #[error("[theme] validate: font size {size} for '{stack}' outside range {min}–{max}, clamped to {clamped}")]
+    #[error("[theme] validate: font size {size} for '{stack}' outside range {min}-{max}, clamped to {clamped}")]
     FontSizeOutOfRange {
         stack: String,
         size: f32,
@@ -1090,15 +1090,15 @@ pub enum ThemeError {
 ### Dependency Direction Summary
 
 ```
-ff-logging ← ff-config ← ff-theme ← ff-desktop
-                                    ← syntax-highlighting
-                                    ← caret-and-selection
-                                    ← text-decorations
-                                    ← whitespace-and-guides
-                                    ← menu-and-statusbar
-                                    ← layout-and-docking
-                                    ← file-tree-panel
-                                    ← plugins (via PluginContext)
+ff-logging <- ff-config <- ff-theme <- ff-desktop
+                                    <- syntax-highlighting
+                                    <- caret-and-selection
+                                    <- text-decorations
+                                    <- whitespace-and-guides
+                                    <- menu-and-statusbar
+                                    <- layout-and-docking
+                                    <- file-tree-panel
+                                    <- plugins (via PluginContext)
 ```
 
 `ff-theme` depends on NO other workspace crates except `ff-config` and `ff-logging`. External dependencies:
@@ -1142,17 +1142,17 @@ The following configuration keys are registered by ff-theme with the configurati
 
 ```
 ┌──────────────────┐       ┌──────────────────────┐
-│ Config Reload    │──────▶│ Theme Loader          │
+│ Config Reload    │─────>│ Theme Loader          │
 │ Callback Thread  │       │ (parse + validate +   │
 └──────────────────┘       │  build new palette)   │
                            └──────────┬───────────┘
                                       │ new Arc<ThemePalette>
-                                      ▼
+                                      v
                            ┌──────────────────────┐
-                           │ ArcSwap::store(new)   │ ← atomic pointer swap
+                           │ ArcSwap::store(new)   │ <- atomic pointer swap
                            └──────────┬───────────┘
                                       │
-                                      ▼
+                                      v
                            ┌──────────────────────┐
                            │ Event Bus: emit       │
                            │ ThemeEvent::...       │
@@ -1388,7 +1388,7 @@ These properties are suitable for property-based testing with `proptest`. They v
 
 ### Property 11: Theme Inheritance Chain Termination
 
-**Statement**: For any theme inheritance chain (theme A → base B → base C → ...), the chain always terminates -- either at a theme with no `base` field, or at the built-in default. Circular inheritance is detected and reported as an error.
+**Statement**: For any theme inheritance chain (theme A -> base B -> base C -> ...), the chain always terminates -- either at a theme with no `base` field, or at the built-in default. Circular inheritance is detected and reported as an error.
 
 **Validates**: Requirement 12, criterion 5
 
@@ -1512,7 +1512,7 @@ All other elements have their alpha forced to 255 (fully opaque).
 | 38 | Call Tip | Call tip popup text |
 | 39 | Fold Display | Collapsed fold placeholder text |
 
-Indices 0–31 and 40–255 are available for language-specific syntax styles.
+Indices 0-31 and 40-255 are available for language-specific syntax styles.
 
 
 ---
@@ -1906,3 +1906,206 @@ items may remain or be subsumed by the submenu (kept for now; no regression).
 Req 17.1-17.7 (the THEME command family) are unchanged; 17.8-17.13 are additive.
 The popup and submenu are new affordances over the existing apply path; no
 criterion is weakened or repurposed.
+
+---
+
+## CR-CH-056 egui-Native Theme Model (Requirements 23, 24, 25; reworks 1/5/6/8/13/14/18/20; supersedes 2 chrome parts + 21)
+
+Owner-confirmed FRAMEWORK CHANGE (framework-conformance.md): reshapes the public
+`ThemePalette` type into a HYBRID and changes the persisted Theme_File format. It
+builds ON the existing single-command-dispatch, per-tab Navigation_Stack, and
+`WorkspaceContext` mechanisms, which are UNCHANGED. Reference scoping report:
+`.agents/tasks/theme-egui-rework/findings.md` (sections A-G).
+
+### C56.1 The model: Theme = egui Style (chrome) + retained domain groups
+
+egui has NO "theme" concept; its vocabulary is `egui::Style` { `Visuals`,
+`Spacing`, text styles, corner radius, shadow }. A FFWB **Theme** is the
+user-facing concept and PRODUCES an `egui::Style` (chrome) plus the domain groups
+egui does not model. The split (findings A, hybrid line):
+
+- **Chrome layer** (NEW): configures the full themable `egui::Style`/`Visuals`/
+  `WidgetVisuals` surface. REPLACES the chrome role of `UiColours`,
+  `TabBarColours`, and the chrome-adjacent `EditorColours` fields
+  (background/foreground/accent).
+- **Domain groups** (RETAINED, egui cannot model them): `syntax`, `gutter`
+  (the editor line-number/fold-margin/cursor-row gutter -- RENAMED from the current
+  `chrome` group to avoid clashing with the new chrome layer), `file_tree`,
+  `decorations`, `indicators`, `style_slots`, `elements`, plus the editor-domain
+  `EditorColours` fields (modified_indicator, current_line_background,
+  selection_secondary_background). `fonts` and `design` (DesignTokens) are
+  chrome-adjacent and feed the egui `Style` at the seam.
+
+### C56.2 New / changed public types in `ff-theme` (findings G.ii)
+
+- **NEW chrome type** (e.g. `ChromeStyle`): an egui-native, serde-serialisable
+  carrier of the themable `egui::Style`. The DESIGN DECISION (confirmed scope) is
+  to ADOPT egui's OWN serde derives on `Style`/`Visuals` by enabling egui's
+  `serde` feature, so the theme file embeds egui's native representation rather
+  than a hand-written mirror that could drift. `ChromeStyle` therefore wraps (or
+  stores) an `egui::Style` (plus any FFWB-only chrome extras the tab bar / title
+  band need that are not expressible as plain `Style`, kept minimal).
+- **CHANGE `ThemePalette`**: add the chrome layer field (the `ChromeStyle`); KEEP
+  `syntax`, `file_tree`, `decorations`, `indicators`, `style_slots`, `elements`,
+  `fonts`, `design`, `mode`, `name`; RENAME the `chrome` group to `gutter`.
+  Consider retaining thin `UiColours`/`TabBarColours` shims during migration so the
+  ~33 chrome read sites can migrate incrementally (removed once migration completes).
+- **ADD `version: u32`** to the format metadata (C56.5).
+- **RESOLVE `base`** in the loader (currently read and discarded at loader.rs:57).
+- **`apply_to_egui(&self, &mut egui::Style)`** on the chrome type: the single
+  wholesale apply used by the seam (C56.3).
+
+### C56.3 The apply seam (Requirement 23.5)
+
+`WorkbenchShell::apply_theme` (crates/ff-desktop/src/shell/render_theme.rs:18)
+becomes a wholesale `chrome.apply_to_egui(&mut style)` + `ctx.set_style(style)`.
+This REPLACES the current hand-written body (which sets only ~15 of egui's ~50
+themable fields and leaves the rest at `Visuals::dark()` defaults -- findings B)
+and REMOVES the hardcoded Legacy slider-colour override currently injected at the
+seam (render_theme.rs:44-52); those slider colours become part of the Legacy
+instance's chrome `Style`. The DesignTokens spacing/rounding/shadow (dead at the
+seam today) are wired here (Requirement 23.6): spacing -> `Style.spacing`, radii
+-> `Visuals`/`WidgetVisuals` corner radius, shadows -> `window_shadow`/`popup_shadow`.
+`visuals.dark_mode` is set to match the Theme's VisualMode (fixes the follow-OS
+read-back at update.rs:242).
+
+### C56.4 The ~33 chrome read-site migration (findings C)
+
+The chrome groups (`ui` ~12, `editor` accent/fg/bg ~13, `tab_bar` ~8) are read
+almost entirely in `crates/ff-desktop/src/shell/render_*.rs`
+(`render_theme.rs`, `render_command_line.rs`, `render_status.rs`,
+`render_split_region.rs`, `render_tab_bar.rs`, `render.rs`). These migrate to
+read the applied egui `Style`/`Visuals` (via `ui.visuals()` / `ctx.style()`) or
+the chrome layer, instead of flat `self.palette.ui.*` / `self.palette.tab_bar.*`
+/ `self.palette.editor.{accent,foreground,background}`. The DOMAIN read sites
+(file-tree `category_colour` in ff-explorer-view; syntax/gutter via the
+`ColourToken` token API) are UNCHANGED because the domain groups are retained --
+the hybrid specifically avoids churning those.
+
+### C56.5 Theme file format: versioned TOML with embedded egui Style (Requirement 25)
+
+- **Decision note:** the format is VERSIONED TOML. TOML was chosen over JSON for
+  consistency with the existing `menus/*.toml` and config files; the egui `Style`
+  is embedded as a TOML sub-table. This decision is FLAGGABLE at gate review
+  (JSON would serialise egui's nested `Style` more naturally, but splits the
+  format family). Recorded here as the open design decision for owner review.
+- **`version` field:** a top-level integer; the design also records the egui
+  version the embedded `Style` blob was written against (so a future egui upgrade
+  is detectable).
+- **Backward-compatible load (v1 -> v2):** absent `version` => v1 (today's
+  section layout). The loader maps the keys a v1 file has into the chrome layer
+  and DEFAULT-FILLS the new egui fields from the mode default (the loader already
+  fills every absent token -- findings D). `version = 2` => the egui-native path.
+  No destructive migration; optionally re-serialise to v2 on the next Save.
+- **Version-tolerant `Style` deserialise:** missing egui fields take egui/mode
+  defaults; extra/unrecognised egui fields are ignored (Requirement 25.3,
+  consistent with Req 15.2). No in-repo user theme files ship, so only end-user
+  files are at risk and they degrade gracefully.
+- **`base` resolution (Requirement 25.4):** the loader RESOLVES `base` -- tokens
+  absent from the file inherit from the named base theme, then from the mode
+  default; an unresolvable base WARNs and falls back (Req 14.10/15.6). This fixes
+  the discarded-`base` defect.
+
+### C56.6 Built-in instances (Requirement 18 revised; findings G.iv phase 2)
+
+All five built-ins are INSTANCES of the model (a chrome `Style` + domain groups),
+compiled-in and code-only (never written to disk, Req 18.2):
+
+- **Default Dark (Solarized Dark):** bg base03 `#002B36` / base02 `#073642`; fg
+  base0 `#839496` / base1 `#93A1A1`.
+- **Default Light (Solarized Light):** bg base3 `#FDF6E3` / base2 `#EEE8D5`; fg
+  base00 `#657B83` / base01 `#586E75`.
+- **Shared Solarized accents** (both): yellow `#B58900`, orange `#CB4B16`, red
+  `#DC322F`, magenta `#D33682`, violet `#6C71C4`, blue `#268BD2`, cyan `#2AA198`,
+  green `#859900`. Dark/Light must satisfy the egui-Visuals three-level
+  hierarchy + accent focus ring + accent active tab + accent primary-menu band
+  (Requirement 23.7-23.11) and the AA advisory.
+- **Default High Contrast:** UNCHANGED (AAA 7:1, Req 5.6).
+- **Default Legacy:** ISPF retrofit onto the egui `Style`; primary option-menu
+  background TONED DOWN `#0000AA` -> `#000060`; all other Legacy colours
+  byte-identical (so `Default Legacy == legacy source` apart from that one value).
+- **Legacy Soft (NEW):** softer phosphor variant keeping the ISPF semantic roles
+  in the domain groups; body green `#00FF00` -> `#33FF66` (and comparable softening
+  of the harshest pure-saturated values); gets the `legacy soft` / `legacy-soft` /
+  `legacy_soft` shorthand (Req 17.2b). The built-in set grows 4 -> 5;
+  `discovery::BUILTIN_THEME_NAMES` gains `Legacy Soft`.
+
+### C56.7 Theme Editor rebuild (Requirement 20 reworked; folds in B081)
+
+- **Editable surface derivation (Req 20.11):** the editor's editable list is
+  DERIVED from the egui `Style`/`Visuals` chrome fields + the retained domain
+  groups, replacing the hand-written fixed `EditableToken::ALL` (14 tokens,
+  findings E). Prefer generating the chrome field list from the chrome type
+  (reflection / a field table) so a new egui field surfaces without a bespoke
+  per-field edit; the generic render loop over the derived list is unchanged in
+  shape. The `== 14` test is retargeted to the derived count.
+- **Import/Export (Req 20.12 / Requirement 24):** the editor gains Export and
+  Import actions that produce `ThemeEditorAction::Export{path}` /
+  `Import{path}` (new `ThemeEditorAction` variants), applied in
+  `apply_theme_editor_action`: Export = `serialise` to the chosen path; Import =
+  read + validate (reject foreign/invalid, Req 24.3) + write into `themes/` +
+  `refresh_theme_editor_list`. Both expressible as commands (command parity).
+- **B081 resolution (Req 20.13):** the pure render (`ff-theme-editor/src/lib.rs`)
+  stops gating Copy/Save As behind a silently-disabled empty-name button. When
+  Save is pressed with a BUILT-IN selected, the editor prompts for (or focuses a
+  pre-filled, editable) new unique name and performs Save As -- the create path is
+  one discoverable step and never a silent no-op (findings B/C). The shell-apply
+  and persistence layers are already correct (b081 findings); the fix is in the
+  render-to-action UX contract. A NEW full-shell `egui_kittest` test types a name
+  and presses Save/Save As and asserts a user `.toml` is written and the theme
+  becomes selectable -- the previously untested interactive seam.
+- The Theme Editor REMAINS a `WorkspaceContext` dispatched via
+  `render_workspace_context` (single focus-latch path, command parity -- all
+  UNCHANGED).
+
+### C56.8 egui `serde` feature (Requirement 23.2)
+
+Enable egui's `serde` feature on the egui dependency in the workspace
+`Cargo.toml` (egui 0.33), so `egui::Style`/`Visuals`/`WidgetVisuals` get their
+own `Serialize`/`Deserialize`. The chrome layer serialises THROUGH these derives
+(embedded as a TOML sub-table) rather than FFWB hand-mirroring every field. This
+is the "adopt egui's own method" answer to the owner's import/export question.
+
+### C56.9 Five-phase plan (findings G.iv)
+
+1. **Model + egui mapping** -- chrome type (egui `Style`-backed via egui serde),
+   `version` field, `apply_to_egui`, rewrite `apply_theme` to call it wholesale,
+   wire DesignTokens, resolve `base`, rename `chrome` group -> `gutter`. Keep
+   domain groups unchanged.
+2. **Built-in instances** -- Solarized Dark + Light (replace Catppuccin), Legacy
+   retrofit with toned `#000060` primary-menu, new Legacy Soft (`#33FF66` body);
+   High Contrast retained; `BUILTIN_THEME_NAMES` 4 -> 5; `legacy soft` shorthand.
+3. **Theme Editor rebuild** -- derived editable surface, import/export, B081 Save
+   fix, retarget the `== 14` test, re-point the first-Tab egui_kittest test if the
+   first control changes, add the type-a-name-and-Save full-shell test.
+4. **Version + migration + base** -- `version` branching in the loader, v1->v2 key
+   mapping + version-tolerant `Style` deserialise, `base` resolution, round-trip
+   tests for both versions.
+5. **Docs** -- rewrite the theme-authoring docs to be egui-native (Style/Visuals
+   vocabulary) with ISPF as a retrofit; update this spec set (done in this gate).
+
+### C56.10 Framework conformance (framework-conformance.md)
+
+- Single command dispatch: UNCHANGED. THEME / import / export verbs are
+  registered through the existing dispatch; UI affordances invoke the commands.
+- Navigation stack: UNCHANGED. The Theme Editor opens via the existing
+  navigate-in-place path.
+- WorkspaceContext + single focus latch: UNCHANGED. The Theme Editor stays a
+  `WorkspaceContext` dispatched via `render_workspace_context`.
+- Code-only built-ins: UNCHANGED. The five built-ins remain compiled, never
+  written to disk.
+- The ONLY framework changes are the two owner-confirmed ones: the public
+  `ThemePalette` shape (now hybrid) and the persisted Theme_File format (now
+  versioned, egui-`Style`-embedding). Both are explicitly in scope for CR-CH-056.
+
+### C56.11 Test footprint (findings F)
+
+~25-30 existing test functions assert specific chrome group FIELDS
+(`ff-theme` round-trip/loader/defaults ~20; `ff-theme-editor` 3 incl. the
+`== 14` assertion; `ff-desktop` focus/POM/menu-workspace ~5 reading `palette.ui.*`
+/ `palette.tab_bar.*`). These migrate to assert the chrome `Style`/`Visuals` or
+the renamed `gutter` group. The larger set of THEME-command tests asserting
+`.mode`/`.name` is UNAFFECTED (mode/name are retained). New tests: Solarized
+Dark/Light chrome + AA contrast; v1->v2 load; `base` resolution; version-tolerant
+`Style` deserialise; import reject-foreign; export round-trip; the full-shell
+type-a-name-and-Save test (B081).

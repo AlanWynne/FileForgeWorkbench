@@ -173,43 +173,131 @@ died), and (c) the owner's full verify.ps1 gate.
 
 ## REMAINING WORK (task list ids)
 
-- [ ] 2.1 Group WorkbenchShell into sub-structs (in flight, Phase 2 workflow).
-- [ ] 2.2 Split render.rs/commands.rs/tab_manager.rs to 400 lines (in flight).
-- [ ] 3.1 (task 7) Convert handle_command ladder to a verb dispatch table AND
-      implement `builtin_workspace_target` so `resolve_target` becomes the single
-      front door for typed + menu + key seams (F1/F2/S1). This is the ONE
-      genuinely BEHAVIOURAL change in the whole plan -- it is NOT a pure refactor
-      and MUST go through the requirements gate (workflow.md): write/adjust
-      criteria for the unified-dispatch behaviour before any code. Large but
-      incremental (move verb families one at a time). Unblocks the clean Command
-      Registration step in the wiring standard.
+- [x] 2.1 Group WorkbenchShell into sub-structs. DONE (Phase 2, owner-verified).
+- [x] 2.2 Split render.rs/commands.rs/tab_manager.rs to 400 lines. DONE (Phase 2,
+      owner-verified full gate clean).
+- [ ] 3.1 (task 7) Unify command dispatch so `resolve_target` is the single front
+      door (F1/F2/S1). Tracked as the B080 dispatch-unify migration, Steps 0-7.
+      The requirements gate for the behavioural change is CLOSED (owner-approved
+      as a CONFORMANCE fix against existing command-framework Req 2.1/2.7/8.3/8.4/
+      9.2/9.7 -- NO new criteria). Progress:
+      - [x] Step 0/1 -- `dispatch.rs` front door `dispatch_command_string` +
+            single verb/arg split; both submit sites rerouted. DONE.
+      - [x] Step 2 -- prelude moved into the front door; `builtin_workspace_target_for`
+            classifies the CustomWorkspace/nav family (FILES/=FILES/FILE CATALOGS/
+            CONFIG/COMMANDS/LOG/PLUGINS/MACROS/GSEARCH/SEARCH/KEYS/KINDS/MENUS/
+            THEME-bare); CustomWorkspace dispatch arm calls the exact ladder
+            method. 940+ tests pass. DONE. B080 marked FIXED (unification) for the
+            single-front-door goal.
+      - [x] Step 3 -- Function family (EXIT/EDIT/BROWSE/VIEW/CLOSE): DONE BY
+            DEFERRAL. Correctly LEFT ON THE LADDER -- EDIT/BROWSE/VIEW carry a path
+            param the current `Function` dispatch arm (`handle_command(command_id)`)
+            would DROP (Req 8.4 regression); CLOSE is a shell op, not a Command_ID.
+            Migrating them needs param-carrying Function dispatch
+            (`execute_command(id, params)`) -- a framework enhancement, tracked as
+            a Step 4+ follow-up. Comment-only edits; zero behaviour change.
+      - [x] Step 4 -- manager families (nav / exclude-show / find / profile /
+            scroll). DONE BY SUPERSESSION (owner-confirmed framing, 2026-10-05;
+            workflow wf_e8f3ce7aae2b8876). The mandatory shape-check gave answer
+            (b): these are EDITOR-ACTION verbs, NOT workspace-openers, and do not
+            fit an existing CommandTarget variant behaviour-preservingly
+            (CustomWorkspace = conceptual mismatch; Function dispatch drops params
+            = the Step-3 blocker; a clean route needs a NEW variant = framework
+            change). AND the deferral target has ALREADY SHIPPED: CR-CH-053's
+            FFEDIT Command Environment owns all five families via
+            `shell/dispatch.rs::ffedit_claim` (E1 nav / E2 exclude-show-reset / E3
+            find incl. parse_two_args+B062 / E4 profile / E5 scroll), verb bodies
+            moved VERBATIM into `shell/dispatch_ffedit.rs`; the `commands_ladder_b2.rs`
+            segment was RETIRED (E7) and no longer exists; grep confirms NO
+            manager-family arm remains on commands_ladder_a/b/c.rs. They still
+            reach the ONE front door (dispatch_command_string -> prelude ->
+            resolve_target -> run_command_ladder, whose first act is the FFEDIT
+            claim), so Req 2.1 holds. ZERO code change this step; `cargo check -p
+            ff-desktop` clean. Full evidence: `.agents/tasks/dispatch-unify/step-4-impl-note.md`.
+      - [x] Step 5 -- split/detach/swap + workspace families. DEFERRED TO CR-CH-053
+            (owner decision 2026-10-05). These are window/tab/session verbs
+            (SPLIT/DETACH/UNSPLIT/FOCUS/DOCK/SWAP/END/RETURN/WORKSPACE/CLOSE) issued
+            FROM WITHIN any Context -- they have no dedicated focused Context, so no
+            topical environment (FFWIN) could ever be the Active_Environment. Their
+            home is FFCMD, the always-present base reached by fallback from
+            everywhere; populating FFCMD is CR-CH-053's work, NOT a B080
+            CommandTarget migration (they fit no existing CommandTarget variant
+            behaviour-preservingly -- same wall as Steps 3/4). They already reach
+            the ONE front door via the ladder, so Req 2.1 holds; no B080 action.
+            Recorded in docs/specs/command-environments/design.md ("An environment
+            must have a Context that makes it active").
+      - [x] Step 6 -- standalone verbs + scrm. DEFERRED TO CR-CH-053 (owner
+            decision 2026-10-05). HELP/PFSHOW/TIME/RETRIEVE/RESET BARE and
+            SNAPSHOT/CAPTURE are FFCMD global commands (no capture Context exists,
+            so no FFSCRM); AUTONUM is FFEDIT (editor-numbering). SUBMIT/STATUS are
+            future-FFJES verbs with layered FFCMD/FFEDIT front-ends delegating to
+            the FFJES backend (layered-delegation principle, recorded in the
+            command-environments design doc); CREATE/REPLACE/COMPARE are stubs.
+            None is a B080 CommandTarget migration; all reach the one front door
+            today. No B080 action.
+      - [x] Step 7 -- retire the Step-2 superseded CustomWorkspace/nav ladder arms.
+            DONE-BY-PRIOR-REMOVAL (this session, workflow wf_c6217346b71aed5a). The
+            arms Step 7 was to delete (KEYS/KINDS; CONFIG/FILES/=FILES/GSEARCH/SEARCH/
+            COMMANDS/MENUS/LOG/FILE CATALOGS/CATALOGS/PLUGINS/MACROS; bare-THEME) had
+            ALREADY been deleted by CR-CH-052 (the "B080 Step 2 follow-up" deletion)
+            and CR-CH-053 E7 (commands_ladder_b2.rs retired, bare-THEME folded inline
+            and its branch deleted). Confirmed READ-ONLY that every one of the 12
+            verbs is classified by `builtin_workspace_target_for` and dispatched by the
+            `dispatch_command_target` CustomWorkspace arm to the exact former ladder
+            method (EventLog preserves nav-then-mark_all_read) BEFORE `run_command_ladder`
+            is reached, so the arms are provably unreachable AND already gone; grep found
+            NO residual dead arm (verb_arg/upper== matches only in the tests_common test
+            helper), and `try_commands_b2` references are historical comments only. ZERO
+            code change, ZERO deletions invented (the sanctioned "nothing to retire"
+            outcome). Scoped checks: `cargo check -p ff-desktop` 0 warnings (no dead-code
+            warnings -- the arms are gone); `cargo clippy -p ff-desktop --tests` only a
+            pre-existing unrelated doc nit; the command-dispatch test suites
+            (tests_command/nav/split_detach/session + the Step-2 equivalence test
+            `typed_and_key_paths_reach_same_handler_for_builtin_verb`) all pass. The one
+            failing ff-desktop test (`full_shell_theme_editor_type_name_and_save_creates_user_theme`)
+            is an unrelated in-flight theme-egui-rework/B081/CR-CH-056 issue, outside B080
+            scope and not caused by this step (I made no code changes). This is the LAST
+            concrete B080 task -- the B080 migration/cleanup is now FULLY COMPLETE; the
+            remaining verb homes (Function family, manager families, split/detach/
+            workspace, standalone, scrm) are CR-CH-053's per the Step 3-6 deferrals.
+            Evidence: `.agents/tasks/dispatch-unify/step-7-impl-note.md`.
 - [ ] 3.2 (task 8) Move kind-specific tab state off TabState behind TabKind
-      (F4 tail). Optional follow-on to 2.1.
-- [ ] 3.3 (task 9) Remove the "Command Registration is temporarily weaker" caveat
-      from `.kiro/steering/wiring-standard.md` once task 7 lands.
+      (F4 tail). Optional follow-on to 2.1. TODO (optional; defer unless wanted).
+- [x] 3.3 (task 9) Remove the "Command Registration is temporarily weaker" caveat
+      from `.kiro/steering/wiring-standard.md`. DONE (2026-10-05): B080 closed the
+      gap the caveat described (typed path now routes through `resolve_target`;
+      `builtin_workspace_target` is no longer a stub). The "Known caveat" section
+      was replaced with a "Command dispatch is unified (B080 complete)" section,
+      and the Command Registration bullet now says prefer classifying in
+      `resolve_target` over a ladder arm (editor-action verbs -> FFEDIT/CR-CH-053).
+      Docs-only; ASCII-clean.
 
 ---
 
 ## HOW TO RESUME (next session)
 
-Phases 1 and 2 are DONE (owner-verified full gate clean). Everything is
+Phases 1 and 2 are DONE (owner-verified full gate clean). Phase 3 (task 7) is
+the B080 dispatch-unify migration, Steps 0-3 DONE, Steps 4-7 remaining (see
+REMAINING WORK above for the per-step detail). The behavioural-change gate is
+CLOSED (owner-approved conformance fix, no new criteria). Everything is
 UNCOMMITTED in the working tree per owner direction (no worktree/branch/commit
 yet). Remaining work:
 
-1. **Phase 3 task 7 -- verb-table dispatch (NEXT, needs the REQUIREMENTS GATE).**
-   This is the ONE behavioural change in the plan, so it is NOT a refactor and
-   MUST run the gate before any code. Convert the handle_command ladder (now
-   spread across shell/commands_ladder_*.rs after Phase 2) to a verb dispatch
-   table and implement builtin_workspace_target so resolve_target is the single
-   front door for typed + menu + key seams (F1/F2/S1). Gate steps: identify the
-   sub-project (likely command-framework / command-semantics / command-palette
-   under docs/specs), draft EARS criteria for "typed, menu, and key seams all
-   resolve through resolve_target to one handler", update
-   design/tasks/project-master/TCR, and get OWNER APPROVAL before code.
-2. **Phase 3 task 8 -- move kind-specific tab state off TabState behind TabKind**
+1. **Step 4 -- manager families (nav/exclude-show/find/profile/scroll). IN
+   PROGRESS.** Per `.agents/tasks/dispatch-unify/design-delta.md` section 4 and
+   `step-2-plan.md`, migrate each family as a single delegating entry owning its
+   own arg sub-parse, behaviour-preserving, delete the ladder arm only once its
+   entry is test-proven green. CAVEAT (decide first): these are editor-action
+   verbs that the B080 notes say "belong to the Command Environments model
+   (CR-CH-053)". Confirm the correct target shape before migrating; if it cannot
+   be done behaviour-preservingly through the existing `CommandTarget`, DEFER and
+   report (like Step 3) rather than force it or expand the framework.
+2. **Steps 5-7** -- split/detach/swap + workspace (5), standalone + scrm (6),
+   retire superseded ladder arms + thin terminal (7).
+3. **Phase 3 task 8 -- move kind-specific tab state off TabState behind TabKind**
    (F4 tail; optional follow-on to 2.1).
-3. **Phase 3 task 9 -- remove the Command Registration caveat** from
-   .kiro/steering/wiring-standard.md once task 7 lands.
+4. **Phase 3 task 9 -- remove the Command Registration caveat** from
+   .kiro/steering/wiring-standard.md once the dispatch unification lands.
 
 ### Separate, non-blocking follow-ups (not part of the phases)
 - The semantic review's two nits: (a) a pre-existing non-ASCII comment sweep

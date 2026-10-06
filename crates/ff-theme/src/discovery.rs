@@ -128,6 +128,60 @@ pub fn export_theme(palette: &ThemePalette, name: &str) -> Result<String, ThemeE
     Ok(serialiser::serialise(&p))
 }
 
+/// The native FFWB theme section names any file produced by this application's
+/// serialiser contains. Used to distinguish a native FFWB theme file from a
+/// foreign one (base16 / VS Code / tmTheme) that happens to be valid TOML.
+const NATIVE_THEME_SECTIONS: &[&str] = &["editor", "syntax", "ui", "tab_bar"];
+
+/// Parse and VALIDATE a string as a NATIVE FFWB theme file, returning the loaded
+/// palette (CR-CH-056 Requirement 24.2, 24.3).
+///
+/// A file is accepted only when it (a) parses as TOML, (b) carries the required
+/// `name` metadata, and (c) contains at least one native FFWB theme section
+/// (`[editor]` / `[syntax]` / `[ui]` / `[tab_bar]`). A foreign format (e.g. a
+/// base16 or VS Code theme) that is valid TOML but lacks the FFWB structure is
+/// REJECTED with a clear message rather than silently loaded as an all-default
+/// palette. This is the import guard; it does NOT change the file FORMAT (the
+/// loader is reused for the actual parse).
+///
+/// # Errors
+///
+/// Returns `ThemeError::ParseError` with an identifying detail when the file is
+/// unparseable, missing the `name` metadata, or not a native FFWB theme file.
+pub fn parse_native_theme(
+    toml_str: &str,
+    mode_default: crate::mode::VisualMode,
+) -> Result<ThemePalette, ThemeError> {
+    let table: toml::Table =
+        toml_str
+            .parse()
+            .map_err(|e: toml::de::Error| ThemeError::ParseError {
+                path: "<import>".to_string(),
+                detail: format!("not valid TOML: {e}"),
+            })?;
+    // (b) required metadata: a top-level `name` string.
+    let has_name = table.get("name").and_then(|v| v.as_str()).is_some();
+    if !has_name {
+        return Err(ThemeError::ParseError {
+            path: "<import>".to_string(),
+            detail: "missing required 'name' metadata -- not a native FFWB theme file".to_string(),
+        });
+    }
+    // (c) native FFWB structure: at least one known theme section.
+    let has_section = NATIVE_THEME_SECTIONS
+        .iter()
+        .any(|s| table.get(*s).map(|v| v.is_table()).unwrap_or(false));
+    if !has_section {
+        return Err(ThemeError::ParseError {
+            path: "<import>".to_string(),
+            detail:
+                "no FFWB theme sections (editor/syntax/ui/tab_bar) -- not a native FFWB theme file"
+                    .to_string(),
+        });
+    }
+    crate::loader::load_from_toml(toml_str, mode_default)
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 fn theme_info_from_toml(content: &str, path: &Path) -> ThemeInfo {
@@ -322,6 +376,51 @@ mod tests {
         let palette = crate::defaults::dark_palette();
         let toml = export_theme(&palette, "Test").unwrap();
         assert!(toml.parse::<toml::Table>().is_ok());
+    }
+
+    // Validates: Requirement 24.2 -- a native FFWB file (what export/Save
+    // produces) parses as a valid theme via the import guard.
+    #[test]
+    fn parse_native_theme_accepts_exported_file() {
+        use crate::mode::VisualMode;
+        let palette = crate::defaults::dark_palette();
+        let toml = export_theme(&palette, "Round Trip").unwrap();
+        let parsed = parse_native_theme(&toml, VisualMode::Dark).expect("native file accepted");
+        assert_eq!(parsed.name, "Round Trip");
+    }
+
+    // Validates: Requirement 24.3 -- unparseable input is rejected with a clear
+    // message, not silently loaded.
+    #[test]
+    fn parse_native_theme_rejects_unparseable() {
+        use crate::mode::VisualMode;
+        let err = parse_native_theme("this is not = = toml", VisualMode::Dark).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.to_lowercase().contains("toml"),
+            "message names the problem: {msg}"
+        );
+    }
+
+    // Validates: Requirement 24.3 -- a file missing the required `name` metadata
+    // is rejected (not a native FFWB theme).
+    #[test]
+    fn parse_native_theme_rejects_missing_name() {
+        use crate::mode::VisualMode;
+        let err = parse_native_theme("[editor]\nbackground = \"#000000\"\n", VisualMode::Dark)
+            .unwrap_err();
+        assert!(err.to_string().to_lowercase().contains("name"));
+    }
+
+    // Validates: Requirement 24.3 -- a foreign file that is valid TOML but has
+    // no FFWB theme sections is rejected (not silently loaded as all-default).
+    #[test]
+    fn parse_native_theme_rejects_foreign_structure() {
+        use crate::mode::VisualMode;
+        // Looks like a base16-ish foreign theme: a name but no FFWB sections.
+        let foreign = "name = \"Foreign\"\nscheme = \"base16\"\nbase00 = \"181818\"\n";
+        let err = parse_native_theme(foreign, VisualMode::Dark).unwrap_err();
+        assert!(err.to_string().to_lowercase().contains("ffwb"));
     }
 
     #[test]

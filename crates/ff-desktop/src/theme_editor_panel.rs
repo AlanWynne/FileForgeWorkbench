@@ -47,7 +47,7 @@ impl crate::shell::workspace_context::WorkspaceContext for ThemeEditorState {
         _services: &mut crate::shell::workspace_context::ShellServices<'_>,
     ) -> crate::shell::workspace_context::InteriorFocus {
         self.pending_action = render(ui, self);
-        let last = egui::Id::new(("theme_editor_hex", EditableToken::ALL.len() - 1));
+        let last = egui::Id::new(("theme_editor_hex", EditableToken::all().len() - 1));
         crate::shell::workspace_context::InteriorFocus {
             first: self.first_interior_id,
             last: Some(last),

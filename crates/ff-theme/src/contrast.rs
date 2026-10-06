@@ -94,9 +94,9 @@ pub fn check_theme_contrast(palette: &ThemePalette) -> Vec<ContrastWarning> {
     // UI chrome pairs -- threshold 3.0:1 (WCAG AA for large text / UI components)
     let ui_pairs: &[(&'static str, ColourRGBA, ColourRGBA)] = &[
         (
-            "chrome.line_number_fg / chrome.line_number_bg",
-            palette.chrome.line_number_fg,
-            palette.chrome.line_number_bg,
+            "gutter.line_number_fg / gutter.line_number_bg",
+            palette.gutter.line_number_fg,
+            palette.gutter.line_number_bg,
         ),
         (
             "tab_bar.inactive_text / tab_bar.inactive_bg",

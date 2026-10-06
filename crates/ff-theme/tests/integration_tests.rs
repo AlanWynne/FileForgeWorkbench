@@ -218,7 +218,7 @@ keyword = "#FF00FF"
     assert_eq!(palette.syntax.keyword, ColourRGBA::rgb(255, 0, 255));
     // Everything else is default
     assert_eq!(palette.editor, default.editor);
-    assert_eq!(palette.chrome, default.chrome);
+    assert_eq!(palette.gutter, default.gutter);
     assert_eq!(palette.ui, default.ui);
     assert_eq!(palette.file_tree, default.file_tree);
 }

@@ -84,6 +84,12 @@ impl WorkbenchShell {
                 // Update the working copy and live-preview it (Req 20.3, 20.8).
                 if let Some(p) = self.theme_editor_panel.working.as_mut() {
                     token.set(p, colour);
+                    // A chrome token writes a flat authoring field (ui/tab_bar/
+                    // editor); re-derive the egui chrome layer so the live
+                    // preview reflects the edit (CR-CH-056 Req 20.11). Domain
+                    // edits leave the chrome unchanged; the re-derive is cheap
+                    // and keeps the preview consistent either way.
+                    p.rederive_chrome_style();
                     let preview = p.clone();
                     self.theme_editor_panel.recompute_advisories();
                     // Live preview: apply the working copy to the active palette.
@@ -149,7 +155,126 @@ impl WorkbenchShell {
                 // built-in this re-selects the compiled palette (no file write).
                 self.reset_theme_reselect(&name);
             }
+            A::Export => {
+                // Command parity (Req 24.5): the UI affordance invokes the SAME
+                // command the typed `THEME EXPORT` runs, rather than calling the
+                // export logic directly.
+                self.handle_command("THEME EXPORT");
+            }
+            A::Import => {
+                // Command parity (Req 24.5): invoke the `THEME IMPORT` command.
+                self.handle_command("THEME IMPORT");
+            }
         }
+    }
+
+    /// Export the Theme Editor's selected (or working) theme to a native FFWB
+    /// theme file at `path`. The pure write is separated from the file-picker
+    /// path I/O (`export_theme_command`) so it is testable without a dialog.
+    ///
+    /// Validates: theme-and-appearance Requirement 24.1
+    pub(super) fn export_theme_to_path(&mut self, path: &std::path::Path) -> Result<(), String> {
+        // Prefer the working copy (reflects unsaved edits); fall back to the
+        // active palette. Name the export after the selected theme.
+        let palette = self
+            .theme_editor_panel
+            .working
+            .clone()
+            .unwrap_or_else(|| self.palette.clone());
+        let name = self
+            .theme_editor_panel
+            .selected
+            .clone()
+            .unwrap_or_else(|| palette.name.clone());
+        let toml = ff_theme::export_theme(&palette, &name)
+            .map_err(|e| format!("could not serialise theme '{name}': {e}"))?;
+        std::fs::write(path, toml)
+            .map_err(|e| format!("could not write export '{}': {e}", path.display()))
+    }
+
+    /// Import a native FFWB theme file from `path` into the themes directory as
+    /// a selectable user theme. Validates the file first (Req 24.3): a foreign /
+    /// invalid file is rejected with a clear message and NOTHING is written, so
+    /// the existing themes and the active theme are never corrupted. The pure
+    /// read/validate/write is separated from the file-picker path I/O
+    /// (`import_theme_command`) so it is testable without a dialog.
+    ///
+    /// Validates: theme-and-appearance Requirement 24.2, 24.3
+    pub(super) fn import_theme_from_path(
+        &mut self,
+        path: &std::path::Path,
+    ) -> Result<String, String> {
+        let source = std::fs::read_to_string(path)
+            .map_err(|e| format!("could not read '{}': {e}", path.display()))?;
+        // Validate it is a native FFWB theme BEFORE touching the themes dir.
+        let palette = ff_theme::parse_native_theme(&source, ff_theme::mode::VisualMode::Dark)
+            .map_err(|e| format!("import rejected: {e}"))?;
+        // A user import must never shadow a built-in name (Req 24.2 / 19.2a).
+        if ff_theme::is_builtin_theme(&palette.name) {
+            return Err(format!(
+                "import rejected: '{}' is a built-in theme name; rename the file's name field",
+                palette.name
+            ));
+        }
+        self.write_theme_file(&palette.name, &palette)?;
+        self.refresh_theme_editor_list();
+        Ok(palette.name)
+    }
+
+    /// `THEME EXPORT` command: pick a destination path (rfd save dialog) and
+    /// export the selected/active theme there. Command parity (Req 24.5).
+    ///
+    /// Validates: theme-and-appearance Requirement 24.1, 24.5
+    pub(super) fn export_theme_command(&mut self) {
+        let default_name = self
+            .theme_editor_panel
+            .selected
+            .clone()
+            .unwrap_or_else(|| self.palette.name.clone());
+        let picked = rfd::FileDialog::new()
+            .set_title("Export FFWB theme")
+            .set_file_name(format!(
+                "{}.toml",
+                crate::theme_defaults::theme_slug(&default_name)
+            ))
+            .add_filter("FFWB theme", &["toml"])
+            .save_file();
+        if let Some(path) = picked {
+            match self.export_theme_to_path(&path) {
+                Ok(()) => self.theme_editor_panel.error = None,
+                Err(e) => self.theme_editor_panel.error = Some(e),
+            }
+        }
+    }
+
+    /// `THEME IMPORT` command: pick a source path (rfd open dialog) and import
+    /// it as a selectable user theme. Command parity (Req 24.5).
+    ///
+    /// Validates: theme-and-appearance Requirement 24.2, 24.3, 24.5
+    pub(super) fn import_theme_command(&mut self) {
+        let picked = rfd::FileDialog::new()
+            .set_title("Import FFWB theme")
+            .add_filter("FFWB theme", &["toml"])
+            .pick_file();
+        if let Some(path) = picked {
+            match self.import_theme_from_path(&path) {
+                Ok(name) => {
+                    self.theme_editor_panel.error = None;
+                    self.theme_editor_panel.load_working(
+                        &name,
+                        self.palette_for_name(&name)
+                            .unwrap_or_else(|| self.palette.clone()),
+                    );
+                }
+                Err(e) => self.theme_editor_panel.error = Some(e),
+            }
+        }
+    }
+
+    /// Resolve a theme NAME to its palette (built-in or user file), for
+    /// re-targeting the editor after an import.
+    fn palette_for_name(&self, name: &str) -> Option<ff_theme::ThemePalette> {
+        crate::theme_defaults::load_theme_by_name(name, &self.themes_dir())
     }
 
     /// Serialise `palette` and write it to `<themes>/<slug>.toml`.

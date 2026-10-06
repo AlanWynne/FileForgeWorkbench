@@ -10,47 +10,23 @@ use eframe::egui;
 
 use crate::primary_option_menu;
 
-use super::helpers::to_egui_color;
 use super::WorkbenchShell;
 
 impl WorkbenchShell {
+    /// Apply the active Theme to egui through the SINGLE seam (CR-CH-056
+    /// Requirement 23.5): a WHOLESALE `chrome_style.apply_to_egui(&mut Style)`
+    /// followed by `ctx.set_style`. This replaces the former hand-written body
+    /// (which mapped only ~15 of egui's fields and left the rest at
+    /// `Visuals::dark()` defaults) and REMOVES the hardcoded Legacy slider-colour
+    /// injection -- those slider colours now come from the Legacy instance's
+    /// chrome `Style` (built in `ChromeStyle::from_palette_parts`), not from the
+    /// seam. The DesignTokens spacing/rounding/shadow are wired inside the chrome
+    /// layer (Requirement 23.6), and `visuals.dark_mode` is kept in sync with the
+    /// Theme's VisualMode.
     pub(super) fn apply_theme(&self, ctx: &egui::Context) {
-        let p = &self.palette;
-        let mut visuals = egui::Visuals::dark();
-        visuals.panel_fill = to_egui_color(p.editor.background);
-        visuals.window_fill = to_egui_color(p.ui.panel_bg);
-        visuals.window_stroke = egui::Stroke::new(1.0_f32, to_egui_color(p.ui.panel_border));
-        // Use menu_bar_fg as the global text colour — in Legacy this is white (#FFFFFF),
-        // which correctly colours menu bar items, tab bar, and chrome text.
-        // Editor content text is applied per-element in editor_panel using palette tokens.
-        visuals.override_text_color = Some(to_egui_color(p.ui.menu_bar_fg));
-        visuals.widgets.noninteractive.bg_fill = to_egui_color(p.ui.panel_bg);
-        visuals.widgets.noninteractive.fg_stroke =
-            egui::Stroke::new(1.0_f32, to_egui_color(p.editor.foreground));
-        visuals.widgets.inactive.bg_fill = to_egui_color(p.ui.button_bg);
-        visuals.widgets.inactive.fg_stroke =
-            egui::Stroke::new(1.0_f32, to_egui_color(p.ui.menu_bar_fg));
-        visuals.widgets.hovered.bg_fill = to_egui_color(p.ui.button_hover);
-        visuals.widgets.hovered.fg_stroke =
-            egui::Stroke::new(1.0_f32, to_egui_color(p.ui.menu_bar_fg));
-        visuals.widgets.active.bg_fill = to_egui_color(p.ui.input_bg);
-        visuals.widgets.active.fg_stroke =
-            egui::Stroke::new(1.0_f32, to_egui_color(p.ui.menu_bar_fg));
-        visuals.selection.bg_fill = to_egui_color(p.editor.accent).linear_multiply(0.35);
-        visuals.selection.stroke = egui::Stroke::new(1.0_f32, to_egui_color(p.editor.accent));
-        // In Legacy mode the slider track and handle are near-black on black — invisible.
-        // Override with high-contrast ISPF colours: turquoise track, yellow handle.
-        if p.mode == ff_theme::mode::VisualMode::Legacy {
-            let track = egui::Color32::from_rgb(0, 170, 170); // ISPF turquoise
-            let handle = egui::Color32::from_rgb(255, 255, 0); // ISPF yellow-hi
-            visuals.widgets.inactive.bg_fill = track;
-            visuals.widgets.inactive.fg_stroke = egui::Stroke::new(2.0_f32, handle);
-            visuals.widgets.hovered.bg_fill = egui::Color32::from_rgb(0, 210, 210);
-            visuals.widgets.hovered.fg_stroke = egui::Stroke::new(2.0_f32, handle);
-            visuals.widgets.active.bg_fill = egui::Color32::from_rgb(0, 255, 255);
-            visuals.widgets.active.fg_stroke = egui::Stroke::new(2.0_f32, handle);
-        }
-        ctx.set_visuals(visuals);
+        let mut style = (*ctx.style()).clone();
+        self.palette.chrome_style.apply_to_egui(&mut style);
+        ctx.set_style(style);
     }
 
     // === Theme switching ===

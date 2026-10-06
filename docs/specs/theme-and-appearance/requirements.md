@@ -36,7 +36,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 - **Design_Token**: A named reference to a non-colour visual property: spacing value, border radius, shadow definition, or animation timing. Part of the design system. [WB]
 - **Font_Stack**: An ordered list of font family names with fallback semantics. The theme defines separate stacks for monospace (editor) and proportional (UI) contexts. [FFE-THEME-3, WB]
 - **Visual_Mode**: One of three appearance modes -- Dark, Light, or High-Contrast -- that determines which set of palette values is active. [WB]
-- **Style_Slot**: An indexed slot (0–255) defining a combination of font, foreground colour, background colour, and text attributes (bold, italic, underline, case) for a specific syntax or UI element. Adapted from Scintilla's 256-style system. [SCI-STYLE]
+- **Style_Slot**: An indexed slot (0-255) defining a combination of font, foreground colour, background colour, and text attributes (bold, italic, underline, case) for a specific syntax or UI element. Adapted from Scintilla's 256-style system. [SCI-STYLE]
 - **Element_Colour**: A named colour associated with a UI element (selection background, caret, whitespace, fold margin, etc.) that can optionally support alpha transparency. Adapted from Scintilla's element-based colour system. [SCI-STYLE]
 - **Zoom_Level**: An integer offset applied to all font sizes, increasing or decreasing the effective rendered size without modifying the base theme configuration. [SCI-STYLE]
 - **Theme_Extension**: A set of additional colour tokens registered by a plugin to extend the palette with plugin-specific visual elements. [WB]
@@ -62,9 +62,28 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 6. THE theme file format SHALL support partial definitions where any omitted token inherits its value from the built-in default for the active Visual_Mode.
 7. THE Theme_System SHALL load theme settings through the configuration-system API, participating in the layered override model so that user-layer, project-layer, and profile-layer theme overrides function correctly.
 
+**REWORDED by CR-CH-056:** The theme file is now a VERSIONED TOML file whose chrome is an
+embedded `egui::Style` sub-table (Requirement 25). Criterion 1.6's partial-definition /
+default-fill behaviour is PRESERVED and extended to the egui `Style` sub-table (missing or
+extra egui fields are tolerated on load, Requirement 25.3). The configuration-system
+loading path (1.1, 1.2, 1.7) is unchanged.
+
 ---
 
 ### Requirement 2: Theme Palette Structure
+
+**SUPERSEDED IN PART by CR-CH-056 (Requirement 23, egui-Native Theme Model).** The
+CHROME portions of this requirement -- the `tab_bar` and `ui` colour groups and the
+chrome-adjacent `editor` fields (background, foreground, accent) -- are REPLACED by the
+egui-native chrome layer of Requirement 23, which configures the full `egui::Style` /
+`Visuals` surface rather than a flat fixed set of chrome colours. The DOMAIN colour
+groups below -- `syntax` (2.2), `file_tree` (2.3), the editor-domain fields of 2.1
+(modified_indicator, current_line_background, selection_secondary_background), the editor
+gutter group (renamed `chrome` -> `gutter`, 2.5), `decorations` (2.6), `indicators`
+(2.7), and the RGBA colour representation and translucency rules (2.9, 2.10) -- are
+RETAINED by Requirement 23 because egui does not model them. See Requirement 23 for the
+replacement chrome contract. The criteria below are kept for history; the chrome criteria
+(2.4, 2.8, and the chrome fields of 2.1) no longer bind.
 
 **User Story:** As a workbench user, I want a comprehensive colour palette covering all parts of the UI, so that I have fine-grained control over the visual appearance and every element respects my chosen theme.
 
@@ -80,7 +99,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 6. THE Theme_Palette SHALL define a **decorations** colour group containing at minimum: search highlight, error underline, warning underline, info underline, change-added marker, change-modified marker, change-deleted marker, and bookmark indicator.
 7. THE Theme_Palette SHALL define an **indicators** colour group containing at minimum: find-match highlight, brace-match highlight, brace-mismatch highlight, hotspot underline, and up to 32 user-defined indicator colours indexed by slot number.
 8. THE Theme_Palette SHALL define a **ui** colour group containing at minimum: panel background, panel foreground, panel border, button background, button foreground, button hover, input background, input border, input foreground, scrollbar track, scrollbar thumb, tooltip background, and tooltip foreground.
-9. FOR ALL Colour_Token values in the Theme_Palette, THE Theme_System SHALL represent each colour as an RGBA quadruplet with red, green, blue components in the range 0–255 and an alpha component in the range 0–255 (where 255 is fully opaque).
+9. FOR ALL Colour_Token values in the Theme_Palette, THE Theme_System SHALL represent each colour as an RGBA quadruplet with red, green, blue components in the range 0-255 and an alpha component in the range 0-255 (where 255 is fully opaque).
 10. THE Theme_Palette SHALL support alpha/transparency on tokens where translucent rendering is semantically meaningful (selection background, indicator overlays, caret-line background), as indicated by a per-token `allows_translucent` flag.
 
 ---
@@ -93,7 +112,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 
 #### Acceptance Criteria
 
-1. THE Theme_System SHALL provide a style-slot table containing up to 256 indexed Style_Slot entries (indices 0–255).
+1. THE Theme_System SHALL provide a style-slot table containing up to 256 indexed Style_Slot entries (indices 0-255).
 2. EACH Style_Slot SHALL define: foreground colour, background colour, font family (optional override of the default monospace stack), bold flag, italic flag, underline flag, and case transformation (none, upper, lower, camel).
 3. THE Theme_System SHALL define reserved style indices for: Default (index 32), Line Number (index 33), Brace Highlight (index 34), Brace Mismatch (index 35), Control Character (index 36), Indent Guide (index 37), Call Tip (index 38), and Fold Display Text (index 39).
 4. ALL Style_Slot entries not explicitly defined in the theme file SHALL inherit all attributes from the Default style slot (index 32).
@@ -116,7 +135,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 3. WHEN a Font_Stack does not specify any font families (empty list or missing configuration), THE Theme_System SHALL default to the platform's built-in monospace font for the editor stack and the platform's built-in proportional font for the UI stack.
 4. THE Theme_System SHALL specify a base font size as a floating-point value in points, independently configurable for the monospace and proportional stacks.
 5. WHEN a font size is not specified, THE Theme_System SHALL default to 14.0 points for the monospace stack and 13.0 points for the proportional stack.
-6. WHEN a configured font size is outside the valid range of 6.0–72.0 points, THE Theme_System SHALL log a warning and clamp the value to the nearest boundary (6.0 or 72.0).
+6. WHEN a configured font size is outside the valid range of 6.0-72.0 points, THE Theme_System SHALL log a warning and clamp the value to the nearest boundary (6.0 or 72.0).
 7. THE Theme_System SHALL support a Zoom_Level integer offset (positive or negative) that is added to the base font size of the monospace stack for all editor rendering, without modifying the stored base size in the theme configuration.
 8. WHEN a Zoom_Level adjustment would result in an effective font size below 2.0 or above 128.0 points, THE Theme_System SHALL clamp the effective size to the boundary without modifying the Zoom_Level value itself.
 9. WHEN the first font family in a Font_Stack is not available on the system, THE Theme_System SHALL attempt each subsequent family in order, log a DEBUG-level record for each unavailable font, and fall back to the platform default if no family in the stack is available.
@@ -140,6 +159,13 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 6. WHEN High-Contrast mode is active, THE Theme_System SHALL ensure that all foreground/background colour pairs in the palette achieve a minimum contrast ratio of 7:1 (WCAG AAA level).
 7. THE Theme_System SHALL allow users to switch Visual_Mode at runtime without restarting the workbench, with the change taking effect within one frame.
 
+**REWORDED by CR-CH-056:** The three Visual_Modes are retained; a Theme now carries its
+`VisualMode` as metadata (Dark / Light / High-Contrast / Legacy) and produces an
+`egui::Style` for chrome plus the domain groups. The built-in Dark / Light instances
+become Solarized (Requirement 18, revised); High-Contrast is unchanged (5.6 still binds).
+The WCAG AA contrast advisory (consumed by the Theme Editor, Requirement 20.9) is
+re-expressed against the egui `Visuals` foreground/background pairs in Requirement 23.11.
+
 ---
 
 ### Requirement 6: Design System Tokens
@@ -156,7 +182,14 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 4. THE Theme_System SHALL define **animation** tokens specifying duration and easing curve names (e.g., `animation.fast`, `animation.normal`, `animation.slow`) for consistent motion timing.
 5. ALL Design_Token values SHALL be configurable through the theme TOML file, using the same override and fallback semantics as colour tokens.
 6. WHEN a Design_Token is not defined in the active theme file, THE Theme_System SHALL use the built-in default value for that token.
-7. THE Theme_System SHALL expose Design_Token values through typed accessor methods that return the appropriate numeric or structured type (e.g., `spacing(SpacingLevel) → f32`, `border_radius(RadiusLevel) → f32`).
+7. THE Theme_System SHALL expose Design_Token values through typed accessor methods that return the appropriate numeric or structured type (e.g., `spacing(SpacingLevel) -> f32`, `border_radius(RadiusLevel) -> f32`).
+
+**REWORDED by CR-CH-056:** The Design_Tokens (spacing scale, border radii, shadows) are
+now WIRED onto the egui `Style` at the apply seam -- `spacing` -> `Style.spacing`
+(item_spacing / button_padding / window_margin / indent), `border_radius` -> the
+`CornerRadius` fields of `Visuals` / `WidgetVisuals`, and `shadows` -> `Visuals`
+`window_shadow` / `popup_shadow` (Requirement 23.6). Before CR-CH-056 these tokens were
+defined but unused at the egui seam; CR-CH-056 makes them effective.
 
 ---
 
@@ -195,6 +228,15 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 7. WHEN a Colour_Token lookup is performed, THE Theme_System SHALL return a valid rendering-compatible colour value (e.g., egui `Color32`) that can be used directly without conversion by the caller.
 8. THE Theme_System SHALL provide a compile-time-verifiable token API (using Rust enums or const identifiers) so that misspelled or non-existent token names produce compilation errors rather than runtime failures.
 
+**REWORDED by CR-CH-056:** The "no hardcoded colours" rule is PRESERVED, but the chrome
+sourcing changes: criteria 8.4 (tab bar) and 8.5 (UI panels / buttons / inputs / tooltips
+/ scrollbars) are now satisfied by the egui `Style` / `Visuals` the chrome layer applies
+at the single `apply_to_egui` seam (Requirement 23.5), not by reading flat `tab_bar.*` /
+`ui.*` palette fields. The hardcoded Legacy slider-colour injection currently living at
+the apply seam is REMOVED by CR-CH-056 (it becomes part of the Legacy instance's egui
+`Style`). The domain-group sourcing (8.1 syntax, 8.2 gutter, 8.3 file tree, 8.6
+decorations/indicators) is unchanged.
+
 ---
 
 ### Requirement 9: Theme Serialisation Round-Trip
@@ -221,10 +263,10 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 
 #### Acceptance Criteria
 
-1. THE Theme_System SHALL provide an element-colour API: `element_colour(element: Element) → Option<ColourRGBA>` that returns the colour for a named UI element, or `None` if no colour is set for that element (indicating the element should not be rendered or should use a computed default).
+1. THE Theme_System SHALL provide an element-colour API: `element_colour(element: Element) -> Option<ColourRGBA>` that returns the colour for a named UI element, or `None` if no colour is set for that element (indicating the element should not be rendered or should use a computed default).
 2. THE Theme_System SHALL define elements for at minimum: selection background, selection foreground, additional-selection background, additional-selection foreground, caret foreground, additional-caret foreground, caret-line background, whitespace foreground, whitespace background, fold-line colour, fold-line-highlight colour, and hidden-line indicator colour.
 3. WHEN an element colour has an alpha component less than 255, THE Rendering_Code SHALL use alpha-blended rendering for that element, compositing over the underlying content.
-4. THE Theme_System SHALL track which elements allow translucent rendering (via `element_allows_translucent(element) → bool`); elements not in the translucent set SHALL have their alpha forced to 255.
+4. THE Theme_System SHALL track which elements allow translucent rendering (via `element_allows_translucent(element) -> bool`); elements not in the translucent set SHALL have their alpha forced to 255.
 5. THE Theme_System SHALL support both user-set element colours (defined in the theme file) and base element colours (derived from the palette); user-set colours override base colours.
 6. THE Theme_System SHALL provide `set_element_colour(element, colour)` and `reset_element(element)` methods for runtime element colour overrides (e.g., per-document overrides driven by plugin logic).
 
@@ -254,10 +296,19 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 
 **Source:** ISPF 3270 terminal colour conventions; user requirement (Phase AE).
 
+**REWORDED by CR-CH-056:** The ISPF semantic colour contract below is RETAINED but
+RE-FRAMED: Legacy is now ONE INSTANCE of the general egui-native theme model (Requirement
+23), not the model's defining shape. The ISPF roles (white headings, green body,
+turquoise labels, white keys, blue structure) live in the Legacy instance's egui `Style`
+chrome plus the retained domain groups. ONE value changes: the primary option-menu /
+title-band background is TONED DOWN from the full-intensity ISPF structural blue
+(`#0000AA`) to a muted deep navy (`#000060`); criterion 13.2 is amended accordingly below.
+All other Legacy colours remain byte-identical, so the authentic look is preserved.
+
 #### Acceptance Criteria
 
 1. WHEN the Legacy theme is active, THE menu bar top-level item text SHALL be rendered in white (`#FFFFFF`).
-2. WHEN the Legacy theme is active, THE primary menu (screen title / heading row on any screen) SHALL be rendered with a blue background (`#0000AA`) and white text.
+2. WHEN the Legacy theme is active, THE primary menu (screen title / heading row on any screen) SHALL be rendered with a toned-down muted navy background (`#000060`, amended by CR-CH-056 from the former `#0000AA`) and white text. (The former `#0000AA` is the pre-CR-CH-056 value; `#000060` is the current contract.)
 3. WHEN the Legacy theme is active, ALL normal body text SHALL be rendered in bright green (`#00FF00`).
 4. WHEN the Legacy theme is active, option item numbers or key characters SHALL be rendered in white (`#FFFFFF`).
 5. WHEN the Legacy theme is active, option item names (labels) SHALL be rendered in turquoise (`#00AAAA`).
@@ -285,6 +336,14 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 8. THE Theme_System SHALL validate every colour token value in a user-created theme file; WHEN an invalid colour format is encountered, THE Theme_System SHALL log a WARN, use the inherited or default value for that token, and continue loading the remainder of the theme.
 9. THE Theme_System SHALL provide a `serialise_theme` function that writes the current active palette to a TOML file in the themes directory, enabling users to export and share their customised theme.
 10. WHEN a user-created theme file specifies a `base` theme that cannot be resolved, THE Theme_System SHALL emit a WARN-level log record and fall back to the built-in default theme for all unresolved tokens.
+
+**REWORDED by CR-CH-056:** "every colour token overridable" (14.1) now covers the egui
+`Style` chrome fields embedded in the theme file in addition to the retained domain
+groups. The `base` inheritance key (14.4, 14.5) MUST be ACTUALLY RESOLVED by the loader --
+today it is read and discarded, so inherited themes silently fall back to defaults;
+Requirement 25.4 makes `base` resolution a binding criterion. The built-in count in 14.2
+changes from four to FIVE (Requirement 18, revised): Default Dark, Default Light, Default
+High Contrast, Default Legacy, Legacy Soft.
 
 ---
 
@@ -351,7 +410,8 @@ context that `THEMES` used to open, so there is ONE theme command.
      (a) an EXACT case-insensitive match against a real theme NAME (built-in or user);
      (b) otherwise a BUILT-IN SHORTHAND that omits the `Default ` prefix: `dark` -> `Default Dark`,
          `light` -> `Default Light`, `high contrast` (also `high_contrast` / `high-contrast`)
-         -> `Default High Contrast`, `legacy` -> `Default Legacy`.
+         -> `Default High Contrast`, `legacy` -> `Default Legacy`, and (added by CR-CH-056)
+         `legacy soft` (also `legacy-soft` / `legacy_soft`) -> `Legacy Soft`.
      WHEN a match is found, THE workbench SHALL set it as the active theme and persist the
      selection (Requirement 19.7), identical to selecting it from the Settings menu.
 
@@ -432,9 +492,34 @@ apply path as `THEME <name>` (criterion 17.2).
 
 **Source:** User requirement (CR-NR-074). "a hardcoded internal theme based on legacy, possibly called 'Default'... people make bad choices so we want them to be able to go back to Default."
 
+**REWORDED by CR-CH-056 (built-in set 4 -> 5; Solarized Dark/Light; Legacy toned +
+Legacy Soft).** The built-in set grows to FIVE, and each built-in is an INSTANCE of the
+egui-native theme model (Requirement 23): a chrome `egui::Style` plus the retained domain
+groups. The five built-ins and their nature:
+- `Default Dark` -- now a SOLARIZED DARK instance (replacing Catppuccin Mocha; SAME name
+  and `VisualMode::Dark`). Backgrounds base03 `#002B36` / base02 `#073642`; foregrounds
+  base0 `#839496` / base1 `#93A1A1`; shared Solarized accents (blue `#268BD2`, cyan
+  `#2AA198`, green `#859900`, yellow `#B58900`, orange `#CB4B16`, red `#DC322F`, magenta
+  `#D33682`, violet `#6C71C4`).
+- `Default Light` -- now a SOLARIZED LIGHT instance (replacing Catppuccin Latte; SAME name
+  and `VisualMode::Light`). Backgrounds base3 `#FDF6E3` / base2 `#EEE8D5`; foregrounds
+  base00 `#657B83` / base01 `#586E75`; shared Solarized accents.
+- `Default High Contrast` -- UNCHANGED (retains its AAA 7:1 contract, Requirement 5.6).
+- `Default Legacy` -- the ISPF 3270 retrofit onto the egui `Style`, with its primary
+  option-menu background TONED DOWN to `#000060` (Requirement 13.2, amended); all other
+  Legacy colours byte-identical. Remains the canonical Fallback_Theme.
+- `Legacy Soft` -- NEW: a softer phosphor variant of Legacy that keeps the ISPF semantic
+  roles in the domain groups but softens the harshest pure-saturated values (e.g. body
+  green `#00FF00` -> `#33FF66`), for comfortable long sessions, WITHOUT altering the
+  authentic `Default Legacy`.
+
+Criterion 18.3 is amended below to enumerate FIVE. Criteria 18.1, 18.2, 18.4, 18.5, 18.6
+(code-only, read-only, fallback, reset baseline) are UNCHANGED and apply to all five.
+
 #### Acceptance Criteria
 
-**Revised by CR-CH-024 (built-in set consolidated 5 -> 4).** The separate
+**Revised by CR-CH-024 (built-in set consolidated 5 -> 4; superseded for the count by
+CR-CH-056, which sets it to 5 -- see the CR-CH-056 banner above).** The separate
 `Legacy (ISPF 3270)` built-in is REMOVED; the ISPF 3270 legacy look now lives ONLY under the
 name `Default Legacy`. The built-in set is FOUR: `Default Dark`, `Default Light`,
 `Default High Contrast`, `Default Legacy`. Rationale: the two entries were byte-identical, so
@@ -450,11 +535,13 @@ legacy colour changes; only the redundant name is dropped.
 2. THE `Default Legacy` palette SHALL be the canonical Fallback_Theme: WHEN the configured active theme cannot be resolved (missing file, invalid TOML, or unresolved `base`), THE Theme_System SHALL fall back to `Default Legacy` (rather than `Default Dark`) and emit a WARN-level log record naming the unresolved theme. This supersedes Requirement 1.3's "built-in default dark theme" fallback for the file-backed path (Requirement 19); Requirement 1.3 remains the contract for the legacy mode-only path until Requirement 19 is implemented.
 
    **(CR-CH-019, Option 1; count revised to four by CR-CH-024)** THE built-in palettes are PERMANENT, read-only, COMPILED themes and SHALL NOT be materialised as `.toml` files in the themes directory. They exist only in code. This supersedes any earlier requirement to write built-in theme files to disk (see Requirement 19.2 as revised). Built-ins are the reset baseline and the fallback; the user customises a built-in by copying it to a new named user theme (Requirement 20.4), never by editing the built-in itself.
-3. THE FOUR built-in palettes (`Default Dark`, `Default Light`, `Default High Contrast`,
-     `Default Legacy`) SHALL all appear in the available-themes list (Requirement 14.6) and each
-     SHALL be selectable as the active theme. (CR-CH-024: `Legacy (ISPF 3270)` is no longer a
-     separate built-in; `THEME Legacy` and the former menu item resolve to `Default Legacy` via
-     the built-in shorthand of Requirement 17.2b.)
+3. **(Amended by CR-CH-056 to FIVE.)** THE FIVE built-in palettes (`Default Dark`
+     [Solarized Dark], `Default Light` [Solarized Light], `Default High Contrast`,
+     `Default Legacy` [toned primary-menu], `Legacy Soft`) SHALL all appear in the
+     available-themes list (Requirement 14.6) and each SHALL be selectable as the active theme.
+     (CR-CH-024: `Legacy (ISPF 3270)` is no longer a separate built-in; `THEME Legacy` and the
+     former menu item resolve to `Default Legacy` via the built-in shorthand of Requirement
+     17.2b. CR-CH-056: `Legacy Soft` is reachable via its own shorthand, Requirement 17.2b.)
 4. THE Theme_System SHALL provide a Reset_Theme operation, given a theme identified by name. **(CR-CH-019, Option 1)** For a BUILT-IN theme, Reset SHALL re-select the compiled built-in palette as the working/active theme (there is no on-disk file to restore, because built-ins are code-only). For a USER theme with a resolvable `base`, Reset SHALL restore the theme's colours to the `base` theme's content. Reset SHALL require confirmation before discarding edits / overwriting a user file.
 5. THE compiled built-in palettes SHALL be the immutable reset baseline: resetting to a built-in always yields a palette equal to the compiled built-in palette (a built-in cannot be permanently altered, so a default always stays a default). (Consistent with Requirement 9.2 round-trip when a built-in is copied to a user file.)
 6. THE `Default Legacy` name SHALL be stable and reserved: a user-created theme file SHALL NOT be able to shadow or replace the compiled `Default Legacy` fallback used in criterion 2, even if a `default-legacy.toml` on disk is malformed.
@@ -488,21 +575,74 @@ legacy colour changes; only the redundant name is dropped.
 
 **Source:** User requirement (CR-NR-074). "we need to create a workspace where i can copy/change/Save theme's. Once i have saved a theme with it's own name i should be able to select it so that FFWB will use it in the future." Owner directed: keep it simple and fast first; a richer graphical editor can come later.
 
+**REWORKED by CR-CH-056 (edits the egui Style surface + domain groups; drives
+import/export; folds in B081).** The Theme Editor is REBUILT to edit the egui-native theme
+model (Requirement 23): the editable surface is DERIVED from the egui `Style` / `Visuals`
+chrome fields plus the retained domain groups, rather than a hand-written fixed list of
+14 tokens. The editor additionally drives IMPORT and EXPORT (Requirement 24) and MAKES THE
+CREATE+SAVE FLOW DISCOVERABLE AND FUNCTIONAL, resolving open bug B081 (a custom theme
+cannot currently be saved because the Save button is disabled with a pre-filled name and a
+built-in selection refuses to write with no prompt). The Theme Editor REMAINS a
+`WorkspaceContext` dispatched via `render_workspace_context` (command parity and the single
+focus-latch path are unchanged). Criteria 20.3 and 20.5 are amended below; new criteria
+20.11-20.13 cover the egui-surface editing, import/export, and the B081 Save fix.
+
 #### Acceptance Criteria
 
 1. THE workbench SHALL provide a Theme_Editor Context (a Workspace, opened via a command so it honours command parity -- architecture-brief Principle 2) that lists the available themes (Requirement 14.6) and lets the user select one to edit.
 2. THE Theme_Editor SHALL open via a `THEMES` (or equivalently named) command from any context, and the Settings menu Themes affordance SHALL invoke that same command (same code path as the typed command). WHEN opened from the Home Context (POM), it MAY transform the active POM tab in place (consistent with the Settings/Commands Contexts) so END/RETURN returns to the POM.
-3. THE Theme_Editor SHALL present the selected theme's editable colour tokens (at minimum the `ui`, `editor`, and Legacy-semantic colours that drive the visible chrome) with their current values shown as `#RRGGBB`/`#RRGGBBAA`, and SHALL allow the user to change a token's value by entering a hex colour. Invalid hex input SHALL be rejected with an inline message and SHALL NOT corrupt the theme.
+3. **(Amended by CR-CH-056.)** THE Theme_Editor SHALL present the selected theme's editable
+     surface DERIVED from the egui `Style` / `Visuals` chrome fields (Requirement 23) plus the
+     retained domain groups (syntax, gutter, file_tree, decorations, indicators), with each
+     colour value shown as `#RRGGBB`/`#RRGGBBAA`, and SHALL allow the user to change a value by
+     entering a hex colour (or an appropriate control for non-colour egui fields such as
+     rounding/spacing where exposed). Invalid input SHALL be rejected with an inline message and
+     SHALL NOT corrupt the theme. (Replaces the former fixed 14-token `ui`/`editor` list.)
 4. THE Theme_Editor SHALL provide a Copy_Theme action that creates a new theme initialised from the currently selected theme's colours, prompting for a new unique name; the copy becomes the edit target. This is how a user derives a custom theme from a built-in without altering the built-in.
-5. THE Theme_Editor SHALL provide a Save action that writes the edited theme to its `themes/<slug>.toml` file via the serialiser (Requirement 9), and a Save_As action that writes to a new named file. **(REVISED by CR-CH-019, Option 1.)** A BUILT-IN theme cannot be saved over (built-ins are read-only, code-only): WHEN the selected theme is a built-in, Save SHALL be disallowed and SHALL behave as Save_As (prompting for a new user-theme name) OR be disabled with a message directing the user to Copy / Save As. Save and Save_As only ever write USER theme files; they never create or overwrite a built-in.
+5. THE Theme_Editor SHALL provide a Save action that writes the edited theme to its `themes/<slug>.toml` file via the serialiser (Requirement 9), and a Save_As action that writes to a new named file. **(REVISED by CR-CH-019, Option 1.)** A BUILT-IN theme cannot be saved over (built-ins are read-only, code-only): WHEN the selected theme is a built-in, Save SHALL be disallowed and SHALL behave as Save_As (prompting for a new user-theme name) OR be disabled with a message directing the user to Copy / Save As. Save and Save_As only ever write USER theme files; they never create or overwrite a built-in. **(Amended by CR-CH-056 / B081.)** The "behave as Save_As (prompting for a new user-theme name)" half SHALL be IMPLEMENTED, not merely specified: pressing Save with a built-in selected SHALL prompt for (or focus a pre-filled, editable) new name and perform Save_As, so creating a user theme from a built-in is a single discoverable step and never a silent no-op (see criterion 20.13).
 6. THE Theme_Editor SHALL provide a Set_Active action that makes the selected/edited theme the active theme (Requirement 19.7), applying it immediately (within one frame) and persisting the selection for future launches.
 7. THE Theme_Editor SHALL provide a Reset action (Requirement 18.4) that discards in-progress edits and restores the selected theme to its baseline, with confirmation. **(CR-CH-019, Option 1.)** For a built-in theme this re-selects the compiled built-in palette (no file involved); for a user theme with a `base` it restores the `base` colours.
 8. WHEN the user edits a colour in the Theme_Editor, THE editor MAY show a live preview by applying the in-progress palette; edits are not persisted until Save/Save_As. Closing the editor without saving SHALL discard unsaved in-progress edits and leave the on-disk file and the active theme unchanged.
 9. THE Theme_Editor SHALL surface a contrast advisory (using `check_theme_contrast`, Requirement 5.6/accessibility) for foreground/background pairs that fall below the WCAG AA threshold, as a non-blocking warning, so users are guided away from unreadable combinations.
 10. EVERY Theme_Editor action (open, copy, save, save-as, set-active, reset) SHALL be expressible as a command routed through the shell dispatcher (command parity); UI affordances (menu items, buttons) SHALL invoke those commands rather than calling the underlying logic directly.
+
+**Added by CR-CH-056 (Theme Editor rebuild for the egui-native model, import/export, B081).**
+
+11. THE Theme_Editor editable surface SHALL be DERIVED from the egui `Style` / `Visuals`
+     chrome fields plus the retained domain groups (Requirement 23), NOT a hand-maintained
+     fixed token list; adding or changing an egui chrome field or a domain group SHALL surface
+     in the editor without a bespoke per-field edit to the editor's control list. Each editable
+     control SHALL round-trip (edit -> working copy -> serialise -> load) without data loss.
+12. THE Theme_Editor SHALL provide Export and Import actions (Requirement 24): Export writes
+     the active/selected theme to a native FFWB theme file at a user-chosen location; Import
+     reads a native FFWB theme file and makes it a selectable user theme. Both actions SHALL be
+     expressible as commands routed through the dispatcher (command parity, criterion 20.10);
+     the UI affordances SHALL invoke those commands.
+13. WHEN the user, with a BUILT-IN theme selected, edits a value and presses Save, THE
+     Theme_Editor SHALL make creating a persisted user theme reachable in ONE obvious step --
+     by prompting for (or focusing a pre-filled, editable) new unique name and performing
+     Save_As -- so the created theme is written to `themes/<slug>.toml`, appears in the theme
+     list, and can be Set Active (resolving B081). Save SHALL NEVER be a silent no-op: it either
+     writes a user theme or shows a clear, actionable message. A full-shell `egui_kittest` test
+     SHALL type a name and press Save/Save_As and assert the user theme file is written and the
+     theme becomes selectable (the previously untested interactive render-to-action seam).
 ---
 
 ### Requirement 21: Non-Monochrome Chrome for Dark and Light Themes
+
+**SUPERSEDED by CR-CH-056 (Requirement 23, egui-Native Theme Model).** This requirement
+was written entirely in terms of the fixed `ui` / `tab_bar` palette fields
+(`ui.panel_bg` / `button_bg` / `input_bg` hierarchy, `tab_bar.active_bg`,
+`ui.primary_menu_bg`, `ui.focus_ring`). Those flat fields are replaced by the egui-native
+chrome layer, so the contract is RE-EXPRESSED in egui `Visuals` terms in Requirement 23
+(criteria 23.7-23.11): the three-level background hierarchy maps onto
+`Visuals::panel_fill` / `widgets.*.weak_bg_fill` / `extreme_bg_color`; the accent focus
+ring onto `Visuals::selection` / `widgets.active.bg_stroke`; the accent active tab onto
+the tab-bar chrome drawn from `Visuals`; and the accent primary-menu band onto the
+chrome-layer header fill. The Solarized Dark / Light built-in instances (Requirement 18,
+revised by CR-CH-056) MUST satisfy that re-expressed contract and the WCAG AA advisory.
+High-Contrast is unchanged (Requirement 23 keeps 21.9). The criteria below are retained
+for history and no longer bind as written.
 
 **User Story:** As a workbench user, I want the Dark and Light built-in themes to use accent colour and a sense of depth in the application chrome (the POM, menus, panels, tab bar, title line), so that the interface looks designed and layered rather than a flat wash of one grey.
 
@@ -533,4 +673,91 @@ legacy colour changes; only the redundant name is dropped.
 1. WHERE the Legacy palette uses the normal-intensity ISPF blue (`#0000AA`, `ISPF_BLUE`) as a FOREGROUND on the black background -- specifically `chrome.line_number_fg`, `chrome.fold_margin_fg`, `chrome.margin_separator`, `syntax.comment`, and `file_tree.unknown` -- THE Legacy palette SHALL instead use the bright ISPF blue (`#7878FF`, `ISPF_BLUE_HI`), which achieves ~5.93:1 on black (WCAG AA).
 2. ALL other Legacy colours SHALL remain byte-identical (the ISPF semantic attribute mapping, turquoise input fields, yellow commands, green body text, white headings, blue primary-menu background, etc. are unchanged). This is a targeted legibility fix, not a re-theme.
 3. THE `Default Legacy` palette (Requirement 18.1), being a copy of the Legacy palette, SHALL inherit the same legibility fix automatically.
-4. THE Legacy `primary_menu_bg` (blue `#0000AA` as a BACKGROUND with white text) SHALL be unchanged -- white on `#0000AA` is a background pairing, not the blue-on-black foreground problem this requirement addresses.
+4. THE Legacy `primary_menu_bg` (blue `#0000AA` as a BACKGROUND with white text) SHALL be unchanged -- white on `#0000AA` is a background pairing, not the blue-on-black foreground problem this requirement addresses. **(Note: CR-CH-056 subsequently tones this background down from `#0000AA` to `#000060` per Requirement 13.2 as amended; white text on `#000060` remains a legible background pairing and is not affected by this requirement.)**
+
+---
+
+### Requirement 23: egui-Native Theme Model (CR-CH-056)
+
+**User Story:** As a workbench user and theme author, I want a Theme to configure the full range of the application's actual egui appearance (window and panel fills, per-state widget fills, strokes, rounding, selection, hyperlink, text styles, spacing, shadows) rather than a small fixed slice of chrome colours, so that themes drive the real look of the Windows egui application and the ISPF look is one retrofitted instance rather than the model's defining shape.
+
+**Source:** User requirement (CR-CH-056). "this is not an ISPF application, it is a windows egui application. We need to re-work the whole Theme context and configuration to support all the egui theme functionality. We can retro fit the ISPF look and feel onto it." Scoping report: `.agents/tasks/theme-egui-rework/findings.md`.
+
+**Framework note:** This is an owner-confirmed framework change (framework-conformance.md). It reshapes the public `ThemePalette` type into a HYBRID (an egui-native chrome layer + the retained domain groups) and supersedes Requirement 2 (chrome portions) and Requirement 21. It builds ON the existing single-command-dispatch, per-tab Navigation_Stack, and `WorkspaceContext` mechanisms, which are UNCHANGED.
+
+**Terminology:** egui itself has NO concept of a "theme". Its vocabulary is `egui::Style`, which contains `Visuals` (colours per widget state), `WidgetVisuals`, `Spacing`, text styles, and corner-radius / shadow fields. The user-facing concept remains the word "Theme"; internally a Theme PRODUCES an `egui::Style` for chrome plus the retained domain groups. See the Glossary note at the end of this document.
+
+#### Acceptance Criteria
+
+1. THE Theme model SHALL include a CHROME layer that configures the full themable surface of `egui::Style` / `Visuals` / `WidgetVisuals`: window/panel fills, per-state widget fills (noninteractive / inactive / hovered / active / open) with their `bg_fill`, `weak_bg_fill`, `bg_stroke`, `fg_stroke`, corner radius and expansion; `selection` (fill + stroke); `hyperlink_color`; `extreme_bg_color`, `faint_bg_color`, `code_bg_color`; `warn_fg_color` and `error_fg_color`; window/menu/popup corner radius and shadow; and the `dark_mode` flag matching the Theme's Visual_Mode.
+2. THE CHROME layer SHALL be serialised and deserialised using egui's OWN serde `Serialize`/`Deserialize` derives on `Style`/`Visuals` (enabling egui's `serde` feature in the workspace), so the theme file embeds egui's native representation rather than a hand-written mirror that could drift from egui's type.
+3. THE Theme model SHALL RETAIN, as first-class groups that egui does NOT model, the DOMAIN groups: `syntax` (token colours), `gutter` (the editor line-number / fold-margin / cursor-row gutter -- the group formerly named `chrome`, renamed to avoid clashing with the new chrome layer), `file_tree` (file-category colours), `decorations` (search/error/warning underlines, change markers, bookmark), `indicators` (find/brace match + user-defined), `style_slots` (the 256-entry Scintilla style table), and `elements` (selection/caret/whitespace/fold element colours with alpha). These groups are read directly by the editor / file-tree / syntax / decoration subsystems and are unaffected by the egui chrome layer.
+4. THE user-facing concept SHALL remain the word "Theme". A Theme SHALL carry metadata (`name`, `VisualMode`) and PRODUCE an `egui::Style` (from the chrome layer) plus the domain groups; the application SHALL NOT expose egui's `Style`/`Visuals` vocabulary as the user-facing concept.
+5. THE application SHALL apply a Theme to egui through a SINGLE seam -- `WorkbenchShell::apply_theme` (crates/ff-desktop/src/shell/render_theme.rs) -- which SHALL perform a WHOLESALE `apply_to_egui(&mut egui::Style)` using the Theme's chrome layer, replacing the current hand-written body that maps only ~15 of egui's fields and injects hardcoded Legacy slider colours. The hardcoded Legacy slider-colour injection at the seam SHALL be REMOVED (its values become part of the Legacy instance's chrome `Style`).
+6. THE Design_Tokens (Requirement 6) spacing scale, border radii, and shadows SHALL be WIRED onto the egui `Style` at the apply seam: spacing -> `Style.spacing` (item_spacing / button_padding / window_margin / indent), radii -> the corner-radius fields of `Visuals` / `WidgetVisuals`, and shadows -> `Visuals.window_shadow` / `popup_shadow`.
+7. THE Dark and Light built-in instances (Solarized, Requirement 18 as revised) SHALL present a THREE-LEVEL background hierarchy expressed in egui `Visuals` terms -- a window/base level (`Visuals::panel_fill` / `window_fill`), a raised-surface level (the widget `weak_bg_fill` / inactive `bg_fill`), and an inset level (`extreme_bg_color` for text inputs) -- that are perceptibly distinct (restating old Req 21.1 in egui terms).
+8. THE Dark and Light instances SHALL apply the theme accent to the keyboard focus ring expressed in egui terms (`Visuals::selection.stroke` and/or `widgets.active.bg_stroke`), so the focused element is clearly indicated (restating old Req 21.2).
+9. THE Dark and Light instances SHALL give the ACTIVE tab an accent-tinted background distinct from the inactive-tab background, drawn from the chrome `Visuals` the tab bar reads, so the focused Workspace stands out (restating old Req 21.3).
+10. THE Dark and Light instances SHALL provide an accent-tinted primary-menu / title band distinct from the base panel fill, from the chrome layer, so the Title_Line reads as a header band rather than blending into the body (restating old Req 21.4).
+11. FOR ALL foreground/background pairs introduced by the chrome layer (title-band text on the band fill; active/inactive tab text on their fills; body text on `panel_fill`), THE Theme_System SHALL preserve the WCAG AA contrast advisory (normal text >= 4.5:1; the intentionally-muted inactive-tab text MAY use the >= 3:1 UI-element threshold), surfaced through the existing `check_theme_contrast` advisory consumed by the Theme Editor (Requirement 20.9). The Solarized Dark/Light instances SHALL satisfy this advisory with no NEW below-AA text pair; High-Contrast SHALL continue to meet its AAA 7:1 contract unchanged (old Req 21.9 / Req 5.6).
+
+---
+
+### Requirement 24: Theme Import/Export (CR-CH-056)
+
+**User Story:** As a workbench user, I want to export a theme I have made and import a theme that FileForgeWorkbench produced, so that I can back up, move, and share FFWB themes without hand-editing files, using FFWB's own format.
+
+**Source:** User requirement (CR-CH-056). "we stick to Export our theme, import others saved and exported from FFWB." Closed loop in FFWB's native format only; external-format mapping (base16, VS Code, tmTheme) is explicitly OUT of scope here (recorded as a FUTURE possibility).
+
+#### Acceptance Criteria
+
+1. THE Theme_System SHALL provide an EXPORT operation that writes the active (or a selected) Theme to a native FFWB theme file (the versioned TOML format of Requirement 25) at a user-chosen location, using the existing serialiser.
+2. THE Theme_System SHALL provide an IMPORT operation that reads a native FFWB theme file (one produced by this application's export or Save) and makes it a selectable USER theme (adding it to the available-themes list, Requirement 14.6), without altering any built-in.
+3. WHEN an imported file is invalid, foreign, or not a native FFWB theme file (unparseable, missing required metadata, or an unrecognised structure), THE Theme_System SHALL REJECT it with a clear, non-silent message identifying the problem, SHALL NOT corrupt the existing themes or the active theme, and SHALL leave the themes directory unchanged except for a successful import.
+4. EXTERNAL theme-format import (base16 / VS Code / tmTheme or any non-FFWB format) is EXPLICITLY OUT OF SCOPE for CR-CH-056 and SHALL NOT be implemented in this gate; it is recorded as a possible FUTURE requirement.
+5. THE Export and Import operations SHALL each be expressible as a command routed through the shell dispatcher (command parity); the Theme Editor UI affordances for Import/Export (Requirement 20.12) SHALL invoke those commands rather than calling the underlying logic directly.
+
+---
+
+### Requirement 25: Versioned Theme File Format and base Resolution (CR-CH-056)
+
+**User Story:** As a workbench user and the maintainer of the theme format, I want theme files to carry a version and to tolerate missing or extra egui fields, and I want `base` theme inheritance to actually work, so that themes written by one version of FFWB keep loading in later versions and inherited themes resolve correctly instead of silently falling back to defaults.
+
+**Source:** User requirement (CR-CH-056) and findings sections D/G. Resolves the discarded-`base` defect (loader.rs reads and drops `base`) and adds the version field for the embedded egui `Style` blob.
+
+#### Acceptance Criteria
+
+1. THE theme file format SHALL carry a top-level `version` field (an integer) recording the format version, and the design SHALL record the egui version the embedded `Style` blob was written against so a future egui upgrade can be detected.
+2. WHEN a pre-version theme file (no `version` field -- treated as v1, the legacy section layout) is loaded, THE Theme_System SHALL load it backward-compatibly by mapping the keys it has and FILLING absent chrome/egui fields from the built-in default for the active Visual_Mode (the loader's existing per-token default-fill behaviour, Requirement 1.6), WITHOUT failing.
+3. THE embedded egui `Style` sub-table SHALL be deserialised version-tolerantly: missing egui fields SHALL take egui's own defaults (or the Theme's mode default) and EXTRA / unrecognised egui fields SHALL be ignored without error (consistent with Requirement 15.2's unrecognised-section tolerance), so a `Style` written by a different egui version still loads.
+4. THE `base` inheritance key SHALL be RESOLVED by the loader (not read and discarded as today): WHEN a theme declares `base = "<theme-name>"`, every token not explicitly defined in the file SHALL be inherited from the named base theme (built-in or previously defined), and only tokens absent from BOTH the file and the base SHALL fall back to the mode default. This makes Requirements 14.4, 14.5, and 15.5 effective rather than aspirational.
+5. WHEN a declared `base` theme cannot be resolved, THE Theme_System SHALL emit a WARN-level log record naming the unresolved base and fall back to the built-in default for the unresolved tokens (consistent with Requirements 14.10 and 15.6), without failing the load.
+6. THE theme file format SHALL be versioned TOML (the design records that TOML was chosen over JSON for consistency with the existing `menus/*.toml` and config files; this choice is flaggable at gate review). The egui `Style` chrome SHALL be embedded as a TOML sub-table within the theme file.
+7. FOR ALL valid Themes in the new model, serialising to the versioned TOML and parsing it back SHALL round-trip to an equivalent Theme (extending Requirement 9.2 to the chrome `Style` sub-table and the `version` / `base` metadata).
+
+---
+
+## Glossary Addendum (CR-CH-056): Theme vs egui Style / Visuals
+
+To keep the specification honest to egui's own terminology:
+
+- **Theme** -- the FFWB USER-FACING concept: a named, selectable, versioned set of visual
+  settings. A Theme carries metadata (`name`, `VisualMode`) and PRODUCES an `egui::Style`
+  for chrome plus the retained domain groups. "Theme" is the word shown in the UI and used
+  in commands (`THEME <name>`).
+- **egui `Style`** -- egui's top-level appearance struct. It contains `Visuals`, `Spacing`,
+  text styles, and corner-radius / shadow fields. egui has NO "theme" concept; `Style` is
+  the closest egui equivalent and is what FFWB's chrome layer configures and applies.
+- **`Visuals`** -- the colour portion of `egui::Style`: window/panel fills, per-state
+  `WidgetVisuals`, selection, hyperlink, extreme/faint/code backgrounds, warn/error
+  colours, shadows, and the `dark_mode` flag.
+- **`WidgetVisuals`** -- the per-interaction-state (noninteractive / inactive / hovered /
+  active / open) fills, strokes, corner radius, and expansion within `Visuals`.
+- **Chrome layer** -- the part of a FFWB Theme that configures `egui::Style` (serialised
+  via egui's own serde). "Chrome" here means the application's egui-painted surface.
+- **Domain groups** -- the FFWB-specific colour groups egui does NOT model (syntax, gutter,
+  file_tree, decorations, indicators, style_slots, elements), retained alongside the chrome
+  layer.
+- **gutter group** -- the editor line-number / fold-margin / cursor-row gutter colours;
+  this is the domain group formerly named `chrome`, RENAMED to `gutter` by CR-CH-056 so it
+  does not clash with the new egui chrome layer.
