@@ -749,79 +749,79 @@ menu-workspace obligation. Do NOT start until the gate is approved.
 > the menu-side design is menu-workspace design.md "Uniform X / =X / END / RETURN
 > semantics -- no POM special-casing (CR-CH-052)".
 
-- [ ] 39. Front-door `=` reinitialise-to-POM step
-  - [ ] 39.1 Add ONE `=` prelude step at the top of `dispatch_command_string`
+- [x] 39. Front-door `=` reinitialise-to-POM step
+  - [x] 39.1 Add ONE `=` prelude step at the top of `dispatch_command_string`
           (`shell/dispatch.rs`): strip a leading `=`, reinitialise the active tab's
           Navigation_Stack to the POM (FFCMD_Root -- clear stack, reconstruct the
           POM in place), then re-dispatch the remainder against FFCMD (the
           Active_Environment never receives a `=`-prefixed string).
-  - [ ] 39.2 Remove the three ad-hoc `=` sites so each consumes an
+  - [x] 39.2 Remove the three ad-hoc `=` sites so each consumes an
           already-stripped remainder: the `=X` literal in `try_exit_family`
           (`commands_ladder_a.rs`), the chained-fastpath origin pop in
           `try_chained_fastpath` (`commands_fastpath.rs`), and the strip-`=` in
           `resolve_pom_option_key` (`commands_fastpath.rs`).
     - Validates: command-framework Req 10.2 (revised), 10.14 (new); menu-workspace Req 14.14
 
-- [ ] 40. Uniform `X` command + collapse-to-visual-root helper
-  - [ ] 40.1 Add `nav_collapse_to_visual_root()` to `shell/nav_stack.rs` (clear the
+- [x] 40. Uniform `X` command + collapse-to-visual-root helper
+  - [x] 40.1 Add `nav_collapse_to_visual_root()` to `shell/nav_stack.rs` (clear the
           active tab's Navigation_Stack and reconstruct its Tab_Visual_Root in place).
-  - [ ] 40.2 Add a uniform `X` handler (ladder/prelude verb for now, per the
+  - [x] 40.2 Add a uniform `X` handler (ladder/prelude verb for now, per the
           wiring-standard Known Caveat -- NOT yet a registered Command_ID): when the
           Navigation_Stack is non-empty, collapse to the Tab_Visual_Root; when empty,
           `close_workspace_or_exit()` (exits only when `tabs.len() <= 1`). Remove the
           `"X"` and `"=X"` literals from `try_exit_family`, keeping EXIT/QUIT/LOGOFF.
     - Validates: menu-workspace Req 14.13, 1g (revised); startup-and-session Req 14.46
 
-- [ ] 41. RETURN repointed to collapse-to-visual-root
-  - [ ] 41.1 Repoint RETURN from the CR-CH-038 collapse-to-POM (`nav_return`) to
+- [x] 41. RETURN repointed to collapse-to-visual-root
+  - [x] 41.1 Repoint RETURN from the CR-CH-038 collapse-to-POM (`nav_return`) to
           `nav_collapse_to_visual_root()` when the stack is non-empty, and
           `close_workspace_or_exit()` at the Tab_Visual_Root; retire the POM jump.
     - Validates: menu-workspace Req 14.10 (revised)
 
-- [ ] 42. POM default option `X` command: `RETURN` -> `X`
-  - [ ] 42.1 Change the compiled `DEFAULT_POM_TOML` / Recovery_Baseline POM option
+- [x] 42. POM default option `X` command: `RETURN` -> `X`
+  - [x] 42.1 Change the compiled `DEFAULT_POM_TOML` / Recovery_Baseline POM option
           default command from `RETURN` to `X` (code-only; NEVER written to disk,
           CR-CH-021 preserved).
     - Validates: menu-workspace Req 1g (revised)
 
-- [ ] 43. startup-and-session rewording (`=X` no longer app-exit)
-  - [ ] 43.1 Confirm `=X` closes the Workspace (exit only when last); EXIT/QUIT/LOGOFF
+- [x] 43. startup-and-session rewording (`=X` no longer app-exit)
+  - [x] 43.1 Confirm `=X` closes the Workspace (exit only when last); EXIT/QUIT/LOGOFF
           remain unconditional app-exit; criteria/behaviour stated in terms of the
           bound command, not a hardwired Ctrl+X.
     - Validates: startup-and-session Req 14.12 (revised), 14.40 (revised), 14.46 (new), Req 20.3 (revised)
 
-- [ ] 44. Reroute the three nav callers through the front door
-  - [ ] 44.1 POM option-key recursion (`commands.rs` `resolve_pom_option_key` re-entry):
+- [x] 44. Reroute the three nav callers through the front door
+  - [x] 44.1 POM option-key recursion (`commands.rs` `resolve_pom_option_key` re-entry):
           `handle_command` -> `dispatch_command_string`.
-  - [ ] 44.2 Chained-segment loop (`commands_fastpath.rs` `try_chained_fastpath`):
+  - [x] 44.2 Chained-segment loop (`commands_fastpath.rs` `try_chained_fastpath`):
           `handle_command` -> `dispatch_command_string`; the origin pop consumes the
           already-stripped remainder (no `=` reaches it).
-  - [ ] 44.3 START reconstruction (`nav_stack.rs` `apply_start_command`):
+  - [x] 44.3 START reconstruction (`nav_stack.rs` `apply_start_command`):
           `handle_command` -> `dispatch_command_string`.
     - Validates: command-framework Req 10.14; menu-workspace Req 14.7, 14.8/14.9
 
-- [ ] 45. Delete the now-dead ladder arms
-  - [ ] 45.1 Delete KEYS, KINDS (`commands_ladder_a.rs`); CONFIG, FILES/=FILES,
+- [x] 45. Delete the now-dead ladder arms
+  - [x] 45.1 Delete KEYS, KINDS (`commands_ladder_a.rs`); CONFIG, FILES/=FILES,
           GSEARCH/SEARCH, COMMANDS, MENUS, LOG, CATALOGS/FILE CATALOGS, PLUGINS,
           MACROS (`commands_ladder_b.rs`); and the bare-THEME branch
           (`commands.rs run_command_ladder`, keep `THEME <name>`). Confirm each verb
           still reaches `resolve_target` -> CustomWorkspace dispatch via the front door.
     - Validates: command-framework Req 8.4 (behaviour-equivalent via resolve_target)
 
-- [ ] 46. Repoint existing tests off `handle_command` for in-scope verbs
-  - [ ] 46.1 Rewrite tests asserting the OLD semantics (e.g. `non_editor_bare_x_still_exits`,
+- [x] 46. Repoint existing tests off `handle_command` for in-scope verbs
+  - [x] 46.1 Rewrite tests asserting the OLD semantics (e.g. `non_editor_bare_x_still_exits`,
           `editor_equals_x_exits_not_exclude`, POM `X`->`RETURN`->Home, unconditional
           `=X` app-exit) to the uniform model; repoint in-scope-verb tests to the front door.
     - Validates: the test suite exercises the live path
 
-- [ ] 47. Full-shell `egui_kittest` uniform-behaviour tests (first write failing)
-  - [ ] 47.1 Across the POM AND a non-POM `START SETTINGS` workspace: bare `X`
+- [x] 47. Full-shell `egui_kittest` uniform-behaviour tests (first write failing)
+  - [x] 47.1 Across the POM AND a non-POM `START SETTINGS` workspace: bare `X`
           collapses-to-visual-root when the stack is non-empty; `X`-at-visual-root
           closes; `=X` closes (NOT app-exit); END pops one; application exits ONLY on
           the last close; the POM is NOT special-cased (bare `X` on POM behaves like
           bare `X` on a Config/Files workspace).
-  - [ ] 47.2 FFEDIT carve-out: bare `X` in an editor Context is EXCLUDE (not close);
+  - [x] 47.2 FFEDIT carve-out: bare `X` in an editor Context is EXCLUDE (not close);
           `=X` is the uniform escape that reinitialises-to-POM and closes.
-  - [ ] 47.3 Detached_Workspace: `X`-at-visual-root / `=X` close the detached
+  - [x] 47.3 Detached_Workspace: `X`-at-visual-root / `=X` close the detached
           workspace via the same close path; exit when last.
     - Validates: menu-workspace Req 14.13-14.16; command-framework Req 10.2/10.14; startup-and-session Req 14.46

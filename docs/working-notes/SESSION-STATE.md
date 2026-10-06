@@ -528,3 +528,105 @@ pushed). Working tree holds the 2 Step-7 files (to commit) PLUS unrelated
 pre-existing noise listed above (NOT to be swept into the Step-7 commit; owner to
 triage separately -- the junk-named D files EditorConfigProperties/ReloadEvent/
 Self/bool/{ look like stray tracked artifacts worth a cleanup commit of their own).
+
+---
+
+## RESUME POINT (2026-10-04 end of day) -- CR-CH-052 implemented, commit HELD on ff-theme
+
+### One-line status
+CR-CH-052 (uniform navigation/exit model) is fully IMPLEMENTED and was scoped-green
+(cargo test -p ff-desktop = 977 passed / 0 failed; fmt/check/clippy clean) but is
+UNCOMMITTED in the working tree, with its commit HELD because a concurrent theme
+session (CR for a major Themes upgrade, "B081") has left crates/ff-theme
+non-compiling mid-migration. ff-theme is a dependency of ff-desktop, so CR-CH-052
+cannot be re-verified or committed until ff-theme compiles again.
+
+### What is DONE and PUSHED earlier today
+- B080 Step 7 part (menu-bar reroute) -- commit 255c6b8, pushed.
+- Junk-file cleanup -- commit 81fba6d, pushed.
+- Localization Phase 1 (ff-i18n crate, ui.locale key, alias loader; English only,
+  no translation data) -- integrated, commits 0552ff6..3493220, pushed. (Phase 2
+  = string extraction Tasks 5-9, NOT started.)
+- Stray worktrees cleaned up: localization worktree removed by the loc chat;
+  organize-project-folder-structure worktree + branch removed by me. Only the main
+  checkout remains (decomp-and-scrm-wave). feature/db* branches + main left as-is.
+- CR-CH-052 requirements GATE -- commit 58cac12, pushed. APPROVED by owner.
+  11 docs files: command-framework Req 10.2(rev)/10.14(new); menu-workspace Req
+  1g(rev)/10-RETURN(rev)/13-16(new, referenced 14.13-14.16); startup-and-session
+  Req 12/40/46 + TSO Req 3; design deltas; tasks; project-master; TCR; change-log.
+
+### CR-CH-052 implementation -- IN WORKING TREE, NOT COMMITTED (the thing to finish)
+All 13 plan items done (plan at .agents/tasks/crch052-impl/plan.md). The coder's
+scoped run was 977/0 green BEFORE the ff-theme breakage appeared. Changes (all in
+crates/ff-desktop, uncommitted):
+- dispatch.rs: single front-door `=` step `reinitialise_active_tab_to_pom` applied
+  ONCE before prelude/resolve_target/active-env; the 3 ad-hoc `=` sites now consume
+  the already-stripped remainder.
+- nav_stack.rs: new `nav_collapse_to_visual_root`, `nav_x`,
+  `reinitialise_active_tab_to_pom`; `nav_return` repointed to collapse-to-
+  Tab_Visual_Root (supersedes CR-CH-038 POM target).
+- try_exit_family: dropped X and =X (now EXIT/QUIT/LOGOFF only); uniform `X` arm
+  (nav_x) added to try_commands_a.
+- menu_workspace/defaults.rs: DEFAULT_POM_TOML X option command RETURN -> X
+  (code-only).
+- Rerouted the 3 nav callers (POM option-key recursion commands.rs; chained-segment
+  loop commands_fastpath.rs; START reconstruction nav_stack.rs apply_start_command)
+  from handle_command to dispatch_command_string.
+- Deleted the 11 superseded ladder arms (KEYS/KINDS in commands_ladder_a.rs;
+  CONFIG/FILES/=FILES/GSEARCH/SEARCH/COMMANDS/MENUS/LOG/CATALOGS/FILE CATALOGS/
+  PLUGINS/MACROS in commands_ladder_b.rs) + the bare-THEME branch in commands.rs
+  (KEPT `THEME <name>` apply); removed the now-dead helpers import.
+- Tests: rewrote old-semantics tests (non_editor_bare_x_still_exits,
+  editor_equals_x_exits_not_exclude, EXIT-family/POM-X) to the new model; repointed
+  ~77 in-scope-verb test calls handle_command -> dispatch_command_string; added new
+  full-shell egui_kittest module crates/ff-desktop/src/shell/tests_nav_ladder.rs
+  (9 tests: POM + START SETTINGS uniform behaviour, FFEDIT bare-X=EXCLUDE carve-out,
+  =1-from-non-POM-tab, detached close).
+- Docs flipped by the coder: TCR.md 13 CR-CH-052 rows -> PASS; menu-workspace +
+  command-framework tasks.md items ticked. (change-log CR-CH-052 status note may
+  still need setting to DONE-pending-gate at commit time.)
+
+### THE BLOCKER (not ours) -- ff-theme non-compiling from the concurrent theme chat
+git status shows the theme session mid-migration in crates/ff-theme:
+  M crates/ff-theme/{Cargo.toml,defaults.rs,lib.rs,loader.rs,palette.rs,serialiser.rs}
+  ?? crates/ff-theme/src/chrome_style.rs
+  M docs/specs/theme-and-appearance/{design.md,requirements.md,tasks.md}
+ChromeColours/.chrome removed from palette.rs but still referenced in
+loader/defaults/serialiser/contrast (~24 compile errors). Because ff-theme is a
+dep of ff-desktop, a FRESH cargo test -p ff-desktop currently fails at the ff-theme
+compile step (it was clean during CR-CH-052's 977/0 run; broke afterward).
+DO NOT touch any crates/ff-theme or docs/specs/theme-and-appearance file -- that is
+the theme session's in-flight work; fixing it would clobber them.
+
+### RESUME TOMORROW -- exact steps
+1. Confirm the theme session has finished (or committed) its ff-theme migration so
+   the tree compiles: `cargo check -p ff-theme` clean, then `cargo check -p ff-desktop`.
+2. Re-verify CR-CH-052 is still green on the now-compiling tree:
+   `cargo test -p ff-desktop -- --test-threads=1` (expect ~977 pass / 0 fail; the
+   theme migration may have changed the ff-theme-dependent test count slightly --
+   if any FAILURE is CR-CH-052-related, fix; if it is theme-API churn in ff-desktop
+   call sites, that belongs to the theme chat, coordinate).
+3. Commit CR-CH-052 on decomp-and-scrm-wave, staging ONLY the ff-desktop source +
+   test files and the CR-CH-052 doc files BY EXACT NAME (never git add -A; do NOT
+   stage any crates/ff-theme or docs/specs/theme-and-appearance file -- those are
+   the theme session's). Commit message must contain NO semicolons (guard blocks
+   them). Do NOT push -- owner runs the full ffwb-gate.ps1 and pushes.
+4. Owner runs `.\tools\ffwb-gate.ps1` (full gate) from the MAIN checkout (not a
+   worktree) to confirm CLEAN, then pushes.
+
+### After CR-CH-052 lands
+- Localization Phase 2 (Tasks 5-9, string extraction) is next. It also touches
+  ff-desktop UI -- sequence AFTER CR-CH-052 commits to avoid overlap.
+- Working-tree leftovers to triage sometime: M docs/status/change-log.md (small
+  pre-existing edit), untracked .worktrees/ (consider .gitignore), the theme
+  session's files (its own to commit).
+
+### Environment reminders
+- Single checkout = main repo, branch decomp-and-scrm-wave, in sync with origin at
+  58cac12 (plus the uncommitted CR-CH-052 + theme working-tree changes).
+- Flaky terminal: run one command via C:\tools\powershell7\pwsh.exe -NoProfile
+  -NonInteractive -Command "<cmd>" *> tools\logs\X.txt then READ the log; never
+  ;-chain; never pipe to Select-String/Format-Table/Out-File; empty log for
+  minutes = wedged build lock, stop. Scoped -p checks only; owner runs the full gate.
+- TWO chats share this working copy right now (this one = CR-CH-052; the other =
+  theme upgrade in ff-theme). Keep code edits disjoint; stage by exact name.

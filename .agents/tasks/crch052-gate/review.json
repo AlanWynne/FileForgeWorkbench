@@ -1,0 +1,13 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "title": "startup-and-session criterion numbering style",
+      "where": "docs/specs/startup-and-session/requirements.md vs change-log.md / TCR.md / project-master",
+      "problem": "Cross-references label the revised startup-and-session criteria '14.12 / 14.40 / 14.46', but requirements.md numbers the same criteria as flat items '12.' and '46.' under their enclosing Requirement (14) and '20.3' under Requirement 20. The 14.NN label matches the sub-project's criterion-under-Requirement convention and introduces no ambiguity.",
+      "fix": "Optional: when implementing, keep the 14.NN labels consistent, or add a one-line note that criterion N in Requirement 14 is cited as 14.N. No change required for the gate."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\VSC\\FileForgeWorkbench\\.agents\\tasks\\crch052-gate\\review.md"
+}

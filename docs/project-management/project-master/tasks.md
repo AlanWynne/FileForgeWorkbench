@@ -3274,3 +3274,58 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (localization) | CR-NR-103 GATE AUTHORED: localization/i18n (requirements Req 1-10, design, tasks 1-10). Fluent catalogue mechanism + `ui.locale` (default "en") + `t()` lookup seam + per-locale/per-environment alias loader into the existing AliasTable. NARROW first gate (mechanism + English base, proven with English); incremental per-crate extraction; other-language DATA is the LAST capstone. Additive layer, no framework change. Pending owner approval before any code. |
+
+### Phase (theme-egui-rework) -- CORE: egui-native theme model rework (CR-CH-056, theme-and-appearance Req 23/24/25; reworks 1/5/6/8/13/14/18/20; supersedes 2 chrome parts + 21)
+
+> CORE, owner-confirmed FRAMEWORK CHANGE. Rework the theme model to be egui-native,
+> as a HYBRID: a CHROME layer configuring the full `egui::Style`/`Visuals` surface
+> (serialised via egui's OWN serde) + RETAINED domain groups egui does not model
+> (syntax, gutter [renamed from chrome], file_tree, decorations, indicators,
+> style_slots, elements). The user-facing concept stays "Theme"; a Theme produces
+> an `egui::Style` for chrome + the domain groups. Single `apply_to_egui` seam
+> (removes the hardcoded Legacy slider smell); DesignTokens wired to egui. Built-in
+> set 4 -> 5: Solarized Dark + Light (replace Catppuccin), High Contrast unchanged,
+> Default Legacy retrofit with primary-menu toned `#0000AA` -> `#000060`, new
+> Legacy Soft (body green `#33FF66`). FFWB-native import/export only (no external
+> formats). Versioned TOML with embedded `Style` + v1->v2 load + resolved `base`.
+> Theme Editor rebuilt to edit the egui surface + domain groups + import/export +
+> the B081 Save fix. Builds ON the WorkspaceContext / command-dispatch /
+> navigation-stack mechanisms (UNCHANGED). Reference:
+> `.agents/tasks/theme-egui-rework/findings.md`. Pending owner approval before any code.
+
+- [x] TER.1 Requirements gate -- theme-and-appearance requirements.md (new Req 23 egui-Native Theme Model, Req 24 Import/Export, Req 25 Versioned Format + base; supersede Req 2 chrome parts + Req 21; reword Req 1/5/6/8/13/14/17/18/20; Theme-vs-egui glossary), design.md CR-CH-056 section, tasks.md Phase (theme-egui-rework) Tasks 29-33, this master phase, TCR NOT COVERED rows, core-acceptance-test-plan Group 8, change-log CR-CH-056. (Authored; awaiting owner approval before any code.)
+- [x] TER.2 Phase 1 -- model + egui mapping: enable egui `serde`; chrome layer type backed by `egui::Style`; `apply_to_egui` single seam (wholesale, removes Legacy slider smell, wires DesignTokens, sets dark_mode); rename `chrome` group -> `gutter`; migrate the ~33 chrome read sites. Delivers Req 23.1-23.6; re-expresses Req 8.4/8.5. DONE: owner ran full ffwb-gate.ps1 CLEAN.
+- [x] TER.3 Phase 2 -- built-in instances: Solarized Dark/Light (replace Catppuccin, satisfy the egui-Visuals chrome contract + AA advisory); Legacy retrofit with `#000060` primary-menu; new Legacy Soft (`#33FF66` body); `BUILTIN_THEME_NAMES` 4 -> 5; `legacy soft` shorthand. Delivers Req 18.3, 13.2 (amended), 23.7-23.11, 17.2 (shorthand). DONE: owner ran full ffwb-gate.ps1 CLEAN (9581 pass); commit be1ec7e. Light body fg #4E5F64 (AA; reviewer-verified).
+- [x] TER.4 Phase 3 -- Theme Editor rebuild (incl. B081): derived editable surface over the egui `Style`/`Visuals` + domain groups; Import/Export actions + command parity; reject foreign imports; the B081 Save-on-built-in prompts/creates a user theme (no silent no-op); full-shell type-a-name-and-Save egui_kittest test. Delivers Req 20.11-20.13, 24.1-24.3/24.5; closes B081. DONE: owner ran full ffwb-gate.ps1 CLEAN (9595 pass).
+- [x] TER.5 Phase 4 -- version + migration + base: `version` field + embedded `Style` sub-table; v1->v2 backward-compatible load; version-tolerant `Style` deserialise; RESOLVE `base` in the loader. Delivers Req 25.1-25.7, 14.4/14.5/15.5 (effective). DONE: owner ran full ffwb-gate.ps1 CLEAN (9613 pass).
+- [x] TER.6 Phase 5 -- docs + test migration: rewrite theme-authoring docs egui-native (ISPF retrofit); migrate the ~25-30 chrome-field tests to the `Style`/`Visuals`/`gutter` model; TCR rows; SCOPED `cargo check/test/clippy -p ff-theme -p ff-theme-editor -p ff-desktop` + `cargo fmt`; hand off for the owner's full `ffwb-gate.ps1`. Delivers Req 23.4 (terminology) + the coverage record. DONE: new egui-native `theme-authoring.md`; 33.2 audit found NO leftover old-chrome-field tests (migration completed in Phases 1-4; chrome reads go through `chrome_style.*`, old `chrome` group fully renamed to `gutter`, `== 14` already `> 14`); TCR Req 23/24/25 + reworded 13.2/18.3/20.5/20.11-20.13 rows PASS (24.4 deliberate OUT-OF-SCOPE). OWNER ran full ffwb-gate.ps1 CLEAN on 2026-10-05 (9613 run, 9613 passed, 0 failed; fmt/clippy/build clean). CR-CH-056 COMPLETE (all 5 phases).
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (theme-egui-rework) | CR-CH-056 DONE (CORE, owner-confirmed framework change, full gate CLEAN 2026-10-05: 9613 pass): egui-native theme model -- HYBRID chrome `egui::Style` (via egui's own serde) + retained domain groups; single `apply_to_egui` seam; Solarized Dark/Light defaults (replace Catppuccin); Default Legacy toned (`#000060`) + new Legacy Soft (`#33FF66`); FFWB-native import/export; versioned TOML + v1->v2 load + resolved `base`; Theme Editor rebuilt (egui surface + import/export + B081 fix); egui-native authoring docs. theme-and-appearance Req 23/24/25 (new), 2/21 superseded, 1/5/6/8/13/14/17/18/20 reworded. Tasks 29-33 (5 phases) all [x]. Builds ON WorkspaceContext/command-dispatch/nav-stack (unchanged). |
+
+## Phase (volume-model) -- CR-NR-105 + CR-CH-057: first-class mainframe Volume layer; catalog becomes a pure locator
+
+> Owner-approved "split, not rename": promote today's physical Repository into a first-class
+> Volume (VOLSER, Online/Offline status, ReadWrite/ReadOnly access, capacity counters) and reduce
+> the Catalog to a pure DSN -> (Volume, locator) metadata locator (ADR-001/ADR-002). Tracks/
+> cylinders/extents are METADATA ONLY: a configurable deterministic geometry profile
+> (bytes_per_track default 3390-style, cylinder = 15 tracks) drives space accounting; a dataset
+> growing past its allocated capacity / max extents (default 16) fails with a reported x37-style
+> space-abend (B37/D37/E37), DISTINCT from a Volume_Full failure. New thin `ff-volume` crate
+> (ff-dscatalog depends on it; never the reverse -- ADR-002 enforceable). Schema v4 adds `volumes`
+> + `dataset_volumes` with a dual-read, bytes-never-move migration. Supports multivolume + shared
+> volumes + uncataloged (VOL=SER + UNIT) datasets. Builds ON the VFS StorageProvider seam, the
+> single command dispatch (DEFINE VOLUME), WorkspaceContext (VTOC listing) -- no framework change.
+> Spec: `docs/specs/volume-model/` (requirements Req 1-11, design, tasks 1-10) + dataset-catalog
+> Req 32 (+ glossary/Req 1/Req 7 edits, tasks 33-37) + dataset-ownership-model Req 21 + Req 7.7.
+
+- [ ] VM.1 Requirements gate -- volume-model requirements/design/tasks, dataset-catalog Req 32 + glossary/Req 1/Req 7 edits + tasks 33-37, dataset-ownership-model Req 21 + Req 7.7 + task 12, this master phase, TCR NOT COVERED rows, change-log CR-NR-105/CR-CH-057, specs.md registration. (Authored; owner already approved the direction "Approved, proceed.")
+- [ ] VM.2 `ff-volume` crate -- Volume entity, VOLSER uniqueness, status/access-mode behaviour, geometry profile, byte/track/cylinder conversions. Delivers volume-model Req 1-3.
+- [ ] VM.3 Space + extents + failures -- SPACE unit model (TRK/CYL/block), primary + secondary extents + configurable max-extents (default 16), the dataset x37-style capacity failure, and the distinct Volume_Full failure. Delivers volume-model Req 4-7.
+- [ ] VM.4 Reporting + DatasetVolume + uncataloged + DEFINE VOLUME -- derived tracks/cylinders/extents reporting + VTOC_View, the DatasetVolume association + multivolume + uncataloged (VOL=SER + UNIT) resolution, and the DEFINE VOLUME command contract. Delivers volume-model Req 8-11.
+- [ ] VM.5 dataset-catalog integration -- schema v4 volumes/dataset_volumes tables, resolution via DatasetVolume indirection + Volume online check, dual-read bytes-never-move migration, depend on ff-volume. Delivers dataset-catalog Req 32; dataset-ownership-model Req 21/Req 7.7.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (volume-model) | CR-NR-105 + CR-CH-057 GATE AUTHORED: first-class Volume layer (new `ff-volume` crate) + catalog-as-pure-locator split. volume-model Req 1-11 (Volume entity/VOLSER, status/access, emulated geometry, SPACE units, x37 dataset-capacity failure, secondary extents/max-extents, Volume_Full, reporting/VTOC, multivolume/uncataloged, DEFINE VOLUME, NFR determinism/metadata-only migration); dataset-catalog Req 32.1-32.8 + glossary/Req 1/Req 7 edits; dataset-ownership-model Req 21.1-21.5 + Req 7.7. VM.1-VM.5. Builds ON the VFS StorageProvider seam + single command dispatch + WorkspaceContext (no framework change). Pending owner approval before any code. |

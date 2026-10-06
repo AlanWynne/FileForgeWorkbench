@@ -1501,6 +1501,79 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 | `ff-vfs` | ✅ | `workspace::tests::reconcile_reports_missing_from_provider` | Req 12.4 (VFS): workspace.reconcile reports discrepancies without auto-applying |
 | `ff-vfs` | ✅ | `workspace::tests::diagnose_reports_orphaned_physical_objects` | Req 12.5 (VFS): workspace.diagnose reports orphaned objects and dangling entries |
 
+### Phase (volume-model) -- First-class Volume layer + catalog-as-locator split (CR-NR-105 / CR-CH-057)
+
+New criteria for the volume-model spec (`ff-volume` crate) and the dataset-catalog Req 32 integration + dataset-ownership-model Req 21 ownership boundary. All NOT COVERED (gate authored; no code yet).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-volume` | 🔴 | -- | Req 1.1: Volume carries volume_id, VOLSER, display name, storage_uri, status, access_mode, capacity counters |
+| `ff-volume` | 🔴 | -- | Req 1.2: VOLSER unique within a storage system |
+| `ff-volume` | 🔴 | -- | Req 1.3: Volume owns the promoted Repository physical layout, not the Catalog |
+| `ff-volume` | 🔴 | -- | Req 1.4: Volume maps to a VFS StorageProvider via storage_uri (ADR-001) |
+| `ff-volume` | 🔴 | -- | Req 1.5: Volume entity owned by ff-volume; ff-dscatalog does not redefine it |
+| `ff-volume` | 🔴 | -- | Req 2.1: Offline Volume rejects new allocation with a reported error |
+| `ff-volume` | 🔴 | -- | Req 2.2: ReadOnly Volume rejects write/delete/extend with a reported error |
+| `ff-volume` | 🔴 | -- | Req 2.3: set-online/set-offline and mount/unmount transitions supported |
+| `ff-volume` | 🔴 | -- | Req 2.4: resolution verifies required Volumes are Online; reports first unavailable |
+| `ff-volume` | 🔴 | -- | Req 2.5: online/offline/mount/unmount invokable as commands via single dispatch |
+| `ff-volume` | 🔴 | -- | Req 3.1: Geometry_Profile with configurable bytes_per_track and tracks_per_cylinder (default 15) |
+| `ff-volume` | 🔴 | -- | Req 3.2: byte->track and track->cylinder conversions round up to whole units |
+| `ff-volume` | 🔴 | -- | Req 3.3: conversions deterministic and documented |
+| `ff-volume` | 🔴 | -- | Req 3.4: geometry conversions accounting only, not physical layout |
+| `ff-volume` | 🔴 | -- | Req 3.5: changed profile applies to subsequent conversions; prior counts reflect profile at allocation |
+| `ff-volume` | 🔴 | -- | Req 4.1: SPACE in tracks SPACE=(TRK,(primary,secondary)) supported |
+| `ff-volume` | 🔴 | -- | Req 4.2: SPACE in cylinders SPACE=(CYL,(primary,secondary)) supported |
+| `ff-volume` | 🔴 | -- | Req 4.3: SPACE in block/avg-record with AVGREC converted via geometry profile |
+| `ff-volume` | 🔴 | -- | Req 4.4: ff-volume exposes allocation-unit model consumed by ff-dsalloc SPACE parse |
+| `ff-volume` | 🔴 | -- | Req 4.5: secondary quantity recorded as per-extent secondary allocation size |
+| `ff-volume` | 🔴 | -- | Req 5.1: dataset allocated space = primary + acquired secondary extents |
+| `ff-volume` | 🔴 | -- | Req 5.2: write beyond allocation acquires a secondary extent when available |
+| `ff-volume` | 🔴 | -- | Req 5.3: write failing with no further extent reports x37-style space-abend, no crash |
+| `ff-volume` | 🔴 | -- | Req 5.4: x37-style error identifies dataset + reason; prior content intact |
+| `ff-volume` | 🔴 | -- | Req 5.5: x37 dataset-capacity failure distinct from Volume_Full |
+| `ff-volume` | 🔴 | -- | Req 6.1: primary + up to configurable max secondary extents (default 16) |
+| `ff-volume` | 🔴 | -- | Req 6.2: secondary extent added when below Max_Extents and Volume has free space |
+| `ff-volume` | 🔴 | -- | Req 6.3: reaching Max_Extents fails with the x37-style space-abend |
+| `ff-volume` | 🔴 | -- | Req 6.4: Max_Extents configurable; max-extent failure distinct from Volume_Full |
+| `ff-volume` | 🔴 | -- | Req 7.1: Volume total capacity in tracks/cylinders; used/free derived from extents |
+| `ff-volume` | 🔴 | -- | Req 7.2: allocation needing more free space than available fails Volume_Full |
+| `ff-volume` | 🔴 | -- | Req 7.3: Volume_Full distinct and separately reported from x37 dataset failure |
+| `ff-volume` | 🔴 | -- | Req 7.4: Volume_Full does not consume a dataset extent |
+| `ff-volume` | 🔴 | -- | Req 8.1: dataset reporting -- extents used/remaining, tracks/cylinders in use |
+| `ff-volume` | 🔴 | -- | Req 8.2: Volume reporting -- total/used/free tracks/cylinders, extents |
+| `ff-volume` | 🔴 | -- | Req 8.3: VTOC_View lists datasets + extents on a Volume with usage counters |
+| `ff-volume` | 🔴 | -- | Req 8.4: reporting counters derived metadata; no physical layout scan |
+| `ff-volume` | 🔴 | -- | Req 8.5: VTOC_View invokable as a command via single dispatch |
+| `ff-volume` | 🔴 | -- | Req 9.1: DatasetVolume records sequence_number, is_primary, opaque locator (replaces storage_path) |
+| `ff-volume` | 🔴 | -- | Req 9.2: dataset may reside on multiple Volumes (ordered sequence) |
+| `ff-volume` | 🔴 | -- | Req 9.3: datasets from different catalogs may share a Volume (1:1 binding broken) |
+| `ff-volume` | 🔴 | -- | Req 9.4: Uncataloged_Dataset may exist on a Volume with no catalog entry |
+| `ff-volume` | 🔴 | -- | Req 9.5: VOL=SER + UNIT resolves an Uncataloged_Dataset without a catalog row |
+| `ff-volume` | 🔴 | -- | Req 9.6: schema permits shared-Volume/multivolume/uncataloged even if UI defaults to one-per-catalog |
+| `ff-volume` | 🔴 | -- | Req 10.1: DEFINE VOLUME registers a host directory as a Volume (name/VOLSER, path, capacity, status) |
+| `ff-volume` | 🔴 | -- | Req 10.2: DEFINE VOLUME resolved through the single command-dispatch path |
+| `ff-volume` | 🔴 | -- | Req 10.3: duplicate VOLSER on DEFINE VOLUME reports an error |
+| `ff-volume` | 🔴 | -- | Req 10.4: Volume is visible-but-advanced (surfaced at catalog/dataset creation + VTOC listing) |
+| `ff-volume` | 🔴 | -- | Req 10.5: VTOC Context is a WorkspaceContext via render_workspace_context; no bespoke focus ring |
+| `ff-volume` | 🔴 | -- | Req 11.1: geometry conversions deterministic (same inputs/profile -> same results) |
+| `ff-volume` | 🔴 | -- | Req 11.2: reporting counters derived in O(n extents); no physical content scan |
+| `ff-volume` | 🔴 | -- | Req 11.3: defining a Volume over an existing Repository moves no dataset bytes (metadata only) |
+| `ff-dscatalog` | 🔴 | -- | Req 32.1: schema v4 volumes table (volume_id, volser UNIQUE, storage_uri, status, access_mode, capacity) |
+| `ff-dscatalog` | 🔴 | -- | Req 32.2: schema v4 dataset_volumes table (dataset_id, volume_id, sequence, is_primary, locator) replaces storage_path |
+| `ff-dscatalog` | 🔴 | -- | Req 32.3: resolution Dataset -> DatasetVolume -> Volume -> locator + Online check |
+| `ff-dscatalog` | 🔴 | -- | Req 32.4: catalog never contains dataset bytes; metadata + locators only (ADR-002) |
+| `ff-dscatalog` | 🔴 | -- | Req 32.5: v4 migration seeds a Volume per Repository + dataset_volumes from storage_path; dual-read; no bytes move |
+| `ff-dscatalog` | 🔴 | -- | Req 32.6: schema permits many catalogs per shared Volume and multivolume datasets |
+| `ff-dscatalog` | 🔴 | -- | Req 32.7: uncataloged VOL=SER + UNIT resolution without a catalog row |
+| `ff-dscatalog` | 🔴 | -- | Req 32.8: Volume entity owned by ff-volume; catalog depends on it, does not redefine it |
+| `ff-governance-tests` | 🔴 | -- | ownership-model Req 7.7: permitted chain includes ff-volume; ff-volume depends on none of catalog/allocator/idcams |
+| `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.1: ff-volume owns Volume entity, VOLSER, status/access, geometry, extents, capacity, DatasetVolume |
+| `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.2: ff-dscatalog depends on ff-volume; does not redefine the Volume type |
+| `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.3: ff-volume depends on none of ff-dataset-catalog/-allocator/-idcams (acyclic DAG) |
+| `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.4: catalog never contains dataset bytes (ADR-002 at ownership layer) |
+| `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.5: uncataloged (VOL=SER+UNIT) physical existence owned by Volume layer |
+
 ### Phase BU -- SQLite Catalog Integration for Options 1 and 2 (CR-CH-006)
 
 | Crate | Status | Test files | Notes |
@@ -2469,29 +2542,31 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 ### Phase (nav-ladder-semantics) -- CR-CH-052 (uniform `=` reinitialise-to-POM + X / =X / END / RETURN; no POM special-casing)
 
-> GATE AUTHORED; implementation pending owner approval. Two roots: FFCMD_Root (the
-> global POM, targeted by `=`/`=X`) vs the per-tab Tab_Visual_Root (targeted by
-> bare `X`, END, RETURN). `=X` closes the Workspace (exit when last), NOT the app;
-> FFEDIT bare `X` stays EXCLUDE (environment-ownership exception). All rows are
-> GUI/focus/nav behaviour drivable headlessly via full-shell `egui_kittest`
-> (`build_eframe`), so none is MANUAL. Builds ON the single front door + per-tab
-> nav stack; no framework change.
+> IMPLEMENTED (CR-CH-052, code-complete pending owner full-gate). Two roots:
+> FFCMD_Root (the global POM, targeted by `=`/`=X`) vs the per-tab
+> Tab_Visual_Root (targeted by bare `X`, END, RETURN). `=X` closes the Workspace
+> (exit when last), NOT the app; FFEDIT bare `X` stays EXCLUDE
+> (environment-ownership exception). Behaviour driven headlessly via full-shell
+> `egui_kittest` (`build_eframe`) plus model-level close-flag assertions for the
+> `file.exit` app-exit path; the OS detached-window teardown is the sole
+> justified-MANUAL aspect. Builds ON the single front door + per-tab nav stack;
+> no framework change.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 | -- | command-framework Req 10.2 (revised, CR-CH-052): a `=`-prefixed command reinitialises the active tab to the POM (FFCMD_Root), then runs the remainder against FFCMD; the Active_Environment never receives a `=`-prefixed string; `=1` resolves a POM option from any tab |
-| `ff-desktop` | 🔴 | -- | command-framework Req 10.14 (new): the `=` reinitialise-to-POM step is applied EXACTLY ONCE at the single front door (`dispatch_command_string`), before resolution and the Active_Environment; the three former ad-hoc `=` sites are consolidated |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 1g (revised): the POM `X` option default command is `X` (not `RETURN`); selecting it dispatches the uniform `X`; POM not special-cased; default stays code-only, never written to disk |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.13 (new): bare `X` collapses the tab to its Tab_Visual_Root when the nav stack is non-empty, closes the Workspace at the root (exit when last); FFEDIT bare `X` = EXCLUDE carve-out (full-shell egui_kittest across POM + START SETTINGS) |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.14 (new): `=X` reinitialises to the POM then runs `X` against FFCMD = close-workspace / exit-when-last (NOT app exit); identical whether or not the active env owns bare `X` |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.15 (new): X/=X/END/RETURN identical for every Context incl. POM; sole exception = an active env owning bare `X` (FFEDIT EXCLUDE); `=`/`=X` target FFCMD_Root, bare `X`/END/RETURN target Tab_Visual_Root |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.16 (new): `X`-at-root / `=X` close a Detached_Workspace via the same close-workspace-or-exit path as docked (exit when last); full-shell egui_kittest |
-| `ff-desktop` | 🔴 | -- | menu-workspace Req 14.10 (revised, supersedes CR-CH-038): RETURN collapses to the tab's Tab_Visual_Root (not the POM) when non-empty, closes at the root (exit when last); POM no longer the universal return target |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 14.12 (revised): EXIT/QUIT/LOGOFF are the unconditional app-exit verbs; `=X` removed from that set; criteria in terms of the bound command, not a hardwired Ctrl+X |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 14.40 (revised): the POM terminate line is the data-driven `X` option; activating it closes the Workspace / exits when last (not unconditional exit) |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 14.46 (new): closing a Workspace (X-at-root / =X / END-at-empty / RETURN-at-root) exits the app ONLY when it is the last; docked == detached close path |
-| `ff-desktop` | 🔴 | -- | startup-and-session Req 20.3 (revised): LOGOFF == EXIT/QUIT (unconditional app exit); `=X` no longer equivalent (it closes the Workspace, exits when last) |
-| `ff-desktop` | 🔴 | -- | CR-CH-052 (deferred B080 Step 7 deletion): the three nav callers (POM option-key recursion, chained-segment loop, START reconstruction) route through the front door; the 11 superseded ladder arms + bare-THEME branch deleted; each in-scope verb still reaches the identical shell open via resolve_target |
+| `ff-desktop` | ✅ | `shell::tests_nav_ladder::{equals_1_works_from_a_non_pom_tab, equals_x_closes_not_app_exit}`; `shell::tests_command::uniform_x_from_non_menu_context_collapses_then_equals_x_closes` | command-framework Req 10.2 (revised, CR-CH-052): a `=`-prefixed command reinitialises the active tab to the POM (FFCMD_Root), then runs the remainder against FFCMD; the Active_Environment never receives a `=`-prefixed string; `=1` resolves a POM option from any tab |
+| `ff-desktop` | ✅ | `shell::dispatch` front-door `=` step; `shell::tests_nav_ladder::ffedit_bare_x_stays_exclude_but_equals_x_escapes` | command-framework Req 10.14 (new): the `=` reinitialise-to-POM step is applied EXACTLY ONCE at the single front door (`dispatch_command_string`), before resolution and the Active_Environment; the three former ad-hoc `=` sites are consolidated |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::{default_pom_toml_terminate_is_x_x, default_pom_toml_has_recovery_baseline_options, recovery_pom_menu_has_barebones_options}` | menu-workspace Req 1g (revised): the POM `X` option default command is `X` (not `RETURN`); selecting it dispatches the uniform `X`; POM not special-cased; default stays code-only, never written to disk |
+| `ff-desktop` | ✅ | `shell::tests_nav_ladder::{bare_x_collapses_to_visual_root_when_above_root, bare_x_at_visual_root_closes_workspace, pom_not_special_cased, ffedit_bare_x_stays_exclude_but_equals_x_escapes}`; `shell::tests_command::non_editor_bare_x_collapses_to_visual_root` | menu-workspace Req 14.13 (new): bare `X` collapses the tab to its Tab_Visual_Root when the nav stack is non-empty, closes the Workspace at the root (exit when last); FFEDIT bare `X` = EXCLUDE carve-out (full-shell egui_kittest across POM + START SETTINGS) |
+| `ff-desktop` | ✅ | `shell::tests_nav_ladder::{equals_x_closes_not_app_exit, app_exits_only_on_last_close}`; `shell::tests_command::editor_equals_x_closes_workspace_not_exclude` | menu-workspace Req 14.14 (new): `=X` reinitialises to the POM then runs `X` against FFCMD = close-workspace / exit-when-last (NOT app exit); identical whether or not the active env owns bare `X` |
+| `ff-desktop` | ✅ | `shell::tests_nav_ladder::{pom_not_special_cased, end_pops_one_level, ffedit_bare_x_stays_exclude_but_equals_x_escapes}` | menu-workspace Req 14.15 (new): X/=X/END/RETURN identical for every Context incl. POM; sole exception = an active env owning bare `X` (FFEDIT EXCLUDE); `=`/`=X` target FFCMD_Root, bare `X`/END/RETURN target Tab_Visual_Root |
+| `ff-desktop` | ✅ | `shell::tests_nav_ladder::detached_workspace_closes_via_same_path` (model-level: tab removed via the shared close path; the OS detached-window teardown remains justified-MANUAL) | menu-workspace Req 14.16 (new): `X`-at-root / `=X` close a Detached_Workspace via the same close-workspace-or-exit path as docked (exit when last); full-shell egui_kittest |
+| `ff-desktop` | ✅ | `shell::tests_nav::{return_at_directly_rooted_non_pom_closes_workspace, return_from_drilled_in_collapses_to_visual_root}` | menu-workspace Req 14.10 (revised, supersedes CR-CH-038): RETURN collapses to the tab's Tab_Visual_Root (not the POM) when non-empty, closes at the root (exit when last); POM no longer the universal return target |
+| `ff-desktop` | ✅ | `shell::tests_command::{editor_equals_x_closes_workspace_not_exclude, uniform_x_from_non_menu_context_collapses_then_equals_x_closes}` (EXIT/QUIT/LOGOFF unchanged; `=X` no longer app-exit) | startup-and-session Req 14.12 (revised): EXIT/QUIT/LOGOFF are the unconditional app-exit verbs; `=X` removed from that set; criteria in terms of the bound command, not a hardwired Ctrl+X |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_pom_toml_terminate_is_x_x`; `shell::tests_nav_ladder::{bare_x_at_visual_root_closes_workspace, app_exits_only_on_last_close}` | startup-and-session Req 14.40 (revised): the POM terminate line is the data-driven `X` option; activating it closes the Workspace / exits when last (not unconditional exit) |
+| `ff-desktop` | ✅ | `shell::tests_nav_ladder::{bare_x_at_visual_root_closes_workspace, app_exits_only_on_last_close, detached_workspace_closes_via_same_path}`; `shell::tests_focus::end_at_empty_stack_last_tab_exits` | startup-and-session Req 14.46 (new): closing a Workspace (X-at-root / =X / END-at-empty / RETURN-at-root) exits the app ONLY when it is the last; docked == detached close path |
+| `ff-desktop` | ✅ | `shell::tests_command::editor_equals_x_closes_workspace_not_exclude` (LOGOFF unchanged in `try_exit_family`; `=X` closes-not-app-exit) | startup-and-session Req 20.3 (revised): LOGOFF == EXIT/QUIT (unconditional app exit); `=X` no longer equivalent (it closes the Workspace, exits when last) |
+| `ff-desktop` | ✅ | `shell::tests_focus::b080_menu_bar_front_door_matches_typed_path_for_in_scope_verbs` (all 11 in-scope verbs resolve via the front-door `resolve_target` after the arm deletion) | CR-CH-052 (deferred B080 Step 7 deletion): the three nav callers (POM option-key recursion, chained-segment loop, START reconstruction) route through the front door; the 11 superseded ladder arms + bare-THEME branch deleted; each in-scope verb still reaches the identical shell open via resolve_target |
 
 ### Phase DB -- Command Configurator (CR-NR-052, new sub-project)
 
@@ -2886,9 +2961,9 @@ Req 14.38 ("Exit" in tab context menu) is PASS - completed in Phase Z.1.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-theme` | ✅ | `discovery.rs::builtin_themes_returns_four_entries`; `shell/tests.rs::full_shell_theme_list_has_four_builtins` | theme Req 18.1/18.3: built-in set is exactly FOUR (`Default Dark`, `Default Light`, `Default High Contrast`, `Default Legacy`); `Legacy (ISPF 3270)` is not a built-in name; legacy colours unchanged under `Default Legacy` |
+| `ff-theme` | ✅ | `discovery.rs` built-in-count test; `shell/tests.rs` theme-list test | theme Req 18.1/18.3: built-in set is now FIVE (CR-CH-056 Phase 2, owner gate CLEAN): `Default Dark`[Solarized], `Default Light`[Solarized], `Default High Contrast`, `Default Legacy`[toned #000060], `Legacy Soft`[#33FF66]; `Legacy (ISPF 3270)` is not a built-in name; Default Legacy non-chrome colours unchanged |
 | `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_exact_name_case_insensitive`, `resolve_theme_arg_exact_user_name_beats_shorthand` | theme Req 17.2a: `THEME <name>` selects by EXACT case-insensitive real-name match (built-in or user) first |
-| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_shorthand_maps_to_default_builtins`; `shell/tests.rs::full_shell_theme_shorthand_selects_default_builtins` | theme Req 17.2b: `THEME <shorthand>` selects the built-in that omits the `Default ` prefix (`Dark`/`Light`/`High Contrast`/`Legacy` -> `Default *`); `legacy` -> `Default Legacy` |
+| `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_shorthand_maps_to_default_builtins`; `shell/tests.rs::full_shell_theme_shorthand_selects_default_builtins` | theme Req 17.2b: `THEME <shorthand>` selects the built-in that omits the `Default ` prefix (`Dark`/`Light`/`High Contrast`/`Legacy` -> `Default *`); `legacy` -> `Default Legacy`; `legacy soft`/`legacy-soft`/`legacy_soft` -> `Legacy Soft` (CR-CH-056 Phase 2) |
 | `ff-desktop` | ✅ | `theme_defaults.rs::resolve_theme_arg_ambiguous_resolves_to_first` | theme Req 17.3: two case-insensitive user matches resolve to the FIRST listed, no error |
 | `ff-desktop` | ✅ | `shell/tests.rs::full_shell_bare_theme_opens_editor_and_end_returns` | theme Req 17.4: bare `THEME` (no argument) opens the Theme Editor context in place (Navigation_Stack push; END returns), does NOT change the active theme, via the same path the removed `THEMES` used |
 | `ff-desktop` | ✅ | `shell/tests.rs::full_shell_themes_command_is_removed` | theme Req 17.1: `THEMES` command removed (no longer recognised); Settings "Theme Editor" item, `menus/settings.toml` `T` option, and command palette repointed to `THEME` |
@@ -3524,3 +3599,45 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | 🔴 | -- | localization Req 10.1: no second dispatcher / nav stack / persistence format / per-Context focus mechanism; builds ON existing seams only |
 | `ff-desktop` | 🔴 | -- | localization Req 10.2: additive to behaviour; with `ui.locale` = "en" the workbench renders/behaves identically to pre-localization |
 | `ff-desktop` | ✅ | `shell/alias_overlay.rs::tests::canonical_verb_is_the_recorded_persisted_value_regardless_of_locale` | localization Req 10.3: recorded/persisted value is always the canonical English verb regardless of active locale |
+
+### CR-CH-056 -- egui-native theme model (theme-and-appearance Req 23/24/25; reworded 13/18/20)
+
+> egui-native theme rework: chrome `egui::Style` (via egui's own serde) + retained
+> domain groups; single `apply_to_egui` seam; Solarized Dark/Light defaults;
+> Default Legacy toned (`#000060`) + new Legacy Soft (`#33FF66`); FFWB-native
+> import/export; versioned TOML + v1->v2 load + resolved `base`; Theme Editor
+> rebuilt (egui surface + import/export + B081 fix). Phases 1-5 complete; all
+> criteria rows PASS (owner gates CLEAN) except Req 24.4, which is a deliberate
+> OUT-OF-SCOPE exclusion (external-format import not implemented this gate).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-theme` | ✅ | `ff-theme` chrome_style.rs unit tests | Req 23.1: chrome layer configures the full themable `egui::Style`/`Visuals`/`WidgetVisuals` surface (fills, per-state fills+strokes+radius+expansion, selection, hyperlink, extreme/faint/code bg, warn/error, shadows, dark_mode) -- Phase 1, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` chrome_style.rs unit tests | Req 23.2: chrome layer (de)serialised via egui's OWN serde derives on `Style`/`Visuals` (egui `serde` feature enabled), not a hand-written mirror -- Phase 1, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` palette.rs unit tests | Req 23.3: domain groups retained (syntax, gutter [renamed from chrome], file_tree, decorations, indicators, style_slots, elements) -- egui does not model them -- Phase 1, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` chrome_style.rs + palette.rs model tests; `docs/specs/theme-and-appearance/theme-authoring.md` | Req 23.4: user-facing concept stays "Theme"; a Theme carries name/VisualMode and produces an `egui::Style` + domain groups; egui Style/Visuals not exposed as the user concept -- Phase 5, model half covered by the ff-theme ThemePalette (name/VisualMode) + apply_to_egui tests; the terminology-honesty / user-facing-concept half is documented in the egui-native theme-authoring guide (Theme vs egui Style/Visuals glossary) -- docs evidence per testing.md MANUAL-exception rationale |
+| `ff-desktop` | ✅ | `ff-desktop` render_theme.rs + `ff-theme` apply_to_egui tests | Req 23.5: single `apply_theme` seam does a wholesale `apply_to_egui(&mut Style)`; hardcoded Legacy slider colours removed from the seam; dark_mode matches VisualMode -- Phase 1, owner gate CLEAN (Legacy sliders restored via ChromeStyle in Phase 2) |
+| `ff-theme` | ✅ | `ff-theme` chrome_style.rs unit tests | Req 23.6: DesignTokens spacing/radii/shadows wired onto egui `Style` at the seam (spacing -> Style.spacing; radii -> corner radius; shadows -> window/popup shadow) -- Phase 1, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` defaults_solarized.rs unit tests | Req 23.7: Dark/Light (Solarized) three-level background hierarchy in egui Visuals terms (panel_fill / weak_bg_fill / extreme_bg_color), perceptibly distinct -- Phase 2, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` defaults_solarized.rs unit tests | Req 23.8: Dark/Light apply the accent to the focus ring in egui terms (selection.stroke / widgets.active.bg_stroke) -- Phase 2, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` defaults_solarized.rs unit tests | Req 23.9: Dark/Light active tab accent-tinted, distinct from inactive, from the chrome Visuals -- Phase 2, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` defaults_solarized.rs unit tests | Req 23.10: Dark/Light accent-tinted primary-menu/title band distinct from panel_fill, from the chrome layer -- Phase 2, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` contrast + defaults_solarized.rs unit tests | Req 23.11: new chrome fg/bg pairs meet WCAG AA (inactive-tab text >= 3:1); Solarized Dark/Light have no NEW below-AA pair; High Contrast unchanged (AAA 7:1) -- Phase 2, owner gate CLEAN; Light body fg #4E5F64 (base00-on-base3 4.13 fails AA, deepened; reviewer-verified) |
+| `ff-desktop` | ✅ | `ff-desktop` commands_theme.rs export tests | Req 24.1: EXPORT writes the active/selected theme to a native FFWB theme file at a user-chosen location (via the serialiser) -- Phase 3, owner gate CLEAN (export_theme_to_path / THEME EXPORT) |
+| `ff-desktop` | ✅ | `ff-desktop` commands_theme.rs import tests | Req 24.2: IMPORT reads a native FFWB theme file and makes it a selectable user theme (added to the available list), without altering any built-in -- Phase 3, owner gate CLEAN (import_theme_from_path / THEME IMPORT) |
+| `ff-theme-editor` | ✅ | `ff-theme` parse_native_theme tests + `ff-desktop` import tests | Req 24.3: invalid/foreign/non-FFWB import rejected with a clear non-silent message; no corruption of existing themes or the active theme -- Phase 3, owner gate CLEAN (parse_native_theme validation + built-in-name shadow guard) |
+| `ff-theme` | 🔴 | -- | Req 24.4: external-format import (base16/VS Code/tmTheme) is OUT OF SCOPE for CR-CH-056 (recorded as future), not implemented |
+| `ff-desktop` | ✅ | `ff-desktop` commands_theme.rs apply tests | Req 24.5: Export/Import each expressible as a command routed through the dispatcher; Theme Editor affordances invoke those commands (parity) -- Phase 3, owner gate CLEAN (THEME EXPORT / THEME IMPORT; apply_theme_editor_action Export/Import arms call handle_command) |
+| `ff-theme` | ✅ | `ff-theme` format_version.rs + serialiser.rs tests | Req 25.1: theme file carries a top-level integer `version`; design records the egui version the embedded `Style` blob was written against -- Phase 4, owner gate CLEAN (version=2 + egui_version) |
+| `ff-theme` | ✅ | `ff-theme` loader.rs/loader_parse.rs tests | Req 25.2: pre-version (v1) file loads backward-compatibly by mapping present keys + default-filling new chrome/egui fields, without failing -- Phase 4, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` loader tests (missing-field + extra-field) | Req 25.3: embedded egui `Style` deserialised version-tolerantly -- missing fields default, extra/unrecognised fields ignored (a Style from a different egui version loads) -- Phase 4, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` format_version.rs base-resolution tests | Req 25.4: `base` inheritance RESOLVED by the loader (not discarded) -- tokens absent from the file inherit from the named base, then the mode default (makes 14.4/14.5/15.5 effective) -- Phase 4, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` format_version.rs cycle/unresolvable tests | Req 25.5: unresolvable `base` emits a WARN naming it and falls back to the mode default, without failing the load -- Phase 4, owner gate CLEAN (+ depth-16 cycle detection) |
+| `ff-theme` | ✅ | `ff-theme` serialiser.rs tests | Req 25.6: format is versioned TOML (chosen over JSON for consistency with menus/config); egui `Style` embedded as a `[chrome_style]` sub-table -- Phase 4, owner gate CLEAN |
+| `ff-theme` | ✅ | `ff-theme` serialiser round-trip/property tests | Req 25.7: new-model Theme round-trips (serialise -> parse) to an equivalent Theme incl. the chrome `Style` sub-table + version/base metadata (extends 9.2) -- Phase 4, owner gate CLEAN (byte-stable round-trip) |
+| `ff-theme` | ✅ | `ff-theme` defaults.rs + defaults_legacy_soft.rs unit tests | Req 13.2 (amended): Legacy primary option-menu background toned down from `#0000AA` to `#000060`; all other Legacy colours byte-identical -- Phase 2, owner gate CLEAN (byte-identity guard test; ISPF sliders moved into Legacy ChromeStyle) |
+| `ff-theme` | ✅ | `ff-theme` discovery.rs + defaults_legacy_soft.rs unit tests | Req 18.3 (amended to FIVE): built-in set is Default Dark[Solarized]/Default Light[Solarized]/Default High Contrast/Default Legacy[toned]/Legacy Soft[#33FF66], each selectable -- Phase 2, owner gate CLEAN |
+| `ff-theme-editor` | ✅ | `ff-theme-editor` editable_surface.rs unit tests | Req 20.11: editor editable surface DERIVED from the egui Style/Visuals chrome fields + retained domain groups (not a fixed 14-token list); each control round-trips -- Phase 3, owner gate CLEAN (~50-token generated surface) |
+| `ff-theme-editor` | ✅ | `ff-theme-editor` lib.rs + `ff-desktop` commands_theme.rs tests | Req 20.12: editor provides Export/Import actions (Req 24), expressible as commands; UI affordances invoke those commands -- Phase 3, owner gate CLEAN |
+| `ff-desktop` | ✅ | `ff-desktop` full-shell egui_kittest save test | Req 20.13 (B081): Save with a built-in selected prompts/focuses a pre-filled new name and performs Save As -> user theme written, listed, Set-Active-able; Save never a silent no-op; full-shell egui_kittest types a name + Saves -- Phase 3, owner gate CLEAN; CLOSES B081 |
+| `ff-theme-editor` | ✅ | `ff-theme-editor` lib.rs load_working test (name_buffer pre-fill) | Req 20.5 (amended): the "built-in Save behaves as Save As (prompting for a name)" half is IMPLEMENTED (single discoverable step, no silent no-op) -- Phase 3, owner gate CLEAN |
