@@ -2512,6 +2512,51 @@ New criteria for the volume-model spec (`ff-volume` crate) and the dataset-catal
 | `ff-desktop` | 🔴 | -- | command-environments Req 11.7 (E10): chain error policy is continue-on-error (best-effort); each segment status surfaced; no stop modifier this slice |
 | `ff-desktop` | 🔴 | -- | command-environments Req 11.8 (E10): chaining adds no second dispatcher -- a pre-split feeding the one front door per segment; CommandTarget/nav stack/env model unchanged |
 
+### Phase (command-environments-maturation) -- CR-CH-053 EXTENDED (built registry + address-by-name + owning-environment binding + FS-CE family)
+
+> Owner-approved DESIGN-BRIEF Phase-1 core change. NOT COVERED until the slice
+> lands the tests (full-shell egui_kittest for the SAVE/open behaviour, unit for
+> the registry + dispatch_to_environment + host-fs decider), then flip to PASS.
+> Criteria from docs/specs/command-environments/requirements.md Req 13-17.
+> Native editing is byte-identical; only Req 14.5 MODIFIES Req 10.1 routing.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | command-environments Req 13.1: Environment_Registry is a BUILT shell-owned `dyn CommandEnvironment` collection replacing the closed EnvironmentKind enum + hardcoded environment_for_kind match + `== FfEdit` claim gate |
+| `ff-desktop` | 🔴 | -- | command-environments Req 13.2: environments REGISTER into the registry (built-in in code at startup; new executable env registers as a PLUGIN per Req 9.4), not enumerated by a fixed enum variant |
+| `ff-desktop` | 🔴 | -- | command-environments Req 13.3: active-env derivation + the active-wins claim gate READ FROM the registry by name; neither uses the former hardcoded match / `== FfEdit` literal |
+| `ff-desktop` | 🔴 | -- | command-environments Req 13.4: absent / unknown env name -> registry returns the FFCMD base (degrade to base, no error) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 13.5: FFEDIT is a REAL CommandEnvironment OBJECT registered in the registry (replacing methods-on-shell ffedit_claim); owned-verb results unchanged |
+| `ff-desktop` | 🔴 | -- | command-environments Req 13.6: with only FFEDIT + FFCMD (+ host FS env) registered, every command result is identical to the pre-registry behaviour (additive) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 13.7: the registry is not a second dispatcher / nav stack -- it feeds the one front-door/claim path; CommandTarget + per-tab Navigation_Stack unchanged |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.1: registry exposes `dispatch_to_environment(name, raw)` (REXX ADDRESS internally) routing to the named env regardless of active; addressed==active is a no-op |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.2: `dispatch_to_environment` is the SAME seam the deferred macro ADDRESS (Req 8/Task 10) uses; macro ADDRESS + FFEDIT SAVE forwarding both route through it; outcome carries RC |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.3: FFEDIT splits in-buffer verbs (LOCATE/FIND/CHANGE-in-buffer/CAPS/SORT/EXCLUDE/NUMBER/UNNUM/BNDS/COLS/...) handled directly, never addressed |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.4: the store-affecting verb SAVE (future CREATE/REPLACE-member/validation) is ADDRESSED by FFEDIT via `dispatch_to_environment` to the tab's Owning_Environment, not executed by FFEDIT |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.5 (MODIFIES Req 10.1 routing): FFEDIT SAVE no longer does a direct local-FS byte write; it addresses SAVE to the Owning_Environment; the Req 10.1 dirty-awareness contract is preserved (only the executor moves) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.6: default Owning_Environment is the Host_FS_Environment whose SAVE is BYTE-IDENTICAL to today's save_active_tab; native file SAVE on-disk + dirty/save-point identical to before (native unchanged) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.7: ownership principle -- FFEDIT owns in-buffer editing; the Owning_Environment owns store reads/writes + store-dependent validation (LRECL/RECFM); no store knowledge in FFEDIT |
+| `ff-desktop` | 🔴 | -- | command-environments Req 14.8: SAVE routing adds no second dispatcher / nav stack -- registry address-by-name feeding the one path; CommandTarget + Navigation_Stack unchanged |
+| `ff-desktop` | 🔴 | -- | command-environments Req 15.1: a tab records its Owning_Environment (env name/reference on TabState) identifying the file system/CE that owns its content |
+| `ff-desktop` | 🔴 | -- | command-environments Req 15.2: Owning_Environment CAPTURED AT OPEN from the originating catalog/provider (the CatalogType discarded today), threaded through `file.open` via a CommandParams entry |
+| `ff-desktop` | 🔴 | -- | command-environments Req 15.3: no origin at open -> Owning_Environment defaults to the Host_FS_Environment (existing opens behaviour-preserving) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 15.4: FFEDIT reads the tab's Owning_Environment to choose a store-verb target (host-bound -> host FS env; non-host -> that env) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 15.5: Owning_Environment persists/restores via the EXISTING WorkspaceDescriptor model (recapture from origin on reopen); no new persistence format |
+| `ff-desktop` | 🔴 | -- | command-environments Req 15.6: capturing/reading the Owning_Environment does not change observable open or SAVE for a native/host-path file |
+| `ff-ce-host-fs` | 🔴 | -- | command-environments Req 16.2: `ff-ce-host-fs` is a DECIDER (not a file system) resolving the native ROLE to the concrete FS CE per host (Windows->ntfs; Linux/macOS->posix/apfs); resolved env is the default Owning_Environment |
+| `ff-ce-ntfs` | 🔴 | -- | command-environments Req 16.1/16.4: `ff-ce-ntfs` is an FS Command Environment (file system, not platform) registered into the registry; LIGHT -- OS-backed controls/attrs + case-insensitive default |
+| `ff-ce-ntfs` | 🔴 | -- | command-environments Req 16.5: `ff-ce-ntfs` SAVE is byte-identical to today's local-FS write (native SAVE unchanged with host FS env as default owner) |
+| `ff-ce-posix` | 🔴 | -- | command-environments Req 16.1/16.4: `ff-ce-posix` is an FS Command Environment registered into the registry; LIGHT -- OS-backed controls/attrs + case-sensitive default |
+| `ff-ce-posix` | 🔴 | -- | command-environments Req 16.5: `ff-ce-posix` SAVE is byte-identical to today's local-FS write |
+| `ff-idcams` | 🔴 | -- | command-environments Req 16.1: the mainframe FS Command Environment is housed in `ff-idcams` (records, RECFM/LRECL, DEFINE/REPRO/LISTCAT); the first genuinely diverging CE (deep build in a later `V` phase) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 16.3: any FS Command Environment is EMULATABLE in a non-native context; the registry holds the family + designates one native per host (no hardcoded platform FS) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 16.6: deep NTFS/POSIX/APFS semantic emulation + cross-emulation DEFERRED (enabled by the abstraction, not built this phase) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 16.7: a NEW executable FS CE is a PLUGIN capability (plugin API + permission model, Req 9.4); built-in CEs code-only, not configuration-replaceable (Req 9.3) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 17.1: the shell registers an `ff-vfs` ProviderRegistry LIVE at startup (built/tested today, not registered live) so a provider is resolvable at runtime |
+| `ff-desktop` | 🔴 | -- | command-environments Req 17.2: the Live_Provider_Registry is the seam a plugin-provided VfsProvider (e.g. mainframe VFS provider) registers into; without it such a provider has nowhere to land |
+| `ff-desktop` | 🔴 | -- | command-environments Req 17.3: registering the provider registry live is additive shell wiring and does not change observable host-path file access |
+| `ff-desktop` | 🔴 | -- | command-environments Req 17.4: the non-host parts of Req 14-16 DEPEND on live registration; the host-FS default path does NOT (native editing works regardless) |
+
 ### Phase (keyboard-command-unification) -- CR-CH-054 (keyboard shortcuts resolve to commands; FFEDIT CUA verbs)
 
 > command-framework Req 17 (keyboard->command dispatch + reserved-key table) +

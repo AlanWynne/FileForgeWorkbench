@@ -281,3 +281,99 @@ is test-proven (B080 per-step rollback discipline).
         `A`/`B` / none), `A`/`B` line-granular + tie-break + marker clear + clipboard
         retained; SELECT ALL; UNDO via verb; REDO. egui TextEdit native editing
         unaffected. Validates: Requirement 12 (all) + cmd-framework Req 17 (all).
+
+## Phase-1 maturation (CR-CH-053 DESIGN-BRIEF): built registry + address-by-name + owning-environment binding + FS-CE family
+
+Owner-approved DESIGN-BRIEF Phase-1 core change. Vertical-slice order keeps FFWB
+building and NATIVE behaviour byte-identical between tasks. Each code-bearing task
+writes its test FIRST (red before green); GUI/behaviour criteria ship full-shell
+`egui_kittest` tests per `testing.md` / `workspace-conformance.md`. All new/changed
+source files stay under the 400-line rule; new CEs wire through the registry + the
+one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
+
+- [ ] 17. Build the Environment_Registry + make FFEDIT a real object (slice a, behaviour-preserving)
+  - [ ] 17.1 Replace the closed `EnvironmentKind` enum + hardcoded
+        `environment_for_kind` match + `== FfEdit` claim gate with a BUILT
+        shell-owned registry of `Box<dyn CommandEnvironment>`; environments register
+        into it at startup (FFCMD base implicit = resolve_target; FFEDIT; host FS env
+        placeholder). Test FIRST: registry resolves the focused kind's env name,
+        defaults to FFCMD for absent/unknown name. Validates: Requirement 13.1,
+        13.2, 13.3, 13.4.
+  - [ ] 17.2 Make FFEDIT a real `CommandEnvironment` OBJECT (move `ffedit_claim`
+        verb bodies behind the trait, still delegating to the existing managers +
+        dirty-aware SAVE path); register it in the registry. Test FIRST: every FFEDIT
+        verb's observable result is unchanged via the object (parity with the prior
+        method path). Validates: Requirement 13.5, 13.6, 4.2, 6.3.
+  - [ ] 17.3 Prove the registry is not a second dispatcher: active-env derivation +
+        claim gate read FROM the registry on the one shared ladder path; no change to
+        `CommandTarget` or the per-tab Navigation_Stack. Full-shell test: with only
+        FFEDIT + FFCMD + host FS env registered, a representative FFEDIT verb and a
+        representative FFCMD verb resolve exactly as before. Validates: Requirement
+        13.6, 13.7, 1.4, 3.3.
+
+- [ ] 18. Add the address-by-name entry point dispatch_to_environment (slice b, additive)
+  - [ ] 18.1 Add `dispatch_to_environment(name, raw)` to the registry (REXX ADDRESS
+        applied internally): route a raw command to the named env regardless of the
+        active one; addressed-env == active-env is a no-op wrapper; the outcome
+        carries a return code. Test FIRST: addressing the active env equals not
+        addressing; addressing a second registered env routes to it. Validates:
+        Requirement 14.1, 14.2.
+  - [ ] 18.2 Classify FFEDIT verbs into IN-BUFFER (handled directly) vs
+        STORE-AFFECTING (addressed). Test FIRST: an in-buffer verb (e.g. LOCATE /
+        EXCLUDE) is never addressed to another env; the store verb SAVE is routed via
+        `dispatch_to_environment`. Validates: Requirement 14.3, 14.7, 14.8.
+
+- [ ] 19. TabState owning-environment field + capture at open (slice c, default host FS, behaviour-preserving)
+  - [ ] 19.1 Add `owning_environment` to `TabState`; capture it at open from the
+        originating catalog/provider (the `CatalogType` discarded today), threaded
+        through `file.open` via a new `CommandParams` entry; default =
+        Host_FS_Environment when no origin is supplied. Test FIRST: a plain host-path
+        open binds to the host FS env; an open carrying an origin binds to that env.
+        Validates: Requirement 15.1, 15.2, 15.3.
+  - [ ] 19.2 Persist/restore the Owning_Environment via the EXISTING
+        `WorkspaceDescriptor` model (recapture from origin on reopen); no new
+        persistence format. Test FIRST: a tab reopened from its descriptor recaptures
+        the same Owning_Environment. Validates: Requirement 15.5.
+  - [ ] 19.3 FFEDIT reads the tab's Owning_Environment to choose the SAVE target.
+        Test FIRST (full-shell): on a host-bound tab FFEDIT targets the host FS env;
+        on a non-host-bound tab FFEDIT addresses that env. Validates: Requirement
+        15.4, 15.6.
+
+- [ ] 20. Redirect FFEDIT SAVE to address the owning environment (slice d, MODIFIES Req 10.1 -- native == today)
+  - [ ] 20.1 Move the local-FS byte-write SAVE logic (`tab_manager::save_active_tab`)
+        INTO the host FS CE's SAVE; FFEDIT SAVE now ADDRESSes the Owning_Environment
+        via `dispatch_to_environment` instead of writing the store directly.
+        PRESERVE the Req 10.1 dirty-awareness contract exactly (clean no-op; dirty
+        write + stay + clear flag + save point; write-fail stay + error; not
+        Confirmable). Test FIRST (red before green): native SAVE is on-disk-identical
+        and dirty/save-point-identical to today (byte-for-byte). Validates:
+        Requirement 14.4, 14.5, 14.6, 10.1 (routing change, behaviour preserved).
+  - [ ] 20.2 Full-shell `egui_kittest` test: edit a native file, type SAVE, assert
+        the host FS env performed the write and the dirty flag/save point cleared,
+        identical to the pre-change path. Validates: Requirement 14.5, 14.6.
+
+- [ ] 21. Host-fs decider + light ntfs + posix CEs (slice e, additive)
+  - [ ] 21.1 Add `ff-ce-host-fs` (decider: detect host at startup, resolve the
+        native ROLE to the concrete FS CE) + `ff-ce-ntfs` + `ff-ce-posix` (LIGHT --
+        OS-backed controls/attrs; byte-write SAVE == today; cheap FS defaults:
+        case-insensitive vs case-sensitive). Each `impl CommandEnvironment` + register
+        into the registry. Add the crates to `ff-desktop/Cargo.toml`. Test FIRST: the
+        decider resolves Windows -> ntfs and Linux/macOS -> posix; the resolved env is
+        the default Owning_Environment. Validates: Requirement 16.1, 16.2, 16.3,
+        16.4, 16.5.
+  - [ ] 21.2 Record (test or doc-assert) that deep NTFS/POSIX/APFS semantic
+        emulation + cross-emulation are DEFERRED, and that a new executable FS CE is a
+        plugin capability (Req 9.4) -- built-in CEs code-only, not
+        configuration-replaceable (Req 9.3). Validates: Requirement 16.6, 16.7.
+
+- [ ] 22. Live ProviderRegistry registration prerequisite (slice f, additive shell wiring)
+  - [ ] 22.1 Register an `ff-vfs` `ProviderRegistry` LIVE in the shell at startup
+        (the built/tested stack is not registered live today); it is the seam a
+        plugin-provided `VfsProvider` (e.g. the mainframe VFS provider) registers
+        into. Test FIRST: host-path file access is unchanged with the registry live;
+        a registered provider is resolvable at runtime. Validates: Requirement 17.1,
+        17.2, 17.3.
+  - [ ] 22.2 Document the dependency: the non-host parts of Req 14-16 depend on this
+        live registration; the host-FS default path does not. (No code beyond 22.1;
+        this records the dependency so later non-host phases reference it.)
+        Validates: Requirement 17.4.

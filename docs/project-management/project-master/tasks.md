@@ -3329,3 +3329,35 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (volume-model) | CR-NR-105 + CR-CH-057 GATE AUTHORED: first-class Volume layer (new `ff-volume` crate) + catalog-as-pure-locator split. volume-model Req 1-11 (Volume entity/VOLSER, status/access, emulated geometry, SPACE units, x37 dataset-capacity failure, secondary extents/max-extents, Volume_Full, reporting/VTOC, multivolume/uncataloged, DEFINE VOLUME, NFR determinism/metadata-only migration); dataset-catalog Req 32.1-32.8 + glossary/Req 1/Req 7 edits; dataset-ownership-model Req 21.1-21.5 + Req 7.7. VM.1-VM.5. Builds ON the VFS StorageProvider seam + single command dispatch + WorkspaceContext (no framework change). Pending owner approval before any code. |
+
+## Phase (command-environments-maturation) -- CR-CH-053 EXTENDED: built Environment_Registry + address-by-name + owning-environment binding + FS-CE family
+
+> Owner-approved DESIGN-BRIEF Phase-1 core change (the ONE framework extension of
+> the mainframe-dataset-emulation effort): make the Environment_Registry a BUILT
+> pluggable collection (replacing the closed `EnvironmentKind` enum + hardcoded
+> `environment_for_kind` match + `== FfEdit` claim gate), add the registry
+> address-by-name entry point `dispatch_to_environment` (the seam the deferred
+> macro ADDRESS also uses), bind each tab to the environment that OWNS its content
+> (captured at open; default host FS env), redirect FFEDIT SAVE to ADDRESS the
+> owning env (MODIFIES Req 10.1 routing; host-FS SAVE byte-identical to today), and
+> model the `ff-ce-*` FS Command Environment family + `ff-ce-host-fs` decider
+> (native is a ROLE). Live `ff-vfs` ProviderRegistry registration is the
+> non-negotiable prerequisite for non-host file systems. Behaviour-preserving for
+> native editing; completes CR-CH-053 deferred design (registry jobs 1-3, Req 8
+> addressing, Req 9.4 plugin environments); no second dispatcher, no second nav
+> stack, CommandTarget/WorkspaceContext/descriptor unchanged. Core/mainline
+> (unprefixed); the `V` plugin stream builds its FS CEs + VFS providers ON this.
+> Spec: `docs/specs/command-environments/` (new Req 13-17, design maturation
+> section, tasks 17-22).
+
+- [ ] CEM.1 Requirements gate -- command-environments requirements.md (new Req 13-17, 32 criteria), design.md Phase-1 maturation section, tasks.md Tasks 17-22, this master phase, TCR NOT COVERED rows, change-log CR-CH-053 EXTENDED. (Authored; awaiting owner approval before any code.)
+- [ ] CEM.2 Built Environment_Registry + FFEDIT-as-object (slice a) -- replace the closed enum/match/claim-gate with a built `dyn CommandEnvironment` collection environments register into; make FFEDIT a real object; active-env derivation + claim gate read from the registry. Behaviour-preserving. command-environments tasks 17.1-17.3 (Req 13).
+- [ ] CEM.3 Address-by-name `dispatch_to_environment` (slice b) -- registry entry point routing a command to a named env (REXX ADDRESS internally; macro ADDRESS + FFEDIT SAVE forwarding its two consumers); FFEDIT verb split in-buffer vs store-affecting. Additive. command-environments tasks 18.1-18.2 (Req 14 mechanism).
+- [ ] CEM.4 TabState owning-environment binding + capture at open (slice c) -- `owning_environment` field captured from the originating catalog/provider, threaded through `file.open`, default host FS env; descriptor persistence; FFEDIT reads it for the SAVE target. Behaviour-preserving. command-environments tasks 19.1-19.3 (Req 15).
+- [ ] CEM.5 Redirect FFEDIT SAVE to the owning env (slice d) -- move the local-FS byte write into the host FS CE's SAVE; FFEDIT addresses SAVE via `dispatch_to_environment`; Req 10.1 dirty-awareness preserved; native SAVE byte-identical. MODIFIES Req 10.1 routing (flagged). command-environments tasks 20.1-20.2 (Req 14.4-14.6).
+- [ ] CEM.6 ff-ce-host-fs decider + light ntfs + posix CEs (slice e) -- host-fs decider resolves the native ROLE per host; light OS-backed ntfs/posix CEs supply byte-write SAVE == today + cheap FS defaults; register into the registry; add crates to ff-desktop. Additive; deep emulation deferred. command-environments tasks 21.1-21.2 (Req 16).
+- [ ] CEM.7 Live ProviderRegistry registration (slice f) -- register the built `ff-vfs` ProviderRegistry live at startup (prerequisite for non-host file systems); host-path access unchanged. Additive shell wiring. command-environments tasks 22.1-22.2 (Req 17).
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (command-environments-maturation) | CR-CH-053 EXTENDED GATE AUTHORED: built Environment_Registry (replaces closed enum/match/claim-gate) + `dispatch_to_environment` address-by-name + TabState owning-environment binding + FFEDIT SAVE redirect (MODIFIES Req 10.1 routing; native byte-identical) + ff-ce-* FS CE family / ff-ce-host-fs decider + live ProviderRegistry prerequisite. command-environments Req 13-17 (32 criteria), Tasks 17-22, CEM.1-CEM.7. Owner-approved DESIGN-BRIEF Phase-1 core change (mainline/unprefixed); builds ON the framework (no second dispatcher/nav stack; CommandTarget/WorkspaceContext/descriptor unchanged). Pending owner approval before any code. |

@@ -621,3 +621,252 @@ Req 12); the keyboard binding is command-framework Req 17.
 9. THESE verbs SHALL be reachable by both the reserved keys (command-framework
    Req 17.2) and by typing; the key and the typed verb produce the identical
    result. No second dispatcher; dispatched through the one front door.
+
+---
+
+## Phase-1 maturation extension (CR-CH-053, owner-approved DESIGN-BRIEF)
+
+Requirements 13-16 EXTEND CR-CH-053 with the ONE owner-approved core change from
+the consolidated DESIGN-BRIEF (file-system-aware VFS + Command Environments +
+adaptive editor; `.agents/tasks/mainframe-dataset-emulation/DESIGN-BRIEF.md`,
+section 5). They COMPLETE the Environment_Registry this spec already DESCRIBES
+(design.md "The Environment_Registry", jobs 1-3) and Req 1.3 already NAMES, plus
+the address-by-name seam Req 8/Task 10 already depend on. They do NOT contradict
+Requirements 1-12: FFCMD stays `resolve_target`; the active-env step stays the one
+front-door/shared-ladder stage; `CommandTarget`, the per-tab Navigation_Stack, and
+the WorkspaceContext focus latch are UNCHANGED. No second dispatcher and no second
+navigation stack are introduced.
+
+Framework-conformance stance (per `framework-conformance.md`): this is the single
+owner-confirmed framework EXTENSION that completes a designed, phase-1-deferred
+capability (the built registry + address-by-name + plugin environments of Req
+9.4). It is NOT a new mechanism: it replaces the CLOSED set (fixed
+`EnvironmentKind` enum, hardcoded `environment_for_kind` match, single hardcoded
+`== FfEdit` claim gate) with the OPEN built registry the design already called for.
+
+MODIFIES-vs-ADDITIVE marking (see each criterion):
+- MODIFIES working behaviour: Requirement 10.1 SAVE routing (SAVE stops being a
+  direct local-FS byte write and is ADDRESSED to the owning environment). The host
+  FS environment's SAVE is byte-identical to today, so NATIVE editing is
+  unchanged; the modification is the routing path, flagged in Req 14.
+- ADDITIVE (behaviour-preserving with only FFEDIT + FFCMD + the host FS env
+  registered): the built registry (Req 13), the address-by-name entry point (Req
+  14 mechanism), the tab owning-environment binding defaulting to the host FS env
+  (Req 15), and the ff-ce-* family modelled with light host-FS CEs (Req 16).
+
+New glossary terms (extend the Glossary above):
+
+| Term | Definition | Source |
+|------|-----------|--------|
+| **Built Environment_Registry** | The shell-owned collection of `dyn CommandEnvironment` into which environments REGISTER (a plugin capability, Req 9.4), replacing the closed `EnvironmentKind` enum + hardcoded `environment_for_kind` match + hardcoded `== FfEdit` claim gate. Active-env derivation and the claim gate READ FROM it. | [CR-CH-053 / DESIGN-BRIEF 5.1] |
+| **Owning_Environment** | The Command Environment of the file system that OWNS a tab's edited resource; the destination FFEDIT addresses store-affecting verbs (SAVE, future CREATE/REPLACE-member, record validation) to. Captured at open from the originating catalog/provider; default = the Host_FS_Environment. | [CR-CH-053 / DESIGN-BRIEF D2, 5.3] |
+| **dispatch_to_environment** | The registry's address-by-name entry point (REXX ADDRESS applied internally): given an environment NAME and a raw command, route the command to that named environment. The SAME seam the deferred macro ADDRESS (Req 8 / Task 10) needs; FFEDIT SAVE forwarding is its first consumer. | [CR-CH-053 / DESIGN-BRIEF 5.1(b)] |
+| **FS_Command_Environment (ff-ce-*)** | A Command Environment that represents a FILE SYSTEM (not a platform): `ff-ce-ntfs`, `ff-ce-posix` (future `ff-ce-apfs`), and the mainframe CE housed in `ff-idcams`. Owns its file system's store semantics (SAVE write-back, record validation, path/case rules). | [CR-CH-053 / DESIGN-BRIEF D4a] |
+| **Host_FS_Environment / Native role** | The FS Command Environment that `ff-ce-host-fs` (a DECIDER, not a file system) resolves the "native" ROLE to for the current host at startup (Windows -> ff-ce-ntfs; Linux/macOS -> ff-ce-posix). "Native" is a ROLE, not a CE; any FS CE is emulatable in a non-native context. | [CR-CH-053 / DESIGN-BRIEF D4a] |
+| **Live_Provider_Registry** | The `ff-vfs` `ProviderRegistry` registered in the running shell at startup. Built/tested today but NOT registered live; the prerequisite without which a plugin-provided `VfsProvider` (e.g. the mainframe VFS provider) has nowhere to land. | [CR-CH-053 / DESIGN-BRIEF 5 prerequisite] |
+
+### Requirement 13: Built, pluggable Environment_Registry
+
+**User Story:** As a workbench developer, I want the Environment_Registry to be a
+real built collection that environments register into, so that active-environment
+derivation and the claim gate read from one open registry rather than a closed
+enum and hardcoded match, and a new environment plugs in (per Req 9.4) without
+editing a central dispatch site.
+
+**Marking:** ADDITIVE / behaviour-preserving with only FFEDIT + FFCMD (+ the host
+FS environment, Req 16) registered. Completes the registry design.md already
+describes (jobs 1-3) and Req 1.3 names.
+
+#### Acceptance Criteria
+
+1. THE Environment_Registry SHALL be a BUILT shell-owned collection of
+   environments (each a `dyn CommandEnvironment`, Req 1.1), REPLACING the closed
+   `EnvironmentKind` enum, the hardcoded `environment_for_kind` match, and the
+   single hardcoded `== FfEdit` claim gate as the source of truth for which
+   environments exist.
+2. AN environment SHALL REGISTER itself INTO the registry (built-in environments
+   registered in code at startup; a new executable environment registering as a
+   PLUGIN capability per Req 9.4), rather than being enumerated by a fixed enum
+   variant and a central match arm.
+3. THE active-environment derivation (Req 2.1) SHALL read the Active_Environment
+   FROM the registry by the focused kind's command-environment name, and THE claim
+   gate (the active-wins step, Req 5.1) SHALL consult the registry's resolved
+   active environment -- NEITHER SHALL use the former hardcoded `environment_for_kind`
+   match or the `== FfEdit` literal.
+4. WHEN the focused kind supplies no environment name, OR names one not present in
+   the registry, THE registry SHALL return the FFCMD base (Req 2.1 default), so an
+   unresolved name degrades to the base rather than erroring.
+5. FFEDIT SHALL be a REAL `CommandEnvironment` OBJECT registered in the registry
+   (replacing today's methods-on-the-shell `ffedit_claim`), claiming its owned
+   verbs (Req 6.1) through the trait, with its observable result unchanged
+   (Req 4.2, 6.3).
+6. WITH only FFEDIT and FFCMD (and the host FS environment, Req 16) registered,
+   THE observable result of every command SHALL be identical to the pre-registry
+   behaviour (Req 4) -- the registry is an open structure around the SAME
+   resolution order, not a behaviour change.
+7. THE registry SHALL NOT be a second dispatcher or a second navigation stack
+   (Req 1.4, 3.3): it feeds the one front door / shared ladder path and leaves
+   `CommandTarget` and the per-tab Navigation_Stack unchanged.
+
+### Requirement 14: Address-by-name routing (dispatch_to_environment) and FFEDIT SAVE forwarding
+
+**User Story:** As a macro author and as the editor, I want to direct a
+store-affecting command to the environment that OWNS the edited resource (REXX
+ADDRESS applied internally), so that FFEDIT stays universal for in-buffer editing
+while SAVE (and future store verbs) are performed by the owning file system's
+Command Environment.
+
+**Marking:** The address-by-name MECHANISM is ADDITIVE (the registry gains an
+entry point). The SAVE REROUTING MODIFIES working behaviour and is flagged against
+Requirement 10.1 below: FFEDIT stops executing SAVE as a direct local-FS byte
+write and instead ADDRESSes it to the Owning_Environment. The host FS
+environment's SAVE is byte-identical to today, so native editing is unchanged.
+
+#### Acceptance Criteria
+
+1. THE Environment_Registry SHALL expose an address-by-name entry point
+   `dispatch_to_environment(name, raw)` that routes a raw command to the named
+   environment regardless of the Active_Environment (REXX ADDRESS applied
+   internally). WHEN the named environment equals the active one, the result SHALL
+   be identical with or without addressing (consistent with Req 8.2).
+2. `dispatch_to_environment` SHALL be the SAME seam the deferred macro ADDRESS
+   (Req 8, Task 10) uses: the macro `ADDRESS <env>` binding and FFEDIT SAVE
+   forwarding SHALL both route through this one entry point, not two parallel
+   paths. The dispatch outcome SHALL carry a return code (Req 8.3).
+3. FFEDIT SHALL classify its verbs into IN-BUFFER verbs and STORE-AFFECTING verbs.
+   THE in-buffer verbs (LOCATE, FIND, CHANGE-in-buffer, CAPS, SORT, EXCLUDE,
+   NUMBER, UNNUM, BNDS, COLS, and the other verbs of Req 6.1) SHALL be handled by
+   FFEDIT DIRECTLY and SHALL NOT be addressed to another environment.
+4. THE store-affecting verb SAVE (today the only one; FUTURE CREATE / REPLACE
+   member / save-time record validation) SHALL be ADDRESSED by FFEDIT, via
+   `dispatch_to_environment`, to the tab's Owning_Environment (Req 15) rather than
+   executed by FFEDIT as a direct store write.
+5. **(MODIFIES Requirement 10.1 -- flagged.)** FFEDIT SAVE SHALL no longer perform
+   a direct local-FS byte write (today `tab_manager::save_active_tab` ->
+   `LocalFsProvider` byte write). INSTEAD, FFEDIT SHALL address SAVE to the
+   Owning_Environment, whose SAVE performs the write. The dirty-awareness contract
+   of Requirement 10.1 (clean = no-op; dirty = write + stay + clear flag + save
+   point; write-fail = stay + surface error; not Confirmable) SHALL be PRESERVED
+   -- only the EXECUTOR of the write moves from FFEDIT to the Owning_Environment.
+6. THE DEFAULT Owning_Environment SHALL be the Host_FS_Environment (Req 16), whose
+   SAVE SHALL be BYTE-IDENTICAL to today's `save_active_tab` local-FS write. THEREFORE
+   editing a NATIVE file and typing SAVE SHALL produce the identical on-disk result
+   and the identical dirty/save-point state as before this change (native behaviour
+   unchanged; the only change is the routing path).
+7. OWNERSHIP PRINCIPLE: FFEDIT SHALL own in-buffer editing; the Owning_Environment
+   SHALL own all store reads/writes and store-dependent validation (e.g. LRECL /
+   RECFM enforcement when a non-host FS environment is the owner). This formalises
+   Req 2a.4 for the store boundary and introduces no store knowledge into FFEDIT.
+8. THIS routing SHALL add no second dispatcher and no second navigation stack: it
+   is the registry's address-by-name feeding the one front door / claim path;
+   `CommandTarget` and the per-tab Navigation_Stack are unchanged.
+
+### Requirement 15: Tab-to-owning-environment binding (captured at open)
+
+**User Story:** As the editor, I want each tab to record which file system / CE
+owns its content, captured when the file was opened, so that FFEDIT can address
+store-affecting verbs to the right environment instead of guessing or always
+writing to the local FS.
+
+**Marking:** ADDITIVE / behaviour-preserving (default = Host_FS_Environment, so
+every file open today binds to the native env and SAVE stays native).
+
+#### Acceptance Criteria
+
+1. A tab SHALL record its Owning_Environment as tab state (an environment NAME /
+   reference on `TabState`), identifying the file system / CE that OWNS the tab's
+   content.
+2. THE Owning_Environment SHALL be CAPTURED AT OPEN from the originating catalog /
+   provider (e.g. the `CatalogType` the navigator already knows at open time, which
+   is DISCARDED today), threaded through the open command (a `file.open`
+   `CommandParams` entry) rather than inferred later.
+3. WHEN no originating environment is supplied at open (a plain host-path open as
+   today), THE Owning_Environment SHALL DEFAULT to the Host_FS_Environment (Req
+   16), so existing opens are behaviour-preserving.
+4. FFEDIT SHALL READ the tab's Owning_Environment to choose the target of a
+   store-affecting verb (Req 14.4): SAVE on a tab bound to the host FS env writes
+   via the host FS env; SAVE on a tab bound to a non-host FS env is addressed to
+   that env.
+5. THE Owning_Environment binding SHALL persist/restore CONSISTENTLY with the
+   existing `WorkspaceDescriptor` model (a tab reopened from its descriptor SHALL
+   recapture the same Owning_Environment from its origin); it SHALL NOT introduce
+   a new persistence format (framework-conformance mechanism 6).
+6. CAPTURING and reading the Owning_Environment SHALL NOT change the observable
+   open or SAVE behaviour for a native/host-path file (the default binding keeps
+   today's path).
+
+### Requirement 16: The ff-ce-* file-system Command Environment family and ff-ce-host-fs decider
+
+**User Story:** As an architect, I want each file system to be its own Command
+Environment (named by the ff-ce-* convention) and a host-fs decider that resolves
+the "native" role to the right concrete FS CE per host, so the model generalises
+cleanly to NTFS, POSIX, future file systems, and the mainframe dataset CE without
+hardcoding a platform.
+
+**Marking:** ADDITIVE / behaviour-preserving. The host-fs decider + light NTFS /
+POSIX CEs supply a byte-write SAVE identical to today; the mainframe CE (housed in
+ff-idcams) is the first CE that genuinely diverges and is built in a later phase.
+Reconciles with Req 9.4 (a new executable environment is a plugin capability) and
+DESIGN-BRIEF D4a.
+
+#### Acceptance Criteria
+
+1. THE model SHALL define a Command Environment PER FILE SYSTEM (an
+   FS_Command_Environment), named by the `ff-ce-*` convention -- `ff-ce-ntfs`,
+   `ff-ce-posix` (future `ff-ce-apfs`), and the mainframe CE housed in `ff-idcams`
+   -- each owning its file system's store semantics (SAVE write-back, record
+   validation, path/case rules). A file system is a file system regardless of
+   which OS hosts it; a CE represents a FILE SYSTEM, not a platform.
+2. `ff-ce-host-fs` SHALL be a DECIDER / pass-through (NOT a file system) that at
+   startup detects the host platform and RESOLVES the "native" ROLE to the
+   matching concrete FS CE (Windows -> `ff-ce-ntfs`; Linux / macOS -> `ff-ce-posix`
+   / future `ff-ce-apfs`). "Native" SHALL be a ROLE, not a CE; whatever the decider
+   resolves to IS the Host_FS_Environment / default Owning_Environment (Req 15.3).
+3. ANY FS_Command_Environment SHALL be EMULATABLE in a non-native context (e.g.
+   NTFS-on-Linux, mainframe-dataset anywhere) because the CE owns the semantics,
+   not the platform -- the registry (Req 13) holds the family and designates one as
+   native per host rather than hardcoding a platform file system.
+4. THE INITIAL build SHALL register the host-fs decider + `ff-ce-ntfs` + `ff-ce-posix`
+   (both deliberately LIGHT -- relying on the OS for controls, permissions, and
+   file attributes, supplying a byte-write SAVE == today's behaviour plus cheap FS
+   defaults such as POSIX case-sensitivity vs NTFS case-insensitivity) + the
+   mainframe CE housed in `ff-idcams`. Each `impl CommandEnvironment` and registers
+   into the Environment_Registry (Req 13.2).
+5. THE light NTFS / POSIX CEs' SAVE SHALL be byte-identical to today's local-FS
+   write (Req 14.6), so with the host FS env as the default Owning_Environment,
+   native SAVE is unchanged.
+6. DEEP NTFS / POSIX / APFS semantic emulation and cross-emulation (NTFS-on-Linux,
+   etc.) SHALL be DEFERRED -- enabled by this abstraction, not built in the initial
+   phase; no criterion here requires building them.
+7. A NEW FS_Command_Environment with new executable store behaviour SHALL be a
+   PLUGIN capability (registered through the plugin API under the plugin
+   permission model, Req 9.4), consistent with the built-in environments being
+   code-only and not configuration-replaceable (Req 9.3).
+
+### Requirement 17: Live provider-registry prerequisite (dependency note)
+
+**User Story:** As a developer wiring the mainframe (and other non-host) file
+systems, I need the `ff-vfs` `ProviderRegistry` registered live in the running
+shell at startup, because without it a plugin-provided `VfsProvider` has nowhere
+to land and a non-host Owning_Environment cannot read/write its store.
+
+**Marking:** ADDITIVE shell wiring (register the already-built provider stack at
+startup). This is a PREREQUISITE/dependency for the non-host parts of Req 14-16,
+NOT a change to the registry or dispatch mechanisms. It is called out explicitly
+per the DESIGN-BRIEF section 5 "NON-NEGOTIABLE PREREQUISITE".
+
+#### Acceptance Criteria
+
+1. THE shell SHALL register an `ff-vfs` `ProviderRegistry` LIVE at startup (the
+   provider stack is built/tested today but NOT registered live), so that a
+   provider can be looked up at runtime by the Owning_Environment.
+2. THE Live_Provider_Registry SHALL be the seam a plugin-provided `VfsProvider`
+   (e.g. the mainframe VFS provider) registers into; without it, such a provider
+   SHALL have nowhere to land (the dependency this criterion records).
+3. REGISTERING the provider registry live SHALL be ADDITIVE shell wiring and SHALL
+   NOT change the observable behaviour of host-path file access (the host FS
+   provider continues to serve native opens/saves exactly as today).
+4. THE non-host parts of Requirements 14-16 (addressing SAVE to a mainframe or
+   other non-host Owning_Environment that must reach a provider) SHALL DEPEND ON
+   this criterion; the host-FS default path (Req 14.6, 15.3) SHALL NOT depend on
+   it (native editing works whether or not a non-host provider is registered).
