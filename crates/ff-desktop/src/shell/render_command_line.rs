@@ -50,7 +50,7 @@ impl WorkbenchShell {
         // descriptive Title-Case display name (`title_line_display`). Only the
         // file-editor path keeps the left-aligned Title_Line (full path /
         // [Untitled]).
-        let is_menu_workspace = tab.kind == crate::tab_state::TabKind::MenuWorkspace;
+        let is_menu_workspace = tab.kind.tag() == crate::tab_state::KindTag::MenuWorkspace;
         let display = self.title_line_display(tab);
         let centered = is_menu_workspace || display.is_some();
         let text = display.unwrap_or_else(|| self.kind_title(tab));

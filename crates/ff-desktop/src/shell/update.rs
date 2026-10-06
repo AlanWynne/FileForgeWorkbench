@@ -356,7 +356,7 @@ mod startup_tests {
     use super::{ensure_default_home_catalog, ensure_pom_tab_present};
     use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::KindTag;
     use std::path::PathBuf;
     use tokio::runtime::Runtime;
 
@@ -421,7 +421,7 @@ mod startup_tests {
         tabs.insert_pom_tab(&runtime);
         assert_eq!(tabs.len(), 1);
         assert!(tabs.tabs()[0].is_home);
-        assert_eq!(tabs.tabs()[0].kind, TabKind::MenuWorkspace);
+        assert_eq!(tabs.tabs()[0].kind.tag(), KindTag::MenuWorkspace);
     }
 
     /// Validates: Requirement 14.1a -- session with POM tab: ensure_pom_tab_present is a no-op.

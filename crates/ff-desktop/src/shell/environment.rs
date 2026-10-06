@@ -25,7 +25,7 @@
 //!
 //! See docs/specs/command-environments/{requirements,design}.md.
 
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 use crate::workspace_kind::BuiltinKind;
 
 /// The command environment that owns a Context's command-line verbs.
@@ -99,7 +99,7 @@ pub(crate) fn environment_for_kind(kind: BuiltinKind) -> EnvironmentKind {
 /// mapping is routed through the one `from_tab_kind` seam for correctness.
 ///
 /// Validates: command-environments Requirement 2.1, 2.2
-pub(crate) fn active_environment(kind: TabKind, is_home: bool) -> EnvironmentKind {
+pub(crate) fn active_environment(kind: KindTag, is_home: bool) -> EnvironmentKind {
     environment_for_kind(BuiltinKind::from_tab_kind(kind, is_home))
 }
 
@@ -315,24 +315,24 @@ mod tests {
         );
     }
 
-    /// Validates: command-environments Requirement 2.1 -- an editor TabKind
-    /// resolves (through its kind) to FFEDIT; a menu TabKind to FFCMD.
+    /// Validates: command-environments Requirement 2.1 -- an editor KindTag
+    /// resolves (through its kind) to FFEDIT; a menu KindTag to FFCMD.
     #[test]
     fn active_environment_routes_through_kind() {
         assert_eq!(
-            active_environment(TabKind::FileEditor, false),
+            active_environment(KindTag::FileEditor, false),
             EnvironmentKind::FfEdit
         );
         assert_eq!(
-            active_environment(TabKind::Untitled, false),
+            active_environment(KindTag::Untitled, false),
             EnvironmentKind::FfEdit
         );
         assert_eq!(
-            active_environment(TabKind::FileExplorerPanel, false),
+            active_environment(KindTag::FileExplorerPanel, false),
             EnvironmentKind::FfNav
         );
         assert_eq!(
-            active_environment(TabKind::MenuWorkspace, true),
+            active_environment(KindTag::MenuWorkspace, true),
             EnvironmentKind::FfCmd
         );
     }
@@ -368,19 +368,19 @@ mod tests {
 
         // Editor Context -> FFEDIT is the Active_Environment (claim gate TRUE).
         assert_eq!(
-            active_environment(TabKind::FileEditor, false),
+            active_environment(KindTag::FileEditor, false),
             EnvironmentKind::FfEdit,
             "an editor Context must make FFEDIT the active environment so it wins the verb"
         );
         // A non-editor Context (menu / navigator / config) is NOT FFEDIT, so the
         // ladder's FFEDIT gate is false and the verb is left to the FFCMD base.
         assert_ne!(
-            active_environment(TabKind::MenuWorkspace, true),
+            active_environment(KindTag::MenuWorkspace, true),
             EnvironmentKind::FfEdit,
             "a non-editor Context must not route an owned verb through FFEDIT"
         );
         assert_ne!(
-            active_environment(TabKind::ConfigPanel, false),
+            active_environment(KindTag::ConfigPanel, false),
             EnvironmentKind::FfEdit
         );
     }

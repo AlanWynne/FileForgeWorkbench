@@ -35,7 +35,6 @@ macro_rules! base_tab {
             edit_profile: EditProfile::new(),
             canvas_selection: None,
             workspace_name: None,
-            menu_workspace: None,
             is_home: false,
             nav_stack: Vec::new(),
         }
@@ -64,7 +63,6 @@ impl TabState {
             edit_profile: EditProfile::new(),
             canvas_selection: None,
             workspace_name: None,
-            menu_workspace: None,
             is_home: false,
             nav_stack: Vec::new(),
         }
@@ -101,7 +99,6 @@ impl TabState {
             edit_profile: EditProfile::new(),
             canvas_selection: None,
             workspace_name: None,
-            menu_workspace: None,
             is_home: false,
             nav_stack: Vec::new(),
         }
@@ -116,7 +113,12 @@ impl TabState {
     ///
     /// Validates: menu-workspace Requirement 18.1, 18.2
     pub fn pom(id: TabId, document: DocumentHandle) -> Self {
-        let mut tab = base_tab!(id, TabKind::MenuWorkspace, "[POM]".to_string(), document);
+        let mut tab = base_tab!(
+            id,
+            TabKind::MenuWorkspace(None),
+            "[POM]".to_string(),
+            document
+        );
         tab.is_home = true;
         tab
     }
@@ -232,8 +234,6 @@ impl TabState {
         mw_state: MenuWorkspaceState,
     ) -> Self {
         let title = mw_state.tab_title();
-        let mut tab = base_tab!(id, TabKind::MenuWorkspace, title, document);
-        tab.menu_workspace = Some(mw_state);
-        tab
+        base_tab!(id, TabKind::MenuWorkspace(Some(mw_state)), title, document)
     }
 }

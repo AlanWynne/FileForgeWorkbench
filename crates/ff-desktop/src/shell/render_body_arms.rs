@@ -153,7 +153,7 @@ impl WorkbenchShell {
             .tabs
             .tabs_mut()
             .get_mut(active_idx)
-            .and_then(|t| t.menu_workspace.as_mut())
+            .and_then(|t| t.kind.menu_workspace_mut())
         {
             mw.poll_reload();
             let result = crate::menu_workspace::render::render_menu_workspace(

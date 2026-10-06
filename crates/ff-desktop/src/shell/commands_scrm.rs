@@ -46,15 +46,15 @@ impl WorkbenchShell {
     /// Validates: screen-snapshot-scrm Requirement 2.1, 2.2, 2.3.
     pub(super) fn active_screen_model(&self) -> Option<ff_screen_model::ScreenModel> {
         let tab = self.tabs.active_tab();
-        tab.menu_workspace
-            .as_ref()
+        tab.kind
+            .menu_workspace()
             .map(|mw| crate::screen_snapshot::menu_workspace_screen_model(mw, &self.command_text))
     }
 
     /// A human label for the active Context, used as a capture's screen name.
     pub(super) fn active_screen_name(&self) -> Option<String> {
         let tab = self.tabs.active_tab();
-        tab.menu_workspace.as_ref().and_then(|mw| mw.menu_title())
+        tab.kind.menu_workspace().and_then(|mw| mw.menu_title())
     }
 
     /// Handle the CAPTURE command family (CR-NR-098, Wave 2). `rest` is the

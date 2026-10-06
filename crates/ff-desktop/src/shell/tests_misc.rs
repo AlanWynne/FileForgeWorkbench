@@ -210,12 +210,12 @@ fn fastpath_non_digit_first_segment_not_fastpath() {
 /// yet implemented" stub.
 #[test]
 fn chained_fastpath_equals_zero_dot_k_opens_keys_workspace() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("=0.K");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::KeysEditor,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::KeysEditor,
         "=0.K should open the Keys Workspace (POM opt 0 = Settings, then K = KEYS)"
     );
     let err = shell.open_error.as_deref().unwrap_or("");
@@ -1037,15 +1037,15 @@ fn execute_reset_bare_reopens_home_context() {
 // per press (per-tab Navigation_Stack).
 #[test]
 fn end_walks_back_up_the_navigation_stack() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell(); // A = POM
     shell.handle_command("SETTINGS"); // B = Settings menu (MenuWorkspace)
     shell.dispatch_command_string("MENUS"); // C = Menus editor
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenusEditor);
     shell.handle_command("END");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "END: C -> B (Settings menu)"
     );
     shell.handle_command("END");
@@ -1056,7 +1056,7 @@ fn end_walks_back_up_the_navigation_stack() {
 // Validates: Req 14.1 -- stacks are per-tab (independent across tabs).
 #[test]
 fn navigation_stacks_are_per_tab() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     let before = shell.tabs.len();
     shell.handle_command("SETTINGS"); // active tab drills to Settings (stack pushed)
@@ -1076,7 +1076,7 @@ fn navigation_stacks_are_per_tab() {
         .tabs
         .tabs()
         .iter()
-        .find(|t| t.kind == TabKind::MenuWorkspace && !t.is_home)
+        .find(|t| t.kind.tag() == KindTag::MenuWorkspace && !t.is_home)
         .expect("the drilled Settings tab still exists");
     assert!(
         !settings_tab.nav_stack.is_empty(),
@@ -1361,17 +1361,17 @@ fn full_shell_status_bar_hides_logging_indicator_when_healthy() {
 // END still returns to the pre-Help Context.
 #[test]
 fn navigating_between_help_topics_does_not_stack_help_frames() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
     // Open the index, then a second topic while already in Help.
     shell.handle_command("HELP");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::HelpContext);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::HelpContext);
     shell.handle_command("HELP FIND");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::HelpContext,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::HelpContext,
         "still in the Help Context after a second HELP"
     );
     // A single END returns to the pre-Help Context (Home), proving only one
@@ -1392,8 +1392,8 @@ fn help_missing_topic_shows_index_and_records_miss() {
     // HELP CHANGE resolves cmd:CHANGE, which is absent -> miss + index message.
     shell.handle_command("HELP CHANGE");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        crate::tab_state::TabKind::HelpContext,
+        shell.tabs.active_tab().kind.tag(),
+        crate::tab_state::KindTag::HelpContext,
         "a missing topic still opens the Help Context (index), not just an error"
     );
     assert!(

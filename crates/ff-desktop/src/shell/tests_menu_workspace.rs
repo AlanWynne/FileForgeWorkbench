@@ -111,16 +111,16 @@ fn menu_bar_peek_of_settings_returns_settings_menu_options() {
         "peeked Settings options must include Config and Theme, got: {cmds:?}"
     );
     // The active tab must be UNCHANGED by peeking (peek does not navigate).
-    let kind_before = shell.tabs.active_tab().kind;
+    let kind_before = shell.tabs.active_tab().kind.tag();
     let _ = shell.peek_menu_options("SETTINGS");
     assert_eq!(
-        shell.tabs.active_tab().kind,
+        shell.tabs.active_tab().kind.tag(),
         kind_before,
         "peeking must NOT navigate the active Workspace"
     );
     assert_ne!(
-        shell.tabs.active_tab().kind,
-        crate::tab_state::TabKind::MenusEditor,
+        shell.tabs.active_tab().kind.tag(),
+        crate::tab_state::KindTag::MenusEditor,
         "peeking SETTINGS must not have opened/navigated to any menu context"
     );
 }
@@ -833,10 +833,10 @@ fn keymaps_file_takes_precedence_over_config_section() {
 #[test]
 fn file_explorer_panel_kind_is_distinct_from_files_panel() {
     // Validates: Requirement 19.12
-    use crate::tab_state::TabKind;
-    assert_ne!(TabKind::FileExplorerPanel, TabKind::FilesPanel);
-    assert_ne!(TabKind::FileExplorerPanel, TabKind::MenuWorkspace);
-    assert_ne!(TabKind::FileExplorerPanel, TabKind::FileEditor);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_ne!(KindTag::FileExplorerPanel, KindTag::FilesPanel);
+    assert_ne!(KindTag::FileExplorerPanel, KindTag::MenuWorkspace);
+    assert_ne!(KindTag::FileExplorerPanel, KindTag::FileEditor);
 }
 
 /// Validates: Requirement 14.7 -- invalid key names in context map are skipped.
@@ -918,12 +918,12 @@ fn settings_namespace_filter_applied_on_open() {
 /// unfiltered flat view.
 #[test]
 fn settings_all_view_has_no_namespace_filter() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG");
     assert!(shell.config_panel.namespace_filter.is_none());
     assert_eq!(shell.config_panel.filter, "");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     assert_eq!(shell.tabs.active_tab().title, "[CONFIG]");
 }
 
@@ -1241,15 +1241,15 @@ fn theme_command_is_case_insensitive() {
 /// change the active theme.
 #[test]
 fn theme_command_bare_opens_theme_editor() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_theme::mode::VisualMode;
     let mut shell = make_shell();
     shell.dispatch_command_string("THEME light");
     assert_eq!(shell.palette.mode, VisualMode::Light);
     shell.dispatch_command_string("THEME");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::ThemeEditor,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
         "bare THEME must open the Theme Editor context (CR-CH-024)"
     );
     // The active theme is unchanged by opening the editor.
@@ -1292,10 +1292,10 @@ fn title_line_macro_library_shows_macros() {
 /// Validates: function-keys Req 22.2, 22.5 -- KEYS <kind> pre-selects that kind.
 #[test]
 fn keys_with_kind_preselects_that_kind() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("KEYS editor");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::KeysEditor);
     assert_eq!(
         shell.keys_editor_panel.selected_kind.as_deref(),
         Some("editor")
@@ -1306,10 +1306,10 @@ fn keys_with_kind_preselects_that_kind() {
 /// a fallback kind and a status message naming the unknown kind.
 #[test]
 fn keys_with_unknown_kind_shows_status_message() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("KEYS unknownkind");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::KeysEditor);
     let err = shell.keys_editor_panel.error.as_deref().unwrap_or("");
     assert!(
         err.contains("unknownkind"),
@@ -1334,7 +1334,7 @@ fn keys_kind_matching_is_case_insensitive() {
 /// dropped; and restore continues past it to the following descriptor.
 #[test]
 fn restore_reopens_menu_descriptor_and_continues() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
 
     // Isolated menus dir with a user menu `reports.toml`.
@@ -1365,9 +1365,9 @@ fn restore_reopens_menu_descriptor_and_continues() {
     // The menu tab was reopened, backed by reports.toml (title "Reports").
     assert!(
         shell.tabs.tabs().iter().any(|t| {
-            t.kind == TabKind::MenuWorkspace
-                && t.menu_workspace
-                    .as_ref()
+            t.kind.tag() == KindTag::MenuWorkspace
+                && t.kind
+                    .menu_workspace()
                     .and_then(|mw| mw.menu.as_ref())
                     .map(|m| m.title.eq_ignore_ascii_case("Reports"))
                     .unwrap_or(false)
@@ -1380,7 +1380,7 @@ fn restore_reopens_menu_descriptor_and_continues() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::FilesPanel),
+            .any(|t| t.kind.tag() == KindTag::FilesPanel),
         "restore must continue past the re-opened Menu descriptor"
     );
 }
@@ -1390,7 +1390,7 @@ fn restore_reopens_menu_descriptor_and_continues() {
 /// the menu load-error state) rather than dropped.
 #[test]
 fn restore_menu_descriptor_missing_file_opens_load_error_not_dropped() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::WorkspaceDescriptor;
 
     // Isolated (empty) menus dir -- the named file does not exist.
@@ -1409,7 +1409,7 @@ fn restore_menu_descriptor_missing_file_opens_load_error_not_dropped() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::MenuWorkspace),
+            .any(|t| t.kind.tag() == KindTag::MenuWorkspace),
         "a Menu descriptor with a missing file must open (load-error state), not be dropped (Req 21.4)"
     );
 }
@@ -1419,11 +1419,14 @@ fn restore_menu_descriptor_missing_file_opens_load_error_not_dropped() {
 // Validates: menu-workspace Requirement 11.1 -- bare MENU returns to the Home Context.
 #[test]
 fn menu_command_returns_to_home_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     // Move off the POM first.
     shell.dispatch_command_string("COMMANDS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::CommandConfigurator
+    );
     shell.handle_command("MENU");
     assert!(shell.tabs.active_tab().is_home);
     assert!(shell.open_error.is_none());
@@ -1435,12 +1438,12 @@ fn menu_command_returns_to_home_context() {
 // bare SETTINGS opens the Settings_Menu (Menu_Workspace), not the flat panel.
 #[test]
 fn settings_command_opens_menu_workspace_not_flat_panel() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("SETTINGS");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "bare SETTINGS must open the data-driven Settings_Menu, not the flat SettingsPanel"
     );
 }
@@ -1453,12 +1456,12 @@ fn settings_command_opens_menu_workspace_not_flat_panel() {
 // `THEME`). Keyword-less menu name + trailing-token chaining.
 #[test]
 fn settings_t_chains_to_theme_editor() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("SETTINGS T");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::ThemeEditor,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
         "SETTINGS T must chain to the Theme Editor via the T -> THEME option"
     );
 }
@@ -1467,10 +1470,10 @@ fn settings_t_chains_to_theme_editor() {
 // filtered flat panel with the namespace prefix applied.
 #[test]
 fn settings_namespace_opens_filtered_flat_panel() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG editor");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     assert_eq!(
         shell.config_panel.namespace_filter.as_deref(),
         Some("editor")
@@ -1484,12 +1487,12 @@ fn settings_namespace_opens_filtered_flat_panel() {
 // Menus Editor Context (replacing the CR-CH-021 placeholder notice).
 #[test]
 fn menus_command_opens_menus_editor() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("MENUS");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenusEditor,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenusEditor,
         "MENUS must open the Menus Editor Context"
     );
     // A working menu is loaded (POM by default) with options to edit.
@@ -1656,11 +1659,11 @@ fn menus_editor_save_blocked_when_invalid() {
 // the POM; opened via Settings it returns to the Settings menu, then the POM.
 #[test]
 fn menus_editor_end_returns_to_origin() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     // POM -> MENUS -> END returns to the POM (stack had [POM]).
     let mut shell = make_shell();
     shell.dispatch_command_string("MENUS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenusEditor);
     shell.handle_command("END");
     assert!(
         shell.tabs.active_tab().is_home,
@@ -1671,13 +1674,13 @@ fn menus_editor_end_returns_to_origin() {
     // [POM, Settings]); a second END returns to the POM.
     let mut shell = make_shell();
     shell.handle_command("SETTINGS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     shell.dispatch_command_string("MENUS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenusEditor);
     shell.handle_command("END");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "END from a Settings-opened Menus Editor returns to the Settings menu"
     );
     shell.handle_command("END");
@@ -1715,12 +1718,12 @@ fn settings_reset_bare_affordance_dispatches_command() {
 /// and populates its panel state (available themes + working copy).
 #[test]
 fn themes_command_opens_theme_editor() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("THEME");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::ThemeEditor,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
         "THEMES must open the Theme Editor Context"
     );
     // The panel is populated: a working copy is loaded and the built-ins are listed.
@@ -2205,15 +2208,15 @@ fn full_shell_theme_unknown_leaves_theme_unchanged() {
 // context in place, and END returns to the previous context (Navigation_Stack).
 #[test]
 fn full_shell_bare_theme_opens_editor_and_end_returns() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     // Start on the POM.
     assert!(harness.state().tabs.active_tab().is_home);
     harness.state_mut().dispatch_command_string("THEME");
     harness.run();
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ThemeEditor,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
         "bare THEME opens the Theme Editor"
     );
     // END returns one level to the POM (per-tab Navigation_Stack, CR-CH-022).
@@ -2229,13 +2232,13 @@ fn full_shell_bare_theme_opens_editor_and_end_returns() {
 // is no longer recognised and does NOT open the Theme Editor.
 #[test]
 fn full_shell_themes_command_is_removed() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     harness.state_mut().handle_command("THEMES");
     harness.run();
     assert_ne!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ThemeEditor,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
         "THEMES is no longer a recognised command (CR-CH-024)"
     );
 }
@@ -2269,14 +2272,14 @@ fn full_shell_theme_list_has_five_builtins() {
 /// separate Primary-Option-Menu tab kind.
 #[test]
 fn home_context_is_a_menu_workspace_flagged_is_home() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
     let home = shell.tabs.active_tab();
     assert!(home.is_home, "the startup Home tab must be flagged is_home");
     assert_eq!(
-        home.kind,
-        TabKind::MenuWorkspace,
+        home.kind.tag(),
+        KindTag::MenuWorkspace,
         "the Home Context must be the unified Menu Workspace kind"
     );
     assert_eq!(home.title, "[POM]");
@@ -2294,8 +2297,8 @@ fn home_context_seeds_barebones_menu_on_render() {
     let home = shell.tabs.active_tab();
     assert!(home.is_home);
     let mw = home
-        .menu_workspace
-        .as_ref()
+        .kind
+        .menu_workspace()
         .expect("Home Context must carry a MenuWorkspaceState after seeding");
     assert!(
         mw.menu.is_some(),
@@ -2332,12 +2335,12 @@ fn home_context_title_line_shows_menu_title_not_banner() {
 /// Menu_Name resolution, the model this CR applies to POM).
 #[test]
 fn typed_settings_still_opens_settings_menu_in_place() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("START");
     let tabs_before = shell.tabs.len();
     shell.handle_command("SETTINGS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     assert!(!shell.tabs.active_tab().is_home, "left the POM");
     assert_eq!(
         shell.tabs.len(),
@@ -2347,8 +2350,8 @@ fn typed_settings_still_opens_settings_menu_in_place() {
     let title_is_settings = shell
         .tabs
         .active_tab()
-        .menu_workspace
-        .as_ref()
+        .kind
+        .menu_workspace()
         .and_then(|mw| mw.menu.as_ref())
         .map(|m| m.title.eq_ignore_ascii_case("Settings"))
         .unwrap_or(false);
@@ -2362,14 +2365,14 @@ fn typed_settings_still_opens_settings_menu_in_place() {
 // (the active workspace's own Kind) so the panel has something to render.
 #[test]
 fn open_kinds_editor_activates_kinds_editor_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     let mut shell = make_shell();
     shell.open_kinds_editor();
 
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::KindsEditor,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::KindsEditor,
         "KINDS must navigate the active tab to the Kinds Editor Context"
     );
     assert!(

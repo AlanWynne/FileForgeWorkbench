@@ -18,7 +18,7 @@
 use ff_edit_operations::EditProfile;
 use serde::{Deserialize, Serialize};
 
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 
 /// The compiled built-in Workspace Kinds, keyed by the SAME stable names used by
 /// `context_name_for_kind` (function-keys Req 14.6). One variant per stable Kind
@@ -142,24 +142,24 @@ impl BuiltinKind {
         }
     }
 
-    /// Map a runtime `TabKind` (+ `is_home` for the POM split) to a built-in kind.
+    /// Map a runtime `KindTag` (+ `is_home` for the POM split) to a built-in kind.
     /// A `MenuWorkspace` that is the Home Context maps to `Pom`, otherwise `Menu`.
-    pub fn from_tab_kind(kind: TabKind, is_home: bool) -> BuiltinKind {
+    pub fn from_tab_kind(kind: KindTag, is_home: bool) -> BuiltinKind {
         match kind {
-            TabKind::FileEditor | TabKind::Untitled => BuiltinKind::Editor,
-            TabKind::FilesPanel => BuiltinKind::Catalogs,
-            TabKind::FileExplorerPanel => BuiltinKind::Files,
-            TabKind::ConfigPanel => BuiltinKind::Config,
-            TabKind::SearchResults => BuiltinKind::Search,
-            TabKind::PluginManager => BuiltinKind::Plugins,
-            TabKind::EventLog => BuiltinKind::Log,
-            TabKind::MacroLibrary => BuiltinKind::Macros,
-            TabKind::CommandConfigurator => BuiltinKind::Commands,
-            TabKind::ThemeEditor => BuiltinKind::Theme,
-            TabKind::MenusEditor => BuiltinKind::Menus,
-            TabKind::KeysEditor => BuiltinKind::Keys,
-            TabKind::KindsEditor => BuiltinKind::Kinds,
-            TabKind::MenuWorkspace => {
+            KindTag::FileEditor | KindTag::Untitled => BuiltinKind::Editor,
+            KindTag::FilesPanel => BuiltinKind::Catalogs,
+            KindTag::FileExplorerPanel => BuiltinKind::Files,
+            KindTag::ConfigPanel => BuiltinKind::Config,
+            KindTag::SearchResults => BuiltinKind::Search,
+            KindTag::PluginManager => BuiltinKind::Plugins,
+            KindTag::EventLog => BuiltinKind::Log,
+            KindTag::MacroLibrary => BuiltinKind::Macros,
+            KindTag::CommandConfigurator => BuiltinKind::Commands,
+            KindTag::ThemeEditor => BuiltinKind::Theme,
+            KindTag::MenusEditor => BuiltinKind::Menus,
+            KindTag::KeysEditor => BuiltinKind::Keys,
+            KindTag::KindsEditor => BuiltinKind::Kinds,
+            KindTag::MenuWorkspace => {
                 if is_home {
                     BuiltinKind::Pom
                 } else {
@@ -169,10 +169,10 @@ impl BuiltinKind {
             // The Help Context is transient and not a configurable Workspace
             // Kind (CR-NR-097); it never routes through the Kind title path.
             // Map to the neutral Editor base for the exhaustive match.
-            TabKind::HelpContext => BuiltinKind::Editor,
+            KindTag::HelpContext => BuiltinKind::Editor,
             // The SCRM Replay viewer is transient and not a configurable Kind
             // (CR-NR-098); map to the neutral Editor base for the exhaustive match.
-            TabKind::ScrmViewer => BuiltinKind::Editor,
+            KindTag::ScrmViewer => BuiltinKind::Editor,
         }
     }
 }

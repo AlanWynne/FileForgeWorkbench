@@ -93,27 +93,27 @@ fn builtin_stable_names_are_unique_and_round_trip() {
 /// built-in kind, and the POM split (is_home) resolves to Pom vs Menu.
 #[test]
 fn tab_kind_maps_to_builtin_kind() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::KindTag;
     assert_eq!(
-        BuiltinKind::from_tab_kind(TabKind::FilesPanel, false),
+        BuiltinKind::from_tab_kind(KindTag::FilesPanel, false),
         BuiltinKind::Catalogs,
         "the Virtual Catalog Manager (option 1) is the Catalogs kind"
     );
     assert_eq!(
-        BuiltinKind::from_tab_kind(TabKind::FileExplorerPanel, false),
+        BuiltinKind::from_tab_kind(KindTag::FileExplorerPanel, false),
         BuiltinKind::Files,
         "the File Explorer (option 2) is the Files kind"
     );
     assert_eq!(
-        BuiltinKind::from_tab_kind(TabKind::MenuWorkspace, true),
+        BuiltinKind::from_tab_kind(KindTag::MenuWorkspace, true),
         BuiltinKind::Pom
     );
     assert_eq!(
-        BuiltinKind::from_tab_kind(TabKind::MenuWorkspace, false),
+        BuiltinKind::from_tab_kind(KindTag::MenuWorkspace, false),
         BuiltinKind::Menu
     );
     assert_eq!(
-        BuiltinKind::from_tab_kind(TabKind::FileEditor, false),
+        BuiltinKind::from_tab_kind(KindTag::FileEditor, false),
         BuiltinKind::Editor
     );
 }

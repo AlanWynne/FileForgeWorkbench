@@ -250,7 +250,7 @@ fn full_shell_detach_sets_floating_and_records_floating_tab() {
 #[test]
 fn detached_function_key_return_acts_on_its_tab() {
     // Validates: menu-and-statusbar Requirement 18.11; function-keys 3.1
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("START"); // second tab (the "detached" one)
     let primary_active = shell.tabs.active_index();
@@ -314,8 +314,8 @@ fn detached_function_key_return_acts_on_its_tab() {
         "the primary tab must be untouched by the detached F-key (still non-POM)"
     );
     assert_eq!(
-        shell.tabs.tabs()[primary_active].kind,
-        TabKind::ConfigPanel,
+        shell.tabs.tabs()[primary_active].kind.tag(),
+        KindTag::ConfigPanel,
         "the primary tab's context is unchanged by the detached RETURN"
     );
     assert_eq!(
@@ -624,7 +624,7 @@ fn full_shell_dock_unsplit_still_restores_flat_origin() {
 /// window and bypassed the split render.
 #[test]
 fn full_shell_file_explorer_in_split_region_keeps_split() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     // Split: focus moves to the new POM region.
     harness.state_mut().handle_command("SPLIT");
@@ -643,8 +643,8 @@ fn full_shell_file_explorer_in_split_region_keeps_split() {
     let state = harness.state();
     // The focused region is now a File Explorer...
     assert_eq!(
-        state.tabs.active_tab().kind,
-        TabKind::FileExplorerPanel,
+        state.tabs.active_tab().kind.tag(),
+        KindTag::FileExplorerPanel,
         "the focused region switched to the File Explorer"
     );
     // ...but the Workspace is STILL split (not collapsed to full screen).
@@ -1022,7 +1022,7 @@ fn detached_chained_fastpath_does_not_change_primary_active_tab() {
     // the index-shifting path B074 fixes.
     shell.shell_new_untitled(); // a non-home editor tab; becomes active
     let primary_active_id = shell.tabs.active_tab().id;
-    let primary_kind_before = shell.tabs.active_tab().kind;
+    let primary_kind_before = shell.tabs.active_tab().kind.tag();
     let tab_count_before = shell.tabs.len();
     assert!(
         !shell.tabs.active_tab().is_home,
@@ -1051,7 +1051,7 @@ fn detached_chained_fastpath_does_not_change_primary_active_tab() {
         "primary active tab must be unchanged after a detached chained fastpath (B074)"
     );
     assert_eq!(
-        shell.tabs.active_tab().kind,
+        shell.tabs.active_tab().kind.tag(),
         primary_kind_before,
         "primary active tab's Context/kind must be unchanged (B074)"
     );

@@ -14,7 +14,7 @@
 
 #![allow(unused_imports)]
 use super::tests_common::*;
-use crate::tab_state::TabKind;
+use crate::tab_state::{KindTag, TabKind};
 
 /// Validates: menu-workspace Requirement 14.13 (CR-CH-052) -- bare `X` ABOVE the
 /// Tab_Visual_Root collapses to that root in one action; it does not close.
@@ -27,8 +27,8 @@ fn bare_x_collapses_to_visual_root_when_above_root() {
         harness.run();
     }
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ConfigPanel,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
         "precondition: drilled into the Config Context"
     );
     assert!(!harness.state().tabs.active_tab().nav_stack.is_empty());
@@ -143,8 +143,8 @@ fn end_pops_one_level() {
         harness.run();
     }
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::KeysEditor,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::KeysEditor,
         "precondition: drilled two levels (on Keys)"
     );
     let depth_before = harness.state().tabs.active_tab().nav_stack.len();
@@ -156,8 +156,8 @@ fn end_pops_one_level() {
     }
 
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ConfigPanel,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
         "END pops ONE level, back to Config"
     );
     assert_eq!(
@@ -208,7 +208,7 @@ fn pom_not_special_cased() {
     for _ in 0..4 {
         a.run();
     }
-    assert_eq!(a.state().tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(a.state().tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     a.state_mut().dispatch_command_string("X");
     for _ in 0..4 {
         a.run();
@@ -238,7 +238,7 @@ fn pom_not_special_cased() {
     for _ in 0..4 {
         b.run();
     }
-    assert_eq!(b.state().tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(b.state().tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     b.state_mut().dispatch_command_string("X");
     for _ in 0..4 {
         b.run();
@@ -252,8 +252,8 @@ fn pom_not_special_cased() {
         "SETTINGS-rooted tab: X collapses to the Settings visual root (NOT the POM)"
     );
     assert_eq!(
-        b.state().tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        b.state().tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "the Settings visual root is a MenuWorkspace"
     );
     let b_closed = *b.state().should_close.lock().expect("close lock");
@@ -276,7 +276,10 @@ fn ffedit_bare_x_stays_exclude_but_equals_x_escapes() {
     for _ in 0..4 {
         harness.run();
     }
-    assert_eq!(harness.state().tabs.active_tab().kind, TabKind::Untitled);
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::Untitled
+    );
     let tabs_before = harness.state().tabs.len();
 
     harness.state_mut().dispatch_command_string("X ALL");
@@ -332,8 +335,8 @@ fn equals_1_works_from_a_non_pom_tab() {
 
     // POM option 1 is `Catalogs` -> the Files (Catalog Explorer) panel.
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::FilesPanel,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::FilesPanel,
         "`=1` from a non-POM tab resolves as POM option 1 (Catalogs)"
     );
 }

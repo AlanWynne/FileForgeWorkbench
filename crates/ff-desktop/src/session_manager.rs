@@ -13,7 +13,7 @@ use ff_session::{SessionFile, SessionState, UserDataDir};
 
 use crate::catalog_registry::CatalogRegistry;
 use crate::tab_manager::TabManager;
-use crate::tab_state::{TabKind, TabState as RuntimeTab};
+use crate::tab_state::{KindTag, TabState as RuntimeTab};
 
 /// Build the Workspace_Descriptor for a runtime tab, or `None` when the tab is
 /// not a persistable visible Workspace.
@@ -34,8 +34,8 @@ fn descriptor_for_tab(
             params,
         })
     };
-    match t.kind {
-        TabKind::FileEditor => {
+    match t.kind.tag() {
+        KindTag::FileEditor => {
             // Only a file-backed editor is restorable; an unsaved buffer is not.
             let path = t.path.as_ref()?;
             let mut params = DescriptorParams::new();
@@ -54,34 +54,34 @@ fn descriptor_for_tab(
             );
             custom(WorkspaceKind::Editor, params)
         }
-        TabKind::FilesPanel => custom(WorkspaceKind::Files, DescriptorParams::new()),
-        TabKind::FileExplorerPanel => custom(WorkspaceKind::FileExplorer, DescriptorParams::new()),
-        TabKind::ConfigPanel => {
+        KindTag::FilesPanel => custom(WorkspaceKind::Files, DescriptorParams::new()),
+        KindTag::FileExplorerPanel => custom(WorkspaceKind::FileExplorer, DescriptorParams::new()),
+        KindTag::ConfigPanel => {
             let mut params = DescriptorParams::new();
             if let Some(ns) = config_namespace {
                 params.insert("namespace".to_string(), DescriptorValue::from(ns));
             }
             custom(WorkspaceKind::Config, params)
         }
-        TabKind::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
-        TabKind::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
-        TabKind::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
-        TabKind::ScrmViewer => custom(WorkspaceKind::ScrmViewer, DescriptorParams::new()),
-        TabKind::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
-        TabKind::CommandConfigurator => {
+        KindTag::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
+        KindTag::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
+        KindTag::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
+        KindTag::ScrmViewer => custom(WorkspaceKind::ScrmViewer, DescriptorParams::new()),
+        KindTag::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
+        KindTag::CommandConfigurator => {
             // Validates: command-configurator Requirement 2.1; startup-and-session
             // Requirement 21 -- persists as a parameterless Custom Workspace.
             custom(WorkspaceKind::CommandConfigurator, DescriptorParams::new())
         }
-        TabKind::MenuWorkspace => {
+        KindTag::MenuWorkspace => {
             // A data-driven menu persists as a Menu descriptor keyed by name.
             // The Home Context (POM) always persists as `Menu{name:"pom"}`
             // regardless of the loaded menu's title (menu-workspace Req 18.8).
             let name = if t.is_home {
                 "pom".to_string()
             } else {
-                t.menu_workspace
-                    .as_ref()
+                t.kind
+                    .menu_workspace()
                     .and_then(|mw| mw.menu.as_ref())
                     .map(|m| m.title.to_lowercase())
                     .unwrap_or_else(|| "pom".to_string())
@@ -91,20 +91,20 @@ fn descriptor_for_tab(
         // The Theme Editor is a transient editing Context (like a dialog); it is
         // not restored on next launch. The active THEME is persisted separately
         // via `theme.active_name` (CR-NR-074 Req 19.7), which is what matters.
-        TabKind::ThemeEditor => None,
+        KindTag::ThemeEditor => None,
         // The Menus Editor is likewise a transient editing Context; edits are
         // persisted as menu files, not as a restored tab (menu-workspace Req 13).
-        TabKind::MenusEditor => None,
+        KindTag::MenusEditor => None,
         // The Keys Editor is a transient editing Context; edits persist as
         // keymaps/<kind>.toml files, not as a restored tab (function-keys
         // Requirement 22.8, CR-CH-029).
-        TabKind::KeysEditor => None,
+        KindTag::KeysEditor => None,
         // The Kinds Editor is likewise transient (CR-NR-090 B.4); not restored.
-        TabKind::KindsEditor => None,
+        KindTag::KindsEditor => None,
         // The Help Context is transient (CR-NR-097); F1/HELP reopen it on demand.
-        TabKind::HelpContext => None,
+        KindTag::HelpContext => None,
         // Untitled buffers are not persisted (never were).
-        TabKind::Untitled => None,
+        KindTag::Untitled => None,
     }
 }
 
@@ -117,19 +117,19 @@ fn session_tab_for(t: &RuntimeTab, config_namespace: Option<&str>) -> Option<Ses
     // Legacy fields are kept populated so an older build can still read the
     // file (Requirement 21.10 in reverse) and so `uri`/viewport remain
     // available without unpacking the descriptor.
-    let (tab_kind, uri, top, caret_l, caret_c) = match t.kind {
-        TabKind::FileEditor => (
+    let (tab_kind, uri, top, caret_l, caret_c) = match t.kind.tag() {
+        KindTag::FileEditor => (
             PersistedTabKind::FileEditor,
             t.path.clone(),
             t.viewport.top_line() as usize,
             t.cursor.cursor_line() as usize,
             t.cursor.cursor_column() as usize,
         ),
-        TabKind::FilesPanel => (PersistedTabKind::FilesPanel, None, 1, 1, 1),
-        TabKind::FileExplorerPanel => (PersistedTabKind::FileExplorerPanel, None, 1, 1, 1),
-        TabKind::SearchResults => (PersistedTabKind::SearchResults, None, 1, 1, 1),
-        TabKind::PluginManager => (PersistedTabKind::PluginManager, None, 1, 1, 1),
-        TabKind::EventLog => (PersistedTabKind::EventLog, None, 1, 1, 1),
+        KindTag::FilesPanel => (PersistedTabKind::FilesPanel, None, 1, 1, 1),
+        KindTag::FileExplorerPanel => (PersistedTabKind::FileExplorerPanel, None, 1, 1, 1),
+        KindTag::SearchResults => (PersistedTabKind::SearchResults, None, 1, 1, 1),
+        KindTag::PluginManager => (PersistedTabKind::PluginManager, None, 1, 1, 1),
+        KindTag::EventLog => (PersistedTabKind::EventLog, None, 1, 1, 1),
         // Kinds with no legacy PersistedTabKind variant fall back to the default;
         // the descriptor is the source of truth for these on restore.
         _ => (PersistedTabKind::default(), None, 1, 1, 1),
@@ -210,24 +210,24 @@ impl SessionManager {
 
         let active_tab_id = {
             let active = tabs.active_tab();
-            match active.kind {
-                TabKind::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
-                TabKind::FilesPanel => Some(format!("{}", active.id.0)),
-                TabKind::Untitled
-                | TabKind::ConfigPanel
-                | TabKind::FileExplorerPanel
-                | TabKind::SearchResults
-                | TabKind::PluginManager
-                | TabKind::EventLog
-                | TabKind::MacroLibrary
-                | TabKind::MenuWorkspace
-                | TabKind::CommandConfigurator
-                | TabKind::ThemeEditor
-                | TabKind::MenusEditor
-                | TabKind::KeysEditor
-                | TabKind::KindsEditor
-                | TabKind::HelpContext
-                | TabKind::ScrmViewer => None,
+            match active.kind.tag() {
+                KindTag::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
+                KindTag::FilesPanel => Some(format!("{}", active.id.0)),
+                KindTag::Untitled
+                | KindTag::ConfigPanel
+                | KindTag::FileExplorerPanel
+                | KindTag::SearchResults
+                | KindTag::PluginManager
+                | KindTag::EventLog
+                | KindTag::MacroLibrary
+                | KindTag::MenuWorkspace
+                | KindTag::CommandConfigurator
+                | KindTag::ThemeEditor
+                | KindTag::MenusEditor
+                | KindTag::KeysEditor
+                | KindTag::KindsEditor
+                | KindTag::HelpContext
+                | KindTag::ScrmViewer => None,
             }
         };
         // Note: FileExplorerPanel active_tab_id is None (no URI to track)
@@ -270,24 +270,24 @@ impl SessionManager {
 
         let active_tab_id = {
             let active = tabs.active_tab();
-            match active.kind {
-                TabKind::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
-                TabKind::FilesPanel => Some(format!("{}", active.id.0)),
-                TabKind::Untitled
-                | TabKind::ConfigPanel
-                | TabKind::FileExplorerPanel
-                | TabKind::SearchResults
-                | TabKind::PluginManager
-                | TabKind::EventLog
-                | TabKind::MacroLibrary
-                | TabKind::MenuWorkspace
-                | TabKind::CommandConfigurator
-                | TabKind::ThemeEditor
-                | TabKind::MenusEditor
-                | TabKind::KeysEditor
-                | TabKind::KindsEditor
-                | TabKind::HelpContext
-                | TabKind::ScrmViewer => None,
+            match active.kind.tag() {
+                KindTag::FileEditor => active.path.as_ref().map(|_| format!("{}", active.id.0)),
+                KindTag::FilesPanel => Some(format!("{}", active.id.0)),
+                KindTag::Untitled
+                | KindTag::ConfigPanel
+                | KindTag::FileExplorerPanel
+                | KindTag::SearchResults
+                | KindTag::PluginManager
+                | KindTag::EventLog
+                | KindTag::MacroLibrary
+                | KindTag::MenuWorkspace
+                | KindTag::CommandConfigurator
+                | KindTag::ThemeEditor
+                | KindTag::MenusEditor
+                | KindTag::KeysEditor
+                | KindTag::KindsEditor
+                | KindTag::HelpContext
+                | KindTag::ScrmViewer => None,
             }
         };
 

@@ -8,7 +8,7 @@
 
 use eframe::egui;
 
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 
 use super::helpers::{open_containing_folder, FolderOpenMode};
 use super::WorkbenchShell;
@@ -58,7 +58,7 @@ impl WorkbenchShell {
                             continue;
                         }
                         let is_active = i == active_idx_cur;
-                        let tab_kind = tab.kind;
+                        let tab_kind = tab.kind.tag();
 
                         let bg = if is_active { active_bg } else { inactive_bg };
                         let tab_text = if is_active {
@@ -212,7 +212,7 @@ impl WorkbenchShell {
 
                             // ── File-editor-only items — Req 14.15b ──────────
                             // Only shown when the tab is a FileEditor.
-                            if tab_kind == TabKind::FileEditor {
+                            if tab_kind == KindTag::FileEditor {
                                 ui.separator();
                                 if ui.button("Open Containing Folder in Explorer").clicked() {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {

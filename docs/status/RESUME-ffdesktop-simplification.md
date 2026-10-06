@@ -261,8 +261,20 @@ died), and (c) the owner's full verify.ps1 gate.
             remaining verb homes (Function family, manager families, split/detach/
             workspace, standalone, scrm) are CR-CH-053's per the Step 3-6 deferrals.
             Evidence: `.agents/tasks/dispatch-unify/step-7-impl-note.md`.
-- [ ] 3.2 (task 8) Move kind-specific tab state off TabState behind TabKind
-      (F4 tail). Optional follow-on to 2.1. TODO (optional; defer unless wanted).
+- [x] 3.2 (task 8) Move kind-specific tab state off TabState behind TabKind
+      (F4 tail). DONE: Approach C (KindTag discriminant + payload TabKind).
+      Introduced `KindTag` (cheap `Copy` discriminant, the renamed former
+      `TabKind`) and a new payload-carrying `TabKind` enum with
+      `MenuWorkspace(Option<MenuWorkspaceState>)` as the sole payload variant.
+      `TabState::menu_workspace` field removed; state now lives inside
+      `TabKind::MenuWorkspace`. ~55 comparison sites rewired to
+      `.kind.tag() == KindTag::X`; ~18 access sites rewired to
+      `.kind.menu_workspace()` / `.kind.menu_workspace_mut()`. Functions
+      `active_environment`, `from_tab_kind`, `context_name_for_kind` now take
+      `KindTag` (the `Copy` discriminant) instead of `TabKind`. Auto-capture
+      hook in `navigate_to` moved before `reconstruct_context` (the stale-field
+      leak the old code relied on is gone). All tests green (6 B048 env-var
+      flakes pass in isolation under nextest).
 - [x] 3.3 (task 9) Remove the "Command Registration is temporarily weaker" caveat
       from `.kiro/steering/wiring-standard.md`. DONE (2026-10-05): B080 closed the
       gap the caveat described (typed path now routes through `resolve_target`;

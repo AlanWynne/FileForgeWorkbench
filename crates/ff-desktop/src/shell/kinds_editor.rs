@@ -41,7 +41,8 @@ impl WorkbenchShell {
         if self.kinds_editor_panel.selected.is_none() {
             let default_name = {
                 let t = self.tabs.active_tab();
-                crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name()
+                crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind.tag(), t.is_home)
+                    .stable_name()
             };
             let cfg = self.kind_registry.effective(default_name).clone();
             self.kinds_editor_panel.load_kind(default_name, cfg);
@@ -184,7 +185,7 @@ impl WorkbenchShell {
     ) {
         let kind_name = {
             let t = self.tabs.active_tab();
-            crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name()
+            crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind.tag(), t.is_home).stable_name()
         };
         let mut cfg = self.kind_registry.effective(kind_name).clone();
         cfg.profile.command_line_position = position;

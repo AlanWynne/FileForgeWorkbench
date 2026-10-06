@@ -61,7 +61,7 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
             // configured title (registry override) is applied by the shell's
             // `kind_title` (which this free function cannot reach without a shell;
             // the shell render path prefers `kind_title`).
-            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home)
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
                 .default_title()
                 .to_string()
         }
@@ -72,8 +72,7 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         // CURRENTLY loaded menu each frame so an in-place context switch can never
         // leave it stale. Falls back to the cached `tab.title` only when no menu
         // is loaded yet (e.g. a fresh POM before its menu loads -> "[POM]").
-        TabKind::MenuWorkspace => tab
-            .menu_workspace
+        TabKind::MenuWorkspace(ref mw) => mw
             .as_ref()
             .and_then(|mw| mw.menu_title())
             .unwrap_or_else(|| tab.title.clone()),

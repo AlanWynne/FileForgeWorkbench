@@ -11,7 +11,7 @@ use tokio::runtime::Runtime;
 
 use ff_layout::SplitDirection;
 
-use crate::tab_state::{TabId, TabKind, TabState};
+use crate::tab_state::{KindTag, TabId, TabKind, TabState};
 
 /// The `TabGroupId` of the root Tab_Group. When unsplit this is the sole group
 /// (CR-NR-091, Slice 2a). When split it is the initial leaf; new leaves created
@@ -977,7 +977,11 @@ impl TabManager {
     /// If a FilesPanel tab already exists, activates it instead of inserting a duplicate.
     /// Validates: Requirement 1.1, 11.2
     pub fn open_files_panel_tab(&mut self, runtime: &Runtime) {
-        if let Some(idx) = self.tabs.iter().position(|t| t.kind == TabKind::FilesPanel) {
+        if let Some(idx) = self
+            .tabs
+            .iter()
+            .position(|t| t.kind.tag() == KindTag::FilesPanel)
+        {
             self.activate(idx);
             return;
         }
@@ -998,7 +1002,7 @@ impl TabManager {
         if let Some(idx) = self
             .tabs
             .iter()
-            .position(|t| t.kind == TabKind::ConfigPanel)
+            .position(|t| t.kind.tag() == KindTag::ConfigPanel)
         {
             self.activate(idx);
             return;
@@ -1047,7 +1051,7 @@ impl TabManager {
         if let Some(idx) = self
             .tabs
             .iter()
-            .position(|t| t.kind == TabKind::PluginManager)
+            .position(|t| t.kind.tag() == KindTag::PluginManager)
         {
             self.activate(idx);
             return;
@@ -1066,7 +1070,11 @@ impl TabManager {
     /// If an EventLog tab already exists, activates it instead of inserting a duplicate.
     /// Validates: notification-system Requirement 2.1
     pub fn open_event_log_tab(&mut self, runtime: &Runtime) {
-        if let Some(idx) = self.tabs.iter().position(|t| t.kind == TabKind::EventLog) {
+        if let Some(idx) = self
+            .tabs
+            .iter()
+            .position(|t| t.kind.tag() == KindTag::EventLog)
+        {
             self.activate(idx);
             return;
         }
@@ -1085,7 +1093,11 @@ impl TabManager {
     /// duplicate.
     /// Validates: screen-snapshot-scrm Requirement 16.1 (CR-NR-098)
     pub fn open_scrm_viewer_tab(&mut self, runtime: &Runtime) {
-        if let Some(idx) = self.tabs.iter().position(|t| t.kind == TabKind::ScrmViewer) {
+        if let Some(idx) = self
+            .tabs
+            .iter()
+            .position(|t| t.kind.tag() == KindTag::ScrmViewer)
+        {
             self.activate(idx);
             return;
         }
@@ -1106,7 +1118,7 @@ impl TabManager {
         if let Some(idx) = self
             .tabs
             .iter()
-            .position(|t| t.kind == TabKind::MacroLibrary)
+            .position(|t| t.kind.tag() == KindTag::MacroLibrary)
         {
             self.activate(idx);
             return;
@@ -1129,7 +1141,7 @@ impl TabManager {
         if let Some(idx) = self
             .tabs
             .iter()
-            .position(|t| t.kind == TabKind::CommandConfigurator)
+            .position(|t| t.kind.tag() == KindTag::CommandConfigurator)
         {
             self.activate(idx);
             return;
@@ -1160,9 +1172,9 @@ impl TabManager {
     ) {
         let file_path = menus_dir.join(format!("{name}.toml"));
         if let Some(idx) = self.tabs.iter().position(|t| {
-            t.kind == TabKind::MenuWorkspace
-                && t.menu_workspace
-                    .as_ref()
+            t.kind.tag() == KindTag::MenuWorkspace
+                && t.kind
+                    .menu_workspace()
                     .map(|mw| mw.file_path == file_path)
                     .unwrap_or(false)
         }) {
@@ -1196,7 +1208,6 @@ impl TabManager {
             tab.kind = kind;
             tab.title = title.to_string();
             tab.is_home = false;
-            tab.menu_workspace = None;
         }
     }
 
@@ -1401,7 +1412,7 @@ mod tests {
         let mut mgr = TabManager::new(&runtime, "");
         mgr.insert_pom_tab(&runtime);
         assert!(mgr.tabs()[0].is_home);
-        assert_eq!(mgr.tabs()[0].kind, TabKind::MenuWorkspace);
+        assert_eq!(mgr.tabs()[0].kind.tag(), KindTag::MenuWorkspace);
     }
 
     /// Validates: Requirement 14.1 — POM tab is inserted at index 0.
@@ -1441,7 +1452,7 @@ mod tests {
         let before = mgr.len();
         mgr.new_untitled_tab(&runtime);
         assert_eq!(mgr.len(), before + 1);
-        assert_eq!(mgr.active_tab().kind, TabKind::Untitled);
+        assert_eq!(mgr.active_tab().kind.tag(), KindTag::Untitled);
     }
 
     /// Validates: Requirement 14.1 — file tab has kind FileEditor.
@@ -1456,7 +1467,7 @@ mod tests {
         let path = tmp.path().to_string_lossy().into_owned();
         let mut mgr = TabManager::new(&runtime, "");
         mgr.open_file(&path, &runtime).expect("open");
-        assert_eq!(mgr.active_tab().kind, TabKind::FileEditor);
+        assert_eq!(mgr.active_tab().kind.tag(), KindTag::FileEditor);
     }
 
     #[test]
@@ -1753,7 +1764,7 @@ mod tests {
         let mut mgr = TabManager::new(&runtime, "");
         mgr.open_files_panel_tab(&runtime);
         let tab = mgr.active_tab();
-        assert_eq!(tab.kind, TabKind::FilesPanel);
+        assert_eq!(tab.kind.tag(), KindTag::FilesPanel);
         // CR-NR-090 B.1: the Virtual Catalog Manager (Catalogs Kind) title.
         assert_eq!(tab.title, "[CATALOGS]");
     }
@@ -2053,7 +2064,7 @@ mod tests {
             .expect("two leaves");
         // Open an untitled tab: it must join the focused leaf.
         mgr.new_untitled_tab(&runtime);
-        assert_eq!(mgr.active_tab().kind, TabKind::Untitled);
+        assert_eq!(mgr.active_tab().kind.tag(), KindTag::Untitled);
         // Focused leaf now has POM + the new untitled = 2 tabs; the other leaf 1.
         assert_eq!(mgr.leaf_tab_store_indices(focused).len(), 2);
         assert_eq!(mgr.leaf_tab_store_indices(other).len(), 1);

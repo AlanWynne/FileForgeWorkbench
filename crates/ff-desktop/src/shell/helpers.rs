@@ -5,7 +5,7 @@
 use eframe::egui;
 use ff_keys::FunctionKey;
 
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 
 pub(crate) fn config_value_to_toml_value(v: ff_config::ConfigValue) -> Option<toml::Value> {
     use ff_config::ConfigValue;
@@ -38,27 +38,27 @@ pub(crate) fn config_value_to_toml_value(v: ff_config::ConfigValue) -> Option<to
 /// Map a `TabKind` to its context name for key map resolution.
 ///
 /// Validates: Requirement 14.6
-pub(super) fn context_name_for_kind(kind: TabKind) -> Option<&'static str> {
+pub(super) fn context_name_for_kind(kind: KindTag) -> Option<&'static str> {
     match kind {
-        TabKind::FileEditor | TabKind::Untitled => Some("editor"),
-        TabKind::ConfigPanel => Some("config"),
-        TabKind::FilesPanel => Some("files"),
-        TabKind::FileExplorerPanel => Some("files"),
-        TabKind::SearchResults => Some("search"),
-        TabKind::PluginManager => Some("plugins"),
-        TabKind::EventLog => Some("log"),
-        TabKind::MacroLibrary => Some("macros"),
-        TabKind::MenuWorkspace => Some("menu"),
-        TabKind::CommandConfigurator => Some("commands"),
-        TabKind::ThemeEditor => Some("theme"),
-        TabKind::MenusEditor => Some("menus"),
-        TabKind::KeysEditor => Some("keys"),
-        TabKind::KindsEditor => Some("kinds"),
+        KindTag::FileEditor | KindTag::Untitled => Some("editor"),
+        KindTag::ConfigPanel => Some("config"),
+        KindTag::FilesPanel => Some("files"),
+        KindTag::FileExplorerPanel => Some("files"),
+        KindTag::SearchResults => Some("search"),
+        KindTag::PluginManager => Some("plugins"),
+        KindTag::EventLog => Some("log"),
+        KindTag::MacroLibrary => Some("macros"),
+        KindTag::MenuWorkspace => Some("menu"),
+        KindTag::CommandConfigurator => Some("commands"),
+        KindTag::ThemeEditor => Some("theme"),
+        KindTag::MenusEditor => Some("menus"),
+        KindTag::KeysEditor => Some("keys"),
+        KindTag::KindsEditor => Some("kinds"),
         // The Help Context has no dedicated key-map context (CR-NR-097); F1/HELP
         // are handled by the shell HELP path, not a context key map.
-        TabKind::HelpContext => None,
+        KindTag::HelpContext => None,
         // The SCRM Replay viewer has no dedicated key-map context (CR-NR-098).
-        TabKind::ScrmViewer => None,
+        KindTag::ScrmViewer => None,
     }
 }
 
@@ -75,7 +75,7 @@ pub(super) fn context_name_for_tab(tab: &crate::tab_state::TabState) -> Option<&
     if tab.is_home {
         Some("pom")
     } else {
-        context_name_for_kind(tab.kind)
+        context_name_for_kind(tab.kind.tag())
     }
 }
 

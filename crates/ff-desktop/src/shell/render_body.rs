@@ -153,7 +153,7 @@ impl WorkbenchShell {
                     self.macro_library_panel = panel;
                     self.apply_macro_library_action(action);
                 }
-                TabKind::MenuWorkspace => {
+                TabKind::MenuWorkspace(_) => {
                     self.render_body_menu_workspace(ctx, ui);
                 }
                 TabKind::ThemeEditor => {

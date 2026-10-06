@@ -86,7 +86,8 @@ impl WorkbenchShell {
         tab: &crate::tab_state::TabState,
     ) -> crate::menu_workspace::MenuFile {
         let kind_name =
-            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
+                .stable_name();
         let bar_name = self
             .kind_registry
             .effective(kind_name)

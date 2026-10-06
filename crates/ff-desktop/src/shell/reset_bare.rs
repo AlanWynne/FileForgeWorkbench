@@ -366,7 +366,9 @@ impl WorkbenchShell {
         match pom_idx {
             Some(idx) => {
                 if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
-                    tab.menu_workspace = None; // forces reload from baseline
+                    // Clear the inner menu state so the Home Context reloads from
+                    // the baseline on the next render (ensure_pom_menu_loaded).
+                    tab.kind = crate::tab_state::TabKind::MenuWorkspace(None);
                 }
                 self.tabs.set_active(idx);
             }

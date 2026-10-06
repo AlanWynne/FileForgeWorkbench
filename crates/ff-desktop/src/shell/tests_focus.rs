@@ -17,21 +17,21 @@ fn pom_tab_context_menu_items_are_universal_only() {
     // Validates: Requirement 14.15c
     // The context menu for a POM tab must NOT include file-specific items.
     // We verify this by checking the TabKind dispatch logic directly.
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     // The Home Context (POM) is a MenuWorkspace tab after CR-NR-082 Slice 1.
-    let pom_kind = TabKind::MenuWorkspace;
-    let file_kind = TabKind::FileEditor;
+    let pom_kind = KindTag::MenuWorkspace;
+    let file_kind = KindTag::FileEditor;
     // File-specific items are only shown when kind == FileEditor.
-    assert!(file_kind == TabKind::FileEditor);
-    assert!(pom_kind != TabKind::FileEditor);
+    assert!(file_kind == KindTag::FileEditor);
+    assert!(pom_kind != KindTag::FileEditor);
 }
 
 /// Validates: Requirement 14.15b -- file editor tab shows file-specific items.
 #[test]
 fn file_editor_tab_context_menu_includes_file_items() {
     // Validates: Requirement 14.15b
-    use crate::tab_state::TabKind;
-    assert_eq!(TabKind::FileEditor, TabKind::FileEditor);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(KindTag::FileEditor, KindTag::FileEditor);
 }
 
 // -- Phase AC: POM option list reorganisation tests ----------------------
@@ -47,20 +47,20 @@ fn file_editor_tab_context_menu_includes_file_items() {
 #[test]
 fn config_panel_tab_kind_exists() {
     // Validates: Requirement 15.1
-    use crate::tab_state::TabKind;
-    let kind = TabKind::ConfigPanel;
-    assert_eq!(kind, TabKind::ConfigPanel);
+    use crate::tab_state::{KindTag, TabKind};
+    let kind = KindTag::ConfigPanel;
+    assert_eq!(kind, KindTag::ConfigPanel);
 }
 
 /// Validates: Requirement 15.9 -- ConfigPanel is distinct from other tab kinds.
 #[test]
 fn config_panel_tab_kind_is_distinct_from_other_kinds() {
     // Validates: Requirement 15.9
-    use crate::tab_state::TabKind;
-    assert_ne!(TabKind::ConfigPanel, TabKind::MenuWorkspace);
-    assert_ne!(TabKind::ConfigPanel, TabKind::FileEditor);
-    assert_ne!(TabKind::ConfigPanel, TabKind::FilesPanel);
-    assert_ne!(TabKind::ConfigPanel, TabKind::Untitled);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_ne!(KindTag::ConfigPanel, KindTag::MenuWorkspace);
+    assert_ne!(KindTag::ConfigPanel, KindTag::FileEditor);
+    assert_ne!(KindTag::ConfigPanel, KindTag::FilesPanel);
+    assert_ne!(KindTag::ConfigPanel, KindTag::Untitled);
 }
 
 /// Validates: Requirement 14.6 -- option 1 on a POM tab transforms the tab in-place.
@@ -68,7 +68,7 @@ fn config_panel_tab_kind_is_distinct_from_other_kinds() {
 fn pom_option_1_on_pom_tab_transforms_tab_in_place() {
     // Validates: Requirement 14.6
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
@@ -76,7 +76,7 @@ fn pom_option_1_on_pom_tab_transforms_tab_in_place() {
     assert!(mgr.active_tab().is_home);
     // Typing "1" on a POM tab must transform it in-place to FilesPanel.
     mgr.transform_active_pom_tab(TabKind::FilesPanel, "[FILES]");
-    assert_eq!(mgr.active_tab().kind, TabKind::FilesPanel);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::FilesPanel);
     assert_eq!(mgr.active_tab().title, "[FILES]");
     // Tab count must not change -- no new tab opened.
     assert_eq!(mgr.len(), 2); // welcome + transformed
@@ -87,16 +87,16 @@ fn pom_option_1_on_pom_tab_transforms_tab_in_place() {
 fn pom_option_1_on_non_pom_tab_does_not_transform() {
     // Validates: Requirement 14.6
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     // Active tab is Untitled (not POM) -- transform_active_pom_tab must be a no-op.
-    assert_eq!(mgr.active_tab().kind, TabKind::Untitled);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::Untitled);
     mgr.transform_active_pom_tab(TabKind::FilesPanel, "[FILES]");
     assert_eq!(
-        mgr.active_tab().kind,
-        TabKind::Untitled,
+        mgr.active_tab().kind.tag(),
+        KindTag::Untitled,
         "non-POM tab must not be transformed"
     );
 }
@@ -274,9 +274,9 @@ fn floating_tab_title_format() {
 #[test]
 fn file_explorer_panel_tab_kind_exists() {
     // Validates: Requirement 19.11, 19.12
-    use crate::tab_state::TabKind;
-    let kind = TabKind::FileExplorerPanel;
-    assert_eq!(kind, TabKind::FileExplorerPanel);
+    use crate::tab_state::{KindTag, TabKind};
+    let kind = KindTag::FileExplorerPanel;
+    assert_eq!(kind, KindTag::FileExplorerPanel);
 }
 
 /// Validates: Requirement 19.1 -- `=2` transforms current tab in-place to FileExplorerPanel.
@@ -284,14 +284,14 @@ fn file_explorer_panel_tab_kind_exists() {
 fn equals_2_command_transforms_tab_to_file_explorer() {
     // Validates: Requirement 19.1
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.insert_pom_tab(&runtime);
     assert!(mgr.active_tab().is_home);
     mgr.transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
-    assert_eq!(mgr.active_tab().kind, TabKind::FileExplorerPanel);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::FileExplorerPanel);
     assert_eq!(mgr.active_tab().title, "[FILES]");
 }
 
@@ -300,13 +300,13 @@ fn equals_2_command_transforms_tab_to_file_explorer() {
 fn option_2_on_pom_tab_transforms_to_file_explorer() {
     // Validates: Requirement 19.4
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.insert_pom_tab(&runtime);
     mgr.transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
-    assert_eq!(mgr.active_tab().kind, TabKind::FileExplorerPanel);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::FileExplorerPanel);
     assert_eq!(mgr.active_tab().title, "[FILES]");
 }
 
@@ -315,12 +315,12 @@ fn option_2_on_pom_tab_transforms_to_file_explorer() {
 fn file_explorer_panel_tab_title_is_files() {
     // Validates: Requirement 19.11
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.open_file_explorer_panel_tab(&runtime);
-    assert_eq!(mgr.active_tab().kind, TabKind::FileExplorerPanel);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::FileExplorerPanel);
     assert_eq!(mgr.active_tab().title, "[FILES]");
 }
 
@@ -367,11 +367,11 @@ fn swap_list_opens_tab_picker() {
 /// Validates: configuration-system Req 20.3 (CR-CH-025) -- CONFIG <ns> tab title.
 #[test]
 fn settings_namespace_tab_title_includes_namespace() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG theme");
     let tab = shell.tabs.active_tab();
-    assert_eq!(tab.kind, TabKind::ConfigPanel);
+    assert_eq!(tab.kind.tag(), KindTag::ConfigPanel);
     assert_eq!(tab.title, "[CONFIG:theme]");
 }
 
@@ -441,22 +441,22 @@ fn modal_open_flag_suppresses_shell_tab_cycle() {
 #[test]
 fn plugin_manager_tab_kind_exists() {
     // Validates: plugin-manager-ui Requirement 1.1
-    use crate::tab_state::TabKind;
-    let kind = TabKind::PluginManager;
-    assert_eq!(kind, TabKind::PluginManager);
-    assert_ne!(kind, TabKind::MenuWorkspace);
-    assert_ne!(kind, TabKind::ConfigPanel);
+    use crate::tab_state::{KindTag, TabKind};
+    let kind = KindTag::PluginManager;
+    assert_eq!(kind, KindTag::PluginManager);
+    assert_ne!(kind, KindTag::MenuWorkspace);
+    assert_ne!(kind, KindTag::ConfigPanel);
 }
 
 /// Validates: plugin-manager-ui Requirement 4.1 -- PluginManager tab round-trips through session.
 #[test]
 fn plugin_manager_tab_round_trips_through_session() {
     // Validates: plugin-manager-ui Requirement 4.1
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::PersistedTabKind;
     // PluginManager must map to a PersistedTabKind variant.
-    let kind = TabKind::PluginManager;
-    assert_eq!(kind, TabKind::PluginManager);
+    let kind = KindTag::PluginManager;
+    assert_eq!(kind, KindTag::PluginManager);
     // The session serialisation must include PluginManager.
     // We verify the PersistedTabKind has the variant.
     let _ptk = PersistedTabKind::PluginManager;
@@ -466,10 +466,10 @@ fn plugin_manager_tab_round_trips_through_session() {
 #[test]
 fn event_log_tab_kind_exists() {
     // Validates: notification-system Requirement 2.1
-    use crate::tab_state::TabKind;
-    let kind = TabKind::EventLog;
-    assert_eq!(kind, TabKind::EventLog);
-    assert_ne!(kind, TabKind::PluginManager);
+    use crate::tab_state::{KindTag, TabKind};
+    let kind = KindTag::EventLog;
+    assert_eq!(kind, KindTag::EventLog);
+    assert_ne!(kind, KindTag::PluginManager);
 }
 
 // === Phase CR: Macro Library Panel (Requirement 12) ========================
@@ -478,11 +478,11 @@ fn event_log_tab_kind_exists() {
 #[test]
 fn macro_library_tab_kind_exists() {
     // Validates: lua-macro-engine Requirement 12.1
-    use crate::tab_state::TabKind;
-    let kind = TabKind::MacroLibrary;
-    assert_eq!(kind, TabKind::MacroLibrary);
-    assert_ne!(kind, TabKind::MenuWorkspace);
-    assert_ne!(kind, TabKind::PluginManager);
+    use crate::tab_state::{KindTag, TabKind};
+    let kind = KindTag::MacroLibrary;
+    assert_eq!(kind, KindTag::MacroLibrary);
+    assert_ne!(kind, KindTag::MenuWorkspace);
+    assert_ne!(kind, KindTag::PluginManager);
 }
 
 /// Validates: lua-macro-engine Requirement 12.1 -- MacroLibrary tab title is [MACROS].
@@ -490,12 +490,12 @@ fn macro_library_tab_kind_exists() {
 fn macro_library_tab_title_is_macros() {
     // Validates: lua-macro-engine Requirement 12.1
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.open_macro_library_tab(&runtime);
-    assert_eq!(mgr.active_tab().kind, TabKind::MacroLibrary);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::MacroLibrary);
     assert_eq!(mgr.active_tab().title, "[MACROS]");
 }
 
@@ -518,15 +518,15 @@ fn open_macro_library_tab_twice_does_not_duplicate() {
 fn macro_library_tab_not_persisted_in_session() {
     // Validates: lua-macro-engine Requirement 12.5
 
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::PersistedTabKind;
 
     // MacroLibrary must not map to any PersistedTabKind -- it is excluded from session.
     // Verify by checking the kind is distinct from all persisted kinds.
-    let kind = TabKind::MacroLibrary;
-    assert_ne!(kind, TabKind::FileEditor);
-    assert_ne!(kind, TabKind::FilesPanel);
-    assert_ne!(kind, TabKind::FileExplorerPanel);
+    let kind = KindTag::MacroLibrary;
+    assert_ne!(kind, KindTag::FileEditor);
+    assert_ne!(kind, KindTag::FilesPanel);
+    assert_ne!(kind, KindTag::FileExplorerPanel);
     // PersistedTabKind does not have a MacroLibrary variant -- compile-time guarantee.
     let _ptk = PersistedTabKind::EventLog; // EventLog exists; MacroLibrary does not
 }
@@ -560,7 +560,7 @@ fn detach_on_pom_tab_sets_detach_pending() {
 fn open_menu_workspace_tab_loads_named_menu() {
     use crate::menu_workspace::OptionLimits;
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
 
     let dir = tempfile::TempDir::new().unwrap();
@@ -577,8 +577,8 @@ fn open_menu_workspace_tab_loads_named_menu() {
     mgr.insert_pom_tab(&runtime);
     mgr.open_menu_workspace_tab("tools", &menus, OptionLimits::default(), &runtime);
 
-    assert_eq!(mgr.active_tab().kind, TabKind::MenuWorkspace);
-    let mw = mgr.active_tab().menu_workspace.as_ref().expect("mw state");
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::MenuWorkspace);
+    let mw = mgr.active_tab().kind.menu_workspace().expect("mw state");
     assert!(mw.load_error.is_none());
     assert_eq!(mw.menu.as_ref().unwrap().title, "Tools");
 }
@@ -589,7 +589,7 @@ fn open_menu_workspace_tab_loads_named_menu() {
 fn open_menu_workspace_tab_missing_file_is_load_error() {
     use crate::menu_workspace::OptionLimits;
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
 
     let dir = tempfile::TempDir::new().unwrap();
@@ -601,8 +601,8 @@ fn open_menu_workspace_tab_missing_file_is_load_error() {
     mgr.insert_pom_tab(&runtime);
     mgr.open_menu_workspace_tab("nope", &menus, OptionLimits::default(), &runtime);
 
-    assert_eq!(mgr.active_tab().kind, TabKind::MenuWorkspace);
-    let mw = mgr.active_tab().menu_workspace.as_ref().expect("mw state");
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::MenuWorkspace);
+    let mw = mgr.active_tab().kind.menu_workspace().expect("mw state");
     assert!(mw.menu.is_none());
     assert!(
         mw.load_error.as_deref().unwrap_or("").contains("not found"),
@@ -616,7 +616,7 @@ fn open_menu_workspace_tab_missing_file_is_load_error() {
 fn open_menu_workspace_tab_dedupes_by_file() {
     use crate::menu_workspace::OptionLimits;
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
 
     let dir = tempfile::TempDir::new().unwrap();
@@ -639,7 +639,7 @@ fn open_menu_workspace_tab_dedupes_by_file() {
         count_after_first,
         "opening the same menu twice must not duplicate the tab"
     );
-    assert_eq!(mgr.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::MenuWorkspace);
 }
 
 // Validates: Req 14.5 -- END with an empty stack on the last tab terminates.
@@ -660,7 +660,7 @@ fn end_at_empty_stack_last_tab_exits() {
 // START Settings (rooted directly at Settings, empty stack).
 #[test]
 fn start_forms_root_the_new_tab_correctly() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     // START -> new POM tab, empty stack.
     let mut shell = make_shell();
@@ -677,8 +677,8 @@ fn start_forms_root_the_new_tab_correctly() {
     shell.handle_command("START Settings");
     assert_eq!(shell.tabs.len(), before + 1, "START creates one new tab");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "START Settings roots the new tab at the Settings menu"
     );
     assert!(
@@ -691,14 +691,14 @@ fn start_forms_root_the_new_tab_correctly() {
 /// (so END/RETURN returns to the POM), like the Settings/Commands Contexts.
 #[test]
 fn themes_command_transforms_pom_tab_in_place() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     // Ensure the active tab is a POM.
     shell.handle_command("START");
     assert!(shell.tabs.active_tab().is_home);
     let count_before = shell.tabs.len();
     shell.dispatch_command_string("THEME");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::ThemeEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::ThemeEditor);
     assert_eq!(
         shell.tabs.len(),
         count_before,
@@ -1162,7 +1162,7 @@ fn full_shell_menus_editor_first_tab_focuses_menu_selector() {
 // egui landed on the panel's container/scroll allocation instead.
 #[test]
 fn full_shell_theme_editor_first_tab_focuses_theme_selector() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     // Open the Theme Editor via bare THEME (same path as typing it).
     harness.state_mut().dispatch_command_string("THEME");
@@ -1170,8 +1170,8 @@ fn full_shell_theme_editor_first_tab_focuses_theme_selector() {
         harness.run();
     }
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ThemeEditor,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
         "bare THEME opens the Theme Editor Context"
     );
     // The editor reports the Theme selector combo as its first interior control.
@@ -1206,7 +1206,7 @@ fn full_shell_theme_editor_first_tab_focuses_theme_selector() {
 // B081 lived (the earlier tests drove apply_theme_editor_action directly).
 #[test]
 fn full_shell_theme_editor_type_name_and_save_creates_user_theme() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     // Isolate the themes dir to a TempDir (kept alive for the whole test).
     let dir = tempfile::TempDir::new().expect("tempdir");
     crate::theme_defaults::ensure_default_theme_files(dir.path());
@@ -1220,8 +1220,8 @@ fn full_shell_theme_editor_type_name_and_save_creates_user_theme() {
         harness.run();
     }
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ThemeEditor,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
         "bare THEME opens the Theme Editor Context"
     );
     // The editor opens on a built-in with the New-name field pre-filled (B081).
@@ -1289,7 +1289,7 @@ fn full_shell_theme_editor_type_name_and_save_creates_user_theme() {
 // egui landed on the panel's container/scroll allocation instead.
 #[test]
 fn full_shell_config_first_tab_focuses_filter_field() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     // Open the flat config-key browser via CONFIG (same path as typing it).
     harness.state_mut().dispatch_command_string("CONFIG");
@@ -1297,8 +1297,8 @@ fn full_shell_config_first_tab_focuses_filter_field() {
         harness.run();
     }
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ConfigPanel,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
         "CONFIG opens the flat Config panel"
     );
     // The panel reports the Filter field as its first interior control.
@@ -1388,7 +1388,7 @@ fn full_shell_command_configurator_first_tab_focuses_interior() {
 // the focus contract.
 #[test]
 fn full_shell_file_editor_reports_no_interior_focus() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     // Open a fresh Untitled editor buffer (same path an editor tab takes).
     harness.state_mut().shell_new_untitled();
@@ -1397,8 +1397,8 @@ fn full_shell_file_editor_reports_no_interior_focus() {
     }
     assert!(
         matches!(
-            harness.state().tabs.active_tab().kind,
-            TabKind::Untitled | TabKind::FileEditor
+            harness.state().tabs.active_tab().kind.tag(),
+            KindTag::Untitled | KindTag::FileEditor
         ),
         "shell_new_untitled opens an editor Context"
     );
@@ -1423,7 +1423,7 @@ fn full_shell_file_editor_reports_no_interior_focus() {
 // stop) even though the panel is interactive.
 #[test]
 fn full_shell_files_panel_reports_no_interior_focus() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     // CATALOGS navigates the active tab to the Files Panel (Catalog Explorer).
     harness.state_mut().dispatch_command_string("CATALOGS");
@@ -1431,8 +1431,8 @@ fn full_shell_files_panel_reports_no_interior_focus() {
         harness.run();
     }
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::FilesPanel,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::FilesPanel,
         "CATALOGS opens the Files Panel (Catalog Explorer Context)"
     );
     assert_eq!(
@@ -1622,7 +1622,7 @@ fn pom_tab_header_is_short_label_pom() {
 /// resolvable arg roots the new tab at that Context.
 #[test]
 fn start_still_creates_tab_and_resolves_arg() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     // Bare START -> new POM tab (Home).
     let mut a = make_shell();
     let before = a.tabs.len();
@@ -1637,8 +1637,8 @@ fn start_still_creates_tab_and_resolves_arg() {
     let mut b = make_shell();
     b.handle_command("START SETTINGS");
     assert_eq!(
-        b.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        b.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "START SETTINGS roots the new tab at the Settings menu"
     );
     assert!(
@@ -1825,7 +1825,7 @@ fn full_shell_help_first_tab_focuses_search_field() {
 /// receives focus.
 #[test]
 fn full_shell_split_creates_two_groups_second_is_pom_and_focused() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut harness = harness_shell();
     assert!(
         !harness.state().tabs.is_split(),
@@ -1853,7 +1853,7 @@ fn full_shell_split_creates_two_groups_second_is_pom_and_focused() {
         state.tabs.active_tab().is_home,
         "the focused new group's active tab is a POM"
     );
-    assert_eq!(state.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(state.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     assert!(state.open_error.is_none());
 }
 
@@ -2338,23 +2338,23 @@ fn full_shell_scrm_viewer_first_tab_focuses_first_control() {
 // CustomWorkspace classification).
 #[test]
 fn b080_menu_bar_front_door_matches_typed_path_for_in_scope_verbs() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     // Each in-scope workspace verb and the Kind it must open. These are exactly
     // the verbs `builtin_workspace_target_for` classifies and whose superseded
     // ladder arms CR-CH-052 deleted.
-    let cases: &[(&str, TabKind)] = &[
-        ("FILES", TabKind::FileExplorerPanel),
-        ("CATALOGS", TabKind::FilesPanel),
-        ("CONFIG", TabKind::ConfigPanel),
-        ("KEYS", TabKind::KeysEditor),
-        ("KINDS", TabKind::KindsEditor),
-        ("COMMANDS", TabKind::CommandConfigurator),
-        ("LOG", TabKind::EventLog),
-        ("PLUGINS", TabKind::PluginManager),
-        ("MACROS", TabKind::MacroLibrary),
-        ("MENUS", TabKind::MenusEditor),
-        ("THEME", TabKind::ThemeEditor),
+    let cases: &[(&str, KindTag)] = &[
+        ("FILES", KindTag::FileExplorerPanel),
+        ("CATALOGS", KindTag::FilesPanel),
+        ("CONFIG", KindTag::ConfigPanel),
+        ("KEYS", KindTag::KeysEditor),
+        ("KINDS", KindTag::KindsEditor),
+        ("COMMANDS", KindTag::CommandConfigurator),
+        ("LOG", KindTag::EventLog),
+        ("PLUGINS", KindTag::PluginManager),
+        ("MACROS", KindTag::MacroLibrary),
+        ("MENUS", KindTag::MenusEditor),
+        ("THEME", KindTag::ThemeEditor),
     ];
 
     for (verb, expected_kind) in cases {
@@ -2362,7 +2362,7 @@ fn b080_menu_bar_front_door_matches_typed_path_for_in_scope_verbs() {
         // click, palette, rerouted nav callers -- now uses).
         let mut via_front_door = make_shell();
         via_front_door.dispatch_command_string(verb);
-        let front_kind = via_front_door.tabs.active_tab().kind;
+        let front_kind = via_front_door.tabs.active_tab().kind.tag();
 
         assert_eq!(
             front_kind, *expected_kind,

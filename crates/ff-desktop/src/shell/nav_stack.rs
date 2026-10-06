@@ -14,7 +14,7 @@ use ff_session::session_state::{
 };
 
 use super::WorkbenchShell;
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 
 impl WorkbenchShell {
     /// Derive the `WorkspaceDescriptor` for the active tab's CURRENT Context, so
@@ -30,41 +30,41 @@ impl WorkbenchShell {
                 workspace_kind: kind,
                 params,
             };
-        match tab.kind {
-            TabKind::MenuWorkspace => {
+        match tab.kind.tag() {
+            KindTag::MenuWorkspace => {
                 // The Home Context (POM) always maps to `Menu{name:"pom"}`
                 // regardless of the loaded menu's title (menu-workspace Req 18.8).
                 let name = if tab.is_home {
                     "pom".to_string()
                 } else {
-                    tab.menu_workspace
-                        .as_ref()
+                    tab.kind
+                        .menu_workspace()
                         .and_then(|mw| mw.menu.as_ref())
                         .map(|m| m.title.to_lowercase())
                         .unwrap_or_else(|| "pom".to_string())
                 };
                 WorkspaceDescriptor::Menu { name }
             }
-            TabKind::ConfigPanel => {
+            KindTag::ConfigPanel => {
                 let mut params = DescriptorParams::new();
                 if let Some(ns) = self.config_panel.namespace_filter.as_deref() {
                     params.insert("namespace".to_string(), DescriptorValue::from(ns));
                 }
                 custom(WorkspaceKind::Config, params)
             }
-            TabKind::FilesPanel => custom(WorkspaceKind::Files, DescriptorParams::new()),
-            TabKind::FileExplorerPanel => {
+            KindTag::FilesPanel => custom(WorkspaceKind::Files, DescriptorParams::new()),
+            KindTag::FileExplorerPanel => {
                 custom(WorkspaceKind::FileExplorer, DescriptorParams::new())
             }
-            TabKind::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
-            TabKind::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
-            TabKind::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
-            TabKind::ScrmViewer => custom(WorkspaceKind::ScrmViewer, DescriptorParams::new()),
-            TabKind::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
-            TabKind::CommandConfigurator => {
+            KindTag::SearchResults => custom(WorkspaceKind::Search, DescriptorParams::new()),
+            KindTag::PluginManager => custom(WorkspaceKind::PluginManager, DescriptorParams::new()),
+            KindTag::EventLog => custom(WorkspaceKind::EventLog, DescriptorParams::new()),
+            KindTag::ScrmViewer => custom(WorkspaceKind::ScrmViewer, DescriptorParams::new()),
+            KindTag::MacroLibrary => custom(WorkspaceKind::MacroLibrary, DescriptorParams::new()),
+            KindTag::CommandConfigurator => {
                 custom(WorkspaceKind::CommandConfigurator, DescriptorParams::new())
             }
-            TabKind::FileEditor | TabKind::Untitled => {
+            KindTag::FileEditor | KindTag::Untitled => {
                 let mut params = DescriptorParams::new();
                 if let Some(uri) = tab.path.as_ref() {
                     params.insert("uri".to_string(), DescriptorValue::from(uri.clone()));
@@ -73,23 +73,23 @@ impl WorkbenchShell {
             }
             // Transient editors: kind-only descriptor (editing state is
             // shell-global and re-derived on reconstruct).
-            TabKind::ThemeEditor => custom(WorkspaceKind::CommandConfigurator, {
+            KindTag::ThemeEditor => custom(WorkspaceKind::CommandConfigurator, {
                 // Reuse a distinct marker param so reconstruct routes to THEMES.
                 let mut p = DescriptorParams::new();
                 p.insert("editor".to_string(), DescriptorValue::from("theme"));
                 p
             }),
-            TabKind::MenusEditor => custom(WorkspaceKind::CommandConfigurator, {
+            KindTag::MenusEditor => custom(WorkspaceKind::CommandConfigurator, {
                 let mut p = DescriptorParams::new();
                 p.insert("editor".to_string(), DescriptorValue::from("menus"));
                 p
             }),
-            TabKind::KeysEditor => custom(WorkspaceKind::CommandConfigurator, {
+            KindTag::KeysEditor => custom(WorkspaceKind::CommandConfigurator, {
                 let mut p = DescriptorParams::new();
                 p.insert("editor".to_string(), DescriptorValue::from("keys"));
                 p
             }),
-            TabKind::KindsEditor => custom(WorkspaceKind::CommandConfigurator, {
+            KindTag::KindsEditor => custom(WorkspaceKind::CommandConfigurator, {
                 let mut p = DescriptorParams::new();
                 p.insert("editor".to_string(), DescriptorValue::from("kinds"));
                 p
@@ -98,7 +98,7 @@ impl WorkbenchShell {
             // its own descriptor. If a descriptor is ever requested for it (it
             // should not be, since session persistence skips it), map to the Home
             // Context so a restore lands on the POM rather than an empty tab.
-            TabKind::HelpContext => WorkspaceDescriptor::Menu {
+            KindTag::HelpContext => WorkspaceDescriptor::Menu {
                 name: "pom".to_string(),
             },
         }
@@ -120,15 +120,18 @@ impl WorkbenchShell {
             let current = self.descriptor_for_current_context();
             self.tabs.active_tab_mut().nav_stack.push(current);
         }
+        // CR-NR-098 Wave 2 (Req 9.1, 9.5): a Context transition is the single
+        // "screen changed" choke point. When automatic capture is enabled, snap
+        // the DEPARTING Context before it is reconstructed. This was previously
+        // placed AFTER reconstruct_context, where it relied on a stale
+        // `menu_workspace` field that survived the kind change; now that the
+        // state lives inside `TabKind::MenuWorkspace`, it must run before the
+        // kind is replaced.
+        self.auto_capture_active_context();
         self.reconstruct_context(&descriptor);
         // CR-CH-023 Req 16.1a: entering a Workspace context places focus on the
         // command field.
         self.focus.command_field_focus_requested = true;
-        // CR-NR-098 Wave 2 (Req 9.1, 9.5): a Context transition is the single
-        // "screen changed" choke point. When automatic capture is enabled, snap
-        // the newly-shown Context. A no-op otherwise, so navigation is never
-        // interrupted.
-        self.auto_capture_active_context();
     }
 
     /// Convenience: navigate the current tab to a parameterless CustomWorkspace

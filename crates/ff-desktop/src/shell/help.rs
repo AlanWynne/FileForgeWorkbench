@@ -265,7 +265,7 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 14.2, 14.4 (via B079).
     fn enter_help_context(&mut self) {
-        if self.tabs.active_tab().kind == TabKind::HelpContext {
+        if self.tabs.active_tab().kind.tag() == crate::tab_state::KindTag::HelpContext {
             // Already in Help: re-render in place, do not push another frame.
             self.set_active_tab_context(TabKind::HelpContext, "[HELP]");
             return;
@@ -295,7 +295,7 @@ impl WorkbenchShell {
     ///
     /// Validates: context-help Requirement 13.8; menu-workspace Requirement 14.4.
     fn close_help(&mut self) {
-        if self.tabs.active_tab().kind != TabKind::HelpContext {
+        if self.tabs.active_tab().kind.tag() != crate::tab_state::KindTag::HelpContext {
             return;
         }
         if let Some(parent) = self.tabs.active_tab_mut().nav_stack.pop() {

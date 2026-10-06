@@ -347,7 +347,7 @@ fn retrieve_list_via_key_opens_history_overlay() {
 /// Validates: Requirement 21.5 -- a Files CustomWorkspace descriptor re-opens the Files panel.
 #[test]
 fn restore_files_descriptor_opens_files_panel() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
 
     let mut shell = make_shell();
@@ -361,7 +361,7 @@ fn restore_files_descriptor_opens_files_panel() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::FilesPanel),
+            .any(|t| t.kind.tag() == KindTag::FilesPanel),
         "a Files descriptor must reconstruct a FilesPanel tab"
     );
 }
@@ -369,7 +369,7 @@ fn restore_files_descriptor_opens_files_panel() {
 /// Validates: Requirement 21.5 -- a FileExplorer descriptor re-opens the File Explorer panel.
 #[test]
 fn restore_file_explorer_descriptor_opens_explorer_panel() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
 
     let mut shell = make_shell();
@@ -383,7 +383,7 @@ fn restore_file_explorer_descriptor_opens_explorer_panel() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::FileExplorerPanel),
+            .any(|t| t.kind.tag() == KindTag::FileExplorerPanel),
         "a FileExplorer descriptor must reconstruct a FileExplorerPanel tab"
     );
 }
@@ -392,7 +392,7 @@ fn restore_file_explorer_descriptor_opens_explorer_panel() {
 /// restores the Config Context with that namespace filter applied.
 #[test]
 fn restore_config_descriptor_applies_namespace_filter() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::{
         DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
     };
@@ -411,7 +411,7 @@ fn restore_config_descriptor_applies_namespace_filter() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::ConfigPanel),
+            .any(|t| t.kind.tag() == KindTag::ConfigPanel),
         "a Config descriptor must reconstruct a ConfigPanel tab"
     );
     assert_eq!(
@@ -441,7 +441,7 @@ fn restore_config_descriptor_without_namespace_is_unfiltered() {
 /// Validates: Requirement 21.5 -- multiple descriptors restore multiple Workspaces.
 #[test]
 fn restore_multiple_descriptors_opens_each_workspace() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
 
     let mut shell = make_shell();
@@ -460,16 +460,16 @@ fn restore_multiple_descriptors_opens_each_workspace() {
         },
     ];
     shell.restore_workspace_descriptors(&descriptors);
-    let kinds: Vec<TabKind> = shell.tabs.tabs().iter().map(|t| t.kind).collect();
-    assert!(kinds.contains(&TabKind::FilesPanel));
-    assert!(kinds.contains(&TabKind::PluginManager));
-    assert!(kinds.contains(&TabKind::EventLog));
+    let kinds: Vec<KindTag> = shell.tabs.tabs().iter().map(|t| t.kind.tag()).collect();
+    assert!(kinds.contains(&KindTag::FilesPanel));
+    assert!(kinds.contains(&KindTag::PluginManager));
+    assert!(kinds.contains(&KindTag::EventLog));
 }
 
 /// Validates: Requirement 21.2 -- an Editor descriptor with a uri param re-opens the file.
 #[test]
 fn restore_editor_descriptor_opens_file() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::{
         DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
     };
@@ -488,11 +488,9 @@ fn restore_editor_descriptor_opens_file() {
     }];
     shell.restore_workspace_descriptors(&descriptors);
     assert!(
-        shell
-            .tabs
-            .tabs()
-            .iter()
-            .any(|t| t.kind == TabKind::FileEditor && t.path.as_deref() == Some(path.as_str())),
+        shell.tabs.tabs().iter().any(
+            |t| t.kind.tag() == KindTag::FileEditor && t.path.as_deref() == Some(path.as_str())
+        ),
         "an Editor descriptor with a uri must reopen that file"
     );
 }
@@ -501,7 +499,7 @@ fn restore_editor_descriptor_opens_file() {
 // Requirement 2.1 -- a CommandConfigurator descriptor reconstructs the Context.
 #[test]
 fn restore_command_configurator_descriptor_reopens_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::{DescriptorParams, WorkspaceDescriptor, WorkspaceKind};
     let mut shell = make_shell();
     let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
@@ -514,7 +512,7 @@ fn restore_command_configurator_descriptor_reopens_context() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::CommandConfigurator),
+            .any(|t| t.kind.tag() == KindTag::CommandConfigurator),
         "a CommandConfigurator descriptor must reconstruct the Context"
     );
 }

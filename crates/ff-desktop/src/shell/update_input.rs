@@ -10,7 +10,7 @@ use eframe::egui;
 
 use super::WorkbenchShell;
 use crate::files_panel;
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 
 impl WorkbenchShell {
     /// Ctrl+Scroll global zoom, window-drag detection, and the deferred
@@ -110,7 +110,7 @@ impl WorkbenchShell {
             false
         };
         if !self.tabs.is_split() && !handled_split_tab {
-            let is_file_explorer = self.tabs.active_tab().kind == TabKind::FileExplorerPanel;
+            let is_file_explorer = self.tabs.active_tab().kind.tag() == KindTag::FileExplorerPanel;
             let cmd_id = egui::Id::new("command_field_input");
             let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
 

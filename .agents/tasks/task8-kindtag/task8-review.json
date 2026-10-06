@@ -1,0 +1,7 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "Non-blocking (confirmed): SCRM auto-capture hook in navigate_to moved from AFTER reconstruct_context to BEFORE it, so auto-capture now snaps the DEPARTING context rather than the arrived one. The move is forced by the refactor (the old post-reconstruct capture relied on a stale flat menu_workspace field that cannot survive once the state lives inside TabKind). The only covering test (auto_capture_records_on_navigation, POM->FILES) passes under both orderings; the behavioural difference only surfaces in untested menu->menu and panel->menu transitions. The replaced behaviour was itself accidental and inconsistent, and the coder documented the change in the code comment and the resume note. Flag for owner awareness; a follow-up test could pin the intended auto-capture content if it matters for SCRM evidence flows."
+  ],
+  "reviewDoc": "c:\\workspace\\VSC\\FileForgeWorkbench\\.agents\\tasks\\task8-kindtag\\task8-review.md"
+}

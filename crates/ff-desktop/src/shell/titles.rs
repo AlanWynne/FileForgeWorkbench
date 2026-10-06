@@ -37,8 +37,9 @@ impl WorkbenchShell {
             | TabKind::MenusEditor
             | TabKind::KeysEditor
             | TabKind::KindsEditor => {
-                let name = crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home)
-                    .stable_name();
+                let name =
+                    crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
+                        .stable_name();
                 self.kind_registry.effective(name).title.clone()
             }
             // Home banner / non-Home menu label / editor path are unchanged.
@@ -56,28 +57,29 @@ impl WorkbenchShell {
     /// (`kind_title`) intact while giving the centered Title_Line a descriptive,
     /// de-bracketed heading.
     pub(crate) fn title_line_display(&self, tab: &crate::tab_state::TabState) -> Option<String> {
-        use crate::tab_state::TabKind;
+        use crate::tab_state::KindTag;
         // Only the covered non-menu, non-editor Contexts get the descriptive
         // centered heading; everything else returns None (unchanged behaviour).
         let covered = matches!(
-            tab.kind,
-            TabKind::ConfigPanel
-                | TabKind::ThemeEditor
-                | TabKind::MenusEditor
-                | TabKind::KeysEditor
-                | TabKind::KindsEditor
-                | TabKind::CommandConfigurator
-                | TabKind::FilesPanel
-                | TabKind::FileExplorerPanel
-                | TabKind::SearchResults
-                | TabKind::PluginManager
-                | TabKind::EventLog
-                | TabKind::MacroLibrary
+            tab.kind.tag(),
+            KindTag::ConfigPanel
+                | KindTag::ThemeEditor
+                | KindTag::MenusEditor
+                | KindTag::KeysEditor
+                | KindTag::KindsEditor
+                | KindTag::CommandConfigurator
+                | KindTag::FilesPanel
+                | KindTag::FileExplorerPanel
+                | KindTag::SearchResults
+                | KindTag::PluginManager
+                | KindTag::EventLog
+                | KindTag::MacroLibrary
         );
         if !covered {
             return None;
         }
-        let builtin = crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home);
+        let builtin =
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home);
         let effective = self.kind_registry.effective(builtin.stable_name());
         // A user override (effective title != the compiled [XXX] tag) wins;
         // otherwise use the descriptive display title.
@@ -107,14 +109,14 @@ impl WorkbenchShell {
                 _ => format!("[{}]", name),
             };
         }
-        if tab.kind == TabKind::MenuWorkspace {
+        if tab.kind.tag() == crate::tab_state::KindTag::MenuWorkspace {
             // A Menu Workspace's header is its Menu_Name (the opening command's
             // name), uppercased: `pom` -> POM, `settings` -> SETTINGS. Same rule
             // for the POM and every other menu; no `is_home` branch. Falls back
             // to the cached title only when the menu name cannot be derived.
             return tab
-                .menu_workspace
-                .as_ref()
+                .kind
+                .menu_workspace()
                 .and_then(|mw| mw.menu_name_label())
                 .unwrap_or_else(|| tab.title.clone());
         }
@@ -133,7 +135,8 @@ impl WorkbenchShell {
         tab: &crate::tab_state::TabState,
     ) -> Option<String> {
         let kind_name =
-            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
+                .stable_name();
         if let Some(kl) = self.kind_registry.effective(kind_name).key_list.clone() {
             return Some(kl);
         }
@@ -155,7 +158,7 @@ impl WorkbenchShell {
         use crate::tab_state::TabKind;
         let kind_name = {
             let t = self.tabs.active_tab();
-            crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name()
+            crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind.tag(), t.is_home).stable_name()
         };
         let profile = self.kind_registry.effective(kind_name).profile.clone();
         let tab = self.tabs.active_tab_mut();
@@ -187,7 +190,8 @@ impl WorkbenchShell {
             return crate::workspace_kind::CommandLinePosition::Top;
         };
         let kind_name =
-            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind, tab.is_home).stable_name();
+            crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
+                .stable_name();
         self.kind_registry
             .effective(kind_name)
             .profile

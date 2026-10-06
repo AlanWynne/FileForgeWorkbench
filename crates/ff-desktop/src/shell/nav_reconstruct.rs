@@ -54,10 +54,9 @@ impl WorkbenchShell {
     pub(super) fn set_active_tab_home(&mut self) {
         {
             let tab = self.tabs.active_tab_mut();
-            tab.kind = TabKind::MenuWorkspace;
+            tab.kind = TabKind::MenuWorkspace(None);
             tab.title = "[POM]".to_string();
             tab.is_home = true;
-            tab.menu_workspace = None;
         }
         self.ensure_pom_menu_loaded();
     }
@@ -86,10 +85,9 @@ impl WorkbenchShell {
             }
         }
         let tab = self.tabs.active_tab_mut();
-        tab.kind = TabKind::MenuWorkspace;
+        tab.kind = TabKind::MenuWorkspace(Some(mw));
         tab.title = "[SETTINGS]".to_string();
         tab.is_home = false;
-        tab.menu_workspace = Some(mw);
     }
 
     /// Reconstruct a named Menu_Workspace on the active tab in place.
@@ -100,10 +98,9 @@ impl WorkbenchShell {
         let mw = crate::menu_workspace::MenuWorkspaceState::load_with_limits(&file_path, limits);
         let title = mw.tab_title();
         let tab = self.tabs.active_tab_mut();
-        tab.kind = TabKind::MenuWorkspace;
+        tab.kind = TabKind::MenuWorkspace(Some(mw));
         tab.title = title;
         tab.is_home = false;
-        tab.menu_workspace = Some(mw);
     }
 
     /// Reconstruct a CustomWorkspace kind on the active tab in place, re-deriving

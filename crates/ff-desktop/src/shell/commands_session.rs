@@ -8,7 +8,7 @@
 
 use eframe::egui;
 
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 
 use super::helpers::*;
 use super::WorkbenchShell;
@@ -68,8 +68,8 @@ impl WorkbenchShell {
 
         // (d) Editor cursor + selection when an editor document is active.
         if matches!(
-            self.tabs.active_tab().kind,
-            TabKind::FileEditor | TabKind::Untitled
+            self.tabs.active_tab().kind.tag(),
+            KindTag::FileEditor | KindTag::Untitled
         ) {
             let tab = self.tabs.active_tab();
             b = b

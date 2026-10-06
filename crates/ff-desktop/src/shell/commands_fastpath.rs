@@ -22,7 +22,7 @@ impl WorkbenchShell {
         if !self.tabs.active_tab().is_home {
             return;
         }
-        if self.tabs.active_tab().menu_workspace.is_some() {
+        if self.tabs.active_tab().kind.menu_workspace().is_some() {
             return;
         }
         let pom_path = self.menus_dir().join("pom.toml");
@@ -48,7 +48,7 @@ impl WorkbenchShell {
         }
         let idx = self.tabs.active_index();
         if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
-            tab.menu_workspace = Some(state);
+            tab.kind = crate::tab_state::TabKind::MenuWorkspace(Some(state));
         }
     }
 
@@ -173,7 +173,7 @@ impl WorkbenchShell {
             .tabs()
             .iter()
             .find(|t| t.is_home)
-            .and_then(|t| t.menu_workspace.as_ref())
+            .and_then(|t| t.kind.menu_workspace())
             .and_then(|mw| mw.menu.clone())
             .or_else(|| {
                 let pom_path = self.menus_dir().join("pom.toml");

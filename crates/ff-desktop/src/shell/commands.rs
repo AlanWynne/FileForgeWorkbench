@@ -136,7 +136,7 @@ impl WorkbenchShell {
         let is_equals_prefixed = cmd.trim_start().starts_with('=');
         let editor_env_active = {
             let t = self.tabs.active_tab();
-            crate::shell::environment::active_environment(t.kind, t.is_home)
+            crate::shell::environment::active_environment(t.kind.tag(), t.is_home)
                 == crate::shell::environment::EnvironmentKind::FfEdit
         };
         if (!editor_env_active || is_equals_prefixed) && self.try_exit_family(upper) {
@@ -209,7 +209,7 @@ impl WorkbenchShell {
         if !cmd.trim_start().starts_with('=') {
             let (active_kind, active_is_home) = {
                 let t = self.tabs.active_tab();
-                (t.kind, t.is_home)
+                (t.kind.tag(), t.is_home)
             };
             if crate::shell::environment::active_environment(active_kind, active_is_home)
                 == crate::shell::environment::EnvironmentKind::FfEdit

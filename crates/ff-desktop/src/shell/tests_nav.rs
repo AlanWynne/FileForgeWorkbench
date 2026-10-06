@@ -16,13 +16,13 @@ use ff_command::{
 fn first_launch_inserts_pom_tab() {
     // Validates: Requirement 14.1
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.insert_pom_tab(&runtime);
     assert!(mgr.tabs()[0].is_home);
-    assert_eq!(mgr.tabs()[0].kind, TabKind::MenuWorkspace);
+    assert_eq!(mgr.tabs()[0].kind.tag(), KindTag::MenuWorkspace);
     assert_eq!(mgr.tabs()[0].title, "[POM]");
 }
 
@@ -43,13 +43,13 @@ fn line_end_from_name_maps_unicode_else_default() {
 /// does NOT terminate the application.
 #[test]
 fn end_from_pom_with_other_tabs_closes_pom_not_app() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     // Make the active tab a POM, then open a second Workspace so the POM is not
     // the only tab.
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::MenuWorkspace;
+        tab.kind = TabKind::MenuWorkspace(None);
         tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
@@ -76,7 +76,7 @@ fn end_from_pom_with_other_tabs_closes_pom_not_app() {
 /// exit branch is taken instead of close-and-navigate).
 #[test]
 fn end_from_pom_as_only_workspace_does_not_close_tab() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     // Reduce to a single POM tab.
     while shell.tabs.len() > 1 {
@@ -84,7 +84,7 @@ fn end_from_pom_as_only_workspace_does_not_close_tab() {
     }
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::MenuWorkspace;
+        tab.kind = TabKind::MenuWorkspace(None);
         tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
@@ -107,11 +107,11 @@ fn end_from_pom_as_only_workspace_does_not_close_tab() {
 /// END), not the app.
 #[test]
 fn return_from_pom_with_other_tabs_closes_pom_not_app() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::MenuWorkspace;
+        tab.kind = TabKind::MenuWorkspace(None);
         tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
@@ -137,7 +137,7 @@ fn return_from_pom_with_other_tabs_closes_pom_not_app() {
 #[test]
 fn return_at_directly_rooted_non_pom_closes_workspace() {
     // Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052)
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     // Open a second tab so the close path removes a tab rather than app-exiting.
     shell.tabs.insert_pom_tab(&shell.runtime);
@@ -208,17 +208,17 @@ fn return_from_drilled_in_collapses_to_visual_root() {
 fn file_explorer_panel_end_command_returns_to_pom() {
     // Validates: Requirement 19.10
     use crate::tab_manager::TabManager;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use tokio::runtime::Runtime;
     let runtime = Runtime::new().expect("runtime");
     let mut mgr = TabManager::new(&runtime, "");
     mgr.insert_pom_tab(&runtime);
     mgr.transform_active_pom_tab(TabKind::FileExplorerPanel, "[FILES]");
-    assert_eq!(mgr.active_tab().kind, TabKind::FileExplorerPanel);
+    assert_eq!(mgr.active_tab().kind.tag(), KindTag::FileExplorerPanel);
     // Simulate END: transform back to POM
     let idx = mgr.active_index();
     if let Some(tab) = mgr.tabs_mut().get_mut(idx) {
-        tab.kind = TabKind::MenuWorkspace;
+        tab.kind = TabKind::MenuWorkspace(None);
         tab.is_home = true;
         tab.title = "[POM]".to_string();
     }
@@ -253,16 +253,16 @@ fn fastpath_notation_navigates_to_option() {
 /// active Workspace is NOT the POM.
 #[test]
 fn chained_fastpath_pops_to_pom_origin_from_non_pom() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     // Move away from the POM first (open the Keys Workspace directly).
     shell.dispatch_command_string("KEYS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::KeysEditor);
     // From a non-POM context, `=0` must resolve option 0 against the POM.
     shell.handle_command("=0.K");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::KeysEditor,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::KeysEditor,
         "=0.K from a non-POM context must still resolve against the POM origin"
     );
     let err = shell.open_error.as_deref().unwrap_or("");
@@ -277,7 +277,7 @@ fn chained_fastpath_pops_to_pom_origin_from_non_pom() {
 /// not the flat All-Settings view.
 #[test]
 fn settings_end_from_namespace_view_returns_to_menu() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG editor");
     assert_eq!(
@@ -287,8 +287,8 @@ fn settings_end_from_namespace_view_returns_to_menu() {
     shell.handle_command("END");
     // END returns to the Settings_Menu (Menu_Workspace), not the flat list.
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "END from a namespace view must return to the Settings_Menu"
     );
 }
@@ -309,9 +309,9 @@ fn pom_key_s_routes_to_search() {
         "SEARCH must open Search without error, got: {:?}",
         shell.open_error
     );
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let has_search =
-        (0..shell.tabs.len()).any(|i| shell.tabs.tabs()[i].kind == TabKind::SearchResults);
+        (0..shell.tabs.len()).any(|i| shell.tabs.tabs()[i].kind.tag() == KindTag::SearchResults);
     assert!(has_search, "SEARCH must open a Search Results tab");
 }
 
@@ -321,10 +321,10 @@ fn pom_key_s_routes_to_search() {
 fn pom_key_resolves_to_configured_command() {
     let mut shell = make_shell();
     shell.handle_command("2");
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::FileExplorerPanel,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::FileExplorerPanel,
         "key 2 must resolve to its pom.toml command (FILES)"
     );
 }
@@ -337,8 +337,8 @@ fn option_8_routes_to_plugin_manager() {
     // remains reachable by name (and via any user menu that maps a key to it).
     let mut shell = make_shell();
     shell.dispatch_command_string("PLUGINS");
-    use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::PluginManager);
 }
 
 /// Validates: file-tree-panel Requirement 24.9 (open resolves to the real file)
@@ -387,8 +387,8 @@ fn option_5_routes_to_macro_library() {
     // that maps a key to it. This test exercises the command routing directly.
     let mut shell = make_shell();
     shell.dispatch_command_string("MACROS");
-    use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MacroLibrary);
 }
 
 /// Validates: Requirement 21.4 (CR-CH-012) -- the persisted POM Menu descriptor
@@ -397,7 +397,7 @@ fn option_5_routes_to_macro_library() {
 /// create a second/duplicate menu workspace.
 #[test]
 fn restore_pom_menu_descriptor_is_left_to_the_pom_guarantee() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_session::session_state::WorkspaceDescriptor;
 
     let menus = tempfile::TempDir::new().expect("tempdir");
@@ -422,7 +422,7 @@ fn restore_pom_menu_descriptor_is_left_to_the_pom_guarantee() {
             .tabs
             .tabs()
             .iter()
-            .any(|t| t.kind == TabKind::MenuWorkspace && !t.is_home),
+            .any(|t| t.kind.tag() == KindTag::MenuWorkspace && !t.is_home),
         "restoring the POM descriptor must not create a non-home menu tab"
     );
 }
@@ -461,8 +461,8 @@ fn menu_option_command_matching_definition_id_dispatches() {
     };
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
-        tab.kind = crate::tab_state::TabKind::MenuWorkspace;
-        tab.menu_workspace = Some(mw);
+        tab.kind = crate::tab_state::TabKind::MenuWorkspace(None);
+        tab.kind = crate::tab_state::TabKind::MenuWorkspace(Some(mw));
     }
 
     // Selecting option "1" should resolve to the user target and dispatch it
@@ -479,10 +479,13 @@ fn menu_option_command_matching_definition_id_dispatches() {
 // Configurator returns the tab to the POM.
 #[test]
 fn command_configurator_end_returns_to_pom() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("COMMANDS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::CommandConfigurator
+    );
     // CR-CH-022: END pops the Navigation_Stack (which holds [POM]) and
     // reconstructs the POM in place -- synchronously, no deferred flag.
     shell.handle_command("END");
@@ -502,11 +505,14 @@ fn menu_pom_resolves_to_home_context() {
 // through the same menu-open path (POM target returns to the Home Context).
 #[test]
 fn dispatch_menu_target_pom_opens_home_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     use ff_command::CommandTarget;
     let mut shell = make_shell();
     shell.dispatch_command_string("COMMANDS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::CommandConfigurator
+    );
     shell.dispatch_command_target(&CommandTarget::Menu {
         name: "pom".to_string(),
     });
@@ -521,7 +527,7 @@ fn dispatch_menu_target_pom_opens_home_context() {
 // typed path (try_menu_name_dispatch) applies.
 #[test]
 fn clicking_pom_settings_option_opens_settings_menu_in_place() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     // Ensure the ACTIVE tab is the POM (Home Context), as when the user is on
     // the POM. `make_shell` starts with a bare welcome tab, so open a POM via
@@ -546,8 +552,8 @@ fn clicking_pom_settings_option_opens_settings_menu_in_place() {
         "clicking Settings must navigate in place, not open a new tab (B075)"
     );
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "clicking Settings must land on a Menu_Workspace"
     );
     assert!(
@@ -557,8 +563,8 @@ fn clicking_pom_settings_option_opens_settings_menu_in_place() {
     let title_is_settings = shell
         .tabs
         .active_tab()
-        .menu_workspace
-        .as_ref()
+        .kind
+        .menu_workspace()
         .and_then(|mw| mw.menu.as_ref())
         .map(|m| m.title.eq_ignore_ascii_case("Settings"))
         .unwrap_or(false);
@@ -576,7 +582,7 @@ fn clicking_pom_settings_option_opens_settings_menu_in_place() {
 // one Option-Selection path, POM == Settings, click == typed.
 #[test]
 fn pom_settings_click_equals_typed_settings() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     // Path A: click the POM "Settings" option (command "Settings").
     let mut click = make_shell();
@@ -604,13 +610,13 @@ fn pom_settings_click_equals_typed_settings() {
         "typed SETTINGS must navigate in place"
     );
     assert_eq!(
-        click.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        click.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "click lands on a Menu_Workspace"
     );
     assert_eq!(
-        typed.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        typed.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "typed lands on a Menu_Workspace"
     );
     assert!(!click.tabs.active_tab().is_home, "click leaves the POM");
@@ -644,8 +650,8 @@ fn pom_option_key_type_and_click_same_result() {
     let option1_command = probe
         .tabs
         .active_tab()
-        .menu_workspace
-        .as_ref()
+        .kind
+        .menu_workspace()
         .and_then(|mw| mw.menu.as_ref())
         .and_then(|m| m.options.iter().find(|o| o.key == "1"))
         .map(|o| o.command.clone())
@@ -676,8 +682,8 @@ fn pom_option_key_type_and_click_same_result() {
         "click of option 1 navigates in place"
     );
     assert_eq!(
-        typed.tabs.active_tab().kind,
-        click.tabs.active_tab().kind,
+        typed.tabs.active_tab().kind.tag(),
+        click.tabs.active_tab().kind.tag(),
         "typing the POM option key `1` and clicking its row must land on the same kind (Req 19.2 / 14.1)"
     );
     assert!(
@@ -690,10 +696,10 @@ fn pom_option_key_type_and_click_same_result() {
 // menu name (no MENU keyword) opens that menu; POM resolves to the Home Context.
 #[test]
 fn keyword_less_pom_menu_name_opens_home_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("SETTINGS"); // leave the POM first
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     shell.handle_command("POM");
     assert!(
         shell.tabs.active_tab().is_home,
@@ -704,20 +710,20 @@ fn keyword_less_pom_menu_name_opens_home_context() {
 // Validates: cw-requirements.md Req 9.1 -- option 0 / =0 open the Settings_Menu.
 #[test]
 fn settings_option_zero_opens_menu_workspace() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("0");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
 }
 
 // Validates: cw-requirements.md Req 9.4 -- option A opens the unfiltered flat
 // CR-CH-025: bare CONFIG opens the flat All-Settings view, NOT the menu.
 #[test]
 fn settings_option_a_opens_flat_panel() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     assert!(shell.config_panel.namespace_filter.is_none());
     assert_eq!(shell.tabs.active_tab().title, "[CONFIG]");
 }
@@ -726,10 +732,10 @@ fn settings_option_a_opens_flat_panel() {
 // (a Menu_Workspace) returns to the POM.
 #[test]
 fn settings_menu_end_returns_to_pom() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("SETTINGS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     // CR-CH-022: END pops the Navigation_Stack ([POM]) and reconstructs the POM
     // in place, synchronously.
     shell.handle_command("END");
@@ -780,7 +786,7 @@ fn menus_editor_edit_option_field_mutates_working() {
 // never opens a new tab.
 #[test]
 fn navigation_transforms_in_place_no_new_tab() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     let start_len = shell.tabs.len();
     shell.handle_command("SETTINGS");
@@ -789,26 +795,26 @@ fn navigation_transforms_in_place_no_new_tab() {
         start_len,
         "navigation must not open a new tab"
     );
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     shell.dispatch_command_string("PLUGINS");
     assert_eq!(
         shell.tabs.len(),
         start_len,
         "still no new tab after a second navigation"
     );
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::PluginManager);
 }
 
 // Validates: Req 14.8 -- START =0 roots at the POM then drills to Settings,
 // leaving the POM on the stack so END walks back to the POM.
 #[test]
 fn start_equals_path_keeps_pom_on_stack() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("START =0"); // POM option 0 = SETTINGS
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "START =0 drills to the Settings menu"
     );
     assert!(
@@ -832,7 +838,7 @@ fn start_equals_path_keeps_pom_on_stack() {
 #[test]
 fn full_shell_config_tree_arrows_navigate_and_expand() {
     use crate::config_panel::ConfigNodeId;
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     let mut harness = harness_shell();
     harness.state_mut().dispatch_command_string("CONFIG");
@@ -840,8 +846,8 @@ fn full_shell_config_tree_arrows_navigate_and_expand() {
         harness.run();
     }
     assert_eq!(
-        harness.state().tabs.active_tab().kind,
-        TabKind::ConfigPanel,
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
         "CONFIG opens the flat Config panel"
     );
 
@@ -963,12 +969,12 @@ fn pom_command_and_bare_start_open_home_context() {
 /// `open_menu_by_name("pom")` effect.
 #[test]
 fn typed_pom_resolves_as_menu_name_opens_home_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.handle_command("START"); // ensure a POM exists and is active
     assert!(shell.tabs.active_tab().is_home, "precondition: on the POM");
     shell.handle_command("SETTINGS"); // leave the POM (in place)
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     assert!(!shell.tabs.active_tab().is_home, "left the POM");
 
     shell.handle_command("POM");
@@ -1032,7 +1038,7 @@ fn end_from_drilled_menu_restores_home_context() {
 // rather than closing the last Workspace and exiting the app.
 #[test]
 fn end_from_help_context_returns_to_previous_context_not_exit() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
@@ -1042,8 +1048,8 @@ fn end_from_help_context_returns_to_previous_context_not_exit() {
     // F1 / HELP opens the Help Context (pushing the Home Context onto the stack).
     shell.handle_command("HELP");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::HelpContext,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::HelpContext,
         "HELP opens the Help Context"
     );
     assert_eq!(
@@ -1059,8 +1065,8 @@ fn end_from_help_context_returns_to_previous_context_not_exit() {
         "END from the Help Context must restore the previous (Home) Context"
     );
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "the restored Context is the POM Menu_Workspace"
     );
     assert_eq!(
@@ -1074,7 +1080,7 @@ fn end_from_help_context_returns_to_previous_context_not_exit() {
 // Context (e.g. Settings) returns to THAT Context on END, not the POM.
 #[test]
 fn end_from_help_returns_to_drilled_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
@@ -1084,11 +1090,11 @@ fn end_from_help_returns_to_drilled_context() {
 
     // HELP from Settings pushes Settings; END returns to Settings, not the POM.
     shell.handle_command("HELP");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::HelpContext);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::HelpContext);
     shell.handle_command("END");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
         "END from Help returns to the Settings Menu_Workspace"
     );
     assert!(

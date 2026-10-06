@@ -110,7 +110,7 @@ fn capture_replay_without_collection_reports_nothing() {
 /// the SCRM viewer Context when a collection exists.
 #[test]
 fn capture_replay_opens_viewer_when_collection_exists() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
@@ -118,8 +118,8 @@ fn capture_replay_opens_viewer_when_collection_exists() {
     shell.handle_command("CAPTURE SCREEN");
     shell.handle_command("CAPTURE REPLAY");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::ScrmViewer,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ScrmViewer,
         "CAPTURE REPLAY opens the SCRM viewer Context"
     );
 }

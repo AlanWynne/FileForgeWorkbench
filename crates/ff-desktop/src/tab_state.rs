@@ -10,12 +10,16 @@ use std::collections::HashMap;
 
 use crate::menu_workspace::MenuWorkspaceState;
 
-/// The kind of content a tab is displaying.
+/// The DISCRIMINANT of a tab's kind -- a cheap `Copy` tag used for comparisons
+/// and dispatch keys. This is the enum formerly named `TabKind`; it was split
+/// (Task 8, Approach C) from the payload-carrying [`TabKind`] so that equality
+/// and kind lookups stay a trivial `Copy` compare while per-kind STATE lives in
+/// the payload enum. Obtain it from a `TabKind` via [`TabKind::tag`].
 ///
 /// Drives central-panel dispatch and determines which context-menu items
 /// are shown when the user right-clicks the tab header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TabKind {
+pub enum KindTag {
     /// A file loaded from the VFS.
     FileEditor,
     /// A new, unsaved buffer with no backing file.
@@ -86,6 +90,102 @@ pub enum TabKind {
     ScrmViewer,
 }
 
+/// The kind of content a tab is displaying, carrying any kind-specific STATE as
+/// a payload (Task 8, Approach C). Most variants are unit variants; the sole
+/// payload-carrying variant today is [`TabKind::MenuWorkspace`], which owns the
+/// tab's [`MenuWorkspaceState`] inline rather than in a sibling `TabState`
+/// field. It is intentionally NOT `Copy` (the payload is not `Copy`) and does
+/// NOT derive `PartialEq`/`Eq` -- equality is the [`KindTag`] discriminant's
+/// job, obtained via [`TabKind::tag`].
+#[derive(Debug)]
+pub enum TabKind {
+    /// A file loaded from the VFS.
+    FileEditor,
+    /// A new, unsaved buffer with no backing file.
+    Untitled,
+    /// Virtual Catalog Manager -- POM option 1.
+    FilesPanel,
+    /// Config Panel -- the flat config-key browser opened by `CONFIG`.
+    ConfigPanel,
+    /// File Explorer Panel -- POM option 2 (tree view of catalog contents).
+    FileExplorerPanel,
+    /// Global Search Results panel.
+    SearchResults,
+    /// Plugin Manager panel -- POM option 8.
+    PluginManager,
+    /// Event Log panel -- notification history.
+    EventLog,
+    /// Macro Library panel -- POM option 6 / MACROS / =6.
+    MacroLibrary,
+    /// A data-driven menu loaded from a TOML file, carrying its own
+    /// [`MenuWorkspaceState`] (the POM, Settings, and every named menu). The
+    /// `Option` is `None` only before lazy seeding (e.g. the POM at startup
+    /// before `ensure_pom_menu_loaded` runs).
+    ///
+    /// Validates: menu-workspace Requirement 1, 2
+    MenuWorkspace(Option<MenuWorkspaceState>),
+    /// Command Configurator -- lists and edits user-defined command definitions.
+    CommandConfigurator,
+    /// Theme Editor -- copy/edit/save/set-active themes.
+    ThemeEditor,
+    /// In-app Menus editor Context (create/edit/reorder/save menu TOMLs).
+    MenusEditor,
+    /// In-app Keys editor Context.
+    KeysEditor,
+    /// In-app Workspace Kinds editor Context.
+    KindsEditor,
+    /// Context-sensitive Help Context (F1 / HELP).
+    HelpContext,
+    /// Screen Collection Replay viewer Context (CAPTURE REPLAY).
+    ScrmViewer,
+}
+
+impl TabKind {
+    /// The [`KindTag`] discriminant for this kind, used for all equality and
+    /// dispatch comparisons (`tab.kind.tag() == KindTag::X`).
+    pub fn tag(&self) -> KindTag {
+        match self {
+            TabKind::FileEditor => KindTag::FileEditor,
+            TabKind::Untitled => KindTag::Untitled,
+            TabKind::FilesPanel => KindTag::FilesPanel,
+            TabKind::ConfigPanel => KindTag::ConfigPanel,
+            TabKind::FileExplorerPanel => KindTag::FileExplorerPanel,
+            TabKind::SearchResults => KindTag::SearchResults,
+            TabKind::PluginManager => KindTag::PluginManager,
+            TabKind::EventLog => KindTag::EventLog,
+            TabKind::MacroLibrary => KindTag::MacroLibrary,
+            TabKind::MenuWorkspace(_) => KindTag::MenuWorkspace,
+            TabKind::CommandConfigurator => KindTag::CommandConfigurator,
+            TabKind::ThemeEditor => KindTag::ThemeEditor,
+            TabKind::MenusEditor => KindTag::MenusEditor,
+            TabKind::KeysEditor => KindTag::KeysEditor,
+            TabKind::KindsEditor => KindTag::KindsEditor,
+            TabKind::HelpContext => KindTag::HelpContext,
+            TabKind::ScrmViewer => KindTag::ScrmViewer,
+        }
+    }
+
+    /// The inner [`MenuWorkspaceState`] when this is a [`TabKind::MenuWorkspace`]
+    /// that has been seeded, else `None`. Mirrors the former
+    /// `TabState::menu_workspace.as_ref()`.
+    pub fn menu_workspace(&self) -> Option<&MenuWorkspaceState> {
+        match self {
+            TabKind::MenuWorkspace(mw) => mw.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Mutable access to the inner [`MenuWorkspaceState`] when this is a seeded
+    /// [`TabKind::MenuWorkspace`], else `None`. Mirrors the former
+    /// `TabState::menu_workspace.as_mut()`.
+    pub fn menu_workspace_mut(&mut self) -> Option<&mut MenuWorkspaceState> {
+        match self {
+            TabKind::MenuWorkspace(mw) => mw.as_mut(),
+            _ => None,
+        }
+    }
+}
+
 /// A single undoable edit stored as the inverse operation to apply.
 #[derive(Debug)]
 pub enum UndoEntry {
@@ -148,10 +248,6 @@ pub struct TabState {
     ///
     /// Validates: CX Requirement 1.1, 1.2, 1.3, 1.4
     pub workspace_name: Option<String>,
-    /// Menu Workspace state -- populated when `kind == TabKind::MenuWorkspace`.
-    ///
-    /// Validates: menu-workspace Requirement 1, 2
-    pub menu_workspace: Option<MenuWorkspaceState>,
     /// True when this Menu Workspace is the Home Context (the POM). After the
     /// CR-NR-082 Slice 1 unification the POM is just a `MenuWorkspace` tab whose
     /// menu is `pom`; this flag is the stable Home identity (survives before the

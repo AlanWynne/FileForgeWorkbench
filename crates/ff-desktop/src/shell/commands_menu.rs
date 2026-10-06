@@ -12,9 +12,9 @@ impl WorkbenchShell {
     ///
     /// Validates: global-search Requirement 1.1, 1.3
     pub(super) fn open_or_focus_search_panel(&mut self) {
-        use crate::tab_state::TabKind;
+        use crate::tab_state::KindTag;
         for i in 0..self.tabs.len() {
-            if self.tabs.tabs()[i].kind == TabKind::SearchResults {
+            if self.tabs.tabs()[i].kind.tag() == KindTag::SearchResults {
                 self.tabs.set_active(i);
                 return;
             }
@@ -91,7 +91,7 @@ impl WorkbenchShell {
         self.tabs
             .open_menu_workspace_tab(&lower, &menus_dir, limits, &self.runtime);
         // Surface the load-error message when the backing file is missing (11.4).
-        if let Some(mw) = self.tabs.active_tab().menu_workspace.as_ref() {
+        if let Some(mw) = self.tabs.active_tab().kind.menu_workspace() {
             self.open_error = mw.load_error.clone();
         } else {
             self.open_error = None;
@@ -107,7 +107,7 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 3.1, 3.6, 10.1, 10.3, 10.6
     pub(super) fn try_current_menu_option(&mut self, cmd: &str) -> bool {
-        if self.tabs.active_tab().kind != crate::tab_state::TabKind::MenuWorkspace {
+        if self.tabs.active_tab().kind.tag() != crate::tab_state::KindTag::MenuWorkspace {
             return false;
         }
         // CR-CH-043 (menu-workspace Req 19.2): this is the ONE current-menu
@@ -127,8 +127,8 @@ impl WorkbenchShell {
         let resolved: Option<(Option<ff_command::CommandTarget>, String, String)> = self
             .tabs
             .active_tab()
-            .menu_workspace
-            .as_ref()
+            .kind
+            .menu_workspace()
             .and_then(|mw| mw.menu.as_ref())
             .and_then(|menu| {
                 crate::menu_workspace::commands::find_option(cmd.trim(), menu)
@@ -250,7 +250,7 @@ impl WorkbenchShell {
         // parse (a bypassed user file), matching the prior behaviour.
         let idx = self.tabs.active_index();
         if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
-            if let Some(mw) = tab.menu_workspace.as_ref() {
+            if let Some(mw) = tab.kind.menu_workspace() {
                 if let Some(err) = mw
                     .load_error
                     .as_deref()
@@ -298,13 +298,13 @@ impl WorkbenchShell {
             // Only insert the Settings-menu parent when we are not already on it
             // (avoid a redundant [Settings, Settings] pair when opened via the
             // Settings menu option).
-            let already_on_settings_menu = self.tabs.active_tab().kind
-                == crate::tab_state::TabKind::MenuWorkspace
+            let already_on_settings_menu = self.tabs.active_tab().kind.tag()
+                == crate::tab_state::KindTag::MenuWorkspace
                 && self
                     .tabs
                     .active_tab()
-                    .menu_workspace
-                    .as_ref()
+                    .kind
+                    .menu_workspace()
                     .and_then(|mw| mw.menu.as_ref())
                     .map(|m| m.title.eq_ignore_ascii_case("Settings"))
                     .unwrap_or(false);

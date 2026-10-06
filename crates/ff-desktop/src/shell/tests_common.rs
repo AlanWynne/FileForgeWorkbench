@@ -256,8 +256,8 @@ pub(crate) fn active_menu_title(shell: &super::WorkbenchShell) -> Option<String>
     shell
         .tabs
         .active_tab()
-        .menu_workspace
-        .as_ref()
+        .kind
+        .menu_workspace()
         .and_then(|mw| mw.menu.as_ref())
         .map(|m| m.title.clone())
 }
@@ -367,7 +367,7 @@ pub(crate) fn assert_first_tab_lands_on_reported_interior(command: &str, workspa
 /// The active tab's Kind stable name (for asserting its effective position).
 pub(crate) fn active_kind_name(shell: &super::WorkbenchShell) -> &'static str {
     let t = shell.tabs.active_tab();
-    crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind, t.is_home).stable_name()
+    crate::workspace_kind::BuiltinKind::from_tab_kind(t.kind.tag(), t.is_home).stable_name()
 }
 
 // === CR-NR-094 Slice 2d: per-region command lines (full shell) ==============

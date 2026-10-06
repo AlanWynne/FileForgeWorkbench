@@ -8,7 +8,7 @@
 
 use eframe::egui;
 
-use crate::tab_state::TabKind;
+use crate::tab_state::KindTag;
 use crate::toolchain_panel;
 
 use super::WorkbenchShell;
@@ -228,7 +228,7 @@ impl WorkbenchShell {
         // we consume the Tab event and request focus on the first catalog node.
         // We cannot use focus_stop here because focus_stop tracks the shell's
         // top-level command field, not the panel-internal one.
-        let is_files_panel = self.tabs.active_tab().kind == TabKind::FilesPanel;
+        let is_files_panel = self.tabs.active_tab().kind.tag() == KindTag::FilesPanel;
         if is_files_panel && !self.modal_open {
             let files_cmd_id = egui::Id::new("files_panel_cmd");
             let files_cmd_focused = ctx.memory(|m| m.focused() == Some(files_cmd_id));
@@ -258,8 +258,8 @@ impl WorkbenchShell {
         // when the Workspace is NOT split. While split, the File Explorer renders
         // INSIDE its region (via render_active_tab_body's FileExplorerPanel arm),
         // so the split must stay visible -- do not take the full-window branch.
-        let is_file_explorer =
-            self.tabs.active_tab().kind == TabKind::FileExplorerPanel && !self.tabs.is_split();
+        let is_file_explorer = self.tabs.active_tab().kind.tag() == KindTag::FileExplorerPanel
+            && !self.tabs.is_split();
         // CR-NR-060 Slice A: the NavModel-backed modern explorer is the sole File
         // Explorer content (legacy inline tree retired).
         // ── Toolchain Panel (bottom dock) ────────────────────────────────

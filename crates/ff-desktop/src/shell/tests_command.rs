@@ -765,8 +765,8 @@ fn plugins_command_routes_to_plugin_manager() {
     // Validates: plugin-manager-ui Requirement 1.1
     let mut shell = make_shell();
     shell.dispatch_command_string("PLUGINS");
-    use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::PluginManager);
 }
 
 /// Validates: menu-workspace Req 2.1i -- a POM fastpath key resolves to its
@@ -777,8 +777,8 @@ fn equals_8_command_routes_to_plugin_manager() {
     // fastpath resolver against a baseline key (=1 -> CATALOGS -> FilesPanel).
     let mut shell = make_shell();
     shell.handle_command("=1");
-    use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::FilesPanel);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FilesPanel);
 }
 
 /// Validates: notification-system Requirement 2.1 -- LOG command routes to EventLog.
@@ -787,8 +787,8 @@ fn log_command_routes_to_event_log() {
     // Validates: notification-system Requirement 2.1
     let mut shell = make_shell();
     shell.dispatch_command_string("LOG");
-    use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::EventLog);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::EventLog);
 }
 
 /// Validates: lua-macro-engine Requirement 12.1 -- MACROS command routes to MacroLibrary.
@@ -797,8 +797,8 @@ fn macros_command_routes_to_macro_library() {
     // Validates: lua-macro-engine Requirement 12.1
     let mut shell = make_shell();
     shell.dispatch_command_string("MACROS");
-    use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MacroLibrary);
 }
 
 /// Validates: menu-workspace Req 2.1i -- a POM fastpath key resolves to its
@@ -809,8 +809,11 @@ fn equals_5_command_routes_to_macro_library() {
     // resolver against a baseline key (=2 -> FILES -> File Explorer).
     let mut shell = make_shell();
     shell.handle_command("=2");
-    use crate::tab_state::TabKind;
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::FileExplorerPanel);
+    use crate::tab_state::{KindTag, TabKind};
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::FileExplorerPanel
+    );
 }
 
 // === Phase CX Tests =====================================================
@@ -855,10 +858,10 @@ fn name_command_truncates_to_32_chars() {
 fn keys_command_opens_keys_workspace() {
     // Validates: function-keys Req 22.1, 22.5 (CR-CH-029) -- KEYS opens the Keys
     // Workspace (a Context tab), NOT a modal dialog.
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("KEYS");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::KeysEditor);
 }
 
 // Validates: menu-workspace Requirement 10.3, command-configurator Requirement 4.3 --
@@ -981,11 +984,11 @@ fn run_command_definition_missing_id_reports_not_defined() {
 // Command Configurator Context with title [COMMANDS].
 #[test]
 fn commands_opens_command_configurator_context() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("COMMANDS");
     let tab = shell.tabs.active_tab();
-    assert_eq!(tab.kind, TabKind::CommandConfigurator);
+    assert_eq!(tab.kind.tag(), KindTag::CommandConfigurator);
     assert_eq!(tab.title, "[COMMANDS]");
     assert!(shell.open_error.is_none());
 }
@@ -1128,10 +1131,10 @@ fn config_command_is_registered() {
 // still opens the flat view (filter applied, editable), not an error.
 #[test]
 fn config_unknown_namespace_opens_editable_view() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG nosuchns");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     assert_eq!(
         shell.config_panel.namespace_filter.as_deref(),
         Some("nosuchns")
@@ -1288,12 +1291,12 @@ fn command_unknown_arg_sets_error_and_leaves_position() {
 /// `COMMANDS` (plural): `COMMANDS` still opens the Command Configurator.
 #[test]
 fn command_singular_does_not_shadow_commands_plural() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
     let mut shell = make_shell();
     shell.dispatch_command_string("COMMANDS");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::CommandConfigurator,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::CommandConfigurator,
         "COMMANDS (plural) still opens the Command Configurator, not the COMMAND arm"
     );
 }
@@ -1350,8 +1353,8 @@ fn help_command_opens_help_context() {
     let mut shell = make_shell();
     shell.handle_command("HELP");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        crate::tab_state::TabKind::HelpContext,
+        shell.tabs.active_tab().kind.tag(),
+        crate::tab_state::KindTag::HelpContext,
         "HELP opens the Help Context"
     );
 }
@@ -1371,8 +1374,8 @@ fn help_command_displays_file_based_topic() {
     )]);
     shell.handle_command("HELP CHANGE");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        crate::tab_state::TabKind::HelpContext
+        shell.tabs.active_tab().kind.tag(),
+        crate::tab_state::KindTag::HelpContext
     );
     let shown = shell
         .help_panel_for_test()
@@ -1431,7 +1434,7 @@ fn snapshot_command_sets_status_message() {
 /// Context with the same namespace filter.
 #[test]
 fn typed_and_key_paths_reach_same_handler_for_builtin_verb() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     // Typed path.
     let mut typed = make_shell();
@@ -1444,8 +1447,8 @@ fn typed_and_key_paths_reach_same_handler_for_builtin_verb() {
     keyed.dispatch_key_command("CONFIG core");
 
     // Both opened the Config Context with the same namespace filter and no error.
-    assert_eq!(typed.tabs.active_tab().kind, TabKind::ConfigPanel);
-    assert_eq!(keyed.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(typed.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
+    assert_eq!(keyed.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     assert_eq!(
         typed.config_panel.namespace_filter.as_deref(),
         Some("core"),
@@ -1470,17 +1473,18 @@ fn typed_and_key_paths_reach_same_handler_for_builtin_verb() {
 /// - bare `X` COLLAPSES to the Tab_Visual_Root (the POM); it does NOT app-exit.
 /// - `=X` reinitialises to the POM (front-door `=`) then `X` at the empty root
 ///   closes the Workspace, which app-exits ONLY because it is the last tab.
+///
 /// This supersedes the old "X / =X unconditionally dispatch file.exit" model.
 #[test]
 fn uniform_x_from_non_menu_context_collapses_then_equals_x_closes() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     // Bare `X`: collapse to the visual root (POM), NOT an app-exit.
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::ConfigPanel,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
         "precondition: active Context is the non-menu Config panel"
     );
     assert!(
@@ -1508,7 +1512,7 @@ fn uniform_x_from_non_menu_context_collapses_then_equals_x_closes() {
     // closes the Workspace -> app-exit (last tab).
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG");
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
     assert_eq!(shell.tabs.len(), 1, "precondition: single tab");
     assert!(!*shell.should_close.lock().expect("close lock"));
 
@@ -1535,13 +1539,13 @@ fn uniform_x_from_non_menu_context_collapses_then_equals_x_closes() {
 /// must work as exclude, not return or exit".
 #[test]
 fn editor_bare_x_excludes_does_not_exit() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     let mut shell = make_shell();
     shell.shell_new_untitled();
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::Untitled,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::Untitled,
         "precondition: active Context is an editor (FFEDIT) Context"
     );
     assert!(
@@ -1564,13 +1568,13 @@ fn editor_bare_x_excludes_does_not_exit() {
 /// app-exit. (Under the superseded model it dispatched file.exit.)
 #[test]
 fn non_editor_bare_x_collapses_to_visual_root() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG");
     assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::ConfigPanel,
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
         "precondition: active Context is the non-editor Config panel"
     );
     assert!(
@@ -1604,13 +1608,13 @@ fn non_editor_bare_x_collapses_to_visual_root() {
 /// editor tab; as the last tab it app-exits.
 #[test]
 fn editor_equals_x_closes_workspace_not_exclude() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     // Case 1: another tab is open (shell_new_untitled adds a second tab), so
     // `=X` closes the editor Workspace WITHOUT app-exiting.
     let mut shell = make_shell();
     shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::Untitled);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
     assert_eq!(shell.tabs.len(), 2, "precondition: POM + editor tab");
     assert!(!*shell.should_close.lock().expect("close lock"));
 
@@ -1652,11 +1656,11 @@ fn editor_equals_x_closes_workspace_not_exclude() {
 /// ahead of `try_commands_a` (no regression in the editor-verb claim).
 #[test]
 fn editor_ffedit_verb_still_resolves_after_gate_move() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     let mut shell = make_shell();
     shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::Untitled);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
 
     // A representative FFEDIT verb; it must not close/exit and must be claimed by
     // FFEDIT (reaching its handler), proving the gate still fires for editor verbs.
@@ -1680,11 +1684,11 @@ fn editor_ffedit_verb_still_resolves_after_gate_move() {
 /// stays clean, and the editor is not left.
 #[test]
 fn editor_save_on_clean_buffer_is_noop() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     let mut shell = make_shell();
     shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::Untitled);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
     assert!(
         !shell.tabs.active_tab().is_modified,
         "precondition: a fresh untitled buffer is clean"
@@ -1712,11 +1716,11 @@ fn editor_save_on_clean_buffer_is_noop() {
 /// exercises the write-fail = stay + error path.
 #[test]
 fn editor_save_on_dirty_untitled_errors_and_stays() {
-    use crate::tab_state::TabKind;
+    use crate::tab_state::{KindTag, TabKind};
 
     let mut shell = make_shell();
     shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind, TabKind::Untitled);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
     shell.tabs.active_tab_mut().is_modified = true;
 
     shell.run_command_line("SAVE");
