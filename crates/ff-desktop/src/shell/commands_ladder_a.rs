@@ -15,20 +15,28 @@ impl WorkbenchShell {
     /// movement -- no behaviour change). Returns `true` when a branch
     /// handled the command (the caller then returns), `false` to fall
     /// through to the next segment. Branch order is preserved exactly.
-    /// The EXIT family (EXIT / QUIT / =X / X / LOGOFF) classification, extracted
-    /// so the single front door (`dispatch_command_string`, Step 2) can run it at
-    /// its ORIGINAL ladder precedence -- BEFORE the POM Option_Key fastpath --
-    /// without re-ordering the chain. This preserves the locked Req 8.4 behaviour
-    /// that `X` / `=X` typed from a NON-menu context exit the app (file.exit)
-    /// rather than resolving as the POM's `X` -> `Return` option. The front door
-    /// calls this before `resolve_pom_option_key`; `try_commands_a` also calls it
-    /// first (so the fall-through ladder path is unchanged), but the front door
-    /// returns before reaching the ladder, so it never double-runs.
+    /// The EXIT family (EXIT / QUIT / LOGOFF) classification -- the UNCONDITIONAL
+    /// app-exit verbs (CR-CH-052). Extracted so the single front door
+    /// (`dispatch_command_string`) can run it at its ORIGINAL ladder precedence --
+    /// BEFORE the POM Option_Key fastpath -- without re-ordering the chain. The
+    /// front door calls this before `resolve_pom_option_key`; `try_commands_a`
+    /// also calls it first (so the fall-through ladder path is unchanged), but the
+    /// front door returns before reaching the ladder, so it never double-runs.
+    ///
+    /// `X` and `=X` are NO LONGER members of this family (CR-CH-052): `X` is the
+    /// uniform FFCMD close verb (`nav_x`), and `=X` is handled by the front-door
+    /// `=` step followed by `X` at the POM root. Only EXIT / QUIT / LOGOFF are
+    /// unconditional app-exit.
     ///
     /// Validates: command-framework Requirement 8.4; Requirement 20.3
     pub(super) fn try_exit_family(&mut self, upper: &str) -> bool {
-        if upper == "EXIT" || upper == "QUIT" || upper == "=X" || upper == "X" || upper == "LOGOFF"
-        {
+        // CR-CH-052: the EXIT family is now EXIT / QUIT / LOGOFF only -- the
+        // UNCONDITIONAL app-exit verbs. `X` is NO LONGER an exit verb: it is the
+        // uniform FFCMD close verb (`nav_x`, collapse-to-visual-root / close
+        // workspace, exit only when last). `=X` is likewise gone: the front-door
+        // `=` step reinitialises to the POM and the trailing `X` closes the
+        // Workspace at the empty root -- `=X` is NOT app-exit.
+        if upper == "EXIT" || upper == "QUIT" || upper == "LOGOFF" {
             // Validates: Requirement 20.3 -- LOGOFF is an alias for EXIT
             if upper == "LOGOFF" {
                 let msg = self.format_logoff_message();
@@ -185,34 +193,13 @@ impl WorkbenchShell {
             return true;
         }
 
-        // ── KEYS -- Validates: Requirement 20.1, CX Requirement 2.1-2.4 ──────
-        // SUPERSEDED by `builtin_workspace_target` (B080 Step 2): the front door
-        // resolves KEYS via `resolve_target` -> CustomWorkspace("keys") BEFORE
-        // falling through to this ladder, so this arm is now an unreachable
-        // fallback kept for per-step rollback safety (deletion is a Step-2
-        // follow-up). Its body is unchanged.
-        if let Some(kind) = verb_arg(cmd, "KEYS") {
-            // Validates: function-keys Requirement 22.1, 22.5 (CR-CH-029) --
-            // bare KEYS opens the Keys Workspace in place (replaces the modal);
-            // KEYS <kind> opens it with that workspace kind pre-selected.
-            let kind = if kind.is_empty() { None } else { Some(kind) };
-            self.open_keys_editor(kind);
-            self.open_error = None;
-            return true;
-        }
-
-        // ── KINDS -- Validates: workspace-kinds Requirement 6.4 (CR-NR-090 B.4)
-        // Open the Workspace Kinds Editor Context (command parity: the same path
-        // whether typed or dispatched from the Settings menu).
-        // SUPERSEDED by `builtin_workspace_target` (B080 Step 2): resolved via
-        // `resolve_target` -> CustomWorkspace("kinds") before this ladder arm is
-        // reached; kept as an unreachable fallback pending Step-2-follow-up
-        // deletion. Body unchanged.
-        if upper == "KINDS" {
-            self.open_kinds_editor();
-            self.open_error = None;
-            return true;
-        }
+        // ── KEYS / KINDS arms DELETED (CR-CH-052, B080 Step 2 follow-up) ─────
+        // KEYS -> CustomWorkspace("keys") and KINDS -> CustomWorkspace("kinds")
+        // are now resolved by `builtin_workspace_target` through the front door's
+        // `resolve_target` BEFORE this ladder is reached (the CustomWorkspace
+        // dispatch arm calls the identical shell open method). The nav callers
+        // that formerly reached these via `handle_command` were rerouted to the
+        // front door, so these arms are truly dead and have been removed.
 
         // ── PFSHOW — Validates: Requirement 12.1-12.3, 12.8-12.9, 12.13 ————————
         // CR-CH-046: bare PFSHOW cycles Off -> Base -> Shift -> Ctrl -> Alt -> Off;
@@ -248,12 +235,28 @@ impl WorkbenchShell {
             return true;
         }
 
-        // ── RETURN -- Validates: menu-workspace Requirement 14.10 (CR-CH-022) ──
+        // ── RETURN -- Validates: menu-workspace Requirement 14.10 (CR-CH-052) ──
         if upper == "RETURN" {
-            // RETURN collapses the whole Navigation_Stack to the tab's ROOT
-            // Context in one step (distinct from END's one-level pop); at the
-            // root it behaves as END-at-root (close / exit when last, CR-CH-016).
+            // CR-CH-052 (supersedes CR-CH-038): RETURN collapses the whole
+            // Navigation_Stack to the TAB'S VISUAL ROOT in one step (converges
+            // with bare X); at the root it closes the Workspace (exit when last,
+            // CR-CH-016). It no longer jumps to the global POM -- the `=` family
+            // is now the only way to reinitialise the stack to the POM.
             self.nav_return();
+            self.open_error = None;
+            return true;
+        }
+
+        // ── X -- Validates: menu-workspace Requirement 14.13, 14.14 (CR-CH-052) ─
+        if upper == "X" {
+            // Uniform FFCMD close verb: non-empty stack collapses to the
+            // Tab_Visual_Root; empty stack closes the Workspace (exit when last).
+            // Identical for every context including the POM -- NO special case.
+            // The editor Command_Environment claims bare `X` as EXCLUDE first
+            // (CR-CH-053 E8), so this arm is only reached on non-editor contexts
+            // (and for `=X`, where the front-door `=` step already reinitialised
+            // to the POM root so `X` closes the Workspace).
+            self.nav_x();
             self.open_error = None;
             return true;
         }

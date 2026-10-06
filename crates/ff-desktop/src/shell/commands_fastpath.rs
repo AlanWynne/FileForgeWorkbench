@@ -111,20 +111,24 @@ impl WorkbenchShell {
             return None;
         }
 
-        // Navigation_Origin: `=` pops to the POM before resolving segment 1.
-        if is_origin && !self.tabs.active_tab().is_home {
-            self.tabs.insert_pom_tab(&self.runtime);
-            self.ensure_pom_menu_loaded();
-        }
+        // CR-CH-052: the Navigation_Origin pop is REMOVED here. The single
+        // front-door `=` step (`dispatch_command_string`) already reinitialised
+        // the active tab's Navigation_Stack to the POM before any `=`-prefixed
+        // input reaches this method, so a second pop here would be redundant (and
+        // the three nav callers now route through the front door, so no bare `=`
+        // segment arrives). The `strip_prefix('=')` on `body` above is retained
+        // as a harmless no-op for defensive direct callers; `is_origin` is still
+        // used above only to classify a bare `=<key>` path as a fastpath.
 
-        // Dispatch each segment as an Option_Key. Every re-entry routes through
-        // `handle_command`, which (as of B080 Step 2) runs the stage-1
-        // current-menu Option_Key lookup, the fastpaths, and `resolve_target` in
-        // the single ordered chain -- so a segment that is itself an in-scope
-        // verb resolves through the resolver, and the sub-menu / option opens in
-        // place (D8).
+        // Dispatch each segment as an Option_Key. CR-CH-052 (B080 reroute):
+        // every segment re-enters through the single front door
+        // `dispatch_command_string` (not `handle_command`), so a segment that is
+        // itself an in-scope verb reaches `resolve_target` and the CustomWorkspace
+        // dispatch arm (the same shell open method as the deleted ladder arm);
+        // the sub-menu / option opens in place (D8). The front door's `=` step is
+        // never triggered here because segments are already `=`-stripped.
         for segment in segments {
-            self.handle_command(segment);
+            self.dispatch_command_string(segment);
         }
         Some(true)
     }
@@ -144,7 +148,11 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 2.1e, 2.1i
     pub(super) fn resolve_pom_option_key(&mut self, upper: &str) -> Option<String> {
-        // Normalise: strip a single leading '=' for the fastpath form.
+        // Normalise: strip a single leading '=' for the fastpath form. CR-CH-052:
+        // the front-door `=` step (`dispatch_command_string`) already strips `=`
+        // before this is reached on the typed/front-door path, so this strip is
+        // now a defensive no-op there; it is kept only so a direct `handle_command`
+        // caller that passes a stale `=key` still resolves.
         let key = upper.strip_prefix('=').unwrap_or(upper);
         // Only single short keys are POM option keys (1-4 chars, no spaces).
         if key.is_empty() || key.len() > 4 || key.contains(' ') {

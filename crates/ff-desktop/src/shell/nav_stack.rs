@@ -158,27 +158,71 @@ impl WorkbenchShell {
         }
     }
 
-    /// RETURN: collapse the active tab's Navigation_Stack to its ROOT Context in
-    /// one step. When already at the root (empty stack), behaves as END-at-root.
+    /// RETURN: collapse the active tab's Navigation_Stack to its own
+    /// Tab_Visual_Root (the bottom of its stack) in one step. When already at the
+    /// root (empty stack), close the Workspace (exit when last, CR-CH-016).
     ///
-    /// Validates: menu-workspace Requirement 14.10 (CR-CH-038)
+    /// CR-CH-052 (supersedes CR-CH-038): RETURN targets the TAB'S VISUAL ROOT,
+    /// not the global POM. The Tab_Visual_Root is the context the tab was STARTed
+    /// at (POM by default, or `START <ctx>`), i.e. `nav_stack[0]`. RETURN now
+    /// converges with bare `X` on a non-empty stack. The `=` family remains the
+    /// only way to reinitialise the stack to the POM (FFCMD_Root).
+    ///
+    /// Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052)
     pub(super) fn nav_return(&mut self) {
-        // CR-CH-038: RETURN targets the POM, not the tab's arbitrary root.
-        // - non-POM active tab -> navigate to the Home Context (POM) in one step,
-        //   clearing the Navigation_Stack, regardless of stack depth or whether
-        //   the workspace was rooted directly (START <arg>). The workspace stays
-        //   open, now showing the POM.
-        // - POM active tab -> close this one workspace (Option A: one workspace
-        //   per RETURN; exit when it is the last, CR-CH-016). This behaviour is
-        //   identical in a docked and a Detached_Workspace.
-        if self.tabs.active_tab().is_home {
+        if self.tabs.active_tab().nav_stack.is_empty() {
             self.close_workspace_or_exit();
         } else {
+            self.nav_collapse_to_visual_root();
+        }
+    }
+
+    /// Collapse the active tab's Navigation_Stack to its Tab_Visual_Root (the
+    /// bottom of the stack, `nav_stack[0]`) in one step: reconstruct that root
+    /// Context in place, then clear the stack. A no-op when the stack is already
+    /// empty (the tab is already AT its visual root). Shared by bare `X` and
+    /// RETURN on a non-empty stack (CR-CH-052).
+    ///
+    /// Validates: menu-workspace Requirement 14.10, 14.13 (revised, CR-CH-052)
+    pub(super) fn nav_collapse_to_visual_root(&mut self) {
+        let root = self.tabs.active_tab().nav_stack.first().cloned();
+        if let Some(root) = root {
+            self.reconstruct_context(&root);
             self.tabs.active_tab_mut().nav_stack.clear();
-            self.set_active_tab_home();
-            // Entering the POM places focus on the command field.
+            // Match nav_return's focus behaviour: entering the root Context places
+            // focus on the command field.
             self.focus.command_field_focus_requested = true;
         }
+    }
+
+    /// Uniform bare `X` (CR-CH-052): the FFCMD close verb. When the active tab's
+    /// Navigation_Stack is non-empty, collapse to the Tab_Visual_Root in one
+    /// action; when empty (already at the root), close the Workspace (exit when
+    /// it is the last tab, CR-CH-016). Identical for EVERY context including the
+    /// POM -- there is NO POM special-casing. (The editor Command_Environment
+    /// claims bare `X` as EXCLUDE first, so uniform `X` is not reached there;
+    /// the `=X` escape hatch still routes to this verb at the POM root.)
+    ///
+    /// Validates: menu-workspace Requirement 14.13, 14.14 (CR-CH-052)
+    pub(super) fn nav_x(&mut self) {
+        if self.tabs.active_tab().nav_stack.is_empty() {
+            self.close_workspace_or_exit();
+        } else {
+            self.nav_collapse_to_visual_root();
+        }
+    }
+
+    /// CR-CH-052 front-door `=` step: reinitialise the active tab's
+    /// Navigation_Stack to the POM (FFCMD_Root). Clears the stack, then
+    /// reconstructs the Home Context (POM) in place via `set_active_tab_home`
+    /// (which re-seeds pom.toml / the barebones fallback). After this the
+    /// stripped remainder of the `=`-command runs against FFCMD from the POM, so
+    /// e.g. `=1` resolves as POM option 1 from ANY tab.
+    ///
+    /// Validates: command-framework Requirement 10.2, 10.14 (revised, CR-CH-052)
+    pub(super) fn reinitialise_active_tab_to_pom(&mut self) {
+        self.tabs.active_tab_mut().nav_stack.clear();
+        self.set_active_tab_home();
     }
 
     /// START: create a NEW Workspace (tab) and root it per the argument form
@@ -227,9 +271,14 @@ impl WorkbenchShell {
         let resolved = self
             .resolve_pom_option_key(&arg.to_uppercase())
             .unwrap_or_else(|| arg.to_string());
-        // Dispatch through handle_command so the navigation arms (which now push
-        // + transform in place on the active new tab) do the work.
-        self.handle_command(&resolved);
+        // CR-CH-052 (B080 reroute): dispatch through the single front door
+        // `dispatch_command_string` (not `handle_command`) so an in-scope START
+        // argument verb reaches `resolve_target` and the CustomWorkspace dispatch
+        // arm -- the same shell open method as the (now-deleted) ladder arm --
+        // navigating + transforming in place on the active new tab. The resolved
+        // argument is already `=`-stripped by `start_new_workspace`, so the front
+        // door's `=` step is not re-triggered here.
+        self.dispatch_command_string(&resolved);
     }
 
     /// Close the active Workspace (tab); terminate the application when it is the

@@ -50,6 +50,23 @@ impl WorkbenchShell {
     ///
     /// Validates: command-framework Requirement 2.1, 8.3, 8.4
     pub(super) fn dispatch_command_string(&mut self, raw: &str) {
+        // CR-CH-052 front door `=` step (applied ONCE, BEFORE the prelude,
+        // resolve_target, and the Active_Environment): a `=`-prefixed command
+        // reinitialises the active tab's Navigation_Stack to the POM (FFCMD_Root),
+        // then runs the stripped remainder against FFCMD from the POM. This is the
+        // SINGLE place `=` is interpreted -- the former three ad-hoc `=` sites
+        // (the `=X` EXIT-family literal, the chained-fastpath origin pop, and the
+        // `resolve_pom_option_key` strip-`=`) become consumers of an
+        // already-stripped remainder. `=1` therefore resolves as POM option 1
+        // from ANY tab, and `=X` falls out naturally (reinit to POM, then `X` at
+        // the empty root closes the Workspace).
+        if let Some(rest) = raw.trim_start().strip_prefix('=') {
+            let rest = rest.trim().to_string();
+            self.reinitialise_active_tab_to_pom();
+            self.dispatch_command_string(&rest);
+            return;
+        }
+
         let upper = raw.trim().to_uppercase();
 
         // Prelude first (A1 ordering: stage 1 / EXIT family / POM / chained before

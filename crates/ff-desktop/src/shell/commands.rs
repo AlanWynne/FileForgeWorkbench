@@ -155,7 +155,14 @@ impl WorkbenchShell {
             // Guard against a self-referential loop (an option whose command is
             // its own key): only recurse when the resolved command differs.
             if pom_command.to_uppercase() != *upper {
-                self.handle_command(&pom_command);
+                // CR-CH-052 (B080 reroute): route the resolved Option_Command
+                // through the single front door `dispatch_command_string` (not
+                // `handle_command`) so an in-scope verb reaches `resolve_target`
+                // and the CustomWorkspace dispatch arm -- the same shell open
+                // method as the (now-deleted) ladder arm. Recursion safety is
+                // preserved because the Function terminal still re-enters via
+                // `handle_command`, not the front door.
+                self.dispatch_command_string(&pom_command);
                 return true;
             }
         }
@@ -249,18 +256,35 @@ impl WorkbenchShell {
         // `commands_ladder_b2.rs` file + its call were retired). The nav / exclude
         // / find / profile / scroll families it used to sit beside are now claimed
         // by `ffedit_claim` above when an editor Context is active.
+        // CR-CH-052 (B080 Step 2 follow-up): the bare-`THEME` branch is DELETED.
+        // Bare `THEME` is resolved via the front door's `resolve_target` ->
+        // CustomWorkspace("theme_editor") (opening the Theme Editor Context)
+        // before this ladder is reached, and the nav callers were rerouted to the
+        // front door, so the bare branch is truly dead. Only `THEME <name>` (theme
+        // APPLY) remains here -- `builtin_workspace_target` returns None for a
+        // non-empty arg, so a named apply still falls through to this arm. A bare
+        // `THEME` that somehow reaches here with no arg now simply falls through
+        // (no editor open), which cannot happen on the live front-door path.
         if let Some(arg) = verb_arg(cmd, "THEME") {
             if arg.is_empty() {
-                // Bare THEME opens the Theme Editor Context (Req 17.4).
-                // SUPERSEDED (B080 Step 2): bare THEME is resolved via
-                // `resolve_target` -> CustomWorkspace("theme_editor") before this
-                // ladder is reached, so this bare branch is an unreachable
-                // fallback (Step-2 follow-up deletes it). The `THEME <name>`
-                // theme-apply branch below is NOT migrated and remains reachable
-                // (`builtin_workspace_target` returns None for a non-empty arg).
-                self.open_theme_editor();
-                self.open_error = None;
+                // Bare THEME is handled by the front door (CustomWorkspace); fall
+                // through here rather than special-casing an editor open.
                 return;
+            }
+            // CR-CH-056 (Req 24.5): THEME EXPORT / THEME IMPORT are the native
+            // Export/Import commands. The Theme Editor UI affordances invoke
+            // these same commands (apply_theme_editor_action routes Export/Import
+            // here), so the typed and clicked paths share one code path.
+            match arg.to_ascii_uppercase().as_str() {
+                "EXPORT" => {
+                    self.export_theme_command();
+                    return;
+                }
+                "IMPORT" => {
+                    self.import_theme_command();
+                    return;
+                }
+                _ => {}
             }
             let available: Vec<String> = ff_theme::list_all_themes(&self.themes_dir())
                 .into_iter()

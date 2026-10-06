@@ -4,7 +4,6 @@
 
 use eframe::egui;
 use ff_keys::FunctionKey;
-use ff_theme::ColourRGBA;
 
 use crate::tab_state::TabKind;
 
@@ -78,12 +77,6 @@ pub(super) fn context_name_for_tab(tab: &crate::tab_state::TabState) -> Option<&
     } else {
         context_name_for_kind(tab.kind)
     }
-}
-
-/// Convert a `ColourRGBA` to an `egui::Color32`.
-#[inline]
-pub(super) fn to_egui_color(c: ColourRGBA) -> egui::Color32 {
-    egui::Color32::from_rgba_premultiplied(c.r, c.g, c.b, c.a)
 }
 
 /// Build the default global key map used at startup.
