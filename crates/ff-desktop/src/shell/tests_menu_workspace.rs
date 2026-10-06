@@ -1736,30 +1736,43 @@ fn themes_command_opens_theme_editor() {
 /// live-previews it by applying to the active palette.
 #[test]
 fn theme_editor_edit_token_updates_working_and_previews() {
-    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use crate::theme_editor_panel::ThemeEditorAction;
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
     shell.dispatch_command_string("THEME");
     let red = ColourRGBA::rgb(255, 0, 0);
-    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(EditableToken::UiPanelBg, red));
+    // "Chrome: window fill" is the derived token backed by ui.panel_bg.
+    let token = editable_token_by_label("Chrome: window fill");
+    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(token, red));
     // Working copy updated.
     let working = shell.theme_editor_panel.working.as_ref().unwrap();
-    assert_eq!(EditableToken::UiPanelBg.get(working), red);
+    assert_eq!(token.get(working), red);
     // Live preview: active palette reflects the edit.
     assert_eq!(shell.palette.ui.panel_bg, red);
+}
+
+/// Look up a derived editable token by its label (helper for the token-level
+/// theme-editor tests after CR-CH-056 replaced the fixed enum with a derived
+/// surface).
+fn editable_token_by_label(label: &str) -> crate::theme_editor_panel::EditableToken {
+    crate::theme_editor_panel::EditableToken::all()
+        .iter()
+        .find(|t| t.label() == label)
+        .copied()
+        .unwrap_or_else(|| panic!("no editable token labelled '{label}'"))
 }
 
 /// Validates: Requirement 20.7 / 18.4 -- Reset loads the built-in baseline into
 /// the working copy for a built-in theme.
 #[test]
 fn theme_editor_reset_loads_builtin_baseline() {
-    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use crate::theme_editor_panel::ThemeEditorAction;
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
     shell.dispatch_command_string("THEME");
     // Point the editor at Default Legacy and mutate the working copy.
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
-        EditableToken::EditorForeground,
+        editable_token_by_label("Editor: foreground"),
         ColourRGBA::rgb(1, 2, 3),
     ));
     // Reset Default Legacy: working copy returns to the built-in colours.
@@ -1819,7 +1832,7 @@ fn theme_editor_copy_creates_new_named_theme_file() {
 /// theme's file (edited colour persists on disk).
 #[test]
 fn theme_editor_save_writes_edited_colour_to_disk() {
-    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use crate::theme_editor_panel::ThemeEditorAction;
     use ff_theme::{ColourRGBA, ThemePalette};
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
@@ -1828,7 +1841,10 @@ fn theme_editor_save_writes_edited_colour_to_disk() {
     shell.apply_theme_editor_action(ThemeEditorAction::Copy("edited".to_string()));
     // Edit a token and Save.
     let red = ColourRGBA::rgb(255, 0, 0);
-    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(EditableToken::UiPanelBg, red));
+    shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
+        editable_token_by_label("Chrome: window fill"),
+        red,
+    ));
     shell.apply_theme_editor_action(ThemeEditorAction::Save);
     // Reload the file from disk and confirm the edited colour persisted.
     let themes = shell.dir_overrides.themes.clone().unwrap();
@@ -1888,7 +1904,7 @@ fn theme_editor_set_active_swaps_palette_and_persists() {
 /// action/token_action split); this asserts the SaveAs action writes a file.
 #[test]
 fn theme_editor_save_as_after_edit_writes_file_b052() {
-    use crate::theme_editor_panel::{EditableToken, ThemeEditorAction};
+    use crate::theme_editor_panel::ThemeEditorAction;
     use ff_theme::ColourRGBA;
     let mut shell = make_shell();
     let _dir = point_themes_at_temp(&mut shell);
@@ -1896,7 +1912,7 @@ fn theme_editor_save_as_after_edit_writes_file_b052() {
     // Simulate: user edited a token, then clicked Save As. The editor emits the
     // button action (SaveAs) this frame, not the token edit.
     shell.apply_theme_editor_action(ThemeEditorAction::EditToken(
-        EditableToken::UiPanelBg,
+        editable_token_by_label("Chrome: window fill"),
         ColourRGBA::rgb(10, 20, 30),
     ));
     shell.apply_theme_editor_action(ThemeEditorAction::SaveAs("after-edit".to_string()));
@@ -1968,8 +1984,10 @@ fn theme_editor_list_has_no_duplicates() {
     );
 }
 
-/// Validates: Requirement 20.5 (CR-CH-019) -- Save on a built-in does not write
-/// a built-in file; with no new name it surfaces a guiding message.
+/// Validates: Requirement 20.5 (amended by CR-CH-056 / B081), 20.13 -- Save on a
+/// built-in NEVER writes the built-in's own file AND is never a silent no-op:
+/// with the New-name field PRE-FILLED (B081 fix), Save performs Save As, writing
+/// a USER theme at the pre-filled name's slug and re-targeting the editor to it.
 #[test]
 fn theme_editor_save_on_builtin_does_not_write_builtin() {
     use crate::theme_editor_panel::ThemeEditorAction;
@@ -1977,27 +1995,125 @@ fn theme_editor_save_on_builtin_does_not_write_builtin() {
     let _dir = point_themes_at_temp(&mut shell);
     shell.dispatch_command_string("THEME");
     // The editor opens with the active theme selected (a built-in in the default
-    // config). Save with an empty name buffer must not write a built-in file and
-    // must surface a message.
+    // config) and the New-name field pre-filled with a real, de-duplicated name.
     let selected = shell.theme_editor_panel.selected.clone().unwrap();
-    if ff_theme::is_builtin_theme(&selected) {
-        shell.theme_editor_panel.name_buffer.clear();
-        shell.apply_theme_editor_action(ThemeEditorAction::Save);
-        let themes = shell.dir_overrides.themes.clone().unwrap();
-        assert!(
-            !themes
-                .join(format!(
-                    "{}.toml",
-                    crate::theme_defaults::theme_slug(&selected)
-                ))
-                .exists(),
-            "Save must not write a built-in file"
-        );
-        assert!(
-            shell.theme_editor_panel.error.is_some(),
-            "Save on a built-in with no new name must guide the user"
-        );
-    }
+    assert!(
+        ff_theme::is_builtin_theme(&selected),
+        "default install opens the editor on a built-in theme"
+    );
+    let new_name = shell.theme_editor_panel.name_buffer.trim().to_string();
+    assert!(
+        !new_name.is_empty(),
+        "the New-name field is PRE-FILLED (B081), not placeholder text"
+    );
+    assert_ne!(
+        new_name, selected,
+        "the pre-filled name differs from the built-in name"
+    );
+    // Press Save with the built-in selected: it must behave as Save As.
+    shell.apply_theme_editor_action(ThemeEditorAction::Save);
+    let themes = shell.dir_overrides.themes.clone().unwrap();
+    // The built-in's own file is NOT written.
+    assert!(
+        !themes
+            .join(format!(
+                "{}.toml",
+                crate::theme_defaults::theme_slug(&selected)
+            ))
+            .exists(),
+        "Save must never write a built-in file"
+    );
+    // The user theme at the pre-filled name IS written (create-on-save).
+    assert!(
+        themes
+            .join(format!(
+                "{}.toml",
+                crate::theme_defaults::theme_slug(&new_name)
+            ))
+            .exists(),
+        "Save on a built-in writes a USER theme at the pre-filled name (Save As)"
+    );
+    // No error, and the editor re-targets the new user theme.
+    assert!(
+        shell.theme_editor_panel.error.is_none(),
+        "Save on a built-in with a pre-filled name is not a no-op/error"
+    );
+    assert_eq!(
+        shell.theme_editor_panel.selected.as_deref(),
+        Some(new_name.as_str()),
+        "the editor re-targets the newly created user theme"
+    );
+    assert!(
+        shell.theme_editor_panel.available.contains(&new_name),
+        "the new user theme appears in the available list"
+    );
+}
+
+/// Validates: Requirement 24.2, 24.3 -- import of a native FFWB file adds a
+/// selectable user theme; a foreign/invalid file is rejected without touching
+/// the themes dir or the active theme. Drives the shell's path-taking import
+/// method (the pure action, separated from the rfd picker).
+#[test]
+fn theme_import_accepts_native_rejects_foreign() {
+    let mut shell = make_shell();
+    let dir = point_themes_at_temp(&mut shell);
+    shell.dispatch_command_string("THEME");
+
+    // A native FFWB file exported by this app imports successfully.
+    let native = ff_theme::export_theme(&ff_theme::defaults::dark_palette(), "Imported One");
+    let native = native.expect("serialise");
+    let native_path = dir.path().join("incoming-native.toml");
+    std::fs::write(&native_path, native).expect("write native");
+    let imported = shell
+        .import_theme_from_path(&native_path)
+        .expect("native import ok");
+    assert_eq!(imported, "Imported One");
+    assert!(
+        shell
+            .theme_editor_panel
+            .available
+            .contains(&"Imported One".to_string()),
+        "the imported theme is selectable"
+    );
+
+    // A foreign file (valid TOML, no FFWB sections) is rejected; nothing new is
+    // written and the active theme is unchanged.
+    let active_before = shell.palette.name.clone();
+    let foreign_path = dir.path().join("foreign.toml");
+    std::fs::write(&foreign_path, "name = \"Foreign\"\nscheme = \"base16\"\n")
+        .expect("write foreign");
+    let err = shell.import_theme_from_path(&foreign_path).unwrap_err();
+    assert!(
+        err.to_lowercase().contains("reject"),
+        "clear rejection: {err}"
+    );
+    assert_eq!(shell.palette.name, active_before, "active theme unchanged");
+    assert!(
+        !shell
+            .theme_editor_panel
+            .available
+            .contains(&"Foreign".to_string()),
+        "the rejected foreign theme is NOT added"
+    );
+}
+
+/// Validates: Requirement 24.1 -- export writes a native FFWB theme file at the
+/// chosen path that re-imports as the same theme (round-trip through the native
+/// format). Drives the path-taking export method (separated from the picker).
+#[test]
+fn theme_export_writes_reimportable_native_file() {
+    let mut shell = make_shell();
+    let dir = point_themes_at_temp(&mut shell);
+    shell.dispatch_command_string("THEME");
+    let out = dir.path().join("exported.toml");
+    shell.export_theme_to_path(&out).expect("export ok");
+    assert!(out.exists(), "export writes the chosen path");
+    let text = std::fs::read_to_string(&out).expect("read back");
+    // The exported file is a valid native FFWB theme (passes the import guard).
+    assert!(
+        ff_theme::parse_native_theme(&text, ff_theme::mode::VisualMode::Dark).is_ok(),
+        "exported file re-imports as a native FFWB theme"
+    );
 }
 
 // Validates: function-keys Req 22.4 -- Save writes keymaps/<kind>.toml, which

@@ -22,7 +22,7 @@ fn menu_bar_leaf_dispatch_is_command_parity() {
     // The bar peeks Settings and would render a `THEME` leaf; activating it is
     // `handle_command("THEME ...")`. Prove parity: dispatching the leaf command
     // changes the active theme exactly as typing it does.
-    shell.handle_command("THEME dark");
+    shell.dispatch_command_string("THEME dark");
     assert_eq!(shell.palette.name, "Default Dark");
     assert!(shell.open_error.is_none());
 }
@@ -256,12 +256,19 @@ fn detached_function_key_return_acts_on_its_tab() {
     let primary_active = shell.tabs.active_index();
     let detached = if primary_active == 0 { 1 } else { 0 };
     // Make BOTH tabs distinct non-POM contexts so we can prove the detached
-    // RETURN changed ONLY the detached tab (the primary stays non-POM).
+    // RETURN changed ONLY the detached tab (the primary stays non-POM). The
+    // detached tab is a POM-drilled sub-context (its Navigation_Stack bottom is
+    // the POM), so under CR-CH-052 RETURN collapses to its Tab_Visual_Root (the
+    // POM) in one step -- the "acts on its own tab" behaviour we assert below.
     if let Some(t) = shell.tabs.tabs_mut().get_mut(detached) {
         t.kind = TabKind::FilesPanel;
         t.is_home = false;
         t.title = "[FILES]".to_string();
         t.nav_stack.clear();
+        t.nav_stack
+            .push(ff_session::session_state::WorkspaceDescriptor::Menu {
+                name: "pom".to_string(),
+            });
     }
     if let Some(t) = shell.tabs.tabs_mut().get_mut(primary_active) {
         t.kind = TabKind::ConfigPanel;
@@ -628,7 +635,7 @@ fn full_shell_file_explorer_in_split_region_keeps_split() {
     let leaves_before = harness.state().tabs.leaf_ids().len();
 
     // Navigate the focused region's Context to the File Explorer in place.
-    harness.state_mut().handle_command("FILES");
+    harness.state_mut().dispatch_command_string("FILES");
     for _ in 0..3 {
         harness.run();
     }

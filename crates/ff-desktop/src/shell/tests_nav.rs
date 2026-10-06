@@ -129,17 +129,21 @@ fn return_from_pom_with_other_tabs_closes_pom_not_app() {
     );
 }
 
-/// Validates: menu-workspace Requirement 14.10 (CR-CH-038) -- RETURN in a
-/// non-POM workspace navigates to the POM (Home Context) in ONE step, clearing
-/// the Navigation_Stack, even when the workspace was rooted directly (its root
-/// is NOT the POM). The workspace stays open (tab count unchanged), now Home.
+/// Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052) -- RETURN in
+/// a workspace rooted DIRECTLY at a non-POM context (empty Navigation_Stack: its
+/// Tab_Visual_Root IS that context) is at its visual root, so RETURN closes the
+/// Workspace (exit when last) rather than jumping to the global POM. With other
+/// tabs open it closes only this one tab.
 #[test]
-fn return_from_non_pom_navigates_to_pom() {
-    // Validates: menu-workspace Requirement 14.10
+fn return_at_directly_rooted_non_pom_closes_workspace() {
+    // Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052)
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    // A workspace rooted directly at a Files context (START <arg> style): a
-    // non-POM tab with an EMPTY nav stack (its root is Files, not the POM).
+    // Open a second tab so the close path removes a tab rather than app-exiting.
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.tabs.set_active(0);
+    // Root tab 0 DIRECTLY at a Files context (START <arg> style): a non-POM tab
+    // with an EMPTY nav stack (its Tab_Visual_Root is Files, not the POM).
     let idx = shell.tabs.active_index();
     if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
         tab.kind = TabKind::FilesPanel;
@@ -152,47 +156,50 @@ fn return_from_non_pom_navigates_to_pom() {
         !shell.tabs.active_tab().is_home,
         "precondition: not on the POM"
     );
+    assert!(before >= 2);
 
     shell.handle_command("RETURN");
 
-    assert!(
-        shell.tabs.active_tab().is_home,
-        "RETURN in a non-POM workspace must land on the POM (Home Context)"
-    );
-    assert_eq!(
-        shell.tabs.active_tab().kind,
-        TabKind::MenuWorkspace,
-        "the POM is a MenuWorkspace"
-    );
     assert_eq!(
         shell.tabs.len(),
-        before,
-        "RETURN to the POM must NOT close the workspace (tab count unchanged)"
+        before - 1,
+        "RETURN at a directly-rooted non-POM (empty stack = at visual root) closes \
+         this one Workspace"
     );
     assert!(
-        shell.tabs.active_tab().nav_stack.is_empty(),
-        "RETURN clears the Navigation_Stack"
+        !*shell.should_close.lock().expect("close lock"),
+        "closing one of several tabs must NOT app-exit"
     );
 }
 
-/// Validates: menu-workspace Requirement 14.10 (CR-CH-038) -- RETURN in a
-/// drilled-in non-POM workspace (nav stack non-empty) also goes straight to the
-/// POM in one step, not one level back (that is END's job).
+/// Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052) -- RETURN in
+/// a drilled-in workspace (nav stack non-empty) collapses to the Tab_Visual_Root
+/// (the BOTTOM of the stack) in one step, not one level back (that is END's job).
+/// When the tab was STARTed at the POM, its visual root IS the POM, so a
+/// POM-drilled tab lands back on the POM.
 #[test]
-fn return_from_drilled_in_non_pom_goes_straight_to_pom() {
-    // Validates: menu-workspace Requirement 14.10
+fn return_from_drilled_in_collapses_to_visual_root() {
+    // Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052)
     let mut shell = make_shell();
     // POM -> option 1 (Catalogs/Files) pushes the POM onto the stack, landing on
-    // a non-POM Context with a non-empty nav stack.
+    // a non-POM Context with a non-empty nav stack whose bottom is the POM.
     shell.handle_command("1");
     assert!(
         !shell.tabs.active_tab().is_home,
         "precondition: drilled into a sub-context"
     );
+    assert!(
+        !shell.tabs.active_tab().nav_stack.is_empty(),
+        "precondition: non-empty stack (POM on the bottom)"
+    );
     shell.handle_command("RETURN");
     assert!(
         shell.tabs.active_tab().is_home,
-        "RETURN from a drilled-in non-POM must jump straight to the POM"
+        "RETURN from a POM-drilled sub-context collapses to its visual root (the POM)"
+    );
+    assert!(
+        shell.tabs.active_tab().nav_stack.is_empty(),
+        "RETURN clears the Navigation_Stack to the visual root"
     );
 }
 
@@ -249,7 +256,7 @@ fn chained_fastpath_pops_to_pom_origin_from_non_pom() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
     // Move away from the POM first (open the Keys Workspace directly).
-    shell.handle_command("KEYS");
+    shell.dispatch_command_string("KEYS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
     // From a non-POM context, `=0` must resolve option 0 against the POM.
     shell.handle_command("=0.K");
@@ -272,7 +279,7 @@ fn chained_fastpath_pops_to_pom_origin_from_non_pom() {
 fn settings_end_from_namespace_view_returns_to_menu() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("CONFIG editor");
+    shell.dispatch_command_string("CONFIG editor");
     assert_eq!(
         shell.config_panel.namespace_filter.as_deref(),
         Some("editor")
@@ -295,7 +302,7 @@ fn pom_key_s_routes_to_search() {
     // CR-CH-021: the Recovery_Baseline POM no longer carries an `S` key; SEARCH
     // remains reachable by name (and via any user menu that maps a key to it).
     let mut shell = make_shell();
-    shell.handle_command("SEARCH");
+    shell.dispatch_command_string("SEARCH");
     // Opening the search panel clears open_error (success path).
     assert!(
         shell.open_error.is_none(),
@@ -329,7 +336,7 @@ fn option_8_routes_to_plugin_manager() {
     // CR-CH-021: the Recovery_Baseline POM no longer carries an `8` key; PLUGINS
     // remains reachable by name (and via any user menu that maps a key to it).
     let mut shell = make_shell();
-    shell.handle_command("PLUGINS");
+    shell.dispatch_command_string("PLUGINS");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
 }
@@ -379,7 +386,7 @@ fn option_5_routes_to_macro_library() {
     // only 0/1/2/L/M/X); MACROS remains reachable by name and via any user menu
     // that maps a key to it. This test exercises the command routing directly.
     let mut shell = make_shell();
-    shell.handle_command("MACROS");
+    shell.dispatch_command_string("MACROS");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
 }
@@ -474,7 +481,7 @@ fn menu_option_command_matching_definition_id_dispatches() {
 fn command_configurator_end_returns_to_pom() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("COMMANDS");
+    shell.dispatch_command_string("COMMANDS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
     // CR-CH-022: END pops the Navigation_Stack (which holds [POM]) and
     // reconstructs the POM in place -- synchronously, no deferred flag.
@@ -486,7 +493,7 @@ fn command_configurator_end_returns_to_pom() {
 #[test]
 fn menu_pom_resolves_to_home_context() {
     let mut shell = make_shell();
-    shell.handle_command("COMMANDS");
+    shell.dispatch_command_string("COMMANDS");
     shell.handle_command("MENU POM");
     assert!(shell.tabs.active_tab().is_home);
 }
@@ -498,7 +505,7 @@ fn dispatch_menu_target_pom_opens_home_context() {
     use crate::tab_state::TabKind;
     use ff_command::CommandTarget;
     let mut shell = make_shell();
-    shell.handle_command("COMMANDS");
+    shell.dispatch_command_string("COMMANDS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::CommandConfigurator);
     shell.dispatch_command_target(&CommandTarget::Menu {
         name: "pom".to_string(),
@@ -709,7 +716,7 @@ fn settings_option_zero_opens_menu_workspace() {
 fn settings_option_a_opens_flat_panel() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("CONFIG");
+    shell.dispatch_command_string("CONFIG");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
     assert!(shell.config_panel.namespace_filter.is_none());
     assert_eq!(shell.tabs.active_tab().title, "[CONFIG]");
@@ -783,7 +790,7 @@ fn navigation_transforms_in_place_no_new_tab() {
         "navigation must not open a new tab"
     );
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenuWorkspace);
-    shell.handle_command("PLUGINS");
+    shell.dispatch_command_string("PLUGINS");
     assert_eq!(
         shell.tabs.len(),
         start_len,
@@ -828,7 +835,7 @@ fn full_shell_config_tree_arrows_navigate_and_expand() {
     use crate::tab_state::TabKind;
 
     let mut harness = harness_shell();
-    harness.state_mut().handle_command("CONFIG");
+    harness.state_mut().dispatch_command_string("CONFIG");
     for _ in 0..4 {
         harness.run();
     }

@@ -369,7 +369,7 @@ fn swap_list_opens_tab_picker() {
 fn settings_namespace_tab_title_includes_namespace() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("CONFIG theme");
+    shell.dispatch_command_string("CONFIG theme");
     let tab = shell.tabs.active_tab();
     assert_eq!(tab.kind, TabKind::ConfigPanel);
     assert_eq!(tab.title, "[CONFIG:theme]");
@@ -697,7 +697,7 @@ fn themes_command_transforms_pom_tab_in_place() {
     shell.handle_command("START");
     assert!(shell.tabs.active_tab().is_home);
     let count_before = shell.tabs.len();
-    shell.handle_command("THEME");
+    shell.dispatch_command_string("THEME");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::ThemeEditor);
     assert_eq!(
         shell.tabs.len(),
@@ -1127,7 +1127,7 @@ fn full_shell_tab_reaches_settings_as_first_menu_item() {
 fn full_shell_menus_editor_first_tab_focuses_menu_selector() {
     let mut harness = harness_shell();
     // Open the Menus Editor via its command (same path as typing MENUS).
-    harness.state_mut().handle_command("MENUS");
+    harness.state_mut().dispatch_command_string("MENUS");
     for _ in 0..4 {
         harness.run();
     }
@@ -1165,7 +1165,7 @@ fn full_shell_theme_editor_first_tab_focuses_theme_selector() {
     use crate::tab_state::TabKind;
     let mut harness = harness_shell();
     // Open the Theme Editor via bare THEME (same path as typing it).
-    harness.state_mut().handle_command("THEME");
+    harness.state_mut().dispatch_command_string("THEME");
     for _ in 0..4 {
         harness.run();
     }
@@ -1195,6 +1195,90 @@ fn full_shell_theme_editor_first_tab_focuses_theme_selector() {
     );
 }
 
+// === B081: full-shell type-a-name-and-Save creates a user theme =============
+
+// Validates: theme-and-appearance Requirement 20.5 (amended), 20.13; B081 --
+// drive the REAL shell headlessly: open the Theme Editor on a built-in (default
+// install), confirm the New-name field is pre-filled/enabled, click the Save
+// button in the actual render, and assert a USER .toml is written to the themes
+// dir AND the new theme appears in the available list and can be Set Active.
+// This exercises the previously-untested interactive render-to-action seam where
+// B081 lived (the earlier tests drove apply_theme_editor_action directly).
+#[test]
+fn full_shell_theme_editor_type_name_and_save_creates_user_theme() {
+    use crate::tab_state::TabKind;
+    // Isolate the themes dir to a TempDir (kept alive for the whole test).
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    crate::theme_defaults::ensure_default_theme_files(dir.path());
+    let themes = dir.path().join("themes");
+
+    let mut harness = harness_shell();
+    harness.state_mut().dir_overrides.themes = Some(themes.clone());
+    // Open the Theme Editor via bare THEME (same path as typing it).
+    harness.state_mut().dispatch_command_string("THEME");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind,
+        TabKind::ThemeEditor,
+        "bare THEME opens the Theme Editor Context"
+    );
+    // The editor opens on a built-in with the New-name field pre-filled (B081).
+    let selected = harness.state().theme_editor_panel.selected.clone().unwrap();
+    assert!(
+        ff_theme::is_builtin_theme(&selected),
+        "default install opens on a built-in"
+    );
+    let new_name = harness
+        .state()
+        .theme_editor_panel
+        .name_buffer
+        .trim()
+        .to_string();
+    assert!(
+        !new_name.is_empty(),
+        "the New-name field is PRE-FILLED (B081), so Save/Save As are enabled"
+    );
+
+    // Click the actual Save button in the render (not apply_theme_editor_action).
+    use egui_kittest::kittest::Queryable;
+    harness.get_by_label("Save").click();
+    harness.run();
+
+    // A USER theme file at the pre-filled name's slug is written.
+    let slug = crate::theme_defaults::theme_slug(&new_name);
+    assert!(
+        themes.join(format!("{slug}.toml")).exists(),
+        "clicking Save on a built-in writes a USER theme (Save As), resolving B081"
+    );
+    // The built-in's own file is NOT written.
+    assert!(
+        !themes
+            .join(format!(
+                "{}.toml",
+                crate::theme_defaults::theme_slug(&selected)
+            ))
+            .exists(),
+        "Save must never write a built-in file"
+    );
+    // The new theme appears in the list and can be Set Active.
+    assert!(
+        harness
+            .state()
+            .theme_editor_panel
+            .available
+            .contains(&new_name),
+        "the created theme appears in the available list"
+    );
+    harness.state_mut().set_active_theme(&new_name);
+    assert_eq!(
+        harness.state().palette.name,
+        new_name,
+        "the created user theme can be Set Active"
+    );
+}
+
 // === B058: CONFIG/Settings panel Tab lands on the Filter field ==============
 
 // Validates: menu-and-statusbar Req 16.3 (B058, CR-CH-023) -- on the
@@ -1208,7 +1292,7 @@ fn full_shell_config_first_tab_focuses_filter_field() {
     use crate::tab_state::TabKind;
     let mut harness = harness_shell();
     // Open the flat config-key browser via CONFIG (same path as typing it).
-    harness.state_mut().handle_command("CONFIG");
+    harness.state_mut().dispatch_command_string("CONFIG");
     for _ in 0..4 {
         harness.run();
     }
@@ -1342,7 +1426,7 @@ fn full_shell_files_panel_reports_no_interior_focus() {
     use crate::tab_state::TabKind;
     let mut harness = harness_shell();
     // CATALOGS navigates the active tab to the Files Panel (Catalog Explorer).
-    harness.state_mut().handle_command("CATALOGS");
+    harness.state_mut().dispatch_command_string("CATALOGS");
     for _ in 0..4 {
         harness.run();
     }
@@ -1495,7 +1579,7 @@ fn help_consumes_focused_menu_option_context() {
 #[test]
 fn full_shell_keys_first_tab_focuses_kind_dropdown() {
     let mut harness = harness_shell();
-    harness.state_mut().handle_command("KEYS");
+    harness.state_mut().dispatch_command_string("KEYS");
     for _ in 0..4 {
         harness.run();
     }
@@ -1668,7 +1752,7 @@ fn detached_command_acts_on_its_tab_not_the_primary() {
 #[test]
 fn full_shell_kinds_first_tab_focuses_first_interior() {
     let mut harness = harness_shell();
-    harness.state_mut().handle_command("KINDS");
+    harness.state_mut().dispatch_command_string("KINDS");
     for _ in 0..4 {
         harness.run();
     }
@@ -2239,25 +2323,26 @@ fn full_shell_scrm_viewer_first_tab_focuses_first_control() {
     );
 }
 
-// === B080 Step 7: menu-bar reroute through the single front door ============
+// === B080 Step 7 / CR-CH-052: in-scope verbs resolve via the single front door
 //
-// The menu-bar click sites in render_chrome.rs now dispatch an in-scope
-// workspace verb through the front door `dispatch_command_string` (which runs
-// resolve_target) instead of calling `handle_command` directly. This test
-// proves the reroute is behaviour-preserving: for every in-scope verb, the
-// front-door path lands on the SAME active-tab Kind as the pre-reroute typed
-// path (`handle_command`). Two fresh shells per verb, compared.
+// The menu-bar / palette / nav-caller sites dispatch an in-scope workspace verb
+// through the front door `dispatch_command_string` (which runs resolve_target),
+// NOT via `handle_command`. CR-CH-052 then DELETED the superseded ladder arms,
+// so these verbs resolve ONLY through the front door's `resolve_target` ->
+// `builtin_workspace_target` -> CustomWorkspace dispatch. This test proves each
+// in-scope verb opens the expected active-tab Kind via the front door, which is
+// the live path every seam now uses.
 //
 // Validates: menu-and-statusbar Requirement 16.15 (B056 menu-bar command
 // parity); command-framework Requirement 2.1, 8.4 (one front door reaches the
-// same classification as the direct path).
+// CustomWorkspace classification).
 #[test]
 fn b080_menu_bar_front_door_matches_typed_path_for_in_scope_verbs() {
     use crate::tab_state::TabKind;
 
     // Each in-scope workspace verb and the Kind it must open. These are exactly
     // the verbs `builtin_workspace_target_for` classifies and whose superseded
-    // ladder arms Step 7 deletes.
+    // ladder arms CR-CH-052 deleted.
     let cases: &[(&str, TabKind)] = &[
         ("FILES", TabKind::FileExplorerPanel),
         ("CATALOGS", TabKind::FilesPanel),
@@ -2273,23 +2358,16 @@ fn b080_menu_bar_front_door_matches_typed_path_for_in_scope_verbs() {
     ];
 
     for (verb, expected_kind) in cases {
-        // Front-door path (what a rerouted menu-bar click now runs).
+        // Front-door path (the live path every seam -- typed line, menu-bar
+        // click, palette, rerouted nav callers -- now uses).
         let mut via_front_door = make_shell();
         via_front_door.dispatch_command_string(verb);
         let front_kind = via_front_door.tabs.active_tab().kind;
 
-        // Pre-reroute typed path (handle_command) for the same verb.
-        let mut via_handle = make_shell();
-        via_handle.handle_command(verb);
-        let handle_kind = via_handle.tabs.active_tab().kind;
-
         assert_eq!(
             front_kind, *expected_kind,
-            "front-door dispatch of {verb} must open {expected_kind:?} (the menu-bar reroute target)"
-        );
-        assert_eq!(
-            front_kind, handle_kind,
-            "front-door dispatch of {verb} must match the typed handle_command path (behaviour-preserving reroute)"
+            "front-door dispatch of {verb} must open {expected_kind:?} via resolve_target \
+             (CustomWorkspace), the only live path after the CR-CH-052 arm deletion"
         );
         assert!(
             via_front_door.open_error.is_none(),

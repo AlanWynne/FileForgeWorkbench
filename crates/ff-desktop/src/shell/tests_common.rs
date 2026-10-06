@@ -270,7 +270,7 @@ pub(crate) fn make_shell_with_menus_editor() -> (super::WorkbenchShell, tempfile
     let dir = tempfile::TempDir::new().expect("tempdir");
     let mut shell = make_shell();
     shell.dir_overrides.menus = Some(dir.path().join("menus"));
-    shell.handle_command("MENUS");
+    shell.dispatch_command_string("MENUS");
     (shell, dir)
 }
 

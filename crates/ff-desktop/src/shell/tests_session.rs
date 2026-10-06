@@ -135,7 +135,7 @@ fn exit_saves_command_history_and_reloads() {
     {
         let mut shell = make_shell_with_history_path(&hist);
         shell.handle_command("LOCATE 1");
-        shell.handle_command("THEME legacy");
+        shell.dispatch_command_string("THEME legacy");
         shell.persist_command_history(); // the on_exit save path
         let _ = shell
             .config_handle
@@ -262,7 +262,7 @@ fn workspace_mru_persists_through_save_load() {
 fn shell_intercept_commands_are_recorded_in_history() {
     let mut shell = make_shell();
     // A shell-intercept command (previously not recorded).
-    shell.handle_command("THEME legacy");
+    shell.dispatch_command_string("THEME legacy");
     // An engine-routed command (was already recorded).
     shell.handle_command("LOCATE 1");
 
@@ -294,7 +294,7 @@ fn shell_intercept_commands_are_recorded_in_history() {
 fn retrieve_via_key_with_nonempty_field_recalls_previous_command() {
     let mut shell = make_shell();
     shell.handle_command("LOCATE 1");
-    shell.handle_command("THEME legacy");
+    shell.dispatch_command_string("THEME legacy");
     // History (most recent first): ["THEME legacy", "LOCATE 1"].
 
     // Simulate F12 while the user has typed something in the field.

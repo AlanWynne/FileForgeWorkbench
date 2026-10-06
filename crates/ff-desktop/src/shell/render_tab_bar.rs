@@ -10,7 +10,7 @@ use eframe::egui;
 
 use crate::tab_state::TabKind;
 
-use super::helpers::{open_containing_folder, to_egui_color, FolderOpenMode};
+use super::helpers::{open_containing_folder, FolderOpenMode};
 use super::WorkbenchShell;
 
 impl WorkbenchShell {
@@ -22,14 +22,17 @@ impl WorkbenchShell {
         if self.tabs.is_split() {
             return;
         }
-        // Validates: Requirement 21.6 -- render_tab_bar reads the tab_bar.* palette
-        // group (previously dead: bg reused ui.input_bg/panel_bg and text reused
-        // editor.foreground). Active/inactive tabs now get distinct bg + text.
-        let active_bg = to_egui_color(self.palette.tab_bar.active_bg);
-        let inactive_bg = to_egui_color(self.palette.tab_bar.inactive_bg);
-        let active_text = to_egui_color(self.palette.tab_bar.active_text);
-        let inactive_text = to_egui_color(self.palette.tab_bar.inactive_text);
-        let modified_color = to_egui_color(self.palette.editor.accent);
+        // CR-CH-056 Req 23.3/23.9: the tab-bar chrome colours now come from the
+        // Theme's egui-native chrome layer (the active/inactive tab fills + text
+        // and the accent egui's `Style` does not itself model), read via the
+        // chrome layer accessors instead of the flat `palette.tab_bar.*` /
+        // `palette.editor.accent` groups.
+        let chrome = &self.palette.chrome_style;
+        let active_bg = chrome.tab_active_bg_color();
+        let inactive_bg = chrome.tab_inactive_bg_color();
+        let active_text = chrome.tab_active_text_color();
+        let inactive_text = chrome.tab_inactive_text_color();
+        let modified_color = chrome.accent_color();
 
         // Collect context-menu actions outside the borrow of self.tabs.
         let mut activate_idx: Option<usize> = None;

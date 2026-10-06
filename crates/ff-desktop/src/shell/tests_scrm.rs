@@ -84,7 +84,7 @@ fn auto_capture_records_on_navigation() {
     // START enables auto-capture and captures nothing yet by itself.
     shell.handle_command("CAPTURE START Flow");
     // Navigate the POM to another Context: the transition hook fires a capture.
-    shell.handle_command("FILES");
+    shell.dispatch_command_string("FILES");
     shell.handle_command("CAPTURE STATUS");
     let msg = shell.open_error.as_deref().unwrap_or("");
     // At least one capture was recorded automatically on the transition.

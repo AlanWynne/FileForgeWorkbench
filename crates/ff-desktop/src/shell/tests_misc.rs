@@ -1040,7 +1040,7 @@ fn end_walks_back_up_the_navigation_stack() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell(); // A = POM
     shell.handle_command("SETTINGS"); // B = Settings menu (MenuWorkspace)
-    shell.handle_command("MENUS"); // C = Menus editor
+    shell.dispatch_command_string("MENUS"); // C = Menus editor
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MenusEditor);
     shell.handle_command("END");
     assert_eq!(

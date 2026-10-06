@@ -764,7 +764,7 @@ fn status_command_routes_to_jes() {
 fn plugins_command_routes_to_plugin_manager() {
     // Validates: plugin-manager-ui Requirement 1.1
     let mut shell = make_shell();
-    shell.handle_command("PLUGINS");
+    shell.dispatch_command_string("PLUGINS");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::PluginManager);
 }
@@ -786,7 +786,7 @@ fn equals_8_command_routes_to_plugin_manager() {
 fn log_command_routes_to_event_log() {
     // Validates: notification-system Requirement 2.1
     let mut shell = make_shell();
-    shell.handle_command("LOG");
+    shell.dispatch_command_string("LOG");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::EventLog);
 }
@@ -796,7 +796,7 @@ fn log_command_routes_to_event_log() {
 fn macros_command_routes_to_macro_library() {
     // Validates: lua-macro-engine Requirement 12.1
     let mut shell = make_shell();
-    shell.handle_command("MACROS");
+    shell.dispatch_command_string("MACROS");
     use crate::tab_state::TabKind;
     assert_eq!(shell.tabs.active_tab().kind, TabKind::MacroLibrary);
 }
@@ -857,7 +857,7 @@ fn keys_command_opens_keys_workspace() {
     // Workspace (a Context tab), NOT a modal dialog.
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("KEYS");
+    shell.dispatch_command_string("KEYS");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::KeysEditor);
 }
 
@@ -983,7 +983,7 @@ fn run_command_definition_missing_id_reports_not_defined() {
 fn commands_opens_command_configurator_context() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("COMMANDS");
+    shell.dispatch_command_string("COMMANDS");
     let tab = shell.tabs.active_tab();
     assert_eq!(tab.kind, TabKind::CommandConfigurator);
     assert_eq!(tab.title, "[COMMANDS]");
@@ -1130,7 +1130,7 @@ fn config_command_is_registered() {
 fn config_unknown_namespace_opens_editable_view() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("CONFIG nosuchns");
+    shell.dispatch_command_string("CONFIG nosuchns");
     assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
     assert_eq!(
         shell.config_panel.namespace_filter.as_deref(),
@@ -1290,7 +1290,7 @@ fn command_unknown_arg_sets_error_and_leaves_position() {
 fn command_singular_does_not_shadow_commands_plural() {
     use crate::tab_state::TabKind;
     let mut shell = make_shell();
-    shell.handle_command("COMMANDS");
+    shell.dispatch_command_string("COMMANDS");
     assert_eq!(
         shell.tabs.active_tab().kind,
         TabKind::CommandConfigurator,
@@ -1464,38 +1464,61 @@ fn typed_and_key_paths_reach_same_handler_for_builtin_verb() {
     assert!(keyed.open_error.is_none());
 }
 
-/// Validates: command-framework Requirement 8.4 -- the Step-2 front door
-/// reproduces the ladder's EXISTING precedence: `X` / `=X` typed from a NON-menu
-/// (Config) context still dispatch file.exit (the EXIT family runs BEFORE the POM
-/// Option_Key fastpath), NOT the POM's `X` -> `Return` option. This pins the
-/// precedence protected when the dispatch prelude moved into the front door.
+/// Validates: menu-workspace Requirement 14.13, 14.14 (CR-CH-052) -- the uniform
+/// navigation/exit model from a non-menu (Config) Context reached by navigating
+/// the POM (so its Navigation_Stack holds the POM at the bottom):
+/// - bare `X` COLLAPSES to the Tab_Visual_Root (the POM); it does NOT app-exit.
+/// - `=X` reinitialises to the POM (front-door `=`) then `X` at the empty root
+///   closes the Workspace, which app-exits ONLY because it is the last tab.
+/// This supersedes the old "X / =X unconditionally dispatch file.exit" model.
 #[test]
-fn exit_family_from_non_menu_context_dispatches_file_exit_not_pom_return() {
+fn uniform_x_from_non_menu_context_collapses_then_equals_x_closes() {
     use crate::tab_state::TabKind;
 
-    for verb in ["X", "=X"] {
-        let mut shell = make_shell();
-        // Move off the POM to a non-menu Context so stage-1 current-menu
-        // Option_Key resolution does NOT claim `X` (on the POM it would).
-        shell.handle_command("CONFIG");
-        assert_eq!(
-            shell.tabs.active_tab().kind,
-            TabKind::ConfigPanel,
-            "precondition: active Context is the non-menu Config panel"
-        );
-        assert!(
-            !*shell.should_close.lock().expect("close lock"),
-            "precondition: app is not already closing"
-        );
+    // Bare `X`: collapse to the visual root (POM), NOT an app-exit.
+    let mut shell = make_shell();
+    shell.dispatch_command_string("CONFIG");
+    assert_eq!(
+        shell.tabs.active_tab().kind,
+        TabKind::ConfigPanel,
+        "precondition: active Context is the non-menu Config panel"
+    );
+    assert!(
+        !shell.tabs.active_tab().nav_stack.is_empty(),
+        "precondition: navigating the POM pushed it onto the stack"
+    );
+    assert!(!*shell.should_close.lock().expect("close lock"));
 
-        shell.run_command_line(verb);
+    shell.run_command_line("X");
 
-        assert!(
-            *shell.should_close.lock().expect("close lock"),
-            "`{verb}` from a non-menu context must dispatch file.exit (EXIT family \
-             precedence preserved), not resolve as the POM Return option"
-        );
-    }
+    assert!(
+        !*shell.should_close.lock().expect("close lock"),
+        "bare `X` above the visual root must COLLAPSE, not app-exit (CR-CH-052)"
+    );
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "bare `X` collapses the Config Context to its Tab_Visual_Root (the POM)"
+    );
+    assert!(
+        shell.tabs.active_tab().nav_stack.is_empty(),
+        "collapse clears the Navigation_Stack to the visual root"
+    );
+
+    // `=X` on the single-tab shell: reinit to POM, then X at the empty root
+    // closes the Workspace -> app-exit (last tab).
+    let mut shell = make_shell();
+    shell.dispatch_command_string("CONFIG");
+    assert_eq!(shell.tabs.active_tab().kind, TabKind::ConfigPanel);
+    assert_eq!(shell.tabs.len(), 1, "precondition: single tab");
+    assert!(!*shell.should_close.lock().expect("close lock"));
+
+    shell.run_command_line("=X");
+
+    assert!(
+        *shell.should_close.lock().expect("close lock"),
+        "`=X` reinitialises to the POM then `X` at the empty root closes the \
+         Workspace, which app-exits because it is the last tab (CR-CH-052)"
+    );
 }
 
 // === CR-CH-053 E8: environment-before-FFCMD ordering (bare X / =X) =========
@@ -1534,49 +1557,93 @@ fn editor_bare_x_excludes_does_not_exit() {
     );
 }
 
-/// Validates: command-environments Requirement 4.1, 5.1 (E8) -- bare `X` on a
-/// NON-editor Context is unchanged: FFEDIT is not active, FFCMD receives `X` and
-/// closes/exits exactly as today.
+/// Validates: menu-workspace Requirement 14.13 (CR-CH-052) -- bare `X` on a
+/// NON-editor Context reaches the uniform FFCMD `X` verb (FFEDIT is not active).
+/// When the tab was navigated from the POM (non-empty Navigation_Stack), `X`
+/// COLLAPSES to the Tab_Visual_Root (the POM) in one action; it does NOT
+/// app-exit. (Under the superseded model it dispatched file.exit.)
 #[test]
-fn non_editor_bare_x_still_exits() {
+fn non_editor_bare_x_collapses_to_visual_root() {
     use crate::tab_state::TabKind;
 
     let mut shell = make_shell();
-    shell.handle_command("CONFIG");
+    shell.dispatch_command_string("CONFIG");
     assert_eq!(
         shell.tabs.active_tab().kind,
         TabKind::ConfigPanel,
         "precondition: active Context is the non-editor Config panel"
+    );
+    assert!(
+        !shell.tabs.active_tab().nav_stack.is_empty(),
+        "precondition: navigating the POM pushed it onto the stack"
     );
     assert!(!*shell.should_close.lock().expect("close lock"));
 
     shell.run_command_line("X");
 
     assert!(
-        *shell.should_close.lock().expect("close lock"),
-        "bare `X` on a non-editor Context must still reach FFCMD and close/exit"
+        !*shell.should_close.lock().expect("close lock"),
+        "bare `X` above the visual root collapses, it does NOT app-exit (CR-CH-052)"
+    );
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "bare `X` collapses the Config Context to its Tab_Visual_Root (the POM)"
+    );
+    assert!(
+        shell.tabs.active_tab().nav_stack.is_empty(),
+        "collapse clears the Navigation_Stack to the visual root"
     );
 }
 
-/// Validates: command-environments Requirement 3.2, 3.2a, 5.2 (E8) -- `=X` on an
-/// editor Context is the universal `=` escape hatch: it is routed past FFEDIT to
-/// FFCMD, so it closes/exits (return/exit), NOT FFEDIT EXCLUDE. Only the BARE
-/// form is environment-sensitive.
+/// Validates: command-environments Requirement 3.2, 3.2a; menu-workspace Req
+/// 14.14 (CR-CH-052) -- `=X` on an editor Context is the universal `=` escape
+/// hatch: it is routed PAST FFEDIT to FFCMD. The front-door `=` reinitialises
+/// the editor tab to the POM, then `X` at the empty POM root CLOSES the
+/// Workspace (exit only when last). It is NOT claimed by FFEDIT as EXCLUDE, and
+/// it is NOT an unconditional app-exit. With another tab open it closes just the
+/// editor tab; as the last tab it app-exits.
 #[test]
-fn editor_equals_x_exits_not_exclude() {
+fn editor_equals_x_closes_workspace_not_exclude() {
     use crate::tab_state::TabKind;
 
+    // Case 1: another tab is open (shell_new_untitled adds a second tab), so
+    // `=X` closes the editor Workspace WITHOUT app-exiting.
     let mut shell = make_shell();
     shell.shell_new_untitled();
     assert_eq!(shell.tabs.active_tab().kind, TabKind::Untitled);
+    assert_eq!(shell.tabs.len(), 2, "precondition: POM + editor tab");
+    assert!(!*shell.should_close.lock().expect("close lock"));
+
+    shell.run_command_line("=X");
+
+    assert_eq!(
+        shell.tabs.len(),
+        1,
+        "`=X` escapes FFEDIT and closes the editor Workspace (one tab removed)"
+    );
+    assert!(
+        !*shell.should_close.lock().expect("close lock"),
+        "closing one of two tabs via `=X` must NOT app-exit (exit only when last)"
+    );
+
+    // Case 2: the editor is the only tab, so `=X` closes it and app-exits.
+    let mut shell = make_shell();
+    let idx = shell.tabs.active_index();
+    if let Some(tab) = shell.tabs.tabs_mut().get_mut(idx) {
+        tab.kind = TabKind::Untitled;
+        tab.is_home = false;
+        tab.title = "[Untitled]".to_string();
+        tab.nav_stack.clear();
+    }
+    assert_eq!(shell.tabs.len(), 1, "precondition: single editor tab");
     assert!(!*shell.should_close.lock().expect("close lock"));
 
     shell.run_command_line("=X");
 
     assert!(
         *shell.should_close.lock().expect("close lock"),
-        "`=X` on an editor Context must reach FFCMD (close/exit) via the `=` rule, \
-         NOT be claimed by FFEDIT as EXCLUDE"
+        "`=X` on the LAST tab reaches FFCMD, closes the Workspace and app-exits \
+         (CR-CH-052), NOT FFEDIT EXCLUDE"
     );
 }
 

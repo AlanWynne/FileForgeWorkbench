@@ -54,8 +54,8 @@ group = "Core"
 
 [[options]]
 key = "X"
-command = "Return"
-description = "Return to the Primary Option Menu (exit when last)"
+command = "X"
+description = "Collapse to the visual root / close workspace (exit when last)"
 group = "Core"
 show_in_menu_bar = false
 "#;
@@ -145,8 +145,8 @@ pub const DEFAULT_MENU_BAR_NAME: &str = "MB-POM";
 /// the barebones POM: this returns [`recovery_pom_menu`] so there is a SINGLE
 /// source of truth and the two can never diverge. The horizontal render skips
 /// options whose `show_in_menu_bar` is `false` (Req 17.2), so the barebones POM
-/// option `RETURN` (marked `show_in_menu_bar = false`) does NOT appear on the
-/// bar, leaving Settings / Catalogs / Files / Help.
+/// terminate option (key `X`, marked `show_in_menu_bar = false`) does NOT appear
+/// on the bar, leaving Settings / Catalogs / Files / Help.
 ///
 /// A top-level option's `command`, when it names a resolvable menu (e.g.
 /// `SETTINGS`), is PEEKED as a dropdown (Req 17.3); otherwise the button
@@ -235,10 +235,9 @@ mod tests {
         // (Menus moved to the Settings menu; Log dropped from the barebones set).
         assert_eq!(keys, vec!["0", "1", "2", "3", "X"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
-        assert_eq!(
-            commands,
-            vec!["Settings", "Catalogs", "Files", "Help", "Return"]
-        );
+        // CR-CH-052: the terminate option's command is now the uniform `X` close
+        // verb (collapse-to-visual-root / close-workspace), not `Return`.
+        assert_eq!(commands, vec!["Settings", "Catalogs", "Files", "Help", "X"]);
         // Single group -> no stray separator boundary.
         let groups: std::collections::BTreeSet<&str> = menu
             .options
@@ -279,8 +278,8 @@ mod tests {
     }
 
     // Validates: menu-workspace Req 17.2 -- the barebones POM includes Help and
-    // marks RETURN hidden from the bar, so the bar-visible options are
-    // Settings / Catalogs / Files / Help (RETURN excluded).
+    // marks the terminate (X) option hidden from the bar, so the bar-visible
+    // options are Settings / Catalogs / Files / Help (terminate excluded).
     #[test]
     fn default_menubar_bar_visible_options_are_settings_catalogs_files_help() {
         let menu = default_menubar_menu();
@@ -295,15 +294,16 @@ mod tests {
             vec!["Settings", "Catalogs", "Files", "Help"],
             "bar-visible options must be Settings / Catalogs / Files / Help (RETURN hidden)"
         );
-        // RETURN is present in the POM but hidden from the bar.
+        // The terminate option (key X, command X after CR-CH-052) is present in
+        // the POM but hidden from the bar.
         let ret = menu
             .options
             .iter()
-            .find(|o| o.command == "Return")
-            .expect("RETURN present in POM");
+            .find(|o| o.key == "X")
+            .expect("terminate (X) option present in POM");
         assert!(
             !ret.show_in_menu_bar,
-            "RETURN must be hidden from the menu bar (show_in_menu_bar = false)"
+            "the terminate (X) option must be hidden from the menu bar (show_in_menu_bar = false)"
         );
     }
 
@@ -348,16 +348,15 @@ mod tests {
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
-        assert_eq!(
-            commands,
-            vec!["Settings", "Catalogs", "Files", "Help", "Return"],
-        );
+        // CR-CH-052: terminate option command is now `X`, not `Return`.
+        assert_eq!(commands, vec!["Settings", "Catalogs", "Files", "Help", "X"],);
     }
 
-    // Validates: Requirement 2.1g (menu-workspace) -- terminate is a data-driven
-    // X -> RETURN option, not a bespoke exit line.
+    // Validates: Requirement 2.1g (menu-workspace, revised CR-CH-052) -- the POM
+    // terminate option is the data-driven `X` -> `X` close verb (collapse to the
+    // visual root / close workspace, exit when last), not the former `X -> Return`.
     #[test]
-    fn default_pom_toml_terminate_is_x_return() {
+    fn default_pom_toml_terminate_is_x_x() {
         let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
         let options = val
             .get("options")
@@ -367,7 +366,7 @@ mod tests {
             .iter()
             .find(|o| o.get("key").and_then(|k| k.as_str()) == Some("X"))
             .expect("X option present");
-        assert_eq!(x.get("command").and_then(|c| c.as_str()), Some("Return"));
+        assert_eq!(x.get("command").and_then(|c| c.as_str()), Some("X"));
     }
 
     // Validates: Requirement 7.1 (cv-requirements.md) -- title matches spec

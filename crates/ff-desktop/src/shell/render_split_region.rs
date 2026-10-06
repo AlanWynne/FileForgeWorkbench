@@ -6,7 +6,6 @@
 
 use eframe::egui;
 
-use super::helpers::*;
 use super::render_split::{split_region_strip_rects, SplitRegionRects};
 use super::WorkbenchShell;
 
@@ -54,10 +53,13 @@ impl WorkbenchShell {
         // === Per-leaf tab bar ===
         let indices = self.tabs.leaf_tab_store_indices(leaf_id);
         let active_store = self.tabs.leaf_active_store_index(leaf_id);
-        let active_bg = to_egui_color(self.palette.tab_bar.active_bg);
-        let inactive_bg = to_egui_color(self.palette.tab_bar.inactive_bg);
-        let active_text = to_egui_color(self.palette.tab_bar.active_text);
-        let inactive_text = to_egui_color(self.palette.tab_bar.inactive_text);
+        // CR-CH-056 Req 23.3/23.9: per-leaf tab-bar chrome colours from the
+        // Theme's egui-native chrome layer (not the flat `palette.tab_bar.*`).
+        let chrome = &self.palette.chrome_style;
+        let active_bg = chrome.tab_active_bg_color();
+        let inactive_bg = chrome.tab_inactive_bg_color();
+        let active_text = chrome.tab_active_text_color();
+        let inactive_text = chrome.tab_inactive_text_color();
 
         let mut clicked_store: Option<usize> = None;
         // A tab-header drag that STARTED this frame in this region: (tab_id, leaf).
@@ -155,7 +157,7 @@ impl WorkbenchShell {
 
         // === Focus highlight (Req 14.4) ===
         if is_focused {
-            let accent = to_egui_color(self.palette.editor.accent);
+            let accent = self.palette.chrome_style.accent_color();
             ui.painter().rect_stroke(
                 rect,
                 0.0,
@@ -174,7 +176,7 @@ impl WorkbenchShell {
                     .map(|p| rect.contains(p))
                     .unwrap_or(false);
                 if over {
-                    let accent = to_egui_color(self.palette.editor.accent);
+                    let accent = self.palette.chrome_style.accent_color();
                     // A translucent fill + a thicker border so the drop target is
                     // unambiguous before release.
                     let fill = egui::Color32::from_rgba_unmultiplied(
@@ -285,7 +287,7 @@ impl WorkbenchShell {
             .remove(&leaf_id)
             .unwrap_or_default();
         let cmd_id = egui::Id::new(("region_command_field_input", leaf_id.value()));
-        let accent = to_egui_color(self.palette.editor.accent);
+        let accent = self.palette.chrome_style.accent_color();
         let modal_open = self.modal_open;
 
         let mut command_text = std::mem::take(&mut region_ctx.command_text);

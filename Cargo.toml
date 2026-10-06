@@ -116,7 +116,11 @@ serde_json = "1"
 crc32fast = "1"
 anyhow = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
-egui = "0.33"
+# CR-CH-056 (Req 23.2): the `serde` feature gives egui::Style/Visuals/
+# WidgetVisuals their own Serialize/Deserialize derives so a Theme's chrome
+# layer embeds egui's native representation (rather than a hand-written mirror
+# that could drift from egui's type).
+egui = { version = "0.33", features = ["serde"] }
 eframe = { version = "0.33", features = ["default_fonts"] }
 pulldown-cmark = { version = "0.12", default-features = false, features = [
     "html",

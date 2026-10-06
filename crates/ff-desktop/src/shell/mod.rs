@@ -128,6 +128,8 @@ mod tests_misc;
 #[cfg(test)]
 mod tests_nav;
 #[cfg(test)]
+mod tests_nav_ladder;
+#[cfg(test)]
 mod tests_scrm;
 #[cfg(test)]
 mod tests_session;

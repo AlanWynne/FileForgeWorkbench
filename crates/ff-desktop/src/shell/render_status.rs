@@ -9,7 +9,6 @@ use eframe::egui;
 use ff_core::LifecyclePhase;
 use ff_keys::{FunctionKey, KeyLabelBarModel};
 
-use super::helpers::*;
 use super::render::logging_degradation_reason;
 use super::WorkbenchShell;
 
@@ -28,8 +27,9 @@ impl WorkbenchShell {
         if !self.key_bar_visible {
             return;
         }
-        let key_color = to_egui_color(self.palette.editor.accent);
-        let label_color = to_egui_color(self.palette.editor.foreground);
+        // CR-CH-056 Req 23.3: chrome accent + body text come from the chrome layer.
+        let key_color = self.palette.chrome_style.accent_color();
+        let label_color = self.palette.chrome_style.foreground_color();
         let modifier = self.key_bar_scope.to_modifier();
         // Build the single-row model for the active scope from the active map.
         let row =
@@ -148,7 +148,7 @@ impl WorkbenchShell {
                     if let ZoomIndicatorState::Visible { text, .. } =
                         ZoomIndicatorState::from_offset(self.zoom.offset())
                     {
-                        ui.colored_label(to_egui_color(self.palette.editor.accent), text);
+                        ui.colored_label(self.palette.chrome_style.accent_color(), text);
                         ui.separator();
                     }
                 }
@@ -157,12 +157,12 @@ impl WorkbenchShell {
                 ui.separator();
                 // Requirement 6.5: modified indicator
                 if tab.is_modified {
-                    ui.colored_label(to_egui_color(self.palette.editor.accent), "\u{25cf}");
+                    ui.colored_label(self.palette.chrome_style.accent_color(), "\u{25cf}");
                     ui.separator();
                 }
                 // Req 16.3: CAPS mode indicator
                 if tab.edit_profile.caps.is_on() {
-                    ui.colored_label(to_egui_color(self.palette.editor.accent), "CAPS");
+                    ui.colored_label(self.palette.chrome_style.accent_color(), "CAPS");
                     ui.separator();
                 }
 

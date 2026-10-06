@@ -11,7 +11,6 @@ use eframe::egui;
 use crate::tab_state::TabKind;
 use crate::toolchain_panel;
 
-use super::helpers::*;
 use super::WorkbenchShell;
 
 /// Direction of an arrow-history step requested by a focused command field
@@ -327,8 +326,9 @@ pub(crate) fn render_focus_indicator(
     rect: egui::Rect,
     palette: &ff_theme::ThemePalette,
 ) {
-    use ff_theme::ColourToken;
-    let colour = to_egui_color(palette.colour(ColourToken::UiFocusRing));
+    // CR-CH-056 Req 23.3/23.8: the focus-ring colour comes from the Theme's
+    // egui-native chrome layer.
+    let colour = palette.chrome_style.focus_ring_color();
     ui.painter().rect_stroke(
         rect.expand(2.0),
         2.0,

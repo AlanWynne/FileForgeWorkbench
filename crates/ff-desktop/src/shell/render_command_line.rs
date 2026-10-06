@@ -6,7 +6,6 @@
 
 use eframe::egui;
 
-use super::helpers::*;
 use super::render::{CommandFieldSignal, HistoryStep};
 use super::WorkbenchShell;
 
@@ -55,8 +54,12 @@ impl WorkbenchShell {
         let display = self.title_line_display(tab);
         let centered = is_menu_workspace || display.is_some();
         let text = display.unwrap_or_else(|| self.kind_title(tab));
-        let bg = to_egui_color(self.palette.ui.primary_menu_bg);
-        let fg = to_egui_color(self.palette.ui.menu_bar_fg);
+        // CR-CH-056 Req 23.3/23.10: the Title_Line header band fill + text come
+        // from the Theme's egui-native chrome layer (egui's `Style` does not
+        // model a title band), replacing the flat `palette.ui.primary_menu_bg` /
+        // `palette.ui.menu_bar_fg` reads.
+        let bg = self.palette.chrome_style.title_band_bg_color();
+        let fg = self.palette.chrome_style.title_band_fg_color();
         if centered {
             // Themed fill + centered, strong monospace title. One path for the
             // POM, every other menu, and (CR-CH-045) the custom editor/config +
@@ -197,7 +200,8 @@ impl WorkbenchShell {
     ) {
         let panel_id = egui::Id::new(("detached_command_field", tab_id.0));
         let cmd_id = egui::Id::new(("detached_command_field_input", tab_id.0));
-        let accent = to_egui_color(self.palette.editor.accent);
+        // CR-CH-056 Req 23.3: the status/error accent comes from the chrome layer.
+        let accent = self.palette.chrome_style.accent_color();
         let modal_open = self.modal_open;
         // CR-NR-095 (Req 8.5): place the detached window's command field per the
         // detached instance's Kind position. We are inside `with_workspace_context`,
