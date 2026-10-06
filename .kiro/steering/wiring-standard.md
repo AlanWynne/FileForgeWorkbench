@@ -18,16 +18,18 @@ Menus / Keys / Kinds / Command Configurator / Macro Library / Event Log / Plugin
 Manager / Search Results / Help). When in doubt, read how the Theme Editor
 Context is wired and copy its shape.
 
-## Known caveat -- Command Registration is temporarily weaker
+## Command dispatch is unified (B080 complete)
 
-Today, registering a command still means adding a verb to the
-`shell/commands.rs::handle_command` ladder, because the typed command line
-bypasses `resolve_target` and `builtin_workspace_target` is a stub (see the
-Refactoring Roadmap, Phase 3 / S1). Until that lands, the Command Registration
-step below is the one place the standard cannot yet be clean. Do NOT invent a
-parallel dispatcher to work around this -- add the verb to the existing ladder,
-and when the verb table lands, the ladder entry migrates into a table row with
-no change to the rest of this standard.
+Command dispatch now has ONE front door: `shell/dispatch.rs::dispatch_command_string`
+runs the prelude, then `resolve_target` (the FFCMD base classifier, via
+`command_config/mod.rs::builtin_workspace_target_for`), then the shrinking
+`run_command_ladder` fallback. The typed command line, menu options, and keyboard
+seams ALL route through it, so a verb classified by `resolve_target` is reached
+identically from every seam (B080, command-framework Req 2.1). `builtin_workspace_target`
+is no longer a stub. The Command Registration step below is therefore clean:
+prefer classifying the verb in `resolve_target` over adding a `handle_command`
+ladder arm. (Editor-action verbs instead belong to a Command Environment -- FFEDIT
+-- under CR-CH-053; see `framework-conformance.md`.)
 
 ## The eight integration concerns
 
@@ -41,9 +43,13 @@ no change to the rest of this standard.
 
 ### Command Registration
 - Register the verb so that the typed, menu, and key seams ALL resolve to the
-  same handler. Post-verb-table (Phase 3): register a table entry and have
-  `builtin_workspace_target` classify it. Until then: add the verb to the
-  `handle_command` ladder (the documented temporary caveat above).
+  same handler through the single front door. Prefer classifying the verb in
+  `resolve_target` (a `CustomWorkspace`/`Function`/`Menu` target via
+  `command_config/mod.rs::builtin_workspace_target_for`, dispatched by
+  `shell/target_dispatch.rs::dispatch_command_target`) so every seam reaches it
+  the same way. A `handle_command` ladder arm is only for verbs that genuinely do
+  not fit a `CommandTarget` variant (and an editor-action verb belongs to the
+  FFEDIT Command Environment under CR-CH-053, not the ladder).
 - Do NOT add a second dispatcher or a bespoke intercept outside the agreed seam
   (`framework-conformance.md`, mechanism 1).
 
@@ -113,7 +119,7 @@ no change to the rest of this standard.
 7. Write the full-shell first-Tab `egui_kittest` test plus handler/effect unit
    tests; run the SCOPED `cargo check -p ff-desktop`, `cargo test -p ff-desktop`,
    `cargo clippy -p ff-desktop`, and `cargo fmt`.
-8. Hand off for the owner's full `ffwb-gate.ps1` gate.
+8. Hand off for the owner's full `cargo gate --build` gate.
 
 ## Anti-patterns (do NOT do these)
 

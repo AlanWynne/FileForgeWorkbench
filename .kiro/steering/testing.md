@@ -175,9 +175,10 @@ cargo test -p ff-desktop -- --nocapture     # single crate, show stdout
 ```
 
 ### Full-workspace runs are the owner's, not Kiro's (non-blocking by design)
-Kiro does NOT run full-workspace builds/tests. The full gate (`ffwb-gate.ps1`) and
-any `--workspace` run are the OWNER's manual step, run outside Kiro, so Kiro is
-never blocked on a multi-minute run and the connection never drops mid-wait. The
+Kiro does NOT run full-workspace builds/tests. The full gate (`cargo gate
+--build`) and any `--workspace` run are the OWNER's manual step, run outside Kiro,
+so Kiro is never blocked on a multi-minute run and the connection never drops
+mid-wait. The
 command below is documented for the OWNER's reference (or a future explicit "run
 this in the background and read the log" instruction from the owner) -- it is not
 part of Kiro's normal loop:
@@ -194,77 +195,91 @@ type tools\logs\test-run.txt
 | Plugin Manager UI | `cargo test -p ff-desktop -p ff-plugin` |
 | Notification System | `cargo test -p ff-desktop` |
 | Compiler Toolchain (MockToolchain) | `cargo test -p ff-toolchain-api` |
-| Full baseline check | `ffwb-gate.ps1` -- OWNER-run manual gate, not a Kiro command |
+| Full baseline check | `cargo gate --build` -- OWNER-run manual gate, not a Kiro command |
 
-### Full-workspace verification -- ffwb-gate.ps1 (cargo-nextest)
-The canonical gate is `tools\ffwb-gate.ps1` (the merged, portable replacement for
-the former `allcargo.bat` + `powershell\verify.ps1`, which duplicated each other's
-work). It runs three steps -- `cargo fmt --check`, `cargo clippy --workspace`, and
-the test suite -- EXACTLY ONCE each, capturing each step's output to `tools\logs\`.
-It writes a combined `tools\logs\ffwb-gate.final.report.log` (every message EXCEPT
-per-test `... ok` / nextest `PASS` lines and blank lines -- so group/summary
-successes, warnings, and errors remain) and accumulates problems into
-`tools\logs\ffwb-gate.review.log` (an empty file means the gate is clean).
+### Full-workspace verification -- cargo gate --build (CANONICAL)
+The canonical gate is **`cargo gate --build`** (the `cargo-gate` tool, a cargo
+subcommand). The repo also ships the alias **`cargo full-gate`** (= `cargo gate
+--build`, defined in `.cargo/config.toml`) so the canonical form is one command
+that always includes `--build`. It runs `cargo fmt --check`, `cargo clippy
+--workspace`, and the test suite (`cargo nextest run`) EXACTLY ONCE each, with one
+live progress view.
 
-The repo root is derived from the script's own location, so it is portable: pull
-the repo on any machine and run it unchanged. A sibling `tools\ffwb-gate.sh`
-provides the same gate for bash on Linux/macOS; `ffwb-gate.ps1` itself runs on
-Windows, Linux, and macOS via pwsh.
+The `--build` flag adds a BUILD phase that runs AFTER a clean gate, so you are
+left with a FRESH, RUNNABLE `ffwb.exe` in `target/` (fmt/clippy only
+compile-check and nextest builds TEST binaries, so WITHOUT `--build` a clean gate
+can still leave a STALE app binary -- that was the B082 "clean gate but
+old-looking app" trap). Details of the flag (from `cargo gate --help`):
+- `--build` is OFF by default (the default run stays a pure, side-effect-free
+  verification gate); always pass it (or use `cargo full-gate`) for a completion
+  gate so the binary is refreshed.
+- The build phase is SKIPPED automatically if the gate is not clean (no point
+  building a failing tree).
+- Bare `--build` builds the active scope; `--build <bin>` builds `-p <bin>`.
+- `--release` composes with `--build` for a release binary (slower -- a release
+  profile shares no artifacts with the test build).
 
-Tests run via `cargo-nextest` when installed: it executes every test binary
-across all cores in parallel and prints one aggregated summary, which is much
-faster than serial `cargo test` on this ~9000-test / 69-crate workspace. If
-nextest is absent, ffwb-gate falls back to `cargo test --workspace`
-automatically -- no behaviour change, just slower.
+It writes its artifacts to `.gate/` (overridable with `--log-dir`): a combined
+`.gate/gate.report.log` (signal only -- group/summary successes, warnings, errors;
+per-test `ok`/`PASS` and blank lines filtered out), a problems file
+`.gate/gate.review.log` (an EMPTY file means the gate is CLEAN -- this is the
+"done" signal), plus `.gate/gate.history.csv` (one row per step with duration /
+status / test counts) and `.gate/gate.timing.log`. `.gate/` is git-ignored
+(ephemeral).
 
-### Gate scopes (CR-CH-047)
-`ffwb-gate.ps1` supports three TEST scopes. `cargo fmt --check` and
-`cargo clippy --workspace` run in ALL of them; only the test step's package set
-changes. Pick the scope by workload:
+Tests run via `cargo-nextest`: it executes every test binary across all cores in
+parallel and prints one aggregated summary, much faster than serial `cargo test`
+on this ~9000-test / 69-crate workspace. Install nextest once with:
+`cargo install --locked cargo-nextest`.
+
+> FALLBACK: `tools\ffwb-gate.ps1` (and its `tools\ffwb-gate.sh` sibling) is the
+> DEPRECATED predecessor, retained only as a fallback if `cargo gate` is
+> unavailable. It writes to `tools\logs\ffwb-gate.*` instead of `.gate/` and has
+> NO build step. Prefer `cargo gate --build`; reach for the script only when
+> `cargo gate` cannot be run.
+
+### Gate scopes
+`cargo gate` supports the same scoping the old script did. `cargo fmt --check`,
+`cargo clippy --workspace`, and `cargo build` run in ALL scopes; only the test
+step's package set changes. Pick the scope by workload:
 
 ```powershell
-# COMPLETION GATE (default, no switch): full --workspace, all crates.
+# COMPLETION GATE (default): full --workspace, all crates, builds the binary.
 # The ONLY scope that qualifies as "done". ~4-5 min.
-pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1
+cargo gate --build
 
-# ROUTINE gate: the ffwb app dependency-closure only (--workspace --exclude
-# <orphans>). Skips the workspace crates NOT yet wired into ff-desktop.
-# ~2-3x faster. PARTIAL -- not the completion gate.
-pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1 -AppOnly
+# ROUTINE gate: the ffwb app dependency-closure only (excludes workspace orphan
+# crates NOT wired into ff-desktop). Faster. PARTIAL -- not the completion gate.
+cargo gate --build --app-only --closure-of ff-desktop
 
 # INNER LOOP: a single crate (cargo nextest run -p <name>). PARTIAL.
-pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1 -Crate ff-keys
+cargo gate --crate ff-keys
 
 # Fast proptest signal (PROPTEST_CASES=32). Orthogonal -- composes with any scope.
-pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1 -Fast
+cargo gate --build --fast
 ```
 
-On Linux/macOS the same scopes are `--app-only`, `--crate <name>`, and `--fast`
-on `tools/ffwb-gate.sh`.
-
-The `-AppOnly` exclude list is DERIVED at runtime -- all workspace members MINUS
-the `ff-desktop` dependency closure (`cargo metadata` minus `cargo tree -p
-ff-desktop`) -- so it NEVER drifts: a crate wired into ff-desktop automatically
-re-enters `-AppOnly`, and no shipping crate is ever silently skipped. If the
-derivation fails, `-AppOnly` falls back to the full `--workspace` (never a wrong
-subset). The chosen scope is recorded per run in `ffwb-gate.history.csv` (a `scope`
-column) and drives a scope-aware ETA.
+The `--app-only` closure is DERIVED at runtime from `--closure-of <crate>` -- all
+workspace members MINUS that crate's dependency closure -- so it NEVER drifts: a
+crate wired into ff-desktop automatically re-enters the set, and no shipping crate
+is silently skipped. The chosen scope is recorded per run in
+`.gate/gate.history.csv`.
 
 Rules:
-- **The full gate (`ffwb-gate.ps1`, DEFAULT full run) is the OWNER's MANUAL step,
-  NOT a Kiro command.** Kiro NEVER runs `ffwb-gate.ps1` or any `--workspace`
-  build/test -- those are the multi-minute runs that block Kiro and drop the
-  connection. Kiro runs ONLY the scoped `-p <crate>` checks for what it changed,
-  then hands off (see "Full-gate hand-off" below). The owner runs the full gate
-  outside Kiro and reports the result back.
+- **The full gate (`cargo gate --build`) is the OWNER's MANUAL step, NOT a Kiro
+  command.** Kiro NEVER runs `cargo gate` or any `--workspace` build/test -- those
+  are the multi-minute runs that block Kiro and drop the connection. Kiro runs
+  ONLY the scoped `-p <crate>` checks for what it changed, then hands off (see
+  "Full-gate hand-off" below). The owner runs the full gate outside Kiro and
+  reports the result back.
 - **Completion is two-staged.** Kiro certifies "code-complete pending full gate"
   when its scoped checks are clean; the task is "done" only after the owner runs
-  the full `ffwb-gate.ps1` and confirms a clean run (empty `ffwb-gate.review.log`).
-  A clean scoped run is NOT sufficient to claim "done" -- but it IS all Kiro runs.
+  the full `cargo gate --build` and confirms a clean run (empty
+  `.gate/gate.review.log`). A clean scoped run is NOT sufficient to claim "done" --
+  but it IS all Kiro runs.
 - The full run still matters for the not-yet-integrated ("orphan") crates and for
   proptests keeping their mandated >=100 iterations; that is precisely why it is
   run manually by the owner rather than skipped.
-- Install nextest once with: `cargo install --locked cargo-nextest`.
 
 ### Full-gate hand-off (Kiro <-> owner protocol)
 This replaces Kiro ever running the full gate:
@@ -272,14 +287,15 @@ This replaces Kiro ever running the full gate:
    `cargo fmt`) and confirms they are clean.
 2. Kiro STOPS and prints the hand-off: which scoped commands it ran, and the
    exact full-gate command for the owner to run outside Kiro:
-   `pwsh -ExecutionPolicy Bypass -File tools\ffwb-gate.ps1`
-   (Linux/macOS: `./tools/ffwb-gate.sh`)
+   `cargo gate --build`
+   (fallback if cargo gate is unavailable: `pwsh -ExecutionPolicy Bypass -File
+   tools\ffwb-gate.ps1`, or `./tools/ffwb-gate.sh` on Linux/macOS).
 3. The OWNER runs the full gate manually and either replies "clean" or pastes the
-   contents of `tools\logs\ffwb-gate.review.log` / the failing output.
+   contents of `.gate\gate.review.log` / the failing output.
 4. Kiro acts on that feedback: if clean, the task is DONE; if failures, Kiro fixes
    them (scoped checks only) and hands off again at step 1.
 Kiro must NOT proceed to declare a task/phase/CR complete until step 3 returns
-clean. Kiro must NOT run `ffwb-gate.ps1` itself to "save a round-trip".
+clean. Kiro must NOT run `cargo gate` itself to "save a round-trip".
 
 Direct nextest use (outside the script) is also available:
 ```bash

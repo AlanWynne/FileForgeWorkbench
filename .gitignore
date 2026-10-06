@@ -39,6 +39,9 @@ reports/
 tools/logs/
 bootstrap/logs/*.log
 
+# ── cargo gate artifacts (ephemeral; the canonical gate writes here) ──────────
+.gate/
+
 # ── Dev application logs (redirected via .ffworkbench/config.toml, Phase DC) ─
 .ffworkbench/logs/
 

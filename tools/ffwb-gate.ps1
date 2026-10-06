@@ -1,18 +1,27 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    FileForgeWorkbench unified verification gate (cross-platform PowerShell).
+    FileForgeWorkbench verification gate (cross-platform PowerShell).
+    DEPRECATED FALLBACK -- the canonical gate is now `cargo gate --build`.
 
 .DESCRIPTION
-    THE single verification gate for the workspace. This script
-    runs each phase:
+    DEPRECATED: this script is retained only as a FALLBACK for when the
+    `cargo-gate` tool (`cargo gate`) is unavailable. The CANONICAL verification
+    gate is now `cargo gate --build` (see .kiro/steering/testing.md). Unlike this
+    script, `cargo gate --build` also runs `cargo build`, so it leaves a FRESH,
+    RUNNABLE `ffwb.exe` in `target/` -- this script does NOT (it only
+    compile-checks via clippy and builds TEST binaries via nextest), which is the
+    B082 "clean gate but stale app binary" trap. Prefer `cargo gate --build`.
+
+    This script runs each phase:
 
       1. cargo fmt --check          (formatting; no compile)
       2. cargo clippy --workspace   (compile-check + lint)
       3. cargo nextest run <scope>  (build + run tests; or `cargo test`)
 
     clippy performs the compile-check and the test step builds the test
-    binaries, so there is no separate `cargo check` / `cargo build` pass.
+    binaries, so there is no separate `cargo check` / `cargo build` pass
+    (another reason to prefer `cargo gate --build`, which does build the app).
 
     LOG FILTERING (matches the old allcargo.bat intent): the combined log keeps
     the signal and drops the noise. It FILTERS OUT:
