@@ -1,3 +1,37 @@
+# Session State
+
+## LATEST (2026-10-06) -- everything merged to main + pushed
+
+Milestone: the entire accumulated working tree was committed (7 logical commits)
+and landed on `main` via fast-forward, then pushed to `origin/main` (now at
+`e6a88b0`). Working tree clean. The push was verified against a CLEAN full gate
+(`cargo gate --build`: 9613/9613 passed, fmt/clippy/build/app-build green).
+
+Landed in this merge:
+- CR-CH-056 egui-native theme rework (Phases 1-5, COMPLETE, owner-gate confirmed).
+- B080 dispatch unification (Steps 0-7 COMPLETE: single front door; editor verbs
+  owned by CR-CH-053 FFEDIT; window/session/global verbs recorded as FFCMD under
+  CR-CH-053; dead ladder arms confirmed gone). ff-desktop simplification Phases
+  1-3 done; wiring-standard "temporarily weaker" caveat removed (Task 9).
+- Gate tooling adoption: `cargo gate --build` is now the CANONICAL gate (alias
+  `cargo full-gate`); `ffwb-gate.ps1` is a DEPRECATED fallback. Gate artifacts
+  live in `.gate/` (`.gate/gate.review.log` empty == clean).
+- Command-environments design: no-topical-environment principle (FFCMD is the
+  home for window/session/global verbs; no FFWIN/FFSCRM) + layered-SUBMIT
+  delegation principle. Volume-model (CR-NR-105/CR-CH-057) requirements gate docs.
+
+CANONICAL GATE NOW: `cargo gate --build` (owner-run; `.gate/gate.review.log`
+empty == clean). The `ffwb-gate.ps1` references BELOW this banner are STALE
+(kept for historical context only).
+
+Next candidate work (owner to choose): simplification Task 8 (optional -- move
+kind-specific tab state behind TabKind; owner leaned toward doing it for
+long-term discipline); CR-CH-053 continuation (make FFEDIT a real trait object /
+build a tiny real FFNAV); or CORE sign-off per the ROADMAP. Old feature branches
+(decomp-and-scrm-wave, feature/db-*) can be deleted -- main has everything.
+
+---
+
 # Session State -- CR-CH-053 Command Environments (resume point)
 
 Last updated: 2026-10-03 (owner OOO; Kiro continued autonomously).
