@@ -199,6 +199,13 @@ pub enum UndoEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TabId(pub u64);
 
+/// The default Owning_Environment NAME for a tab whose content comes from the
+/// host file system (CR-CH-053 Task 19, Req 15.3). Every tab opened without an
+/// explicit originating environment binds here, so store-affecting verbs (SAVE)
+/// address the host FS environment and native editing is unchanged. Kept in sync
+/// with `shell::environment_registry::HOST_FS_NAME` (which re-exports this).
+pub const DEFAULT_OWNING_ENVIRONMENT: &str = "HOSTFS";
+
 /// All state associated with a single open tab.
 pub struct TabState {
     /// Stable identity.
@@ -263,6 +270,14 @@ pub struct TabState {
     ///
     /// Validates: menu-workspace Requirement 14.1 (CR-CH-022)
     pub nav_stack: Vec<ff_session::WorkspaceDescriptor>,
+    /// The Owning_Environment NAME: the Command Environment of the file system
+    /// that OWNS this tab's edited resource (CR-CH-053 Task 19, Req 15.1). FFEDIT
+    /// ADDRESSes store-affecting verbs (SAVE, future CREATE/REPLACE-member) to
+    /// this environment rather than executing them itself (Req 14.4). Captured at
+    /// open from the originating catalog/provider (Req 15.2); defaults to
+    /// [`DEFAULT_OWNING_ENVIRONMENT`] (the host FS environment) for a plain
+    /// host-path open, so existing opens are behaviour-preserving (Req 15.3).
+    pub owning_environment: String,
 }
 
 // The `base_tab!` macro and all `TabState` constructor fns live in the sibling

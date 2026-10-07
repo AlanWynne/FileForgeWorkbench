@@ -40,6 +40,12 @@ use crate::toolchain_panel::ToolchainPanelState;
 
 use super::{command_line_outcome, reset_bare, state_groups, KeyBarScope};
 
+/// The deferred-open channel payload: `(path, owning_env)` where `owning_env` is
+/// the optional Owning_Environment NAME captured at open (CR-CH-053 Task 19,
+/// Req 15.2); `None` -> host FS default (Req 15.3). A `type` alias to keep the
+/// nested `Arc<Mutex<Option<..>>>` readable (and satisfy clippy::type_complexity).
+pub(super) type PendingOpen = Arc<Mutex<Option<(String, Option<String>)>>>;
+
 /// The egui/eframe application shell.
 pub struct WorkbenchShell {
     pub(super) app: WorkbenchApp,
@@ -56,8 +62,11 @@ pub struct WorkbenchShell {
     pub(super) started: bool,
     /// Files to open on the first frame (from CLI arguments).
     pub(super) cli_files: Vec<String>,
-    /// When Some, open this path at the start of the next frame.
-    pub(super) pending_open: Arc<std::sync::Mutex<Option<String>>>,
+    /// When Some, open `(path, owning_env)` at the start of the next frame. The
+    /// optional `owning_env` is the Owning_Environment NAME captured from the
+    /// originating catalog/provider (CR-CH-053 Task 19, Req 15.2); `None` ->
+    /// defaults to the host FS environment on open (Req 15.3).
+    pub(super) pending_open: PendingOpen,
     /// Set to true by the file.exit handler; checked in update().
     pub(super) should_close: Arc<std::sync::Mutex<bool>>,
     /// Error message to display in the status bar (cleared on next open).

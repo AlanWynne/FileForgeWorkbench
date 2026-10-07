@@ -238,7 +238,9 @@ impl WorkbenchShell {
         self.runtime.spawn_blocking(move || {
             if let Some(handle) = rfd::FileDialog::new().pick_file() {
                 let path = handle.to_string_lossy().into_owned();
-                *pending.lock().expect("pending lock") = Some(path);
+                // The native file dialog opens a host-filesystem file -> host FS
+                // Owning_Environment (None -> default, CR-CH-053 Task 19 Req 15.3).
+                *pending.lock().expect("pending lock") = Some((path, None));
             }
         });
     }

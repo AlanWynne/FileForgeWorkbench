@@ -86,10 +86,13 @@ impl eframe::App for WorkbenchShell {
             self.focus.command_field_focus_requested = true;
         }
 
-        let path = self.pending_open.lock().expect("pending lock").take();
-        if let Some(p) = path {
+        let pending = self.pending_open.lock().expect("pending lock").take();
+        if let Some((p, owning_env)) = pending {
             if !p.is_empty() {
-                if let Err(e) = self.shell_open_file(&p) {
+                // CR-CH-053 Task 19: bind the opened tab's Owning_Environment from
+                // the captured origin (Req 15.2); `None` -> host FS default
+                // (Req 15.3).
+                if let Err(e) = self.shell_open_file_with_env(&p, owning_env.as_deref()) {
                     self.open_error = Some(e);
                 } else {
                     self.open_error = None;

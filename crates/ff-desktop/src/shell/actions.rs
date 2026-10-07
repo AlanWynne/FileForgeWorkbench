@@ -162,12 +162,41 @@ impl WorkbenchShell {
         )
     }
 
+    /// The Owning_Environment NAME of the active tab (CR-CH-053 Task 19,
+    /// Req 15.4): the file-system Command Environment FFEDIT ADDRESSes a
+    /// store-affecting verb (SAVE) to for the current resource. Defaults to the
+    /// host FS environment for a host-path tab (Req 15.3/15.6), so native SAVE is
+    /// unchanged.
+    pub(crate) fn active_owning_environment(&self) -> String {
+        self.tabs.active_tab().owning_environment.clone()
+    }
+
     /// Open a file into a new tab AND apply the resulting Kind's profile
     /// (CR-NR-090 B.3). The single shell open-file seam; wraps
-    /// `TabManager::open_file`.
+    /// `TabManager::open_file`. Binds the opened tab to the host FS
+    /// Owning_Environment (CR-CH-053 Task 19, Req 15.3 default).
     pub(crate) fn shell_open_file(&mut self, path: &str) -> Result<(), String> {
+        self.shell_open_file_with_env(path, None)
+    }
+
+    /// Open a file into a new tab, binding its Owning_Environment to
+    /// `owning_env` (CR-CH-053 Task 19, Req 15.2); `None` binds the host FS
+    /// environment (`DEFAULT_OWNING_ENVIRONMENT`, Req 15.3), so a plain host-path
+    /// open is behaviour-preserving. FFEDIT later reads this binding to choose
+    /// where to ADDRESS a store-affecting verb (Req 15.4).
+    pub(crate) fn shell_open_file_with_env(
+        &mut self,
+        path: &str,
+        owning_env: Option<&str>,
+    ) -> Result<(), String> {
         let result = self.tabs.open_file(path, &self.runtime);
         if result.is_ok() {
+            if let Some(env) = owning_env {
+                // Capture the originating environment on the just-opened (now
+                // active) tab. Default (None) leaves the constructor's host FS
+                // binding untouched.
+                self.tabs.active_tab_mut().owning_environment = env.to_string();
+            }
             self.apply_kind_profile_to_active();
         }
         result

@@ -289,14 +289,27 @@ impl CommandEnvironment for FfEditEnvironment {
             }
 
             // Editor-buffer SAVE (E9, Req 10.1): the one STORE-AFFECTING FFEDIT
-            // verb (`is_store_affecting_verb`). It reaches this arm via the
-            // address-by-name seam (`dispatch_to_environment` -> this `claim`),
-            // which is how CR-CH-053 Task 18 routes store verbs (Req 14.3/14.8).
-            // In this slice SAVE still EXECUTES here (dirty-aware, STAYS in the
-            // editor) so behaviour is byte-identical; Task 20 (Req 14.4/14.5/14.6)
-            // will redirect it to the tab's Owning_Environment once the owning-env
-            // binding (Task 19) exists, moving only the EXECUTOR, not the contract.
+            // verb (`is_store_affecting_verb`), reached via the address-by-name
+            // seam (`dispatch_to_environment` -> this `claim`, Task 18).
+            //
+            // CR-CH-053 Task 19 (Req 15.4): FFEDIT READS the active tab's
+            // Owning_Environment to choose the SAVE target. In this slice the only
+            // registered saving environment is the host FS environment
+            // (DEFAULT_OWNING_ENVIRONMENT), to which every host-path tab is bound,
+            // so SAVE executes FFEDIT's dirty-aware local save and behaviour is
+            // byte-identical (Req 15.6). Task 20 (Req 14.4/14.5/14.6) moves the
+            // host-save logic into the host FS CE and addresses non-host owners to
+            // their own CE -- moving only the EXECUTOR, not the dirty-aware
+            // contract.
             "SAVE" => {
+                let owning_env = shell.active_owning_environment();
+                debug_assert_eq!(
+                    owning_env,
+                    crate::tab_state::DEFAULT_OWNING_ENVIRONMENT,
+                    "Task 19: only the host FS owning environment is wired for SAVE; \
+                     a non-host owner requires the Task 20 reroute"
+                );
+                let _ = owning_env; // read for the target decision (Req 15.4)
                 shell.ffedit_save();
                 true
             }

@@ -355,20 +355,43 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
       tests) green. Owner runs the full `cargo gate --build`.
 
 - [ ] 19. TabState owning-environment field + capture at open (slice c, default host FS, behaviour-preserving)
-  - [ ] 19.1 Add `owning_environment` to `TabState`; capture it at open from the
+  - NOTE: 19.1 + 19.3 DONE and tested; 19.2 (reopen-recapture persistence test)
+    pending -- mechanism in place, needs one follow-up test. Task stays open until
+    19.2 is checked.
+  - [x] 19.1 Add `owning_environment` to `TabState`; capture it at open from the
         originating catalog/provider (the `CatalogType` discarded today), threaded
         through `file.open` via a new `CommandParams` entry; default =
         Host_FS_Environment when no origin is supplied. Test FIRST: a plain host-path
         open binds to the host FS env; an open carrying an origin binds to that env.
         Validates: Requirement 15.1, 15.2, 15.3.
+    - DONE: `TabState.owning_environment: String` + `DEFAULT_OWNING_ENVIRONMENT`
+      ("HOSTFS", shared with `environment_registry::HOST_FS_NAME`). `file.open`
+      gained an optional `owning_env` param; `pending_open` payload widened to
+      `(path, Option<env>)` (type alias `PendingOpen`); drained via
+      `shell_open_file_with_env` which sets the active tab's owning env (default
+      host when None). Tests: `host_path_open_binds_owning_environment_to_host_fs`,
+      `open_with_origin_binds_that_owning_environment`,
+      `edit_path_sets_pending_open_via_file_open_command` (updated for the tuple).
   - [ ] 19.2 Persist/restore the Owning_Environment via the EXISTING
         `WorkspaceDescriptor` model (recapture from origin on reopen); no new
         persistence format. Test FIRST: a tab reopened from its descriptor recaptures
         the same Owning_Environment. Validates: Requirement 15.5.
-  - [ ] 19.3 FFEDIT reads the tab's Owning_Environment to choose the SAVE target.
+    - MECHANISM IN PLACE, test pending: NO descriptor field was added (no new
+      persistence format); a reopened tab re-enters the same `file.open` seam and
+      rebinds its owning env from the origin (host default today). A dedicated
+      reopen-recapture test is a small follow-up before this is checked off; TCR
+      Req 15.5 left NOT COVERED to reflect that honestly.
+  - [x] 19.3 FFEDIT reads the tab's Owning_Environment to choose the SAVE target.
         Test FIRST (full-shell): on a host-bound tab FFEDIT targets the host FS env;
         on a non-host-bound tab FFEDIT addresses that env. Validates: Requirement
         15.4, 15.6.
+    - DONE: FFEDIT's SAVE arm reads `active_owning_environment()` to select the
+      target (host-bound executes FFEDIT's dirty-aware save, behaviour-identical;
+      a `debug_assert` documents that only the host env is wired for SAVE until the
+      Task 20 reroute). Tests: `host_bound_save_is_behaviour_preserving` + the
+      editor_save suite green. NOTE: the non-host-bound full-shell assertion lands
+      with Task 20/21 (when a non-host CE exists to address); 15.4's host path is
+      covered now.
 
 - [ ] 20. Redirect FFEDIT SAVE to address the owning environment (slice d, MODIFIES Req 10.1 -- native == today)
   - [ ] 20.1 Move the local-FS byte-write SAVE logic (`tab_manager::save_active_tab`)

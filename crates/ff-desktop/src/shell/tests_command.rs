@@ -77,21 +77,23 @@ fn close_command_is_recognised_as_shell_command() {
 #[test]
 fn file_open_dialog_pending_open_is_set_when_path_returned() {
     // Simulates the closure body inside open_file_dialog(): when a path
-    // is available, it must be written into pending_open.
-    let pending: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    // is available, it must be written into pending_open as `(path, owning_env)`.
+    // The native dialog opens a host file, so owning_env is None (host FS
+    // default, CR-CH-053 Task 19 Req 15.3).
+    let pending: Arc<Mutex<Option<(String, Option<String>)>>> = Arc::new(Mutex::new(None));
     let path = "/tmp/test_file.txt".to_string();
 
     // Simulate the closure that open_file_dialog() spawns
-    *pending.lock().expect("pending lock") = Some(path.clone());
+    *pending.lock().expect("pending lock") = Some((path.clone(), None));
 
     let result = pending.lock().expect("pending lock").take();
-    assert_eq!(result, Some(path));
+    assert_eq!(result, Some((path, None)));
 }
 
 /// Validates: Requirement S.1 -- file_open_dialog leaves pending_open None when dialog is cancelled.
 #[test]
 fn file_open_dialog_pending_open_unchanged_when_cancelled() {
-    let pending: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let pending: Arc<Mutex<Option<(String, Option<String>)>>> = Arc::new(Mutex::new(None));
 
     // Simulate cancelled dialog -- closure does nothing
     let result = pending.lock().expect("pending lock").take();
@@ -1917,8 +1919,10 @@ fn edit_path_sets_pending_open_via_file_open_command() {
     shell.run_command_line("EDIT /tmp/step3.txt");
 
     assert_eq!(
-        shell.pending_open.lock().expect("pending_open").as_deref(),
-        Some("/tmp/step3.txt"),
+        shell.pending_open.lock().expect("pending_open").clone(),
+        // CR-CH-053 Task 19: pending_open now carries (path, owning_env); EDIT is
+        // a host-path open with no origin, so owning_env is None (host FS default).
+        Some(("/tmp/step3.txt".to_string(), None)),
         "EDIT <path> opens the file via file.open with the path param (preserved)"
     );
     assert!(
@@ -2041,5 +2045,80 @@ fn save_routes_through_dispatch_to_environment_and_is_behaviour_preserving() {
     assert!(
         shell.open_error.is_none(),
         "SAVE on a clean buffer stays a no-op (behaviour-preserving in this slice)"
+    );
+}
+
+/// Validates: command-environments Requirement 15.1, 15.3 -- a plain host-path
+/// open binds the opened tab's Owning_Environment to the host FS environment
+/// (the DEFAULT_OWNING_ENVIRONMENT), so existing opens are behaviour-preserving.
+#[test]
+fn host_path_open_binds_owning_environment_to_host_fs() {
+    use crate::tab_state::DEFAULT_OWNING_ENVIRONMENT;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("plain.txt");
+    std::fs::write(&file, "hello\n").expect("write");
+
+    let mut shell = make_shell();
+    shell
+        .shell_open_file(file.to_str().expect("path"))
+        .expect("open");
+    assert_eq!(
+        shell.active_owning_environment(),
+        DEFAULT_OWNING_ENVIRONMENT,
+        "a plain host-path open must bind the host FS Owning_Environment"
+    );
+}
+
+/// Validates: command-environments Requirement 15.2, 15.4 -- an open carrying an
+/// originating environment binds the opened tab to THAT environment, and FFEDIT
+/// reads the binding back as the SAVE target.
+#[test]
+fn open_with_origin_binds_that_owning_environment() {
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("owned.txt");
+    std::fs::write(&file, "hello\n").expect("write");
+
+    let mut shell = make_shell();
+    shell
+        .shell_open_file_with_env(file.to_str().expect("path"), Some("MAINFRAME"))
+        .expect("open");
+    assert_eq!(
+        shell.active_owning_environment(),
+        "MAINFRAME",
+        "an open carrying an origin must bind that Owning_Environment"
+    );
+}
+
+/// Validates: command-environments Requirement 15.6 -- binding/reading the
+/// Owning_Environment does not change observable SAVE behaviour for a
+/// host-path (native) file: SAVE on a clean host-bound buffer is a no-op.
+#[test]
+fn host_bound_save_is_behaviour_preserving() {
+    use crate::tab_state::DEFAULT_OWNING_ENVIRONMENT;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("save.txt");
+    std::fs::write(&file, "hello\n").expect("write");
+
+    let mut shell = make_shell();
+    shell
+        .shell_open_file(file.to_str().expect("path"))
+        .expect("open");
+    assert_eq!(
+        shell.active_owning_environment(),
+        DEFAULT_OWNING_ENVIRONMENT
+    );
+
+    // SAVE on a freshly-opened (clean) buffer is a dirty-aware no-op, unchanged
+    // from before the owning-environment binding existed.
+    shell.run_command_line("SAVE");
+    assert!(
+        shell.open_error.is_none(),
+        "SAVE on a clean host-bound buffer stays a no-op (behaviour-preserving)"
     );
 }

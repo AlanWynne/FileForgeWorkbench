@@ -97,8 +97,7 @@ impl WorkbenchShell {
         let welcome = "Welcome to FileForge Workbench\n\nUse File > Open to open a file.\n";
         let tabs = TabManager::new(&runtime, welcome);
 
-        let pending_open: Arc<std::sync::Mutex<Option<String>>> =
-            Arc::new(std::sync::Mutex::new(None));
+        let pending_open: super::state::PendingOpen = Arc::new(std::sync::Mutex::new(None));
         let should_close: Arc<std::sync::Mutex<bool>> = Arc::new(std::sync::Mutex::new(false));
 
         let registry = Arc::new(CommandRegistry::new());

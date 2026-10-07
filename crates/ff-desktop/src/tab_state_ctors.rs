@@ -10,7 +10,7 @@ use ff_viewport_scrolling::{CursorModel, ViewportModel};
 use std::collections::HashMap;
 
 use crate::menu_workspace::MenuWorkspaceState;
-use crate::tab_state::{TabId, TabKind, TabState};
+use crate::tab_state::{TabId, TabKind, TabState, DEFAULT_OWNING_ENVIRONMENT};
 
 // === Helper macro to reduce constructor boilerplate =========================
 
@@ -37,6 +37,7 @@ macro_rules! base_tab {
             workspace_name: None,
             is_home: false,
             nav_stack: Vec::new(),
+            owning_environment: DEFAULT_OWNING_ENVIRONMENT.to_string(),
         }
     }};
 }
@@ -65,6 +66,7 @@ impl TabState {
             workspace_name: None,
             is_home: false,
             nav_stack: Vec::new(),
+            owning_environment: DEFAULT_OWNING_ENVIRONMENT.to_string(),
         }
     }
 
@@ -101,6 +103,7 @@ impl TabState {
             workspace_name: None,
             is_home: false,
             nav_stack: Vec::new(),
+            owning_environment: DEFAULT_OWNING_ENVIRONMENT.to_string(),
         }
     }
 

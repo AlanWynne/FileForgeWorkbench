@@ -54,8 +54,11 @@ pub(super) const FFEDIT_NAME: &str = "FFEDIT";
 /// environment, so resolving it degrades to the FFCMD base at the gate.
 pub(super) const FFNAV_NAME: &str = "FFNAV";
 /// The stable NAME of the host-FS environment placeholder (Req 16). Registered
-/// so the registry membership is correct, but non-claiming in phase 1.
-pub(super) const HOST_FS_NAME: &str = "HOSTFS";
+/// so the registry membership is correct, but non-claiming in phase 1. This is
+/// also the default Owning_Environment for a host-path tab (Task 19); the shared
+/// constant lives on `TabState` so the tab default and the registry name cannot
+/// drift.
+pub(super) const HOST_FS_NAME: &str = crate::tab_state::DEFAULT_OWNING_ENVIRONMENT;
 
 /// A tag identifying WHICH registered environment a name resolves to.
 ///

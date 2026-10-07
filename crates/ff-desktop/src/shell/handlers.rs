@@ -12,8 +12,15 @@ use ff_command::{CommandParams, CommandResult, ExecutionContext};
 
 /// Handler for `file.open` -- sets `pending_open` via a shared channel.
 /// The shell reads `pending_open` at the top of each frame.
+///
+/// The pending payload is `(path, owning_env)` (CR-CH-053 Task 19, Req 15.2):
+/// the OPTIONAL `owning_env` param carries the Owning_Environment NAME captured
+/// from the originating catalog/provider (the file system that owns the resource
+/// being opened). When absent -- every host-path open today -- the opened tab
+/// defaults to the host FS environment (`DEFAULT_OWNING_ENVIRONMENT`), so
+/// existing opens are behaviour-preserving (Req 15.3).
 pub(super) struct FileOpenHandler {
-    pub(super) pending: Arc<std::sync::Mutex<Option<String>>>,
+    pub(super) pending: super::state::PendingOpen,
 }
 
 impl CommandHandler for FileOpenHandler {
@@ -24,7 +31,11 @@ impl CommandHandler for FileOpenHandler {
     fn execute(&self, _ctx: &ExecutionContext, params: &CommandParams) -> CommandResult {
         match params.get_string("path") {
             Some(path) if !path.is_empty() => {
-                *self.pending.lock().expect("pending lock") = Some(path.to_string());
+                let owning_env = params
+                    .get_string("owning_env")
+                    .filter(|e| !e.is_empty())
+                    .map(|e| e.to_string());
+                *self.pending.lock().expect("pending lock") = Some((path.to_string(), owning_env));
                 CommandResult::Ok
             }
             _ => CommandResult::Err(ff_command::CommandError::ExecutionFailed {
