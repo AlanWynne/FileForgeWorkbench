@@ -2143,7 +2143,10 @@ fn ffedit_save_routes_dirty_host_file_write_through_owning_env() {
         .shell_open_file(file.to_str().expect("path"))
         .expect("open");
     assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FileEditor);
-    assert_eq!(shell.active_owning_environment(), DEFAULT_OWNING_ENVIRONMENT);
+    assert_eq!(
+        shell.active_owning_environment(),
+        DEFAULT_OWNING_ENVIRONMENT
+    );
 
     // Make an in-buffer edit so the tab is dirty (insert a marker at the start).
     {

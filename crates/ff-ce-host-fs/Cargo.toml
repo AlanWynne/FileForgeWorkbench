@@ -1,0 +1,15 @@
+[package]
+name = "ff-ce-host-fs"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Host-FS decider: resolves the native-role backend Command Environment per host (CR-CH-053)"
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+ff-ce-ntfs = { path = "../ff-ce-ntfs" }
+ff-ce-posix = { path = "../ff-ce-posix" }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }

@@ -22,6 +22,14 @@ Never delete a row -- update `Status` in-place.
 
 New capabilities that did not previously exist.
 
+### CR-NR-106 -- Configurable addressable-CE registry Context (inspect/configure the Environment_Registry from a Workspace Context)
+- **Date/Phase**: Phase (command-environments) -- PENDING GATE (future idea, logged; do at an appropriate time, AFTER the CR-CH-053 Phase-1 maturation lands)
+- **Prompt**: (owner, during the ff-ce-core discussion) "Why do we need a ff-ce-core? ... Perhaps ff-CE-CORE could have its own workspace context that allows configuration of the addressable command environments?"
+- **Description**: The owner's `ff-ce-core` central-hub idea was REJECTED for the trait home (the `BackendEnvironment` trait lives in `ff-vfs`; backends self-register by NAME into the open `Environment_Registry`; nobody holds a backend list). But the SECOND half of the idea -- a Workspace Context that lets a user INSPECT and CONFIGURE the addressable Command Environments -- is worth keeping as a future capability. Proposed shape (builds ON the existing framework, no new mechanism): a read-first "Environments" Workspace Context (a `WorkspaceContext` dispatched via `render_workspace_context`, like the Config / Theme / Keys / Kinds editors) that lists the registered environments (FFCMD base, FFEDIT, the resolved host-fs backend, plus any plugin-registered CE), shows each one's name / role (interactive vs backend) / case rule / native-or-emulated status, and -- later -- lets the user set which FS CE is designated native per host and configure per-CE options. Any configuration must stay WITHIN the framework: built-in CEs remain code-only / not configuration-replaceable (Req 9.3); a NEW executable CE is still a plugin capability (Req 9.4). So this Context would configure DESIGNATION and per-instance options, not swap compiled built-ins. Reconciles with CR-NR-090 (Workspace Kinds) for how the Context is registered and with CR-CH-053 Req 13 (the Environment_Registry) as the data source.
+- **Affects (future, not this gate)**: `crates/ff-desktop/src/shell/` (a new Environments `WorkspaceContext` + a `TabKind` arm + a command to open it + a `menus/*.toml` option), reading from the existing `EnvironmentRegistry` (CR-CH-053 Req 13). Possibly a small config key for the per-host native designation (configuration-system). No change to the dispatch / nav / persistence / focus mechanisms.
+- **Status**: PENDING GATE (idea captured; not scheduled)
+- **Linked spec**: `docs/specs/command-environments/requirements.md` (CR-CH-053 Req 13 Environment_Registry is the data source). Relates to `workspace-kinds` (CR-NR-090) and `configuration-system`.
+
 ### CR-NR-105 -- New volume-model sub-project: first-class mainframe Volume layer
 - **Date/Phase**: Phase (volume-model) -- IN PROGRESS (gate authored; owner approved direction)
 - **Prompt**: "in folder: ...docs\source-documents\dataset-catalog are a number of documents on mainf"

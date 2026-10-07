@@ -647,6 +647,39 @@ Deep NTFS / POSIX / APFS semantic emulation and cross-emulation are DEFERRED
 (enabled by the abstraction, not built now). This reconciles with Req 9.4: a new
 executable FS CE is a plugin capability under the plugin permission model.
 
+#### Interactive vs backend Command Environments (Task 21 implementation decision)
+
+The `ff-ce-*` family revealed that "Command Environment" names two different
+roles that must not share one trait:
+
+- An INTERACTIVE environment (FFCMD, FFEDIT, future FFNAV / FFLINE) claims a typed
+  command against shell-entangled state. Its verbs mutate the editor buffer, the
+  navigation managers, the exclude / find managers -- things only the shell owns.
+  This is the existing `CommandEnvironment` trait, whose FFEDIT implementor claims
+  via `WorkbenchShell::ffedit_claim` (the documented variance). It needs the whole
+  shell.
+
+- A BACKEND environment (`ff-ce-ntfs`, `ff-ce-posix`, the resolved host-fs pick,
+  the future mainframe CE) is ADDRESSING-ONLY: it owns a file system's STORE
+  semantics (write-back, case rules) and is ADDRESSed by name for an effect such
+  as SAVE. It must NOT depend on `WorkbenchShell` -- it is lighter from FFWB's
+  side (no shell coupling) yet potentially richer on the backend side (records,
+  RECFM, catalog). Forcing it through `CommandEnvironment` would drag the shell
+  into a crate that has no business knowing about it.
+
+So the backend role gets its OWN narrow trait, `ff_vfs::BackendEnvironment`
+(`name`, `is_case_sensitive`, `save(path, bytes) -> io::Result`), living in
+`ff-vfs` rather than a new `ff-ce-core` hub crate (a hub was rejected -- it would
+need per-backend maintenance and nobody needs to hold a list of all backends).
+Backends register BY NAME into the open `Environment_Registry`; the registry
+holds the one resolved host-fs backend as `Box<dyn BackendEnvironment>`. FFEDIT's
+SAVE reroute (Req 14 / Task 20) delegates ONLY the physical write to the owning
+backend's `save`; the dirty-aware orchestration (read buffer, clear flag, save
+point) stays shell-side, which is why native SAVE remains byte-identical. The
+light ntfs / posix backends differ only in the cheap case default; no deep
+per-FS semantics ship, and the decider resolves only the NATIVE role (no
+cross-emulation wired).
+
 ### Live-provider-registry prerequisite (Req 17)
 
 The `ff-vfs` `ProviderRegistry` is built and tested but NOT registered live in the

@@ -48,10 +48,23 @@ impl WorkbenchShell {
             self.open_error = None;
             return;
         }
-        match self.tabs.save_active_tab(&self.runtime) {
-            Ok(()) => self.open_error = None,
-            Err(msg) => self.open_error = Some(msg),
-        }
+        // CR-CH-053 Task 21: delegate the physical WRITE to the resolved host-FS
+        // backend Command Environment (ff-ce-ntfs / ff-ce-posix via the decider),
+        // keeping the dirty-aware orchestration in `save_active_tab_via_backend`.
+        // Borrow `environments`, `tabs`, `runtime` as disjoint fields so the
+        // immutable backend ref and the mutable tab-manager call do not conflict;
+        // the borrows end before `self.open_error` is written.
+        let result = {
+            let Self {
+                environments,
+                tabs,
+                runtime,
+                ..
+            } = self;
+            let backend = environments.host_fs_backend();
+            tabs.save_active_tab_via_backend(backend, runtime)
+        };
+        self.open_error = result.err();
     }
 
     /// EXCLUDE / X [text] [ALL] (E2). Delegates to `exclude_manager` with the

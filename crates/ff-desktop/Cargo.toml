@@ -49,6 +49,7 @@ ff-catalog-dialog = { path = "../ff-catalog-dialog" }
 ff-dataset-alloc-dialog = { path = "../ff-dataset-alloc-dialog" }
 ff-context-menu = { path = "../ff-context-menu" }
 ff-posix-provider = { path = "../ff-posix-provider" }
+ff-ce-host-fs = { path = "../ff-ce-host-fs" }
 ff-nav-model = { path = "../ff-nav-model" }
 ff-explorer-view = { path = "../ff-explorer-view" }
 ff-scroll-amount = { path = "../ff-scroll-amount" }

@@ -99,14 +99,23 @@ pub(super) struct EnvironmentEntry {
 /// (Req 13.7).
 pub(super) struct EnvironmentRegistry {
     entries: Vec<EnvironmentEntry>,
+    /// The resolved host-FS BACKEND Command Environment (CR-CH-053 Task 21):
+    /// `ff-ce-host-fs` picks NTFS on Windows / POSIX elsewhere, registered here
+    /// under `HOST_FS_NAME`. It is the real backend object FFEDIT's addressed SAVE
+    /// delegates its physical write to (`host_fs_save`), while the dirty-aware
+    /// orchestration stays shell-side (Req 14.7). Held as a boxed trait object so
+    /// future backend CEs (mainframe, sqlite) register the same way without the
+    /// registry knowing their concrete types.
+    host_fs: Box<dyn ff_vfs::BackendEnvironment>,
 }
 
 impl EnvironmentRegistry {
     /// Build the registry with the phase-1 built-in environments registered in
-    /// code (Req 13.2): the FFCMD base, FFEDIT, and the host-FS placeholder. This
-    /// is the single registration point.
+    /// code (Req 13.2): the FFCMD base, FFEDIT, the host-FS environment (its
+    /// addressing identity plus the resolved backend object, Task 21). This is
+    /// the single registration point.
     ///
-    /// Validates: command-environments Requirement 13.1, 13.2
+    /// Validates: command-environments Requirement 13.1, 13.2, 16.2, 16.4
     pub(super) fn with_builtins() -> Self {
         Self {
             entries: vec![
@@ -123,7 +132,19 @@ impl EnvironmentRegistry {
                     env: RegisteredEnv::HostFsPlaceholder,
                 },
             ],
+            // The decider resolves the native-role backend for this host (Req
+            // 16.2/16.3): Windows -> ff-ce-ntfs, Linux/macOS -> ff-ce-posix.
+            host_fs: ff_ce_host_fs::native_backend_environment(),
         }
+    }
+
+    /// The resolved host-FS backend Command Environment (Task 21). FFEDIT's
+    /// addressed SAVE for a host-path tab delegates its physical write to this
+    /// backend's `save`, keeping the dirty-aware orchestration shell-side.
+    ///
+    /// Validates: command-environments Requirement 16.4, 16.5
+    pub(super) fn host_fs_backend(&self) -> &dyn ff_vfs::BackendEnvironment {
+        self.host_fs.as_ref()
     }
 
     /// Look up a registered environment by NAME (case-sensitive stable name).

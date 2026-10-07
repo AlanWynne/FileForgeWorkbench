@@ -34,6 +34,9 @@ pub mod vfs;
 
 pub mod subsystem;
 
+pub mod backend_environment;
+
+pub use backend_environment::{BackendEnvironment, BackendOutcome};
 pub use error::VfsError;
 pub use posix_provider::PosixNativeProvider;
 pub use provider::{VfsFile, VfsProvider};

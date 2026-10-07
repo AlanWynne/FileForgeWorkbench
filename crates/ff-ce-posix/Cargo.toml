@@ -1,0 +1,14 @@
+[package]
+name = "ff-ce-posix"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "POSIX backend Command Environment (light, OS-backed) for FileForgeWorkbench (CR-CH-053)"
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

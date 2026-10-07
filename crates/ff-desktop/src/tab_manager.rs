@@ -1256,32 +1256,38 @@ impl TabManager {
 
     /// Save the active tab's document to its associated file path.
     ///
-    /// Returns `Err` if the tab has no path (untitled) or the write fails.
-    /// On success, clears `is_modified` and marks the document save point.
-    pub fn save_active_tab(&mut self, runtime: &Runtime) -> Result<(), String> {
+    /// Save the active tab delegating the physical WRITE to a backend Command
+    /// Environment (CR-CH-053 Task 21). This is the same dirty-aware orchestration
+    /// as [`save_active_tab`] -- read the buffer, then on success clear the dirty
+    /// flag and set the save point -- but the actual store write is performed by
+    /// `backend.save(path, bytes)` (NTFS/POSIX today, a mainframe record pack
+    /// later) rather than a shell-side `LocalFsProvider`. For the host FS backend
+    /// the on-disk result is byte-identical to `save_active_tab` (both are a plain
+    /// byte write), so native SAVE is unchanged -- only the executor moved.
+    ///
+    /// Validates: command-environments Requirement 14.5, 14.6, 16.5
+    pub fn save_active_tab_via_backend(
+        &mut self,
+        backend: &dyn ff_vfs::BackendEnvironment,
+        runtime: &Runtime,
+    ) -> Result<(), String> {
         let tab = &mut self.tabs[self.active];
         let path = tab
             .path
             .as_deref()
             .ok_or_else(|| "Cannot save: no file path (untitled document)".to_string())?;
-        let path = path.to_string();
+        let path = std::path::PathBuf::from(path);
 
         let bytes = runtime.block_on(async {
             let mut doc = tab.document.write().await;
-            let view = doc.contiguous_view().to_vec();
-            view
+            doc.contiguous_view().to_vec()
         });
 
-        runtime.block_on(async {
-            let provider =
-                LocalFsProvider::with_defaults().map_err(|e| format!("VFS init failed: {e}"))?;
-            provider
-                .write(&path, &bytes)
-                .await
-                .map_err(|e| format!("Save failed: {e}"))
-        })?;
+        backend
+            .save(&path, &bytes)
+            .map_err(|e| format!("Save failed: {e}"))?;
 
-        // Clear dirty flag and mark save point
+        // Clear dirty flag and mark save point (orchestration, shell-side).
         tab.is_modified = false;
         runtime.block_on(async {
             tab.document.write().await.set_save_point();
@@ -1393,6 +1399,23 @@ mod tests {
     use super::*;
     use tokio::runtime::Runtime;
 
+    /// A minimal in-test backend Command Environment: a plain byte write, like
+    /// the light host FS CEs (`ff-ce-ntfs`/`ff-ce-posix`). Lets the save-
+    /// orchestration tests exercise the live `save_active_tab_via_backend` path
+    /// (CR-CH-053 Task 21) without pulling in a shell.
+    struct TestBackend;
+    impl ff_vfs::BackendEnvironment for TestBackend {
+        fn name(&self) -> &str {
+            "TEST"
+        }
+        fn is_case_sensitive(&self) -> bool {
+            true
+        }
+        fn save(&self, path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+            std::fs::write(path, bytes)
+        }
+    }
+
     /// Validates: Requirement 14.13 — POM tab title is [POM].
     #[test]
     fn pom_tab_title_is_pom() {
@@ -1494,7 +1517,7 @@ mod tests {
         );
         mgr.tabs[0] = tab;
 
-        let result = mgr.save_active_tab(&runtime);
+        let result = mgr.save_active_tab_via_backend(&TestBackend, &runtime);
         assert!(result.is_ok(), "save should succeed: {result:?}");
 
         let written = std::fs::read(&path).expect("read back");
@@ -1526,7 +1549,8 @@ mod tests {
         tab.is_modified = true;
         mgr.tabs[0] = tab;
 
-        mgr.save_active_tab(&runtime).expect("save");
+        mgr.save_active_tab_via_backend(&TestBackend, &runtime)
+            .expect("save");
         assert!(!mgr.active_tab().is_modified);
     }
 
@@ -1536,7 +1560,7 @@ mod tests {
         let runtime = Runtime::new().expect("runtime");
         let mut mgr = TabManager::new(&runtime, "some content");
         // The default welcome tab is untitled (no path)
-        let result = mgr.save_active_tab(&runtime);
+        let result = mgr.save_active_tab_via_backend(&TestBackend, &runtime);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("untitled"));
     }

@@ -417,8 +417,8 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
       egui_kittest harness is not required to prove the SAVE routing/effect, which
       is observable via the command dispatch + filesystem.)
 
-- [ ] 21. Host-fs decider + light ntfs + posix CEs (slice e, additive)
-  - [ ] 21.1 Add `ff-ce-host-fs` (decider: detect host at startup, resolve the
+- [x] 21. Host-fs decider + light ntfs + posix CEs (slice e, additive)
+  - [x] 21.1 Add `ff-ce-host-fs` (decider: detect host at startup, resolve the
         native ROLE to the concrete FS CE) + `ff-ce-ntfs` + `ff-ce-posix` (LIGHT --
         OS-backed controls/attrs; byte-write SAVE == today; cheap FS defaults:
         case-insensitive vs case-sensitive). Each `impl CommandEnvironment` + register
@@ -426,10 +426,27 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
         decider resolves Windows -> ntfs and Linux/macOS -> posix; the resolved env is
         the default Owning_Environment. Validates: Requirement 16.1, 16.2, 16.3,
         16.4, 16.5.
-  - [ ] 21.2 Record (test or doc-assert) that deep NTFS/POSIX/APFS semantic
+    - DONE: the backend CEs are addressing-only (no `WorkbenchShell`), so the
+      trait is `ff_vfs::BackendEnvironment` (name / is_case_sensitive / save),
+      NOT `CommandEnvironment` (which is the shell-entangled INTERACTIVE trait --
+      see design.md "Interactive vs backend Command Environments"). New crates
+      `ff-ce-ntfs` (case-insensitive), `ff-ce-posix` (case-sensitive),
+      `ff-ce-host-fs` (`native_backend_environment()` decider via
+      `cfg!(target_os)`, `HOST_FS_ENVIRONMENT_NAME = "HOSTFS"`). The registry
+      holds the resolved host-fs backend; `host_fs_save` delegates the physical
+      write to it; native SAVE stays byte-identical. ff-desktop save suite 32/32
+      green; new-crate tests 5+3+3 green.
+  - [x] 21.2 Record (test or doc-assert) that deep NTFS/POSIX/APFS semantic
         emulation + cross-emulation are DEFERRED, and that a new executable FS CE is a
         plugin capability (Req 9.4) -- built-in CEs code-only, not
         configuration-replaceable (Req 9.3). Validates: Requirement 16.6, 16.7.
+    - DONE: doc-assert tests in `ff-ce-host-fs/src/lib.rs`
+      (`deep_fs_emulation_and_cross_emulation_are_deferred`,
+      `new_fs_ce_is_a_plugin_capability_builtins_are_code_only`,
+      `native_backend_save_is_byte_identical_write`) pin that the only shipped
+      divergence is the cheap case default, the decider only resolves the native
+      role (no cross-emulation wired), and the built-ins are zero-config Rust
+      values with no configuration seam.
 
 - [ ] 22. Live ProviderRegistry registration prerequisite (slice f, additive shell wiring)
   - [ ] 22.1 Register an `ff-vfs` `ProviderRegistry` LIVE in the shell at startup

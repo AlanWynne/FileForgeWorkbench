@@ -1563,6 +1563,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "ff-ce-host-fs"
+version = "0.1.0"
+dependencies = [
+ "ff-ce-ntfs",
+ "ff-ce-posix",
+ "ff-vfs",
+ "pretty_assertions",
+]
+
+[[package]]
+name = "ff-ce-ntfs"
+version = "0.1.0"
+dependencies = [
+ "ff-vfs",
+ "pretty_assertions",
+ "tempfile",
+]
+
+[[package]]
+name = "ff-ce-posix"
+version = "0.1.0"
+dependencies = [
+ "ff-vfs",
+ "pretty_assertions",
+ "tempfile",
+]
+
+[[package]]
 name = "ff-clipboard"
 version = "0.1.0"
 dependencies = [
@@ -1746,6 +1774,7 @@ dependencies = [
  "egui_kittest",
  "ff-catalog-dialog",
  "ff-catalog-registry",
+ "ff-ce-host-fs",
  "ff-command",
  "ff-command-semantics",
  "ff-config",
