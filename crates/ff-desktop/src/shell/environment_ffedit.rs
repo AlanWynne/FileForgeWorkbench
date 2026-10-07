@@ -33,14 +33,12 @@ use super::WorkbenchShell;
 /// This is the OWNERSHIP boundary (Req 14.7): FFEDIT owns in-buffer editing; the
 /// Owning_Environment owns store reads/writes and store-dependent validation.
 ///
-/// Task 18 defines and TESTS this classification (Req 14.3); it becomes
-/// load-bearing in Task 20, where the gate consults it to redirect store verbs to
-/// the tab's Owning_Environment (Req 14.4/14.5). In this additive slice SAVE still
-/// executes in FFEDIT (behaviour-preserving), so the only consumers today are the
-/// Req-14.3 classification tests -- hence the scoped allow with this justification.
+/// Task 18 defined and tested this classification (Req 14.3); CR-CH-053 Task 20
+/// made it LOAD-BEARING -- `FfEditEnvironment::claim` uses it to decide which
+/// verbs to ADDRESS to the tab's Owning_Environment (SAVE) versus handle in
+/// FFEDIT directly (every in-buffer verb) (Req 14.4/14.5).
 ///
 /// Validates: command-environments Requirement 14.3, 14.7
-#[allow(dead_code)] // consumed by Task 20 (store-verb redirect to Owning_Environment); tested now.
 pub(super) fn is_store_affecting_verb(canonical: &str) -> bool {
     matches!(canonical, "SAVE")
 }
@@ -288,29 +286,21 @@ impl CommandEnvironment for FfEditEnvironment {
                 true
             }
 
-            // Editor-buffer SAVE (E9, Req 10.1): the one STORE-AFFECTING FFEDIT
-            // verb (`is_store_affecting_verb`), reached via the address-by-name
-            // seam (`dispatch_to_environment` -> this `claim`, Task 18).
-            //
-            // CR-CH-053 Task 19 (Req 15.4): FFEDIT READS the active tab's
-            // Owning_Environment to choose the SAVE target. In this slice the only
-            // registered saving environment is the host FS environment
-            // (DEFAULT_OWNING_ENVIRONMENT), to which every host-path tab is bound,
-            // so SAVE executes FFEDIT's dirty-aware local save and behaviour is
-            // byte-identical (Req 15.6). Task 20 (Req 14.4/14.5/14.6) moves the
-            // host-save logic into the host FS CE and addresses non-host owners to
-            // their own CE -- moving only the EXECUTOR, not the dirty-aware
-            // contract.
-            "SAVE" => {
+            // Editor-buffer SAVE: the one STORE-AFFECTING FFEDIT verb
+            // (`is_store_affecting_verb`, Task 18). CR-CH-053 Task 20
+            // (Req 14.4/14.5/14.6, MODIFIES Req 10.1 routing): FFEDIT no longer
+            // executes the write itself. It READS the tab's Owning_Environment
+            // (Req 15.4) and ADDRESSes SAVE to it via `dispatch_to_environment`
+            // (the same seam macro ADDRESS uses, Task 18). For a host-path tab the
+            // owning env is the host FS environment, whose SAVE performs the
+            // dirty-aware local write that formerly lived in `ffedit_save` -- so a
+            // native file's SAVE is BYTE-IDENTICAL; only the EXECUTOR moved
+            // (Req 14.5/14.6). The dirty-aware contract of Req 10.1 is preserved
+            // in the host env's SAVE (`host_fs_save`). This makes
+            // `is_store_affecting_verb` load-bearing.
+            c if is_store_affecting_verb(c) => {
                 let owning_env = shell.active_owning_environment();
-                debug_assert_eq!(
-                    owning_env,
-                    crate::tab_state::DEFAULT_OWNING_ENVIRONMENT,
-                    "Task 19: only the host FS owning environment is wired for SAVE; \
-                     a non-host owner requires the Task 20 reroute"
-                );
-                let _ = owning_env; // read for the target decision (Req 15.4)
-                shell.ffedit_save();
+                let _ = shell.dispatch_to_environment(&owning_env, raw);
                 true
             }
 

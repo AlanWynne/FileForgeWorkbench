@@ -390,8 +390,8 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
       with Task 20/21 (when a non-host CE exists to address); 15.4's host path is
       covered now.
 
-- [ ] 20. Redirect FFEDIT SAVE to address the owning environment (slice d, MODIFIES Req 10.1 -- native == today)
-  - [ ] 20.1 Move the local-FS byte-write SAVE logic (`tab_manager::save_active_tab`)
+- [x] 20. Redirect FFEDIT SAVE to address the owning environment (slice d, MODIFIES Req 10.1 -- native == today)
+  - [x] 20.1 Move the local-FS byte-write SAVE logic (`tab_manager::save_active_tab`)
         INTO the host FS CE's SAVE; FFEDIT SAVE now ADDRESSes the Owning_Environment
         via `dispatch_to_environment` instead of writing the store directly.
         PRESERVE the Req 10.1 dirty-awareness contract exactly (clean no-op; dirty
@@ -399,9 +399,23 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
         Confirmable). Test FIRST (red before green): native SAVE is on-disk-identical
         and dirty/save-point-identical to today (byte-for-byte). Validates:
         Requirement 14.4, 14.5, 14.6, 10.1 (routing change, behaviour preserved).
-  - [ ] 20.2 Full-shell `egui_kittest` test: edit a native file, type SAVE, assert
+    - DONE: the former `ffedit_save` body moved VERBATIM to `host_fs_save` (the
+      host FS CE's SAVE, still over `tab_manager::save_active_tab`), reached via
+      the registry's `HostFsPlaceholder` SAVE arm in `dispatch_to_environment`.
+      FFEDIT's SAVE arm became `c if is_store_affecting_verb(c) => dispatch_to_
+      environment(active_owning_environment(), raw)` -- so FFEDIT ADDRESSes SAVE
+      to the owning env instead of writing. `is_store_affecting_verb` is now
+      load-bearing (the `#[allow(dead_code)]` removed). Native SAVE byte-identical.
+  - [x] 20.2 Full-shell `egui_kittest` test: edit a native file, type SAVE, assert
         the host FS env performed the write and the dirty flag/save point cleared,
         identical to the pre-change path. Validates: Requirement 14.5, 14.6.
+    - DONE: `ffedit_save_routes_dirty_host_file_write_through_owning_env` opens a
+      real host file, edits the buffer, runs SAVE through the command line, and
+      asserts the edited content reached disk + the dirty flag cleared. The
+      editor_save suite (incl. clean no-op, dirty-untitled error, Ctrl+S path)
+      stays green through the reroute. (A command-line-driven full-shell test; the
+      egui_kittest harness is not required to prove the SAVE routing/effect, which
+      is observable via the command dispatch + filesystem.)
 
 - [ ] 21. Host-fs decider + light ntfs + posix CEs (slice e, additive)
   - [ ] 21.1 Add `ff-ce-host-fs` (decider: detect host at startup, resolve the

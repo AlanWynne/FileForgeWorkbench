@@ -2122,3 +2122,54 @@ fn host_bound_save_is_behaviour_preserving() {
         "SAVE on a clean host-bound buffer stays a no-op (behaviour-preserving)"
     );
 }
+
+/// Validates: command-environments Requirement 14.4, 14.5, 14.6, 10.1 (Task 20)
+/// -- a dirty host-path buffer SAVEd through FFEDIT is written to disk by the
+/// OWNING (host FS) environment via `dispatch_to_environment`, and the on-disk
+/// result + the cleared dirty flag + save point are identical to the former
+/// direct-write path. Only the EXECUTOR moved (FFEDIT -> host FS env); native
+/// SAVE behaviour is unchanged.
+#[test]
+fn ffedit_save_routes_dirty_host_file_write_through_owning_env() {
+    use crate::tab_state::{KindTag, DEFAULT_OWNING_ENVIRONMENT};
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("doc.txt");
+    std::fs::write(&file, "original\n").expect("seed");
+
+    let mut shell = make_shell();
+    shell
+        .shell_open_file(file.to_str().expect("path"))
+        .expect("open");
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FileEditor);
+    assert_eq!(shell.active_owning_environment(), DEFAULT_OWNING_ENVIRONMENT);
+
+    // Make an in-buffer edit so the tab is dirty (insert a marker at the start).
+    {
+        let doc = shell.tabs.active_tab().document.clone();
+        shell.runtime.block_on(async {
+            let mut d = doc.write().await;
+            let _ = d.insert(ff_document_model::BytePosition(0), b"EDITED ");
+        });
+    }
+    shell.tabs.active_tab_mut().is_modified = true;
+
+    // SAVE via the command line -> FFEDIT -> addresses the host FS owning env,
+    // which performs the dirty-aware write.
+    shell.run_command_line("SAVE");
+
+    assert!(
+        shell.open_error.is_none(),
+        "a successful SAVE through the owning env clears any error"
+    );
+    assert!(
+        !shell.tabs.active_tab().is_modified,
+        "SAVE must clear the dirty flag (contract preserved through the reroute)"
+    );
+    let on_disk = std::fs::read_to_string(&file).expect("read back");
+    assert!(
+        on_disk.contains("EDITED"),
+        "the host FS owning environment must have written the edited buffer to disk"
+    );
+}

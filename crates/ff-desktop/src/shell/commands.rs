@@ -44,13 +44,24 @@ impl WorkbenchShell {
                     EnvDispatchOutcome::NotClaimed
                 }
             }
-            // The FFCMD base is reached through the ordinary ladder, not claimed
-            // at the active-env step; the host-FS environment is a non-claiming
-            // placeholder in phase 1 (its real SAVE arrives with Task 20/21). Both
-            // decline here, so the caller falls through as if unaddressed.
-            RegisteredEnv::FfCmdBase | RegisteredEnv::HostFsPlaceholder => {
-                EnvDispatchOutcome::NotClaimed
+            // The host-FS environment OWNS the store write for a host-path
+            // resource (CR-CH-053 Task 20, Req 14.4/14.5/14.6). FFEDIT addresses
+            // the store-affecting verb SAVE here; the host env performs the
+            // dirty-aware local-FS write that previously lived in FFEDIT, so a
+            // native file's SAVE is byte-identical (only the EXECUTOR moved). It
+            // claims ONLY SAVE in phase 1; any other verb falls through.
+            RegisteredEnv::HostFsPlaceholder => {
+                let canonical = raw.split_whitespace().next().unwrap_or("");
+                if canonical.eq_ignore_ascii_case("SAVE") {
+                    self.host_fs_save();
+                    EnvDispatchOutcome::Claimed { rc: 0 }
+                } else {
+                    EnvDispatchOutcome::NotClaimed
+                }
             }
+            // The FFCMD base is reached through the ordinary ladder, not claimed
+            // at the active-env step, so addressing it here declines.
+            RegisteredEnv::FfCmdBase => EnvDispatchOutcome::NotClaimed,
         }
     }
 

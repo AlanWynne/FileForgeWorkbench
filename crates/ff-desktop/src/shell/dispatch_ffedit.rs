@@ -25,14 +25,24 @@ impl WorkbenchShell {
         }
     }
 
-    /// SAVE (E9, Req 10.1): dirty-aware editor-buffer save that STAYS in the
-    /// editor. Clean buffer (`!is_modified`) -> no-op (no write, clear any stale
-    /// error). Dirty -> delegate to `save_active_tab` (write + clear flag + save
-    /// point); a write failure (incl. an untitled buffer with no path) STAYS in
-    /// the editor and surfaces the error -- the dirty flag is left set because
-    /// nothing was written. SAVE is NOT a Confirmable_Command (saving is not
-    /// destructive) and never leaves the editor.
-    pub(super) fn ffedit_save(&mut self) {
+    /// The host-FS Command Environment's SAVE (CR-CH-053 Task 20, Req
+    /// 14.4/14.5/14.6; the dirty-aware contract of Req 10.1). This is the SAVE
+    /// that FFEDIT ADDRESSes to the owning environment for a host-path resource
+    /// (`dispatch_to_environment` -> the `HostFsPlaceholder` arm), rather than
+    /// FFEDIT executing the write itself. The body is UNCHANGED from the former
+    /// `ffedit_save`, so a native file's SAVE is byte-identical -- only the
+    /// EXECUTOR moved from FFEDIT to the host FS environment.
+    ///
+    /// Dirty-awareness (Req 10.1, preserved verbatim): clean buffer
+    /// (`!is_modified`) -> no-op (no write, clear any stale error). Dirty ->
+    /// delegate to `save_active_tab` (write + clear flag + save point); a write
+    /// failure (incl. an untitled buffer with no path) STAYS and surfaces the
+    /// error (the dirty flag is left set because nothing was written). SAVE is
+    /// NOT a Confirmable_Command and never leaves the editor.
+    ///
+    /// Task 21 moves this body into the dedicated `ff-ce-*` host FS crate; the
+    /// routing (FFEDIT -> owning env) is already in place here.
+    pub(super) fn host_fs_save(&mut self) {
         if !self.tabs.active_tab().is_modified {
             // Clean: nothing changed since the last save -> no-op.
             self.open_error = None;
