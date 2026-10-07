@@ -683,3 +683,43 @@ fn with_workspace_context_saves_and_restores_primary_context() {
         "primary error restored"
     );
 }
+
+/// Validates: command-environments Requirement 15.5 (CR-CH-053 Task 19.2) -- the
+/// Owning_Environment is NOT persisted as a new descriptor field; a tab reopened
+/// from its `WorkspaceDescriptor` RECAPTURES its owning environment from the
+/// origin by re-entering the same `file.open` seam. For a host-path editor
+/// descriptor that recapture is the host FS environment default, so no new
+/// persistence format is introduced and the reopened tab is bound correctly.
+#[test]
+fn reopened_editor_descriptor_recaptures_owning_environment() {
+    use crate::tab_state::{KindTag, DEFAULT_OWNING_ENVIRONMENT};
+    use ff_session::session_state::{
+        DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
+    };
+    use std::io::Write;
+
+    let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
+    writeln!(tmp, "persisted body").expect("write");
+    let path = tmp.path().to_string_lossy().to_string();
+
+    let mut shell = make_shell();
+    let mut params = DescriptorParams::new();
+    params.insert("uri".to_string(), DescriptorValue::from(path.clone()));
+    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
+        workspace_kind: WorkspaceKind::Editor,
+        params,
+    }];
+    shell.restore_workspace_descriptors(&descriptors);
+
+    let reopened = shell
+        .tabs
+        .tabs()
+        .iter()
+        .find(|t| t.kind.tag() == KindTag::FileEditor && t.path.as_deref() == Some(path.as_str()))
+        .expect("the editor descriptor must reopen the file");
+    assert_eq!(
+        reopened.owning_environment, DEFAULT_OWNING_ENVIRONMENT,
+        "a reopened host-path editor tab recaptures the host FS Owning_Environment \
+         (no descriptor field; recaptured via the file.open seam)"
+    );
+}
