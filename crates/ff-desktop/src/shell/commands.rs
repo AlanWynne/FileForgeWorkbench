@@ -5,9 +5,55 @@
 
 use ff_command_semantics::StatusKind;
 
+use super::environment::{CommandEnvironment, EnvDispatchOutcome};
+use super::environment_registry::RegisteredEnv;
 use super::helpers::*;
 
 impl WorkbenchShell {
+    /// Address a raw command to a NAMED Command_Environment (CR-CH-053 Task 18,
+    /// Req 14.1/14.2): the REXX ADDRESS pattern applied INTERNALLY. Resolves the
+    /// name through the built `EnvironmentRegistry` and invokes that
+    /// environment's `claim` against the shell -- the SAME `claim` seam the
+    /// active-env gate uses, so there is ONE invocation path, not a second
+    /// dispatcher (Req 14.8). It touches neither `CommandTarget` nor the per-tab
+    /// Navigation_Stack.
+    ///
+    /// Addressing the environment that is ALREADY active is therefore identical
+    /// to not addressing it (Req 14.1): both reach the same `claim`. This single
+    /// entry point is also what the deferred macro `ADDRESS <env>` (Req 8 /
+    /// Task 10) will call, so FFEDIT's internal store-verb forwarding and macro
+    /// addressing share one seam (Req 14.2).
+    ///
+    /// Returns an [`EnvDispatchOutcome`] carrying a return code (Req 14.2): the
+    /// FFCMD base and the phase-1 host-FS placeholder do not CLAIM at this step
+    /// (they resolve through the ordinary ladder / are non-claiming), so
+    /// addressing them yields `NotClaimed`.
+    ///
+    /// Validates: command-environments Requirement 14.1, 14.2, 14.8
+    pub(super) fn dispatch_to_environment(&mut self, name: &str, raw: &str) -> EnvDispatchOutcome {
+        let Some(env) = self.environments.resolve(name) else {
+            return EnvDispatchOutcome::NoSuchEnvironment;
+        };
+        match env {
+            RegisteredEnv::FfEdit => {
+                let upper = raw.trim().to_uppercase();
+                let mut ffedit = super::environment_ffedit::FfEditEnvironment;
+                if ffedit.claim(self, raw, &upper) {
+                    EnvDispatchOutcome::Claimed { rc: 0 }
+                } else {
+                    EnvDispatchOutcome::NotClaimed
+                }
+            }
+            // The FFCMD base is reached through the ordinary ladder, not claimed
+            // at the active-env step; the host-FS environment is a non-claiming
+            // placeholder in phase 1 (its real SAVE arrives with Task 20/21). Both
+            // decline here, so the caller falls through as if unaddressed.
+            RegisteredEnv::FfCmdBase | RegisteredEnv::HostFsPlaceholder => {
+                EnvDispatchOutcome::NotClaimed
+            }
+        }
+    }
+
     /// Run a command submitted from the `Command ===>` field (Enter or a
     /// key-forwarded F-key), then apply its Command_Line_Outcome to the field.
     ///
@@ -225,9 +271,16 @@ impl WorkbenchShell {
                 .environments
                 .is_ffedit_active(active_kind, active_is_home)
             {
-                use crate::shell::environment::CommandEnvironment;
-                let mut ffedit = crate::shell::environment_ffedit::FfEditEnvironment;
-                if ffedit.claim(self, cmd, upper) {
+                // CR-CH-053 Task 18: the active-env claim now routes through the
+                // SAME address-by-name entry point (`dispatch_to_environment`)
+                // that macro ADDRESS and FFEDIT store-verb forwarding use, so
+                // there is ONE invocation path (Req 14.2), not two. Addressing the
+                // active environment is identical to the former direct claim
+                // (Req 14.1). A `Claimed` outcome means FFEDIT handled it.
+                if matches!(
+                    self.dispatch_to_environment(super::environment_registry::FFEDIT_NAME, cmd),
+                    EnvDispatchOutcome::Claimed { .. }
+                ) {
                     return;
                 }
             }

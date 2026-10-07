@@ -17,6 +17,34 @@
 use super::environment::CommandEnvironment;
 use super::WorkbenchShell;
 
+/// Whether a CANONICAL FFEDIT verb is STORE-AFFECTING (it reads or writes the
+/// backing store) as opposed to IN-BUFFER (it acts only on the open document /
+/// editor display state) -- CR-CH-053 Task 18, Req 14.3/14.7.
+///
+/// Store-affecting verbs are the ones FFEDIT ADDRESSES to the resource's
+/// Owning_Environment (Req 14.4) rather than executing itself; in-buffer verbs
+/// FFEDIT handles directly and NEVER addresses elsewhere (Req 14.3). Today SAVE
+/// is the only store-affecting FFEDIT verb; future CREATE / REPLACE member and
+/// save-time record validation join it when built. Every other Req 6.1 verb
+/// (LOCATE, FIND, CHANGE-in-buffer, CAPS, SORT, EXCLUDE, SHOW, RESET, the
+/// profile/scroll verbs, and the universal NUMBER/UNNUM/BNDS/COLS when wired) is
+/// in-buffer.
+///
+/// This is the OWNERSHIP boundary (Req 14.7): FFEDIT owns in-buffer editing; the
+/// Owning_Environment owns store reads/writes and store-dependent validation.
+///
+/// Task 18 defines and TESTS this classification (Req 14.3); it becomes
+/// load-bearing in Task 20, where the gate consults it to redirect store verbs to
+/// the tab's Owning_Environment (Req 14.4/14.5). In this additive slice SAVE still
+/// executes in FFEDIT (behaviour-preserving), so the only consumers today are the
+/// Req-14.3 classification tests -- hence the scoped allow with this justification.
+///
+/// Validates: command-environments Requirement 14.3, 14.7
+#[allow(dead_code)] // consumed by Task 20 (store-verb redirect to Owning_Environment); tested now.
+pub(super) fn is_store_affecting_verb(canonical: &str) -> bool {
+    matches!(canonical, "SAVE")
+}
+
 /// The real registered FFEDIT (editor) [`CommandEnvironment`] object (Req 13.5).
 ///
 /// Zero-sized: all FFEDIT state lives on the shell. It is the object the registry
@@ -260,13 +288,50 @@ impl CommandEnvironment for FfEditEnvironment {
                 true
             }
 
-            // Editor-buffer SAVE (E9, Req 10.1): dirty-aware, STAYS in the editor.
+            // Editor-buffer SAVE (E9, Req 10.1): the one STORE-AFFECTING FFEDIT
+            // verb (`is_store_affecting_verb`). It reaches this arm via the
+            // address-by-name seam (`dispatch_to_environment` -> this `claim`),
+            // which is how CR-CH-053 Task 18 routes store verbs (Req 14.3/14.8).
+            // In this slice SAVE still EXECUTES here (dirty-aware, STAYS in the
+            // editor) so behaviour is byte-identical; Task 20 (Req 14.4/14.5/14.6)
+            // will redirect it to the tab's Owning_Environment once the owning-env
+            // binding (Task 19) exists, moving only the EXECUTOR, not the contract.
             "SAVE" => {
                 shell.ffedit_save();
                 true
             }
 
             _ => false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_store_affecting_verb;
+
+    /// Validates: command-environments Requirement 14.3 -- SAVE is the one
+    /// store-affecting FFEDIT verb today (the verb FFEDIT addresses to the
+    /// Owning_Environment rather than executing in-buffer).
+    #[test]
+    fn save_is_classified_store_affecting() {
+        assert!(is_store_affecting_verb("SAVE"));
+    }
+
+    /// Validates: command-environments Requirement 14.3 -- the in-buffer verbs
+    /// (Req 6.1) are NOT store-affecting, so FFEDIT handles them directly and
+    /// never addresses them to another environment.
+    #[test]
+    fn in_buffer_verbs_are_not_store_affecting() {
+        for verb in [
+            "LOCATE", "TOP", "BOTTOM", "UP", "DOWN", "LEFT", "RIGHT", "SORT", "EXCLUDE", "SHOW",
+            "RESET", "FIND", "RFIND", "CHANGE", "RCHANGE", "CAPS", "NULLS", "STATS", "LOCK",
+            "PROFILE", "HILITE", "SCROLL",
+        ] {
+            assert!(
+                !is_store_affecting_verb(verb),
+                "{verb} must be classified in-buffer (handled directly, not addressed)"
+            );
         }
     }
 }

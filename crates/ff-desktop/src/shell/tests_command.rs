@@ -1950,3 +1950,96 @@ fn close_command_closes_the_active_tab() {
         "a successful CLOSE clears any open_error"
     );
 }
+
+/// Validates: command-environments Requirement 14.1 -- addressing the ACTIVE
+/// environment via `dispatch_to_environment` is identical to not addressing it:
+/// an editor Context is FFEDIT-active, so `dispatch_to_environment("FFEDIT", ..)`
+/// of an owned verb claims and executes it exactly as the active-env gate would.
+#[test]
+fn dispatch_to_environment_addressing_active_env_claims() {
+    use crate::shell::environment::EnvDispatchOutcome;
+    use crate::tab_state::KindTag;
+
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
+
+    // CAPS ON is an owned FFEDIT verb; addressing FFEDIT claims+executes it.
+    let outcome = shell.dispatch_to_environment("FFEDIT", "CAPS ON");
+    assert_eq!(outcome, EnvDispatchOutcome::Claimed { rc: 0 });
+    assert_eq!(
+        shell.tabs.active_tab().edit_profile.caps,
+        ff_edit_operations::CapsMode::On,
+        "addressing the active FFEDIT env must execute the verb identically to the gate"
+    );
+}
+
+/// Validates: command-environments Requirement 14.1 -- the name match is
+/// case-insensitive on the stable env name (REXX ADDRESS style).
+#[test]
+fn dispatch_to_environment_name_is_case_insensitive() {
+    use crate::shell::environment::EnvDispatchOutcome;
+
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    let outcome = shell.dispatch_to_environment("ffedit", "CAPS ON");
+    assert_eq!(outcome, EnvDispatchOutcome::Claimed { rc: 0 });
+}
+
+/// Validates: command-environments Requirement 14.1 -- a verb the named
+/// environment does not own yields `NotClaimed` (the caller falls through), not
+/// a spurious claim.
+#[test]
+fn dispatch_to_environment_declines_unowned_verb() {
+    use crate::shell::environment::EnvDispatchOutcome;
+
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    // FILES is an FFCMD workbench verb, not an FFEDIT verb -> FFEDIT declines.
+    let outcome = shell.dispatch_to_environment("FFEDIT", "FILES");
+    assert_eq!(outcome, EnvDispatchOutcome::NotClaimed);
+}
+
+/// Validates: command-environments Requirement 14.1 -- addressing the FFCMD base
+/// at the active-env step yields `NotClaimed` (the base is reached through the
+/// ordinary ladder, not claimed here); an unregistered name yields
+/// `NoSuchEnvironment`.
+#[test]
+fn dispatch_to_environment_base_declines_and_unknown_name_reports() {
+    use crate::shell::environment::EnvDispatchOutcome;
+
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.dispatch_to_environment("FFCMD", "CAPS ON"),
+        EnvDispatchOutcome::NotClaimed
+    );
+    assert_eq!(
+        shell.dispatch_to_environment("NOTANENV", "CAPS ON"),
+        EnvDispatchOutcome::NoSuchEnvironment
+    );
+}
+
+/// Validates: command-environments Requirement 14.3, 14.4, 14.8 -- the
+/// store-affecting verb SAVE is routed through the address-by-name seam
+/// (`dispatch_to_environment`) and remains behaviour-preserving in this slice:
+/// SAVE on a clean editor buffer is a no-op (no error), exactly as the direct
+/// FFEDIT SAVE. (Task 20 later flips the SAVE target to the tab's owning
+/// environment; here it addresses FFEDIT and executes identically.)
+#[test]
+fn save_routes_through_dispatch_to_environment_and_is_behaviour_preserving() {
+    use crate::shell::environment::EnvDispatchOutcome;
+
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    // A fresh untitled buffer is clean -> SAVE is a dirty-aware no-op.
+    let outcome = shell.dispatch_to_environment("FFEDIT", "SAVE");
+    assert_eq!(
+        outcome,
+        EnvDispatchOutcome::Claimed { rc: 0 },
+        "SAVE is a store-affecting FFEDIT verb routed via the address seam"
+    );
+    assert!(
+        shell.open_error.is_none(),
+        "SAVE on a clean buffer stays a no-op (behaviour-preserving in this slice)"
+    );
+}

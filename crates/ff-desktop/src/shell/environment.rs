@@ -214,6 +214,31 @@ pub(crate) trait CommandEnvironment {
     fn claim(&mut self, shell: &mut super::WorkbenchShell, raw: &str, upper: &str) -> bool;
 }
 
+/// Outcome of addressing a command to a NAMED environment via
+/// `WorkbenchShell::dispatch_to_environment` (CR-CH-053 Task 18, Req 14.1/14.2).
+///
+/// Carries a return code so the SAME seam serves both FFEDIT's internal store-verb
+/// forwarding and the deferred macro `ADDRESS <env>` (Req 8.3 / Task 10) -- the
+/// macro bridge will map `rc` to the macro `RC`. This is NOT a second dispatcher
+/// (Req 14.8): `dispatch_to_environment` resolves a name to a registered
+/// environment and invokes its existing `claim`, exactly as the active-env gate
+/// does; it adds no parallel dispatch path and does not touch `CommandTarget` or
+/// the Navigation_Stack.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum EnvDispatchOutcome {
+    /// The named environment claimed and handled the command. `rc` is 0 for a
+    /// successful claim (the macro-RC convention; richer codes arrive with the
+    /// macro ADDRESS slice, Task 10).
+    Claimed { rc: i32 },
+    /// The named environment is registered but DECLINED the command (it is not
+    /// one of that environment's verbs); the caller falls through as if the
+    /// environment had not been addressed.
+    NotClaimed,
+    /// No environment is registered under the given name (degrade-to-base is the
+    /// caller's decision, mirroring Req 13.4 for the active-env path).
+    NoSuchEnvironment,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

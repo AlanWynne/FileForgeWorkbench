@@ -129,6 +129,21 @@ impl EnvironmentRegistry {
         self.entries.iter().find(|e| e.name == name).map(|e| e.env)
     }
 
+    /// Resolve a registered environment by NAME for ADDRESS-by-name dispatch
+    /// (CR-CH-053 Task 18, Req 14.1). Case-INSENSITIVE on the stable env name so
+    /// `ADDRESS ffedit` and `ADDRESS FFEDIT` resolve alike. Returns `None` when
+    /// no environment is registered under the name (the caller treats that as
+    /// `NoSuchEnvironment`). This is a pure lookup -- it performs no dispatch
+    /// itself (Req 13.7); the shell invokes the resolved environment's `claim`.
+    ///
+    /// Validates: command-environments Requirement 14.1
+    pub(super) fn resolve(&self, name: &str) -> Option<RegisteredEnv> {
+        self.entries
+            .iter()
+            .find(|e| e.name.eq_ignore_ascii_case(name))
+            .map(|e| e.env)
+    }
+
     /// The command-environment NAME SUPPLIED BY a focused Context's kind,
     /// derived THROUGH the kind exactly as before (Req 2.1): the handler obtains
     /// the `BuiltinKind` via `BuiltinKind::from_tab_kind` (the kind's own

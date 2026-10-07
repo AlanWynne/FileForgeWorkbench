@@ -327,17 +327,32 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
       pre-existing parallel-contention flakes verified passing in isolation,
       unrelated to the registry). Owner must run the full `cargo gate --build`.
 
-- [ ] 18. Add the address-by-name entry point dispatch_to_environment (slice b, additive)
-  - [ ] 18.1 Add `dispatch_to_environment(name, raw)` to the registry (REXX ADDRESS
+- [x] 18. Add the address-by-name entry point dispatch_to_environment (slice b, additive)
+  - [x] 18.1 Add `dispatch_to_environment(name, raw)` to the registry (REXX ADDRESS
         applied internally): route a raw command to the named env regardless of the
         active one; addressed-env == active-env is a no-op wrapper; the outcome
         carries a return code. Test FIRST: addressing the active env equals not
         addressing; addressing a second registered env routes to it. Validates:
         Requirement 14.1, 14.2.
-  - [ ] 18.2 Classify FFEDIT verbs into IN-BUFFER (handled directly) vs
+    - DONE: `WorkbenchShell::dispatch_to_environment(name, raw)` in `shell/commands.rs`
+      resolves the name via `EnvironmentRegistry::resolve` (case-insensitive) and
+      invokes the registered env's `claim`, returning `EnvDispatchOutcome`
+      (`Claimed { rc }` / `NotClaimed` / `NoSuchEnvironment`) -- the RC-carrying
+      shim the macro ADDRESS (Task 10) will reuse. The active-env gate now routes
+      through this SAME seam (one invocation path, not two). 5 tests
+      (`dispatch_to_environment_*`, `save_routes_through_dispatch_to_environment_*`).
+  - [x] 18.2 Classify FFEDIT verbs into IN-BUFFER (handled directly) vs
         STORE-AFFECTING (addressed). Test FIRST: an in-buffer verb (e.g. LOCATE /
         EXCLUDE) is never addressed to another env; the store verb SAVE is routed via
         `dispatch_to_environment`. Validates: Requirement 14.3, 14.7, 14.8.
+    - DONE: `environment_ffedit.rs::is_store_affecting_verb` (SAVE = store-affecting;
+      all Req-6.1 verbs = in-buffer) + 2 classification tests. SAVE reaches FFEDIT's
+      claim via the `dispatch_to_environment` seam and (this additive slice) still
+      executes in FFEDIT so behaviour is byte-identical; the classification is
+      `#[allow(dead_code)]` with a justification -- Task 20 consumes it to redirect
+      store verbs to the Owning_Environment (Req 14.4-14.6). SCOPED checks clean:
+      fmt, check, clippy (no warnings), targeted tests (7 new + behaviour-preservation
+      tests) green. Owner runs the full `cargo gate --build`.
 
 - [ ] 19. TabState owning-environment field + capture at open (slice c, default host FS, behaviour-preserving)
   - [ ] 19.1 Add `owning_environment` to `TabState`; capture it at open from the
