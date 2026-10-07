@@ -448,14 +448,38 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
       role (no cross-emulation wired), and the built-ins are zero-config Rust
       values with no configuration seam.
 
-- [ ] 22. Live ProviderRegistry registration prerequisite (slice f, additive shell wiring)
-  - [ ] 22.1 Register an `ff-vfs` `ProviderRegistry` LIVE in the shell at startup
+- [x] 22. Live ProviderRegistry registration prerequisite (slice f, additive shell wiring)
+  - [x] 22.1 Register an `ff-vfs` `ProviderRegistry` LIVE in the shell at startup
         (the built/tested stack is not registered live today); it is the seam a
         plugin-provided `VfsProvider` (e.g. the mainframe VFS provider) registers
         into. Test FIRST: host-path file access is unchanged with the registry live;
         a registered provider is resolvable at runtime. Validates: Requirement 17.1,
         17.2, 17.3.
-  - [ ] 22.2 Document the dependency: the non-host parts of Req 14-16 depend on this
+    - DONE: `WorkbenchShell` gains a `provider_registry: Arc<ff_vfs::ProviderRegistry>`
+      field, built at startup by `build_live_provider_registry(&runtime)` in
+      `shell/construct.rs` and seeded with the host-FS `local` provider
+      (`LocalFsProvider::with_defaults()`). CRITICAL: the host provider spawns a
+      filesystem watcher that needs a running reactor, so the registry is built
+      inside `runtime.enter()` (same reason `tab_manager::open_file` builds its
+      provider inside `runtime.block_on`). Accessor `provider_registry()` in
+      `shell/actions.rs` returns a clone of the shared `Arc`. Both the field and
+      the accessor carry `#[allow(dead_code)]` with a comment: they are the
+      registration SEAM (Req 17.2), consumed by the later `V`-stream mainframe
+      provider wiring; the seam + its contract are proven by tests. Tests (TDD,
+      in `tests_session.rs`): `shell_startup_registers_a_live_provider_registry_with_host_fs`
+      (17.1), `plugin_provider_registers_into_the_live_registry_and_is_resolvable`
+      + `provider_registry_accessor_shares_one_registry` (17.2),
+      `host_path_open_is_unchanged_by_the_live_provider_registry` (17.3) with a
+      compact `PluginStubProvider` mock. All 4 pass; scoped
+      `cargo clippy -p ff-desktop` and `cargo fmt --check` clean. (One pre-existing
+      B083 history-flake fails only under parallel plain `cargo test`; passes
+      isolated and under nextest -- not a Task 22 regression.)
+  - [x] 22.2 Document the dependency: the non-host parts of Req 14-16 depend on this
         live registration; the host-FS default path does not. (No code beyond 22.1;
         this records the dependency so later non-host phases reference it.)
         Validates: Requirement 17.4.
+    - DONE: recorded by the `host_path_open_is_unchanged_by_the_live_provider_registry`
+      test (host path binds the host FS env and opens unchanged with a non-host
+      provider registered) and by the field/accessor doc comments and design.md
+      Req 17 section (the non-host parts of Req 14-16 DEPEND on live registration;
+      the host-FS default path does NOT).

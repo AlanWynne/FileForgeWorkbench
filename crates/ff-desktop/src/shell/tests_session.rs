@@ -723,3 +723,181 @@ fn reopened_editor_descriptor_recaptures_owning_environment() {
          (no descriptor field; recaptured via the file.open seam)"
     );
 }
+
+// === CR-CH-053 Task 22: live ff-vfs Provider_Registry at startup (Req 17) ====
+
+/// A minimal stand-in for a plugin-provided `VfsProvider` used to prove the live
+/// registry is a real registration seam (Req 17.2). It implements only the
+/// scheme/capabilities surface meaningfully; every I/O method returns
+/// `UnsupportedOperation` because these tests exercise registration/resolution
+/// by scheme, not provider I/O.
+struct PluginStubProvider {
+    scheme_name: String,
+}
+
+#[async_trait::async_trait]
+impl ff_vfs::VfsProvider for PluginStubProvider {
+    fn scheme(&self) -> &str {
+        &self.scheme_name
+    }
+    fn capabilities(&self) -> ff_vfs::VfsCapabilities {
+        ff_vfs::VfsCapabilities::none()
+    }
+    async fn open(
+        &self,
+        _path: &str,
+        _options: ff_vfs::OpenOptions,
+    ) -> Result<Box<dyn ff_vfs::VfsFile>, ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "open"))
+    }
+    async fn read(&self, _path: &str) -> Result<Vec<u8>, ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "read"))
+    }
+    async fn read_stream(
+        &self,
+        _path: &str,
+    ) -> Result<std::pin::Pin<Box<dyn tokio::io::AsyncRead + Send>>, ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "read_stream"))
+    }
+    async fn write(&self, _path: &str, _data: &[u8]) -> Result<(), ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "write"))
+    }
+    async fn create(
+        &self,
+        _path: &str,
+        _options: ff_vfs::CreateOptions,
+    ) -> Result<(), ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "create"))
+    }
+    async fn delete(
+        &self,
+        _path: &str,
+        _options: ff_vfs::DeleteOptions,
+    ) -> Result<(), ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "delete"))
+    }
+    async fn rename(&self, _old_path: &str, _new_path: &str) -> Result<(), ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "rename"))
+    }
+    async fn list(&self, _path: &str) -> Result<Vec<ff_vfs::VfsEntry>, ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "list"))
+    }
+    async fn stat(&self, _path: &str) -> Result<ff_vfs::VfsMetadata, ff_vfs::VfsError> {
+        Err(unsupported(self.scheme(), "stat"))
+    }
+    async fn exists(&self, _path: &str) -> Result<bool, ff_vfs::VfsError> {
+        Ok(false)
+    }
+}
+
+fn unsupported(provider: &str, operation: &str) -> ff_vfs::VfsError {
+    ff_vfs::VfsError::UnsupportedOperation {
+        operation: operation.to_string(),
+        provider: provider.to_string(),
+    }
+}
+
+/// Validates: command-environments Requirement 17.1 -- the shell registers an
+/// `ff-vfs` ProviderRegistry LIVE at startup, seeded with the host-FS `local`
+/// provider, so a provider is resolvable by scheme at runtime (not merely built
+/// and unregistered as before).
+#[test]
+fn shell_startup_registers_a_live_provider_registry_with_host_fs() {
+    let shell = make_shell();
+    let registry = shell.provider_registry();
+    assert!(
+        registry.get("local").is_some(),
+        "the live registry must have the host-FS 'local' provider resolvable at runtime"
+    );
+    assert_eq!(
+        registry.get("local").expect("local provider").scheme(),
+        "local"
+    );
+}
+
+/// Validates: command-environments Requirement 17.2 -- the live registry is the
+/// seam a plugin-provided VfsProvider registers into: a provider registered at
+/// runtime is thereafter resolvable by its scheme. Without a live registry such
+/// a provider would have nowhere to land.
+#[test]
+fn plugin_provider_registers_into_the_live_registry_and_is_resolvable() {
+    let shell = make_shell();
+    let registry = shell.provider_registry();
+
+    assert!(
+        registry.get("mainframe").is_none(),
+        "no mainframe provider is registered until a plugin registers one"
+    );
+
+    let plugin: std::sync::Arc<dyn ff_vfs::VfsProvider> = std::sync::Arc::new(PluginStubProvider {
+        scheme_name: "mainframe".to_string(),
+    });
+    registry
+        .register(plugin)
+        .expect("a new scheme registers into the live registry");
+
+    let resolved = registry.get("mainframe");
+    assert!(
+        resolved.is_some(),
+        "a plugin-registered provider must be resolvable by scheme at runtime"
+    );
+    assert_eq!(resolved.expect("mainframe provider").scheme(), "mainframe");
+}
+
+/// Validates: command-environments Requirement 17.2 -- the accessor returns a
+/// clone of the SAME shared registry, so a provider registered through one
+/// handle is visible through another (a background/plugin producer and the shell
+/// share one registry, not separate copies).
+#[test]
+fn provider_registry_accessor_shares_one_registry() {
+    let shell = make_shell();
+    let handle_a = shell.provider_registry();
+    let handle_b = shell.provider_registry();
+
+    let plugin: std::sync::Arc<dyn ff_vfs::VfsProvider> = std::sync::Arc::new(PluginStubProvider {
+        scheme_name: "sqlite-vol".to_string(),
+    });
+    handle_a
+        .register(plugin)
+        .expect("register through the first handle");
+
+    assert!(
+        handle_b.get("sqlite-vol").is_some(),
+        "a provider registered through one handle must be visible through another \
+         (the accessor shares one registry, it does not copy)"
+    );
+}
+
+/// Validates: command-environments Requirement 17.3, 17.4 -- registering the
+/// provider registry live is ADDITIVE and does NOT change observable host-path
+/// file access: a plain host-path open still succeeds and binds the host FS
+/// Owning_Environment exactly as before, independent of what is (or is not)
+/// registered in the provider registry.
+#[test]
+fn host_path_open_is_unchanged_by_the_live_provider_registry() {
+    use crate::tab_state::DEFAULT_OWNING_ENVIRONMENT;
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let file = dir.path().join("native.txt");
+    std::fs::write(&file, "native body\n").expect("write");
+
+    let mut shell = make_shell();
+    // Register an unrelated non-host provider to prove the host path ignores it.
+    let plugin: std::sync::Arc<dyn ff_vfs::VfsProvider> = std::sync::Arc::new(PluginStubProvider {
+        scheme_name: "mainframe".to_string(),
+    });
+    shell
+        .provider_registry()
+        .register(plugin)
+        .expect("register a non-host provider");
+
+    shell
+        .shell_open_file(file.to_str().expect("path"))
+        .expect("host-path open still succeeds with a live registry");
+    assert_eq!(
+        shell.active_owning_environment(),
+        DEFAULT_OWNING_ENVIRONMENT,
+        "host-path open still binds the host FS Owning_Environment, unchanged by \
+         the live registry or any registered non-host provider"
+    );
+}

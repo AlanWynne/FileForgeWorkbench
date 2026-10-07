@@ -272,6 +272,14 @@ impl WorkbenchShell {
             );
         }
 
+        // Live Provider_Registry (CR-CH-053 Task 22, Req 17.1): build it HERE,
+        // inside the Tokio runtime context, because the host-FS provider spawns a
+        // filesystem watcher that requires a running reactor (same reason
+        // `tab_manager::open_file` constructs its provider inside
+        // `runtime.block_on`). Built before the `Self { .. }` literal so the
+        // `runtime` is still available to enter.
+        let provider_registry = build_live_provider_registry(&runtime);
+
         // Command-line history persistence (function-keys-and-history Req 6):
         // load any persisted history from the supplied store and seed the owner.
         // Missing/corrupt file -> empty history, no failure (Req 6.5, 6.6).
@@ -323,6 +331,15 @@ impl WorkbenchShell {
             // phase-1 built-in environments (FFCMD base, FFEDIT, host-FS
             // placeholder) in code at startup (Req 13.2).
             environments: super::environment_registry::EnvironmentRegistry::with_builtins(),
+            // Live Provider_Registry (CR-CH-053 Task 22, Req 17.1): register an
+            // `ff-vfs` ProviderRegistry LIVE at startup, seeded with the host-FS
+            // `local` provider so a provider is resolvable by scheme at runtime
+            // and a plugin-provided VfsProvider has a seam to register into (Req
+            // 17.2). Additive: the host-path open/save path does not consult it,
+            // so native access is unchanged (Req 17.3, 17.4). Built above inside
+            // the runtime context (the host provider spawns a watcher needing a
+            // reactor).
+            provider_registry,
             command_configurator_panel:
                 crate::command_config::render::CommandConfiguratorState::new(),
             theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),
@@ -388,4 +405,49 @@ impl WorkbenchShell {
             session_start: chrono::Local::now(),
         }
     }
+}
+
+/// Build the live `ff-vfs` Provider_Registry registered at shell startup
+/// (CR-CH-053 Task 22, Req 17.1). The registry is seeded with the host-FS
+/// `local` provider so a provider is resolvable by scheme at runtime and a
+/// plugin-provided `VfsProvider` has a seam to register into (Req 17.2).
+///
+/// This is ADDITIVE wiring: the host-path open/save path reads through
+/// `LocalFsProvider` / `BackendEnvironment` DIRECTLY and never consults this
+/// registry, so native file access is unchanged whether or not a non-host
+/// provider is later registered (Req 17.3, 17.4). A failure to construct the
+/// host provider leaves an empty-but-live registry (startup is best-effort and
+/// never aborts on this): native access still works via the direct path, and a
+/// plugin can still register a provider later.
+///
+/// The host provider construction spawns a filesystem watcher that requires a
+/// running Tokio reactor, so this is called with the shell's `runtime` and
+/// constructs the provider inside `runtime.enter()` (the same reason
+/// `tab_manager::open_file` builds its provider inside `runtime.block_on`).
+///
+/// Validates: command-environments Requirement 17.1, 17.2, 17.3
+fn build_live_provider_registry(runtime: &Runtime) -> Arc<ff_vfs::ProviderRegistry> {
+    use ff_connector_local_fs::LocalFsProvider;
+    use ff_vfs::VfsProvider;
+
+    let registry = ff_vfs::ProviderRegistry::new();
+    // Enter the runtime so the host provider's watcher can register with the
+    // reactor during construction.
+    let _guard = runtime.enter();
+    match LocalFsProvider::with_defaults() {
+        Ok(provider) => {
+            let provider: Arc<dyn VfsProvider> = Arc::new(provider);
+            if let Err(e) = registry.register(provider) {
+                ff_logging::log_warn!(
+                    "[vfs] live provider registry: host-FS 'local' provider registration failed: {e}"
+                );
+            }
+        }
+        Err(e) => {
+            ff_logging::log_warn!(
+                "[vfs] live provider registry: host-FS 'local' provider unavailable ({e}); registry live but empty"
+            );
+        }
+    }
+    Arc::new(registry)
 }

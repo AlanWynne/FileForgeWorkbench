@@ -171,6 +171,23 @@ impl WorkbenchShell {
         self.tabs.active_tab().owning_environment.clone()
     }
 
+    /// The live `ff-vfs` Provider_Registry registered at startup (CR-CH-053
+    /// Task 22, Req 17.1). A clone of the shared `Arc` so a background/plugin
+    /// producer can register a `VfsProvider` into the SAME registry the shell
+    /// resolves from (Req 17.2). Resolving a provider by scheme is additive to
+    /// the host-path open/save path, which does not consult it (Req 17.3, 17.4).
+    ///
+    /// Validates: command-environments Requirement 17.1, 17.2
+    //
+    // `allow(dead_code)`: the accessor exists so a plugin/background producer and
+    // the Task 22 tests can reach the SAME live registry (the registration seam,
+    // Req 17.2). Its non-test caller (the `V`-stream mainframe provider wiring)
+    // is a later phase; remove the allow when that consumer lands.
+    #[allow(dead_code)]
+    pub(crate) fn provider_registry(&self) -> std::sync::Arc<ff_vfs::ProviderRegistry> {
+        std::sync::Arc::clone(&self.provider_registry)
+    }
+
     /// Open a file into a new tab AND apply the resulting Kind's profile
     /// (CR-NR-090 B.3). The single shell open-file seam; wraps
     /// `TabManager::open_file`. Binds the opened tab to the host FS

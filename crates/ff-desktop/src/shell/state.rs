@@ -183,6 +183,29 @@ pub struct WorkbenchShell {
     ///
     /// Validates: command-environments Requirement 13.1, 13.2, 13.7
     pub(super) environments: super::environment_registry::EnvironmentRegistry,
+    /// Live `ff-vfs` Provider_Registry (CR-CH-053 Task 22): a shell-owned
+    /// `ProviderRegistry` registered LIVE at startup, seeded with the host-FS
+    /// `local` provider so a provider is resolvable BY SCHEME at runtime (Req
+    /// 17.1). This is the seam a plugin-provided `VfsProvider` (e.g. the mainframe
+    /// VFS provider in the `V` stream) registers into -- without it such a
+    /// provider has nowhere to land (Req 17.2). Registering it is ADDITIVE: the
+    /// host-path open/save path reads through `LocalFsProvider` /
+    /// `BackendEnvironment` directly and does NOT consult this registry, so native
+    /// file access is unchanged whether or not a non-host provider is registered
+    /// (Req 17.3, 17.4). `Arc` so a background provider producer could share it.
+    ///
+    /// Validates: command-environments Requirement 17.1, 17.2, 17.3, 17.4
+    //
+    // `allow(dead_code)`: this field is the LIVE registration SEAM required by
+    // Req 17.1/17.2 -- its job is to EXIST at runtime so a plugin-provided
+    // `VfsProvider` (the `V`-stream mainframe provider) has somewhere to land.
+    // Its runtime CONSUMER (resolving a non-host provider by scheme during a
+    // non-host open) is a later phase (Req 17.4), so no non-test code reads it
+    // yet. The seam and its "additive, host path unchanged" contract are proven
+    // by the Task 22 tests. Remove the allow when the first non-host consumer
+    // lands.
+    #[allow(dead_code)]
+    pub(super) provider_registry: Arc<ff_vfs::ProviderRegistry>,
     /// Command Configurator Context UI state (list + edit form + delete confirm).
     ///
     /// Validates: command-configurator Requirement 2.1, 2.3
