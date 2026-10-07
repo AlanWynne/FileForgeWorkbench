@@ -50,6 +50,8 @@ mod construct;
 mod dispatch;
 mod dispatch_ffedit;
 mod environment;
+mod environment_ffedit;
+mod environment_registry;
 mod external_adapter;
 mod handlers;
 mod help;

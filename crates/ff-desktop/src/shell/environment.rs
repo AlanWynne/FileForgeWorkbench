@@ -7,11 +7,12 @@
 //!
 //! ## E0 scope (Option 2)
 //!
-//! - The active environment is derived through the KIND: `environment_for_kind`
-//!   maps a `BuiltinKind` (obtained via `BuiltinKind::from_tab_kind`, the kind's
-//!   OWN mapping) to its command environment. The command handler does NOT
-//!   enumerate `TabKind` -- it goes through the kind. This is the dependency
-//!   inversion (Requirement 2.1, 9.1) in its E0 form.
+//! - The active environment is derived through the KIND: the built
+//!   `EnvironmentRegistry` (see `environment_registry.rs`) maps a `BuiltinKind`
+//!   (obtained via `BuiltinKind::from_tab_kind`, the kind's OWN mapping) to its
+//!   command-environment NAME. The command handler does NOT enumerate `TabKind`
+//!   -- it goes through the kind. This is the dependency inversion
+//!   (Requirement 2.1, 9.1), now read from the built registry (Req 13.3).
 //! - The PERSISTED, user-configurable `command_environment` kind ATTRIBUTE
 //!   (a field on `KindConfig`/`KindConfigToml`) is DEFERRED to the later
 //!   Kinds-config slice (owner decision: editor/catalogs face major refactors;
@@ -25,83 +26,12 @@
 //!
 //! See docs/specs/command-environments/{requirements,design}.md.
 
-use crate::tab_state::KindTag;
-use crate::workspace_kind::BuiltinKind;
-
-/// The command environment that owns a Context's command-line verbs.
-///
-/// Phase 1 BUILDS only FFEDIT as a first-class claiming environment; FFCMD is the
-/// existing `resolve_target` base; FFNAV / FFLINE are NAMED so the model and
-/// derivation are correct but their command handling is unchanged.
-///
-/// The `Ff` prefix is the deliberate FF* environment naming convention
-/// (FFCMD/FFEDIT/FFNAV, mirroring the mainframe TSO/ISREDIT/... set); the shared
-/// prefix is intentional, not accidental.
-///
-/// Validates: command-environments Requirement 1.1, 2.1, 2a.1
-#[allow(clippy::enum_variant_names)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum EnvironmentKind {
-    /// The editor command-line environment (FIND searches the open buffer, etc.).
-    /// The only environment that CLAIMS at the front-door active-env step in
-    /// phase 1 (and only once E1+ migrate verbs into it).
-    FfEdit,
-    /// The file-navigator environment (its FIND locates a file). NAMED only in
-    /// phase 1 -- its verbs stay handled where they are today; does not claim.
-    FfNav,
-    /// The shell/workbench base environment. It IS `resolve_target`; it does not
-    /// claim at the active-env step -- the front door reaches it via the existing
-    /// `resolve_target` call.
-    FfCmd,
-}
-
-impl EnvironmentKind {
-    /// Stable name used for addressing (macros) and diagnostics. Reserved for the
-    /// macro ADDRESS wiring (task 10); not yet consumed in E0.
-    ///
-    /// Validates: command-environments Requirement 8.1
-    #[allow(dead_code)] // consumed by the macro ADDRESS wiring (task 10).
-    pub(crate) fn name(self) -> &'static str {
-        match self {
-            EnvironmentKind::FfEdit => "FFEDIT",
-            EnvironmentKind::FfNav => "FFNAV",
-            EnvironmentKind::FfCmd => "FFCMD",
-        }
-    }
-}
-
-/// The command environment DECLARED BY a built-in Workspace Kind.
-///
-/// This is where each kind "supplies" its environment, the way it supplies its
-/// `default_title()`. The command handler obtains the `BuiltinKind` via
-/// `BuiltinKind::from_tab_kind` and asks here; it does NOT enumerate `TabKind`.
-/// Option 2 (E0): declared in code here; the persisted user-configurable
-/// `command_environment` attribute on `KindConfig` is a later slice. A kind that
-/// declares nothing special resolves to the FFCMD base.
-///
-/// Editor kinds -> FFEDIT; file-navigator kinds (Files = File Explorer, Catalogs)
-/// -> FFNAV (named only in phase 1); every other kind -> FFCMD.
-///
-/// Validates: command-environments Requirement 2.1, 7a.1, 9.1
-pub(crate) fn environment_for_kind(kind: BuiltinKind) -> EnvironmentKind {
-    match kind {
-        BuiltinKind::Editor => EnvironmentKind::FfEdit,
-        BuiltinKind::Files | BuiltinKind::Catalogs => EnvironmentKind::FfNav,
-        _ => EnvironmentKind::FfCmd,
-    }
-}
-
-/// The Active_Environment for a focused Context, derived THROUGH its kind.
-///
-/// `is_home` splits POM vs Menu for the kind mapping (both render as
-/// `TabKind::MenuWorkspace`); neither is an editor/navigator kind, so both
-/// resolve to FFCMD -- `is_home` does not affect the environment, but the kind
-/// mapping is routed through the one `from_tab_kind` seam for correctness.
-///
-/// Validates: command-environments Requirement 2.1, 2.2
-pub(crate) fn active_environment(kind: KindTag, is_home: bool) -> EnvironmentKind {
-    environment_for_kind(BuiltinKind::from_tab_kind(kind, is_home))
-}
+//! The closed `EnvironmentKind` enum, the `environment_for_kind` match, and the
+//! `active_environment` derivation that lived here have been REPLACED by the
+//! built `EnvironmentRegistry` (see `environment_registry.rs`), which owns the
+//! set of environments by NAME and the kind-supplied active-name derivation
+//! (command-environments Requirement 13.1-13.4). This file now holds the small
+//! shared contract (`CommandEnvironment`) and the per-environment `AliasTable`.
 
 /// A per-environment ALIAS TABLE: resolves a typed surface form to the CANONICAL
 /// verb, BEFORE dispatch (Requirement 6a). Behaviour lives on the canonical verb;
@@ -270,72 +200,33 @@ impl AliasTable {
 /// surface verb to the canonical verb via the alias table). Returns `true` when
 /// claimed+handled; `false` to fall through to the next front-door step.
 ///
-/// E0 defines the contract; its first implementor arrives when E1 migrates the
-/// FFEDIT navigation family (today FFEDIT claims via the `ffedit_claim` method on
-/// WorkbenchShell, because its verbs mutate shell-entangled state -- see
-/// design.md "FFEDIT is a resolver+executor over the active editor"). Kept ahead
-/// of its first impl so the trait is defined in one place for E1+.
+/// The first implementor is [`super::environment_registry::FfEditEnvironment`]
+/// (CR-CH-053 Task 17). Because FFEDIT's verbs mutate shell-entangled state
+/// (`self.tabs` + the managers), `claim` TAKES `&mut WorkbenchShell` -- the
+/// design-sanctioned "thin object that still reaches shell state" (design.md
+/// "FFEDIT-as-object"). This is indirection, NOT a behaviour change.
 ///
-/// Validates: command-environments Requirement 1.1, 6.2a
-#[allow(dead_code)]
+/// Validates: command-environments Requirement 1.1, 6.2a, 13.5
 pub(crate) trait CommandEnvironment {
-    /// Attempt to claim and execute `raw`. `upper` is the pre-uppercased trimmed
-    /// line to avoid recomputing it. Returns `true` iff claimed+handled.
-    fn claim(&mut self, raw: &str, upper: &str) -> bool;
+    /// Attempt to claim and execute `raw` against `shell`. `upper` is the
+    /// pre-uppercased trimmed line to avoid recomputing it. Returns `true` iff
+    /// claimed+handled.
+    fn claim(&mut self, shell: &mut super::WorkbenchShell, raw: &str, upper: &str) -> bool;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Validates: command-environments Requirement 2.1, 9.1 -- the environment is
-    /// derived THROUGH the kind (editor -> FFEDIT, navigator -> FFNAV, else
-    /// FFCMD), not via a handler-owned TabKind match.
-    #[test]
-    fn environment_is_supplied_by_kind() {
-        assert_eq!(
-            environment_for_kind(BuiltinKind::Editor),
-            EnvironmentKind::FfEdit
-        );
-        assert_eq!(
-            environment_for_kind(BuiltinKind::Files),
-            EnvironmentKind::FfNav
-        );
-        assert_eq!(
-            environment_for_kind(BuiltinKind::Catalogs),
-            EnvironmentKind::FfNav
-        );
-        assert_eq!(
-            environment_for_kind(BuiltinKind::Pom),
-            EnvironmentKind::FfCmd
-        );
-        assert_eq!(
-            environment_for_kind(BuiltinKind::Config),
-            EnvironmentKind::FfCmd
-        );
-    }
-
-    /// Validates: command-environments Requirement 2.1 -- an editor KindTag
-    /// resolves (through its kind) to FFEDIT; a menu KindTag to FFCMD.
-    #[test]
-    fn active_environment_routes_through_kind() {
-        assert_eq!(
-            active_environment(KindTag::FileEditor, false),
-            EnvironmentKind::FfEdit
-        );
-        assert_eq!(
-            active_environment(KindTag::Untitled, false),
-            EnvironmentKind::FfEdit
-        );
-        assert_eq!(
-            active_environment(KindTag::FileExplorerPanel, false),
-            EnvironmentKind::FfNav
-        );
-        assert_eq!(
-            active_environment(KindTag::MenuWorkspace, true),
-            EnvironmentKind::FfCmd
-        );
-    }
+    // NOTE: the former `environment_is_supplied_by_kind`,
+    // `active_environment_routes_through_kind`, and
+    // `ffedit_claims_owned_verb_only_when_active_env_is_ffedit` tests moved to
+    // `environment_registry.rs` (CR-CH-053 Task 17): the kind-supplied active-name
+    // derivation and the active-wins gate now read from the built
+    // `EnvironmentRegistry` (Req 13.3), so those behaviours are proven against the
+    // registry (`active_name_is_supplied_by_kind`,
+    // `is_ffedit_active_matches_editor_contexts_only`). The AliasTable tests
+    // below stay here with the table they exercise.
 
     /// Validates: command-environments Requirement 6a.1, 6a.2 -- the alias table
     /// resolves a surface form to its canonical verb, case-insensitively; the
@@ -348,41 +239,6 @@ mod tests {
         assert_eq!(t.canonical_verb("X"), Some("EXCLUDE")); // alias -> canonical
         assert_eq!(t.canonical_verb("INCLUDE"), Some("SHOW"));
         assert_eq!(t.canonical_verb("NOTAVERB"), None);
-    }
-
-    /// Validates: command-environments Requirement 5.1 (active-wins) -- the
-    /// FFEDIT environment claims a verb it owns ONLY when the Active_Environment
-    /// is FFEDIT (an editor Context). The derivation gates the claim: on an
-    /// editor Context the active env is FFEDIT (so `run_command_ladder`'s gate
-    /// lets `ffedit_claim` run and claim an owned verb such as FIND); on a
-    /// non-editor Context the active env is NOT FFEDIT (so the gate is false and
-    /// the SAME verb falls through to the FFCMD base), mirroring the
-    /// earlier-stage-wins rule of command-framework Req 8.10. FIND is a verb the
-    /// FFEDIT table owns, exercised here as the shared-name representative.
-    #[test]
-    fn ffedit_claims_owned_verb_only_when_active_env_is_ffedit() {
-        let owned = AliasTable::ffedit_english();
-        // FFEDIT owns FIND (the canonical resolves), so when FFEDIT is active it
-        // is the environment that will claim it.
-        assert_eq!(owned.canonical_verb("FIND"), Some("FIND"));
-
-        // Editor Context -> FFEDIT is the Active_Environment (claim gate TRUE).
-        assert_eq!(
-            active_environment(KindTag::FileEditor, false),
-            EnvironmentKind::FfEdit,
-            "an editor Context must make FFEDIT the active environment so it wins the verb"
-        );
-        // A non-editor Context (menu / navigator / config) is NOT FFEDIT, so the
-        // ladder's FFEDIT gate is false and the verb is left to the FFCMD base.
-        assert_ne!(
-            active_environment(KindTag::MenuWorkspace, true),
-            EnvironmentKind::FfEdit,
-            "a non-editor Context must not route an owned verb through FFEDIT"
-        );
-        assert_ne!(
-            active_environment(KindTag::ConfigPanel, false),
-            EnvironmentKind::FfEdit
-        );
     }
 
     /// Validates: command-environments Requirement 2a.6, 5.1, 5.3 (E8 corrected

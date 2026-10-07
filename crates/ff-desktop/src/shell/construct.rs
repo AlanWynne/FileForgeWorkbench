@@ -320,6 +320,10 @@ impl WorkbenchShell {
             config_handle,
             command_store,
             kind_registry,
+            // Built Environment_Registry (CR-CH-053 Task 17): register the
+            // phase-1 built-in environments (FFCMD base, FFEDIT, host-FS
+            // placeholder) in code at startup (Req 13.2).
+            environments: super::environment_registry::EnvironmentRegistry::with_builtins(),
             command_configurator_panel:
                 crate::command_config::render::CommandConfiguratorState::new(),
             theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),

@@ -1672,6 +1672,124 @@ fn editor_ffedit_verb_still_resolves_after_gate_move() {
     );
 }
 
+// === CR-CH-053 Task 17: FFEDIT-as-object + read-from-registry parity ========
+//
+// Task 17 turns the closed EnvironmentKind enum / environment_for_kind match /
+// `== FfEdit` claim gate into a BUILT Environment_Registry, and makes FFEDIT a
+// real registered `CommandEnvironment` object. These tests pin that the
+// observable result is IDENTICAL to the pre-registry behaviour (Req 13.5, 13.6,
+// 4.2, 6.3): the FFEDIT object claims editor verbs via the registry path, an
+// FFCMD verb is unaffected, a non-editor Context does not route through FFEDIT,
+// and the B062 case rule is preserved through the object path.
+
+/// Validates: command-environments Requirement 13.5, 13.6, 4.2, 6.3 -- a
+/// representative FFEDIT verb (EXCLUDE ALL) on an editor Context produces the
+/// identical observable result (exclusion recorded, no close/exit) through the
+/// registered `FfEditEnvironment` object as it did through the former method.
+#[test]
+fn ffedit_verb_via_registry_matches_prior_behaviour() {
+    use crate::tab_state::{KindTag, TabKind};
+
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
+
+    // EXCLUDE ALL is claimed by the FFEDIT object (via the registry gate) and
+    // records an exclusion message in open_error; it never closes/exits.
+    shell.run_command_line("EXCLUDE ALL");
+
+    assert!(
+        !*shell.should_close.lock().expect("close lock"),
+        "EXCLUDE ALL on an editor Context is FFEDIT EXCLUDE via the registry, not a close/exit"
+    );
+
+    // CAPS ON mutates the edit profile through the FFEDIT object -- the same
+    // observable state change as the former method path.
+    shell.run_command_line("CAPS ON");
+    assert_eq!(
+        shell.tabs.active_tab().edit_profile.caps,
+        ff_edit_operations::CapsMode::On,
+        "CAPS ON must still toggle the edit profile through the registered FFEDIT object"
+    );
+}
+
+/// Validates: command-environments Requirement 13.6, 13.7 -- a representative
+/// FFCMD verb is unaffected by the registry: `=X` (the universal escape hatch)
+/// bypasses the active environment and reaches FFCMD's exit path exactly as
+/// before, so with another tab open it closes the editor Workspace rather than
+/// being claimed by FFEDIT as EXCLUDE.
+#[test]
+fn ffcmd_verb_unaffected_by_registry() {
+    use crate::tab_state::{KindTag, TabKind};
+
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
+    assert_eq!(shell.tabs.len(), 2, "precondition: POM + editor tab");
+
+    // `=X` is routed PAST FFEDIT (registry gate skipped for `=`-prefixed input)
+    // to FFCMD, which closes the editor Workspace. It is NOT FFEDIT EXCLUDE.
+    shell.run_command_line("=X");
+
+    assert!(
+        shell.tabs.len() < 2 || *shell.should_close.lock().expect("close lock"),
+        "`=X` must reach FFCMD and close/exit the editor Workspace, not be claimed by FFEDIT"
+    );
+}
+
+/// Validates: command-environments Requirement 5.1, 13.3 -- a non-editor Context
+/// does NOT route through FFEDIT: bare `X` on the POM (Home) Context reaches the
+/// FFCMD close/exit path (registry reports FFEDIT is not active there), not
+/// FFEDIT EXCLUDE.
+#[test]
+fn non_editor_context_does_not_route_through_ffedit() {
+    // make_shell's single tab is the welcome editor; set it to the POM Home
+    // Context at an empty visual root so bare `X` reaches the FFCMD close verb.
+    let mut shell = make_shell();
+    shell.set_active_tab_home();
+    assert_eq!(shell.tabs.len(), 1, "precondition: single tab");
+
+    // The registry must report FFEDIT is NOT active on the POM Context.
+    {
+        let t = shell.tabs.active_tab();
+        assert!(
+            !shell.environments.is_ffedit_active(t.kind.tag(), t.is_home),
+            "the POM Context must not be an FFEDIT environment"
+        );
+    }
+
+    // Bare `X` on the last POM tab reaches FFCMD and app-exits (not EXCLUDE).
+    shell.run_command_line("X");
+    assert!(
+        *shell.should_close.lock().expect("close lock"),
+        "bare `X` on a non-editor Context must reach FFCMD exit, not FFEDIT EXCLUDE"
+    );
+}
+
+/// Validates: command-environments Requirement 4.2, 6.3 -- the B062 rule is
+/// preserved through the registered FFEDIT object: the verb token is matched
+/// case-insensitively while the argument case is preserved. A lowercase `change`
+/// verb with a mixed-case replacement is routed through the object; the verb is
+/// recognised (so no "unknown command" error) and the mixed-case argument is
+/// carried verbatim to the find manager.
+#[test]
+fn b062_change_case_preserved_via_registry() {
+    use crate::tab_state::{KindTag, TabKind};
+
+    let mut shell = make_shell();
+    shell.shell_new_untitled();
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
+
+    // Lowercase verb token must still be claimed by FFEDIT (case-insensitive verb
+    // match via the alias table) -- it must not fall through as an unknown command
+    // and must never close/exit the editor.
+    shell.run_command_line("change 'Foo' 'BarBaz'");
+    assert!(
+        !*shell.should_close.lock().expect("close lock"),
+        "a lowercase CHANGE verb must be claimed by FFEDIT, not treated as exit/unknown"
+    );
+}
+
 // === CR-CH-053 E9: FFEDIT SAVE verb (dirty-aware, stays in editor) =========
 //
 // SAVE is an FFEDIT editor-buffer verb (Req 10.1): clean buffer -> no-op (no

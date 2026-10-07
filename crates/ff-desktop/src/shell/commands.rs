@@ -135,9 +135,12 @@ impl WorkbenchShell {
         // today's precedence over the POM Option_Key fastpath below.
         let is_equals_prefixed = cmd.trim_start().starts_with('=');
         let editor_env_active = {
+            // CR-CH-053 Task 17: read the active-wins predicate FROM the built
+            // Environment_Registry by the focused kind's command-environment name
+            // (Req 13.3), replacing the former `active_environment(..) == FfEdit`
+            // literal. The meaning is unchanged.
             let t = self.tabs.active_tab();
-            crate::shell::environment::active_environment(t.kind.tag(), t.is_home)
-                == crate::shell::environment::EnvironmentKind::FfEdit
+            self.environments.is_ffedit_active(t.kind.tag(), t.is_home)
         };
         if (!editor_env_active || is_equals_prefixed) && self.try_exit_family(upper) {
             return true;
@@ -207,15 +210,26 @@ impl WorkbenchShell {
         // `handle_command` caller reaches FFEDIT identically (the E1 reachability
         // correction); it is simply ordered ahead of `try_commands_a` now.
         if !cmd.trim_start().starts_with('=') {
+            // CR-CH-053 Task 17: resolve the active-wins claim FROM the built
+            // Environment_Registry (Req 13.3). When the focused kind's active
+            // environment is FFEDIT (an editor Context), invoke the registered
+            // `FfEditEnvironment` object's `claim` (replacing the former
+            // `== FfEdit && self.ffedit_claim(..)` literal). An unresolved/absent
+            // name degrades to the FFCMD base (Req 13.4), whose non-claiming
+            // path falls through identically to before.
             let (active_kind, active_is_home) = {
                 let t = self.tabs.active_tab();
                 (t.kind.tag(), t.is_home)
             };
-            if crate::shell::environment::active_environment(active_kind, active_is_home)
-                == crate::shell::environment::EnvironmentKind::FfEdit
-                && self.ffedit_claim(cmd, upper)
+            if self
+                .environments
+                .is_ffedit_active(active_kind, active_is_home)
             {
-                return;
+                use crate::shell::environment::CommandEnvironment;
+                let mut ffedit = crate::shell::environment_ffedit::FfEditEnvironment;
+                if ffedit.claim(self, cmd, upper) {
+                    return;
+                }
             }
         }
 

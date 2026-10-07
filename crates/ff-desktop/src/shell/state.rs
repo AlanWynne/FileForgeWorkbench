@@ -163,6 +163,17 @@ pub struct WorkbenchShell {
     ///
     /// Validates: workspace-kinds Requirement 2, 3
     pub(crate) kind_registry: crate::workspace_kind::KindRegistry,
+    /// Built Environment_Registry (CR-CH-053 Task 17): the shell-owned collection
+    /// of the command environments that exist in the running shell (FFCMD base,
+    /// FFEDIT, host-FS placeholder), registered in code at startup. The
+    /// active-environment derivation and the active-wins claim gate read FROM this
+    /// registry by the focused kind's command-environment name, replacing the
+    /// former closed `EnvironmentKind` enum / `environment_for_kind` match /
+    /// `== FfEdit` literal. It is a pure data/lookup structure feeding the one
+    /// shared ladder path -- NOT a second dispatcher or navigation stack.
+    ///
+    /// Validates: command-environments Requirement 13.1, 13.2, 13.7
+    pub(super) environments: super::environment_registry::EnvironmentRegistry,
     /// Command Configurator Context UI state (list + edit form + delete confirm).
     ///
     /// Validates: command-configurator Requirement 2.1, 2.3

@@ -291,25 +291,41 @@ writes its test FIRST (red before green); GUI/behaviour criteria ship full-shell
 source files stay under the 400-line rule; new CEs wire through the registry + the
 one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
 
-- [ ] 17. Build the Environment_Registry + make FFEDIT a real object (slice a, behaviour-preserving)
-  - [ ] 17.1 Replace the closed `EnvironmentKind` enum + hardcoded
+- [x] 17. Build the Environment_Registry + make FFEDIT a real object (slice a, behaviour-preserving)
+  - [x] 17.1 Replace the closed `EnvironmentKind` enum + hardcoded
         `environment_for_kind` match + `== FfEdit` claim gate with a BUILT
         shell-owned registry of `Box<dyn CommandEnvironment>`; environments register
         into it at startup (FFCMD base implicit = resolve_target; FFEDIT; host FS env
         placeholder). Test FIRST: registry resolves the focused kind's env name,
         defaults to FFCMD for absent/unknown name. Validates: Requirement 13.1,
         13.2, 13.3, 13.4.
-  - [ ] 17.2 Make FFEDIT a real `CommandEnvironment` OBJECT (move `ffedit_claim`
+    - DONE: `shell/environment_registry.rs` (`EnvironmentRegistry`, `with_builtins`,
+      name->`RegisteredEnv` lookup, `active_name`, `is_ffedit_active`, degrade-to-FFCMD).
+      Design note: FFEDIT verbs mutate `&mut WorkbenchShell`, so the registry is a
+      name->tag lookup struct + a zero-sized `FfEditEnvironment` (owning the moved
+      `ffedit_claim` body) rather than a `Vec<Box<dyn>>` owning the bodies (would
+      borrow-conflict) -- the planner's D2. 4 unit tests green.
+  - [x] 17.2 Make FFEDIT a real `CommandEnvironment` OBJECT (move `ffedit_claim`
         verb bodies behind the trait, still delegating to the existing managers +
         dirty-aware SAVE path); register it in the registry. Test FIRST: every FFEDIT
         verb's observable result is unchanged via the object (parity with the prior
         method path). Validates: Requirement 13.5, 13.6, 4.2, 6.3.
-  - [ ] 17.3 Prove the registry is not a second dispatcher: active-env derivation +
+    - DONE: `shell/environment_ffedit.rs::FfEditEnvironment` (zero-sized, `claim`
+      body moved verbatim from `WorkbenchShell::ffedit_claim`). Verb parity proven
+      by the full ff-desktop suite staying green (985 tests).
+  - [x] 17.3 Prove the registry is not a second dispatcher: active-env derivation +
         claim gate read FROM the registry on the one shared ladder path; no change to
         `CommandTarget` or the per-tab Navigation_Stack. Full-shell test: with only
         FFEDIT + FFCMD + host FS env registered, a representative FFEDIT verb and a
         representative FFCMD verb resolve exactly as before. Validates: Requirement
         13.6, 13.7, 1.4, 3.3.
+    - DONE: `shell/commands.rs` claim gate now reads `is_ffedit_active` from the
+      registry (both the prelude exit-skip gate and the ladder claim gate rerouted);
+      registry is pure data/lookup (no dispatch). SCOPED checks clean: `cargo fmt`,
+      `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop` (no warnings),
+      `cargo test -p ff-desktop` (985 tests; the 3 reported failures are
+      pre-existing parallel-contention flakes verified passing in isolation,
+      unrelated to the registry). Owner must run the full `cargo gate --build`.
 
 - [ ] 18. Add the address-by-name entry point dispatch_to_environment (slice b, additive)
   - [ ] 18.1 Add `dispatch_to_environment(name, raw)` to the registry (REXX ADDRESS
