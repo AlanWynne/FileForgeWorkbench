@@ -139,6 +139,105 @@ impl From<LineNumber> for u64 {
     }
 }
 
+/// A 0-based record number within the document.
+///
+/// A record is the universal editable unit (CR-CH-058). For a Delimited
+/// document a record IS a line, so `RecordNumber` and `LineNumber` are
+/// interchangeable for Delimited documents and the line API delegates to the
+/// record API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct RecordNumber(pub u64);
+
+impl RecordNumber {
+    /// The first record (record 0).
+    pub const ZERO: Self = Self(0);
+
+    /// Returns the inner u64 value.
+    pub fn value(self) -> u64 {
+        self.0
+    }
+}
+
+impl fmt::Display for RecordNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "record {}", self.0)
+    }
+}
+
+impl Add<u64> for RecordNumber {
+    type Output = Self;
+    fn add(self, rhs: u64) -> Self {
+        Self(self.0 + rhs)
+    }
+}
+
+impl AddAssign<u64> for RecordNumber {
+    fn add_assign(&mut self, rhs: u64) {
+        self.0 += rhs;
+    }
+}
+
+impl Sub<u64> for RecordNumber {
+    type Output = Self;
+    fn sub(self, rhs: u64) -> Self {
+        Self(self.0.saturating_sub(rhs))
+    }
+}
+
+impl SubAssign<u64> for RecordNumber {
+    fn sub_assign(&mut self, rhs: u64) {
+        self.0 = self.0.saturating_sub(rhs);
+    }
+}
+
+impl From<u64> for RecordNumber {
+    fn from(val: u64) -> Self {
+        Self(val)
+    }
+}
+
+impl From<RecordNumber> for u64 {
+    fn from(rn: RecordNumber) -> u64 {
+        rn.0
+    }
+}
+
+impl From<LineNumber> for RecordNumber {
+    fn from(ln: LineNumber) -> Self {
+        Self(ln.0)
+    }
+}
+
+impl From<RecordNumber> for LineNumber {
+    fn from(rn: RecordNumber) -> Self {
+        Self(rn.0)
+    }
+}
+
+/// A range of bytes within the Append_Buffer: a `(start, len)` pair.
+///
+/// Used by `Piece::Edited` to reference the appended bytes of an edited or
+/// inserted record. `u64` to support large edit volumes without a type ceiling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct BufRange {
+    /// Start offset of the appended bytes within the Append_Buffer.
+    pub start: u64,
+    /// Length in bytes of the appended span.
+    pub len: u64,
+}
+
+impl BufRange {
+    /// Create a new buffer range.
+    pub fn new(start: u64, len: u64) -> Self {
+        Self { start, len }
+    }
+
+    /// One past the last byte of this range.
+    pub fn end(self) -> u64 {
+        self.start + self.len
+    }
+}
+
 /// A Unicode code point extracted from the buffer with its byte width.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CharacterExtracted {
@@ -302,6 +401,37 @@ mod tests {
         };
         let collected: Vec<u8> = view.iter().collect();
         assert_eq!(collected, vec![10, 20, 30, 40, 50]);
+    }
+
+    #[test]
+    fn record_number_arithmetic_and_display() {
+        // Validates: Requirement 11.4
+        let rn = RecordNumber(5);
+        assert_eq!(rn + 3, RecordNumber(8));
+        assert_eq!(rn - 2, RecordNumber(3));
+        assert_eq!(rn - 10, RecordNumber(0)); // saturating
+        assert_eq!(rn.value(), 5);
+        assert_eq!(RecordNumber(7).to_string(), "record 7");
+        assert_eq!(RecordNumber::ZERO, RecordNumber(0));
+    }
+
+    #[test]
+    fn record_number_line_number_interchangeable() {
+        // Validates: Requirement 11.3
+        let ln = LineNumber(42);
+        let rn: RecordNumber = ln.into();
+        assert_eq!(rn, RecordNumber(42));
+        let back: LineNumber = rn.into();
+        assert_eq!(back, LineNumber(42));
+    }
+
+    #[test]
+    fn buf_range_end() {
+        // Validates: Requirement 12.1
+        let r = BufRange::new(10, 5);
+        assert_eq!(r.start, 10);
+        assert_eq!(r.len, 5);
+        assert_eq!(r.end(), 15);
     }
 
     #[test]

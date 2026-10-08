@@ -22,6 +22,7 @@
 
 // ─── Public Modules ─────────────────────────────────────────────────────────
 
+pub mod append_buffer;
 pub mod command;
 pub mod document;
 pub mod encoding_nav;
@@ -30,6 +31,10 @@ pub mod gap_buffer;
 pub mod handle;
 pub mod line_end;
 pub mod line_index;
+pub mod original_index;
+pub mod piece_journal;
+pub mod piece_list;
+pub mod record_format;
 pub mod save_point;
 pub mod sparse_line_index;
 pub mod streaming;
@@ -40,14 +45,19 @@ pub mod watcher;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
+pub use append_buffer::AppendBuffer;
 pub use command::{CommandResult, DeleteCommand, DocumentCommand, InsertCommand};
 pub use document::Document;
 pub use error::DocumentError;
 pub use handle::{new_document, new_document_with_capacity, wrap_document, DocumentHandle};
 pub use line_end::LineEndMode;
+pub use original_index::{OriginalIndex, OriginalIndexEntry, ResidentOriginalIndex};
+pub use piece_journal::{PieceJournal, SpliceOp};
+pub use piece_list::{Piece, PieceList};
+pub use record_format::{DelimiterTerminator, RecordFormat};
 pub use types::{
-    BytePosition, CharacterExtracted, DeleteResult, Direction, InsertResult, LineNumber,
-    LoadingProgress, SplitView,
+    BufRange, BytePosition, CharacterExtracted, DeleteResult, Direction, InsertResult, LineNumber,
+    LoadingProgress, RecordNumber, SplitView,
 };
 pub use viewport::Viewport;
 pub use watcher::{DocumentWatcher, WatcherHandle};
