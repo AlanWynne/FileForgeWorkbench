@@ -25,6 +25,7 @@
 pub mod append_buffer;
 pub mod command;
 pub mod document;
+pub mod document_records;
 pub mod encoding_nav;
 pub mod error;
 pub mod gap_buffer;
@@ -39,6 +40,7 @@ pub mod save_point;
 pub mod sparse_line_index;
 pub mod streaming;
 pub mod text_buffer;
+pub mod text_buffer_records;
 pub mod types;
 pub mod viewport;
 pub mod watcher;

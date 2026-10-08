@@ -150,6 +150,8 @@ impl Document {
         self.buffer.contains_line_end(text)
     }
 
+    // The record model (CR-CH-058 Req 11) + save methods: see document_records.rs
+
     // --- Mutation ---
 
     /// Insert text at position. Notifies watchers and returns result.
@@ -350,14 +352,14 @@ impl Document {
 
     // --- Internal access for streaming ---
 
-    /// Mutable access to the text buffer (for streaming loader).
-    #[allow(dead_code)]
+    /// Mutable access to the text buffer (for streaming loader and the
+    /// `document_records.rs` record-model continuation).
     pub(crate) fn text_buffer_mut(&mut self) -> &mut TextBuffer {
         &mut self.buffer
     }
 
-    /// Access the text buffer.
-    #[allow(dead_code)]
+    /// Access the text buffer (for the `document_records.rs` record-model
+    /// continuation).
     pub(crate) fn text_buffer(&self) -> &TextBuffer {
         &self.buffer
     }

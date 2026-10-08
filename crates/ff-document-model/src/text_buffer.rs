@@ -7,10 +7,21 @@ use crate::error::DocumentError;
 use crate::gap_buffer::GapBuffer;
 use crate::line_end::{self, LineEndMode};
 use crate::line_index::LineIndex;
+use crate::original_index::ResidentOriginalIndex;
+use crate::record_format::RecordFormat;
 use crate::types::{BytePosition, DeleteResult, InsertResult, LineNumber, SplitView};
 
 /// Primary text storage: owns the GapBuffer and maintains the LineIndex.
 /// Coordinates insertion/deletion with line tracking and read-only guards.
+///
+/// CR-CH-058 F1: the buffer also carries a `RecordFormat` (the native CE
+/// supplies `Delimited`, generalising `LineEndMode`) and exposes a record-API
+/// (`total_records` / `record_start` / `record_byte_length` /
+/// `record_from_position`). For a Delimited document a record IS a line, so the
+/// record-API and the line-API agree byte-for-byte (AC 11.3, 11.4). F1 keeps
+/// the whole file resident in the gap buffer; the piece-table spine is proven
+/// via `save_image` / `rebaseline` (AC 12.1, 12.2, 12.12). Windowed residency
+/// and piece-table-backed interactive editing are F2.
 #[derive(Debug, Clone)]
 pub struct TextBuffer {
     /// The underlying gap buffer storing raw bytes.
@@ -21,6 +32,8 @@ pub struct TextBuffer {
     line_end_mode: LineEndMode,
     /// Whether the buffer is read-only.
     read_only: bool,
+    /// The record framing (CR-CH-058). Native = Delimited from `line_end_mode`.
+    record_format: RecordFormat,
 }
 
 impl TextBuffer {
@@ -31,6 +44,7 @@ impl TextBuffer {
             line_index: LineIndex::new(),
             line_end_mode: LineEndMode::Default,
             read_only: false,
+            record_format: RecordFormat::native(LineEndMode::Default),
         }
     }
 
@@ -41,6 +55,7 @@ impl TextBuffer {
             line_index: LineIndex::new(),
             line_end_mode: LineEndMode::Default,
             read_only: false,
+            record_format: RecordFormat::native(LineEndMode::Default),
         }
     }
 
@@ -83,32 +98,16 @@ impl TextBuffer {
 
         let bytes_inserted = text.len() as u64;
 
-        // Check for CRLF split: inserting between CR and LF
-        let crlf_split = self.is_crlf_split_point(position);
-
-        // Insert into the gap buffer
+        // Insert into the gap buffer, then rebuild the line index over the full
+        // buffer (CRLF split/merge across the insertion boundary is handled by
+        // the rebuild, so `line_count()` is always exact). `lines_added` is the
+        // count of line endings within the inserted text.
         self.buffer.insert(position.0, text);
-
-        // Count line endings in the inserted text
         let lines_added = line_end::count_line_endings(text, self.line_end_mode);
-
-        // Handle CRLF merge: does the insertion create new CR+LF adjacencies?
-        let crlf_merge_before = self.check_crlf_merge_at_start(position, text);
-        let crlf_merge_after = self.check_crlf_merge_at_end(position, text, bytes_inserted);
-
-        // Rebuild line index for the affected region
-        // For correctness, rebuild the full index after insertion
         self.rebuild_line_index();
 
-        let actual_line_count_change = self.compute_actual_lines_added(
-            lines_added,
-            crlf_split,
-            crlf_merge_before,
-            crlf_merge_after,
-        );
-
         Ok(InsertResult {
-            lines_added: actual_line_count_change,
+            lines_added,
             bytes_inserted,
         })
     }
@@ -259,6 +258,12 @@ impl TextBuffer {
     pub fn set_line_end_mode(&mut self, mode: LineEndMode) {
         if mode != self.line_end_mode {
             self.line_end_mode = mode;
+            // Keep the native (Delimited) record format in step with the mode
+            // (the native CE generalises LineEndMode into RecordFormat, Req
+            // 11.2). A non-Delimited format (mainframe) is left untouched.
+            if self.record_format.is_delimited() {
+                self.record_format = RecordFormat::native(mode);
+            }
             self.rebuild_line_index();
         }
     }
@@ -271,6 +276,48 @@ impl TextBuffer {
     /// Check if text contains a line ending for the current mode.
     pub fn contains_line_end(&self, text: &[u8]) -> bool {
         line_end::contains_line_end(text, self.line_end_mode)
+    }
+
+    // === Record API (CR-CH-058 Req 11.4) ====================================
+    //
+    // For a Delimited document a record IS a line: these delegate to the line
+    // index so the record-API and line-API agree byte-for-byte (AC 11.3). The
+    // native record format generalises `LineEndMode` (AC 11.2); Fixed/Variable
+    // framing is built from the resident bytes and is NOT flattened to
+    // delimiters (AC 11.5), though only Delimited is exercised end-to-end in F1.
+
+    // The record-query API and the piece-table-spine SAVE methods are a
+    // continued `impl TextBuffer` in `text_buffer_records.rs` (kept separate for
+    // the 400-line rule). The private-field-touching helpers they call stay here.
+
+    /// The document's record format (CR-CH-058).
+    pub fn record_format(&self) -> RecordFormat {
+        self.record_format
+    }
+
+    /// Set the record format (the owning CE supplies it on open, Req 11.2).
+    pub fn set_record_format(&mut self, format: RecordFormat) {
+        self.record_format = format;
+    }
+
+    /// Build the Immutable_Original_Index over the current resident bytes per
+    /// the active record format (CR-CH-058 AC 12.1). F1-resident: rebuilt from
+    /// the whole buffer; F2 builds it incrementally/windowed.
+    pub(crate) fn build_original_index(&self) -> ResidentOriginalIndex {
+        let bytes = self.image_bytes();
+        if bytes.is_empty() {
+            ResidentOriginalIndex::empty()
+        } else {
+            ResidentOriginalIndex::from_bytes(&bytes, self.record_format, self.line_end_mode)
+        }
+    }
+
+    /// The current content as a contiguous byte image (resident in F1). This is
+    /// the re-baseline SAVE image source (byte-identical for Delimited).
+    pub(crate) fn image_bytes(&self) -> Vec<u8> {
+        self.buffer
+            .get_range(0, self.buffer.length())
+            .unwrap_or_default()
     }
 
     /// Direct access to the underlying gap buffer (for streaming and advanced use).
@@ -301,48 +348,6 @@ impl TextBuffer {
         self.line_index
             .rebuild_from_buffer(&mut self.buffer, self.line_end_mode);
     }
-
-    // --- Private helpers ---
-
-    /// Check if position is between a CR and LF (CRLF split point).
-    fn is_crlf_split_point(&self, position: BytePosition) -> bool {
-        if position.0 == 0 || position.0 >= self.length() {
-            return false;
-        }
-        let before = self.buffer.byte_at(position.0 - 1);
-        let at = self.buffer.byte_at(position.0);
-        before == Some(0x0D) && at == Some(0x0A)
-    }
-
-    /// Check if insertion at start creates a CRLF merge (text ends with LF and byte before position is CR).
-    fn check_crlf_merge_at_start(&self, _position: BytePosition, _text: &[u8]) -> bool {
-        // This is handled by the full rebuild
-        false
-    }
-
-    /// Check if insertion at end creates a CRLF merge.
-    fn check_crlf_merge_at_end(
-        &self,
-        _position: BytePosition,
-        _text: &[u8],
-        _bytes_inserted: u64,
-    ) -> bool {
-        // This is handled by the full rebuild
-        false
-    }
-
-    /// Compute actual lines added accounting for CRLF merges/splits.
-    fn compute_actual_lines_added(
-        &self,
-        base: u64,
-        _split: bool,
-        _merge_before: bool,
-        _merge_after: bool,
-    ) -> u64 {
-        // Since we do a full rebuild, we calculate from the actual line count difference
-        // For now, return the base count from the inserted text
-        base
-    }
 }
 
 impl Default for TextBuffer {
@@ -352,152 +357,5 @@ impl Default for TextBuffer {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn empty_buffer_has_one_line() {
-        let buf = TextBuffer::new();
-        assert_eq!(buf.line_count(), 1);
-        assert_eq!(buf.length(), 0);
-    }
-
-    #[test]
-    fn insert_text_without_line_endings() {
-        let mut buf = TextBuffer::new();
-        let result = buf.insert(BytePosition(0), b"hello").unwrap();
-        assert_eq!(result.bytes_inserted, 5);
-        assert_eq!(result.lines_added, 0);
-        assert_eq!(buf.length(), 5);
-        assert_eq!(buf.line_count(), 1);
-    }
-
-    #[test]
-    fn insert_text_with_newline() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"hello\nworld").unwrap();
-        assert_eq!(buf.line_count(), 2);
-        assert_eq!(buf.line_start(LineNumber(0)), BytePosition(0));
-        assert_eq!(buf.line_start(LineNumber(1)), BytePosition(6));
-    }
-
-    #[test]
-    fn insert_text_with_crlf() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"hello\r\nworld").unwrap();
-        assert_eq!(buf.line_count(), 2);
-        assert_eq!(buf.line_start(LineNumber(1)), BytePosition(7));
-    }
-
-    #[test]
-    fn delete_removes_line_endings() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"a\nb\nc").unwrap();
-        assert_eq!(buf.line_count(), 3);
-        // Delete the first newline at position 1
-        let result = buf.delete(BytePosition(1), 1).unwrap();
-        assert_eq!(result.lines_removed, 1);
-        assert_eq!(buf.line_count(), 2);
-        let content = buf.get_range(BytePosition(0), buf.length()).unwrap();
-        assert_eq!(content, b"ab\nc");
-    }
-
-    #[test]
-    fn read_only_blocks_insert() {
-        let mut buf = TextBuffer::new();
-        buf.set_read_only(true);
-        let err = buf.insert(BytePosition(0), b"hello").unwrap_err();
-        assert!(matches!(err, DocumentError::ReadOnly { .. }));
-    }
-
-    #[test]
-    fn read_only_blocks_delete() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"hello").unwrap();
-        buf.set_read_only(true);
-        let err = buf.delete(BytePosition(0), 1).unwrap_err();
-        assert!(matches!(err, DocumentError::ReadOnly { .. }));
-    }
-
-    #[test]
-    fn position_out_of_range_on_insert() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"abc").unwrap();
-        let err = buf.insert(BytePosition(10), b"x").unwrap_err();
-        assert!(matches!(err, DocumentError::PositionOutOfRange { .. }));
-    }
-
-    #[test]
-    fn line_from_position_round_trip() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"abc\ndef\nghi").unwrap();
-        for line_num in 0..buf.line_count() {
-            let ln = LineNumber(line_num);
-            let start = buf.line_start(ln);
-            assert_eq!(buf.line_from_position(start), ln);
-        }
-    }
-
-    #[test]
-    fn line_end_position() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"abc\ndef\nghi").unwrap();
-        assert_eq!(buf.line_end(LineNumber(0)), BytePosition(3));
-        assert_eq!(buf.line_end(LineNumber(1)), BytePosition(7));
-        assert_eq!(buf.line_end(LineNumber(2)), BytePosition(11)); // end of doc
-    }
-
-    #[test]
-    fn line_end_mode_change_rebuilds_index() {
-        let mut buf = TextBuffer::new();
-        // NEL = 0xC2 0x85
-        let content: Vec<u8> = [b"hello".as_slice(), &[0xC2, 0x85], b"world"].concat();
-        buf.insert(BytePosition(0), &content).unwrap();
-        assert_eq!(buf.line_count(), 1); // Default mode doesn't recognize NEL
-
-        buf.set_line_end_mode(LineEndMode::Unicode);
-        assert_eq!(buf.line_count(), 2); // Now NEL is recognized
-    }
-
-    #[test]
-    fn crlf_split_handling() {
-        let mut buf = TextBuffer::new();
-        // Start with CR followed by LF -> CRLF = 1 line ending
-        buf.insert(BytePosition(0), b"a\r\nb").unwrap();
-        assert_eq!(buf.line_count(), 2);
-        // Insert between CR and LF
-        buf.insert(BytePosition(2), b"x").unwrap();
-        // Now it's "a\rx\nb" - CR and LF are separate = 2 line endings
-        assert_eq!(buf.line_count(), 3);
-    }
-
-    #[test]
-    fn crlf_merge_handling() {
-        let mut buf = TextBuffer::new();
-        // "a\r" + "x" + "\nb" - CR and LF separated
-        buf.insert(BytePosition(0), b"a\rx\nb").unwrap();
-        assert_eq!(buf.line_count(), 3); // lines: "a\r", "x\n", "b"
-                                         // Delete 'x' between CR and LF
-        buf.delete(BytePosition(2), 1).unwrap();
-        // Now "a\r\nb" - CRLF merged = 2 lines
-        assert_eq!(buf.line_count(), 2);
-    }
-
-    #[test]
-    fn contains_line_end_check() {
-        let buf = TextBuffer::new();
-        assert!(buf.contains_line_end(b"hello\nworld"));
-        assert!(!buf.contains_line_end(b"hello world"));
-    }
-
-    #[test]
-    fn split_view_matches_contiguous() {
-        let mut buf = TextBuffer::new();
-        buf.insert(BytePosition(0), b"hello world").unwrap();
-        let split = buf.split_view();
-        let mut combined: Vec<u8> = split.before_gap;
-        combined.extend_from_slice(&split.after_gap);
-        let contiguous = buf.contiguous_view().to_vec();
-        assert_eq!(combined, contiguous);
-    }
-}
+#[path = "text_buffer_tests.rs"]
+mod tests;

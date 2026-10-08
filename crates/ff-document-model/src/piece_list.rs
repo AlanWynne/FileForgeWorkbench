@@ -238,7 +238,13 @@ impl PieceList {
         self.pieces = pieces;
     }
 
-    /// Snapshot the current piece vector (used by the undo journal).
+    /// Snapshot the current piece vector (used by the undo journal to build a
+    /// `SpliceOp`'s before/after arrangements).
+    //
+    // allow(dead_code): the piece-splice journal is driven from tests in F1
+    // (the undo mechanism is proven); the F2 windowed edit path is its non-test
+    // consumer. Remove the allow when F2 records real edits through the journal.
+    #[allow(dead_code)]
     pub(crate) fn snapshot(&self) -> Vec<Piece> {
         self.pieces.clone()
     }
