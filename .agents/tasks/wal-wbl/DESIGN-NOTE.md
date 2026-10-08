@@ -79,6 +79,38 @@ This registers on the same seam the mainframe CE uses; no new dispatch mechanism
   save-as-WBL. The user chooses WAL/WBL via a Save-As format selection (exact UX
   -- command flag vs dialog -- settled at the gate).
 
+## 4a. Distribution front-ends (owner decisions)
+
+All front-ends are THIN wrappers over the one `ff-wal-wbl` crate (the format +
+pack/unpack/replay logic). Build the format once; expose it through any subset.
+
+- **FFWB Command Environment** (section 3) -- opens/saves/walks `.wal`/`.wbl`
+  inside FFWB.
+- **`walx` CLI extractor** (owner-approved) -- ONE small cross-platform command
+  that handles BOTH `.wal` and `.wbl`: extract the CURRENT content (or any
+  revision) to a plain file. Documents stay pure data; `walx` is the single
+  signed binary to trust per platform (no per-document executable). Scriptable
+  (CI/batch).
+- **Standalone viewer app** (owner-approved; ffmdx-style) -- opens a `.wal`/`.wbl`,
+  DETECTS the original content type (HTML / Markdown / plain text -- the base
+  member's content kind), RENDERS it appropriately via a SMALL set of renderers,
+  lets the user WALK the embedded history, and EXPORTS to text / PDF / HTML /
+  Markdown. REUSE (do not re-implement): the CR-NR-102 `ffmdx` cut-down-app
+  pattern + `ff-app-bootstrap` (shared init: theme/config/logging/session), and
+  CR-NR-101 `markdown-rendering` for the MD/HTML rendering + styling. So the
+  viewer = ffmdx shell + `ff-wal-wbl` + a history-walk panel + exporters. Likely
+  its OWN app-CR when gated (as ffmdx got CR-NR-102), noted here for scope.
+
+REJECTED (recorded, not silently dropped): **self-extracting `.wal`/`.wbl`
+documents** (the file itself an executable that writes out the text). Reasons:
+antivirus/EDR quarantine + enterprise policy blocks on self-extracting exes
+(the target audience is often locked-down); not portable (per-OS self-extractors);
+unsigned user-generated documents are maximally distrusted and cannot be signed
+per-save; and it undermines the deliberate "documents are safe binary DATA, not
+programs" property. A self-extractor could, if ever wanted, be a SEPARATE opt-in
+post-processing wrapper around a `.wal` -- never the document format itself -- but
+this is deferred/declined.
+
 ## 5. Scope and placement (recommended)
 
 - OWN CR (new requirement), NOT folded into CR-CH-058. Cross-ref CR-CH-058
@@ -120,5 +152,13 @@ This registers on the same seam the mainframe CE uses; no new dispatch mechanism
   member alongside the base content.
 - An FFWB Command Environment for `.wal`/`.wbl` files (CR-CH-053 model) that
   opens (extract + reconstruct journal), saves (repack), and walks the history.
-- Own CR + likely own crate; sequenced after CR-CH-058 F1; plain re-baseline
-  SAVE remains the default.
+- Own CR + likely own crate (`ff-wal-wbl`); sequenced after CR-CH-058 F1; plain
+  re-baseline SAVE remains the default.
+- Self-extracting documents REJECTED (section 4a). A `walx` CLI (handles both
+  `.wal` and `.wbl`) and a standalone ffmdx-style viewer are the approved
+  front-ends, both thin wrappers over `ff-wal-wbl`.
+- The viewer detects the original content kind (HTML / Markdown / plain text),
+  renders via a small renderer set (reusing CR-NR-101 markdown-rendering +
+  CR-NR-102 ffmdx/`ff-app-bootstrap`), walks history, and exports to text / PDF /
+  HTML / Markdown. The base member therefore records the content KIND, not just
+  the RecordFormat.
