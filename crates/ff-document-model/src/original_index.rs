@@ -108,7 +108,10 @@ impl OriginalIndex for ResidentOriginalIndex {
     }
 
     fn record_byte_length(&self, k: RecordNumber) -> u32 {
-        self.entries.get(k.0 as usize).map(|e| e.byte_length).unwrap_or(0)
+        self.entries
+            .get(k.0 as usize)
+            .map(|e| e.byte_length)
+            .unwrap_or(0)
     }
 
     fn record_from_offset(&self, pos: u64) -> Option<RecordNumber> {

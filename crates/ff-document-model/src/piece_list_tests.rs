@@ -114,7 +114,10 @@ fn delete_whole_edited_piece() {
     assert_eq!(pl.total_records(), 4);
     pl.delete_records(r(1), 1); // remove the edited record
     assert_eq!(pl.total_records(), 3);
-    assert!(pl.pieces().iter().all(|p| matches!(p, Piece::Original { .. })));
+    assert!(pl
+        .pieces()
+        .iter()
+        .all(|p| matches!(p, Piece::Original { .. })));
 }
 
 #[test]
@@ -162,15 +165,30 @@ fn running_count_invariant_after_sequence() {
     // Validates: Requirement 12.2
     let mut pl = PieceList::from_original(10);
     pl.insert_edited_record(r(3), BufRange::new(0, 2));
-    assert_eq!(pl.total_records(), pl.pieces().iter().map(Piece::count).sum());
+    assert_eq!(
+        pl.total_records(),
+        pl.pieces().iter().map(Piece::count).sum()
+    );
     pl.delete_records(r(0), 2);
-    assert_eq!(pl.total_records(), pl.pieces().iter().map(Piece::count).sum());
+    assert_eq!(
+        pl.total_records(),
+        pl.pieces().iter().map(Piece::count).sum()
+    );
     pl.overtype_record(r(1), BufRange::new(2, 3));
-    assert_eq!(pl.total_records(), pl.pieces().iter().map(Piece::count).sum());
+    assert_eq!(
+        pl.total_records(),
+        pl.pieces().iter().map(Piece::count).sum()
+    );
     pl.move_records(r(0), 1, r(3));
-    assert_eq!(pl.total_records(), pl.pieces().iter().map(Piece::count).sum());
+    assert_eq!(
+        pl.total_records(),
+        pl.pieces().iter().map(Piece::count).sum()
+    );
     pl.copy_records(r(0), 2, r(4));
-    assert_eq!(pl.total_records(), pl.pieces().iter().map(Piece::count).sum());
+    assert_eq!(
+        pl.total_records(),
+        pl.pieces().iter().map(Piece::count).sum()
+    );
 }
 
 #[test]

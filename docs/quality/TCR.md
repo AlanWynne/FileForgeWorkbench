@@ -3884,24 +3884,24 @@ coverage and confirm the shell behaviour is unchanged after the move.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-document-model` | 🔴 | -- | Req 11.1: RecordFormat type (Delimited/Fixed/Variable) with RECORD as the editable unit |
-| `ff-document-model` | 🔴 | -- | Req 11.2: RecordFormat obtained from the owning Command Environment on open |
-| `ff-document-model` | 🔴 | -- | Req 11.3: Delimited record == line, byte-for-byte equivalent to pre-CR-CH-058 line behaviour |
-| `ff-document-model` | 🔴 | -- | Req 11.4: record-oriented queries (total_records/record_start/record_byte_length/record_from_position) with line API delegating |
-| `ff-document-model` | 🔴 | -- | Req 11.5: no flatten of Fixed/Variable records to delimiter bytes; framing stays the authority |
-| `ff-document-model` | 🔴 | -- | Req 11.6: RecordFormat/record API GUI-independent; no dispatch/nav/focus/persistence change |
-| `ff-document-model` | 🔴 | -- | Req 12.1: three layers -- Immutable_Original_Index + Piece_List + Append_Buffer |
-| `ff-document-model` | 🔴 | -- | Req 12.2: edits are Piece_List splices (no O(file) shift, no whole-file rewrite) |
-| `ff-document-model` | 🔴 | -- | Req 12.3: u64 record numbers; ~100M-record memory-budget target (not a type limit) |
-| `ff-document-model` | 🔴 | -- | Req 12.4: Window_Band = 3 pages; residency decoupled from the logical index |
-| `ff-document-model` | 🔴 | -- | Req 12.5: scrollbar/extents from index Total_Records, never the resident window |
-| `ff-document-model` | 🔴 | -- | Req 12.6: zoom never loads (render-only over resident records) |
-| `ff-document-model` | 🔴 | -- | Req 12.7: scroll load/evict at band edges with hysteresis+overscan; dirty pieces pinned |
-| `ff-document-model` | 🔴 | -- | Req 12.8: down/up N resolves target via index, loads one window, no intermediate reads |
-| `ff-document-model` | 🔴 | -- | Req 12.9: linear piece search first; order-statistic tree only if fragmentation demands |
-| `ff-document-model` | 🔴 | -- | Req 12.10: configurable budgets (window/overscan/checkpoint/max_resident_records ~150M/spill) |
-| `ff-document-model` | 🔴 | -- | Req 12.11: graceful above-budget degrade behind OriginalIndex interface; first build lean resident |
-| `ff-document-model` | 🔴 | -- | Req 12.12: native (Delimited) open/edit/save byte-identical to today (safety rule) |
+| `ff-document-model` | ✅ | `record_format.rs` tests (`record_format_variants_exist_and_compare`, `terminator_reemit_bytes`) | Req 11.1: RecordFormat type (Delimited/Fixed/Variable) with RECORD as the editable unit |
+| `ff-document-model` | ✅ | `text_buffer_tests.rs::{default_record_format_is_native_delimited, set_line_end_mode_tracks_native_record_format}`, `document_records_tests.rs::document_default_record_format_is_delimited` | Req 11.2: RecordFormat obtained from the owning Command Environment on open (native = Delimited from LineEndMode; `set_record_format` seam) |
+| `ff-document-model` | ✅ | `text_buffer_tests.rs::{total_records_equals_line_count_for_delimited, record_start_equals_line_start_for_delimited, record_from_position_equals_line_from_position_for_delimited}`, `document_records_tests.rs::document_record_start_and_position_agree_with_line_api` | Req 11.3: Delimited record == line, byte-for-byte equivalent to pre-CR-CH-058 line behaviour |
+| `ff-document-model` | ✅ | `text_buffer_tests.rs::record_byte_length_includes_terminator_and_tiles_the_image`, `document_records_tests.rs::document_record_byte_lengths_tile_the_image` | Req 11.4: record-oriented queries (total_records/record_start/record_byte_length/record_from_position) with line API delegating |
+| `ff-document-model` | ✅ | `text_buffer_tests.rs::non_delimited_format_is_not_flattened`, `document_records_tests.rs::document_set_record_format_not_flattened` | Req 11.5: no flatten of Fixed/Variable records to delimiter bytes; framing stays the authority |
+| `ff-document-model` | ✅ | record API is pure `ff-document-model` (no eframe/egui/shell dep) | Req 11.6: RecordFormat/record API GUI-independent; no dispatch/nav/focus/persistence change |
+| `ff-document-model` | ✅ | `original_index.rs` tests + `text_buffer_tests.rs::{original_index_matches_record_api, baseline_piece_list_is_single_original_span}`, `append_buffer.rs`/`piece_list.rs` tests | Req 12.1: three layers -- Immutable_Original_Index + Piece_List + Append_Buffer |
+| `ff-document-model` | ✅ | `piece_list.rs` splice tests + `piece_table_proptests::{splice_undo_round_trip_restores_original, running_count_invariant_holds_after_every_op}` | Req 12.2: edits are Piece_List splices (no O(file) shift, no whole-file rewrite) |
+| `ff-document-model` | ✅ | `types.rs::record_number_arithmetic_and_display` (RecordNumber u64); `original_index.rs::entry_is_sixteen_bytes` | Req 12.3: u64 record numbers; ~100M-record memory-budget target (not a type limit) |
+| `ff-document-model` | 🔴 | -- | Req 12.4: Window_Band = 3 pages; residency decoupled from the logical index (F2) |
+| `ff-document-model` | 🔴 | -- | Req 12.5: scrollbar/extents from index Total_Records, never the resident window (F2) |
+| `ff-document-model` | 🔴 | -- | Req 12.6: zoom never loads (render-only over resident records) (F2) |
+| `ff-document-model` | 🔴 | -- | Req 12.7: scroll load/evict at band edges with hysteresis+overscan; dirty pieces pinned (F2) |
+| `ff-document-model` | 🔴 | -- | Req 12.8: down/up N resolves target via index, loads one window, no intermediate reads (F2) |
+| `ff-document-model` | ✅ | `piece_list.rs::piece_at_record_linear_scan` + `piece_table_proptests::record_addressing_is_total_consistent` | Req 12.9: linear piece search first; order-statistic tree only if fragmentation demands |
+| `ff-document-model` | 🔴 | -- | Req 12.10: configurable budgets (window/overscan/checkpoint/max_resident_records ~150M/spill) (F5) |
+| `ff-document-model` | ✅ | `original_index.rs::index_is_usable_as_trait_object` (OriginalIndex trait boundary; lean resident Vec is the only F1 impl; sparse/mmap deferred to F5 behind the trait) | Req 12.11: graceful above-budget degrade behind OriginalIndex interface; first build lean resident |
+| `ff-document-model` | ✅ | `text_buffer_tests.rs::{save_image_is_byte_identical_to_resident_content, save_image_byte_identical_after_edits, rebaseline_preserves_content_and_resets_cleanly}`, `document_records_tests.rs::{document_save_image_byte_identical_no_edit, document_save_image_byte_identical_after_edit_then_rebaseline}` | Req 12.12: native (Delimited) open/edit/save byte-identical to today (safety rule) |
 | `ff-viewport-scrolling` | 🔴 | -- | Req 15.1: scrollbar/extents sized on index Total_Records, never on resident window |
 | `ff-viewport-scrolling` | 🔴 | -- | Req 15.2: accept estimated total + expose indexing state while background scan runs |
 | `ff-viewport-scrolling` | 🔴 | -- | Req 15.3: snap to exact total and re-clamp top_line on estimated->exact transition |

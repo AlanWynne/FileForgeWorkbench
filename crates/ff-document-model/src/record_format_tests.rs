@@ -118,9 +118,31 @@ fn delimited_record_byte_length_includes_terminator() {
 fn fixed_framing_splits_arithmetically() {
     // Validates: Requirement 11.5 (Fixed not flattened to delimiters)
     let bytes = b"AAAABBBBCC"; // lrecl 4 -> "AAAA","BBBB","CC"
-    let boundaries = frame_records(bytes, RecordFormat::Fixed { lrecl: 4 }, LineEndMode::Default);
+    let boundaries = frame_records(
+        bytes,
+        RecordFormat::Fixed { lrecl: 4 },
+        LineEndMode::Default,
+    );
     assert_eq!(boundaries.len(), 3);
-    assert_eq!(boundaries[0], RecordBoundary { start: 0, byte_length: 4 });
-    assert_eq!(boundaries[1], RecordBoundary { start: 4, byte_length: 4 });
-    assert_eq!(boundaries[2], RecordBoundary { start: 8, byte_length: 2 });
+    assert_eq!(
+        boundaries[0],
+        RecordBoundary {
+            start: 0,
+            byte_length: 4
+        }
+    );
+    assert_eq!(
+        boundaries[1],
+        RecordBoundary {
+            start: 4,
+            byte_length: 4
+        }
+    );
+    assert_eq!(
+        boundaries[2],
+        RecordBoundary {
+            start: 8,
+            byte_length: 2
+        }
+    );
 }

@@ -42,6 +42,9 @@ pub mod streaming;
 pub mod text_buffer;
 pub mod text_buffer_records;
 pub mod types;
+
+#[cfg(test)]
+mod piece_table_proptests;
 pub mod viewport;
 pub mod watcher;
 
