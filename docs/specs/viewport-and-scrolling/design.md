@@ -1201,3 +1201,39 @@ The following properties are suitable for property-based testing with the `propt
 - **Testing framework**: `proptest` for property-based tests, standard `#[test]` for unit tests
 - **Minimum proptest iterations**: 100 per property
 - **Fixtures**: Viewport configurations covering edge cases (1-line file, file == viewport, file > viewport, million-line files)
+
+
+---
+
+## Design Delta: Scrollbar/Extents from Index Total (CR-CH-058)
+
+Grounded in `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md`
+section 4 and findings.md section 1/Q8.
+
+The viewport model gains a `total_source` concept: the total line/record count
+it maps against is `Total_Records` supplied by the document model (the index),
+NOT the resident window size, and it may be in one of two states -- ESTIMATED
+(while a background delimited/variable scan runs) or EXACT (after the scan, or
+immediately for a Fixed-format arithmetic index). The scrollbar fraction/thumb
+and `max_top_line` are pure functions of this total, so switching from estimated
+to exact simply recomputes them and re-clamps `top_line`.
+
+Decision: the viewport does NOT itself know whether loading is windowed -- it
+only consumes a total and an "indexing" flag/progress from the document model.
+This keeps the viewport GUI-independent and avoids coupling it to the piece-table
+internals. The "indexing... N%" indicator is rendered by the shell/large-file
+status layer from the progress the viewport exposes.
+
+Edge cases: estimated total may be smaller or larger than the eventual exact
+total; `top_line` is always clamped to the currently-known `max_top_line`, and
+re-clamped on the estimated->exact transition (never allowed to point past the
+exact end). Zoom changes never touch the total (Req 15.5). This section adds no
+new navigation stack and no change to the command-dispatch/focus/persistence
+seams.
+
+### Testability
+
+Rendered-widget behaviour (scrollbar range reflects index total not window;
+estimated->exact snap; zoom-does-not-change-range; `top_line` re-clamp) is
+covered by egui_kittest harness tests at the shell level plus pure unit tests on
+the viewport mapping functions (estimated and exact totals).

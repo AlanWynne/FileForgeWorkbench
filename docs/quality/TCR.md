@@ -3686,3 +3686,62 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-theme-editor` | ✅ | `ff-theme-editor` lib.rs + `ff-desktop` commands_theme.rs tests | Req 20.12: editor provides Export/Import actions (Req 24), expressible as commands; UI affordances invoke those commands -- Phase 3, owner gate CLEAN |
 | `ff-desktop` | ✅ | `ff-desktop` full-shell egui_kittest save test | Req 20.13 (B081): Save with a built-in selected prompts/focuses a pre-filled new name and performs Save As -> user theme written, listed, Set-Active-able; Save never a silent no-op; full-shell egui_kittest types a name + Saves -- Phase 3, owner gate CLEAN; CLOSES B081 |
 | `ff-theme-editor` | ✅ | `ff-theme-editor` lib.rs load_working test (name_buffer pre-fill) | Req 20.5 (amended): the "built-in Save behaves as Save As (prompting for a name)" half is IMPLEMENTED (single discoverable step, no silent no-op) -- Phase 3, owner gate CLEAN |
+
+
+### Phase (windowed-record-foundation) -- CR-CH-058 Universal Windowed Record-Oriented Document Model
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-document-model` | 🔴 | -- | Req 11.1: RecordFormat type (Delimited/Fixed/Variable) with RECORD as the editable unit |
+| `ff-document-model` | 🔴 | -- | Req 11.2: RecordFormat obtained from the owning Command Environment on open |
+| `ff-document-model` | 🔴 | -- | Req 11.3: Delimited record == line, byte-for-byte equivalent to pre-CR-CH-058 line behaviour |
+| `ff-document-model` | 🔴 | -- | Req 11.4: record-oriented queries (total_records/record_start/record_byte_length/record_from_position) with line API delegating |
+| `ff-document-model` | 🔴 | -- | Req 11.5: no flatten of Fixed/Variable records to delimiter bytes; framing stays the authority |
+| `ff-document-model` | 🔴 | -- | Req 11.6: RecordFormat/record API GUI-independent; no dispatch/nav/focus/persistence change |
+| `ff-document-model` | 🔴 | -- | Req 12.1: three layers -- Immutable_Original_Index + Piece_List + Append_Buffer |
+| `ff-document-model` | 🔴 | -- | Req 12.2: edits are Piece_List splices (no O(file) shift, no whole-file rewrite) |
+| `ff-document-model` | 🔴 | -- | Req 12.3: u64 record numbers; ~100M-record memory-budget target (not a type limit) |
+| `ff-document-model` | 🔴 | -- | Req 12.4: Window_Band = 3 pages; residency decoupled from the logical index |
+| `ff-document-model` | 🔴 | -- | Req 12.5: scrollbar/extents from index Total_Records, never the resident window |
+| `ff-document-model` | 🔴 | -- | Req 12.6: zoom never loads (render-only over resident records) |
+| `ff-document-model` | 🔴 | -- | Req 12.7: scroll load/evict at band edges with hysteresis+overscan; dirty pieces pinned |
+| `ff-document-model` | 🔴 | -- | Req 12.8: down/up N resolves target via index, loads one window, no intermediate reads |
+| `ff-document-model` | 🔴 | -- | Req 12.9: linear piece search first; order-statistic tree only if fragmentation demands |
+| `ff-document-model` | 🔴 | -- | Req 12.10: configurable budgets (window/overscan/checkpoint/max_resident_records ~150M/spill) |
+| `ff-document-model` | 🔴 | -- | Req 12.11: graceful above-budget degrade behind OriginalIndex interface; first build lean resident |
+| `ff-document-model` | 🔴 | -- | Req 12.12: native (Delimited) open/edit/save byte-identical to today (safety rule) |
+| `ff-viewport-scrolling` | 🔴 | -- | Req 15.1: scrollbar/extents sized on index Total_Records, never on resident window |
+| `ff-viewport-scrolling` | 🔴 | -- | Req 15.2: accept estimated total + expose indexing state while background scan runs |
+| `ff-viewport-scrolling` | 🔴 | -- | Req 15.3: snap to exact total and re-clamp top_line on estimated->exact transition |
+| `ff-viewport-scrolling` | 🔴 | -- | Req 15.4: Fixed-format gets exact total immediately (no estimated phase) |
+| `ff-viewport-scrolling` | 🔴 | -- | Req 15.5: zoom does not change scrollbar range or Total_Records |
+| `ff-viewport-scrolling` | 🔴 | -- | Req 15.6: scrollbar fraction/thumb a pure function of the (estimated/exact) total |
+| `ff-large-file-performance` | 🔴 | -- | Req 10.1: measure/lay out only resident Window_Band records; out-of-band = not-yet-available |
+| `ff-large-file-performance` | 🔴 | -- | Req 10.2: zoom change re-renders over resident records, issues no load/evict |
+| `ff-large-file-performance` | 🔴 | -- | Req 10.3: Window_Band sized in records at smallest-zoom page size |
+| `ff-large-file-performance` | 🔴 | -- | Req 10.4: cache keys/indices use u64 record/line numbers aligned with Total_Records |
+| `ff-large-file-performance` | 🔴 | -- | Req 10.5: overscan pre-measurement coordinated with document-model Window_Band prefetch |
+| `ff-display-line-mapping` | 🔴 | -- | Req 11.1: Document_Line is a record; Delimited behaviour byte-identical to today |
+| `ff-display-line-mapping` | 🔴 | -- | Req 11.2: lines_in_doc total from index Total_Records; consistent when estimated |
+| `ff-display-line-mapping` | 🔴 | -- | Req 11.3: estimated->exact Total_Records applied as total-adjust preserving state |
+| `ff-display-line-mapping` | 🔴 | -- | Req 11.4: mapping needs no resident record bytes (count/visibility/height only) |
+| `ff-display-line-mapping` | 🔴 | -- | Req 11.5: 64-bit Large_Document_Mode when Total_Records exceeds 32-bit range |
+| `ff-edit-operations` | 🔴 | -- | Req 18.1: edits expressed as document-model Piece_List splices (no whole-buffer rewrite) |
+| `ff-edit-operations` | 🔴 | -- | Req 18.2: load target record window before editing a non-resident record, no intervening reads |
+| `ff-edit-operations` | 🔴 | -- | Req 18.3: native (Delimited) edit result byte-identical to today (safety rule) |
+| `ff-edit-operations` | 🔴 | -- | Req 18.4: destructive-scale op via CR-CH-053 Confirmable_Command (prompt/-Y/macro-refuse/macro -Y) |
+| `ff-edit-operations` | 🔴 | -- | Req 18.5: single -Y with consequence in prompt (not dual --force --confirm) |
+| `ff-edit-operations` | 🔴 | -- | Req 18.6: builds on document-model primitives; no dispatch/nav/focus/persistence change |
+| `ff-undo-redo` | 🔴 | -- | Req 20.1: operations addressed in record/piece terms, not absolute whole-document bytes |
+| `ff-undo-redo` | 🔴 | -- | Req 20.2: journal stores inverse piece-list splices, not whole-index/document snapshots |
+| `ff-undo-redo` | 🔴 | -- | Req 20.3: UNDO/REDO apply splices through document-model primitives; byte-identical native |
+| `ff-undo-redo` | 🔴 | -- | Req 20.4: destructive-scale proceed drops undo bounded + records Detach_Point |
+| `ff-undo-redo` | 🔴 | -- | Req 20.5: cumulative undo-pressure soft advisory + hard-threshold trim (never blocks/macro popup) |
+| `ff-undo-redo` | 🔴 | -- | Req 20.6: addressing adaptation GUI-independent; no dispatch/nav/focus/persistence change |
+| `ff-find-and-replace` | 🔴 | -- | Req 21.1: FIND/FIND ALL driven by a windowed CharacterIndexer over record ranges (no whole-doc snapshot) |
+| `ff-find-and-replace` | 🔴 | -- | Req 21.2: CHANGE/CHANGE ALL produce Piece_List Edited pieces, not whole-buffer delete+reinsert |
+| `ff-find-and-replace` | 🔴 | -- | Req 21.3: streaming-rule global substitution represented as transform-at-save (one op until save) |
+| `ff-find-and-replace` | 🔴 | -- | Req 21.4: destructive-scale CHANGE ALL via CR-CH-053 Confirmable_Command (prompt/-Y/macro-refuse/macro -Y) |
+| `ff-find-and-replace` | 🔴 | -- | Req 21.5: single -Y with consequence in prompt (not dual --force --confirm) |
+| `ff-find-and-replace` | 🔴 | -- | Req 21.6: native (Delimited) CHANGE byte-identical; match positions as document record/line numbers |
+| `ff-find-and-replace` | 🔴 | -- | Req 21.7: windowed indexer slots into existing engine; no dispatch/nav/focus/persistence change |

@@ -179,14 +179,21 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 
 **Source:** [WB] memory efficiency; [SCI-PCACHE] streaming integration.
 
+**REVISION NOTE (CR-CH-058):** Under universal windowed loading the document
+model ALWAYS provides range access over a windowed record-oriented backing
+store, so the formerly-conditional "if the document model supports range access"
+(AC 7.6) becomes MANDATORY, and "line" access is a record access. The criteria
+below are revised accordingly (findings.md Q8). Measurement operates over the
+resident Window_Band only.
+
 #### Acceptance Criteria
 
-1. THE system SHALL obtain line content for measurement through the document-model's line-access API (which may provide content from a gap-buffer, rope, or memory-mapped region) without requiring a contiguous copy of the entire file. [WB]
+1. THE system SHALL obtain line/record content for measurement through the document-model's record/line-access API over the resident Window_Band, without requiring a contiguous copy of the entire file. [WB] REVISED (CR-CH-058)
 2. WHEN requesting line content for measurement, THE system SHALL use borrowed references (`&str` slices) where possible, avoiding allocation of owned `String` copies for lines that are only being measured (not edited). [WB]
 3. THE system SHALL coordinate with background-io's progressive loading: lines that have not yet been delivered to the document model SHALL be reported as "not yet available" and excluded from layout computation until delivered. [WB]
 4. THE system SHALL implement a memory budget for the LineLayoutCache: the total memory consumed by cached LineLayout entries SHALL NOT exceed a configurable limit (default 64 MB, configurable via `performance.layout_cache_memory_mb` in range [16, 512]). [WB]
 5. WHEN the memory budget is exceeded, THE system SHALL evict the least-recently-used LineLayout entries until memory usage falls below 90% of the budget. [WB]
-6. FOR lines exceeding the Long_Line_Threshold, THE system SHALL request only the needed sub-range of characters from the document model (if the document model supports range access), avoiding allocation of the full line content into a temporary buffer. [WB]
+6. FOR lines exceeding the Long_Line_Threshold, THE system SHALL request only the needed sub-range of characters from the document model, avoiding allocation of the full line content into a temporary buffer. The document model SHALL provide this range access (it is MANDATORY under CR-CH-058's windowed record model, no longer conditional). [WB] REVISED (CR-CH-058)
 7. THE system SHALL support documents with line counts exceeding 2^31 (using 64-bit line indexing from document-model and display-line-mapping), ensuring all cache keys and lookup indices use 64-bit line numbers. [WB]
 
 ---
@@ -227,6 +234,26 @@ The crate is a Wave 15 (Background Processing and Performance) component. It dep
 7. THE system SHALL batch invalidation events during rapid editing: multiple edits within a single frame SHALL produce a single coalesced invalidation covering the affected range, rather than individual invalidations per keystroke. [WB]
 8. WHEN the display-line-mapping reports a visibility change (line excluded/shown or fold toggled), THE system SHALL NOT invalidate cached measurements for the affected lines -- the cached data remains valid for when the line becomes visible again. [SCI-PCACHE]
 9. THE system SHALL expose an `invalidation_count` metric (number of invalidation events per second) for performance profiling, accessible via the logging subsystem at DEBUG level. [WB]
+
+---
+
+### Requirement 10: Windowed Residency Integration and Zoom-Never-Loads [CR-CH-058]
+
+**User Story:** As a user, I want layout and measurement to operate only over the resident window and never trigger file loading when I zoom, so that performance and memory stay bounded by the window, not the file.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN section 4), findings.md Q4/Q8
+
+#### Acceptance Criteria
+
+10.1 THE large-file-performance layer SHALL measure and lay out ONLY records/lines within the resident Window_Band (current page + prefetched above/below), and SHALL treat records outside the band as not-yet-available until the document model loads them. [CR-CH-058]
+
+10.2 WHEN the zoom level changes, THE system SHALL re-render over the already-resident records WITHOUT requesting the document model to load additional records -- a zoom change SHALL NOT cause a window load or eviction. [CR-CH-058]
+
+10.3 THE Window_Band SHALL be sized in RECORDS from the smallest-zoom page size so that zooming in never requires more resident records than the band already holds. [CR-CH-058]
+
+10.4 THE layout cache keys and lookup indices SHALL use `u64` record/line numbers consistent with the document index Total_Records (no 32-bit ceiling). [CR-CH-058]
+
+10.5 THE system SHALL coordinate overscan pre-measurement with the document model's background Window_Band prefetch (via idle-processing), measuring prefetched records in the scroll direction without blocking. [CR-CH-058]
 
 ---
 

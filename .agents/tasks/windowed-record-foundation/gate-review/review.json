@@ -1,0 +1,13 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "file": "docs/specs/document-model/tasks.md",
+      "location": "Acceptance Criteria Coverage Matrix (trailing table)",
+      "problem": "The coverage matrix still lists only Req 1-10 and was not extended to map the new Req 11 (Universal Record Abstraction) and Req 12 (Piece-Table Spine) to the new tasks 19 and 20. Traceability is not actually lost because the tasks carry Covers:/// Validates: annotations; this is a tidiness gap in a summary table only.",
+      "fix": "Append two rows: '| Req 11: Universal Record Abstraction and RecordFormat | AC 11.1-11.6 | Task 19 |' and '| Req 12: Piece-Table Spine and Windowed Byte Residency | AC 12.1-12.12 | Task 20 |'. Optionally relabel the Req 4 row title to 'Windowed File Loading and Index Build'. Not required for approval."
+    }
+  ],
+  "reviewDoc": "c:/workspace/VSC/FileForgeWorkbench/.worktrees/env-registry/.agents/tasks/windowed-record-foundation/gate-review/review.md"
+}

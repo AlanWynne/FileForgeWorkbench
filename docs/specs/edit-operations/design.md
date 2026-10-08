@@ -1187,3 +1187,45 @@ When multiple carets exist and an edit operation is dispatched:
 8. Notify document watchers
 
 Processing in reverse order ensures that edits at later positions do not invalidate the byte offsets of earlier positions (which haven't been processed yet).
+
+
+---
+
+## Design Delta: Record-Oriented Edits as Piece-List Splices (CR-CH-058)
+
+Grounded in `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md`
+sections 6 and 6a.
+
+Edit operations are re-expressed against the document-model record/piece
+primitives (document-model Requirement 12):
+
+- insert/overstrike/delete, and line move/insert/copy/delete, become Piece_List
+  splices. An in-record text edit turns the edited record into an `Edited` piece
+  pointing at new Append_Buffer bytes; original bytes are untouched. Move
+  re-orders pieces; delete trims/splits; insert/copy adds pieces. No array shift,
+  no file rewrite.
+- Before editing a record outside the resident Window_Band, the layer asks the
+  document model to load that window (no intervening reads).
+- Native (Delimited) edits stay byte-identical in observable result (safety
+  rule); the EditorTransaction/modified-line-marker behaviour is preserved.
+
+Destructive-scale guard (chosen approach): a single operation that would exceed
+the undo budget is a CR-CH-053 Confirmable_Command. We REUSE that mechanism
+rather than inventing flag semantics. The owner-chosen shape is a SINGLE `-Y`
+whose prompt text states the undo-loss consequence (not dual --force --confirm);
+macro-with-no-switch REFUSES with a return code so a macro cannot silently drop
+undo. Where a global substitution is expressible as a streaming rule, prefer the
+transform-at-save representation (owned by find-and-replace) so it stays
+cheap/undoable-until-save; cumulative undo-pressure (soft advisory + bounded-undo
+trim) is owned by undo-redo-transactions. ff-edit-operations only supplies the
+splice primitives and the destructive-scale classification/guard.
+
+Framework-conformance: builds on the document-model primitives; no change to
+dispatch/nav/focus/persistence seams.
+
+### Testability
+
+Unit + proptest: splice equivalence to a naive model for each operation;
+byte-identical native round-trip on Delimited fixtures; destructive-scale
+classification (interactive prompt / -Y proceed / macro refuse / macro -Y
+proceed) via the Confirmable_Command seam.

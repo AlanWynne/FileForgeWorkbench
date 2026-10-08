@@ -435,3 +435,35 @@ This specification merges requirements from three primary sources:
 
 ---
 
+
+### Requirement 21: Windowed FIND/CHANGE and Destructive-Scale Guard [CR-CH-058]
+
+**User Story:** As a developer searching and replacing in a very large windowed file, I want FIND/CHANGE to scan by record range on demand rather than snapshotting the whole document, and I want a CHANGE ALL that would exceed the undo budget to be guarded, so that search stays responsive and I am never silently stripped of undo.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN sections 6, 6a), findings.md Q4, framework-conformance.md
+
+**REVISION NOTE (CR-CH-058):** The current shell path snapshots the ENTIRE
+document into a `SliceIndexer` on every FIND/CHANGE and, on CHANGE, deletes and
+re-inserts the whole buffer (findings.md Q4). Under the windowed model the engine
+instead runs over a windowed `CharacterIndexer` (Requirement 18 already allows a
+non-slice implementation) scanning record ranges on demand. The GUI-independent
+engine itself does not change; only the indexer it is fed and the CHANGE write
+path change.
+
+#### Acceptance Criteria
+
+21.1 THE find-and-replace layer SHALL be driven by a WINDOWED `CharacterIndexer` that resolves content by record range over the document model's windowed backing store, so FIND/FIND ALL does NOT require a whole-document in-memory snapshot. [CR-CH-058]
+
+21.2 WHEN a CHANGE / CHANGE ALL is applied, THE layer SHALL produce document-model Piece_List edits (Edited pieces) rather than deleting and re-inserting the whole buffer. [CR-CH-058]
+
+21.3 WHERE a global substitution (e.g. CHANGE ALL) is expressible as a streaming rule, THE layer SHOULD represent it as a pending TRANSFORM applied as bytes stream to disk at SAVE (in-memory cost near-zero, undoable as one op until save), rather than materialising every record as an Edited piece. [CR-CH-058]
+
+21.4 WHEN a CHANGE ALL MUST materialise more changes than the undo budget allows (a destructive-SCALE operation), THE layer SHALL route it through the CR-CH-053 Confirmable_Command mechanism (REUSE; no new flag semantics): interactive with no switch SHALL prompt stating the undo-loss consequence; interactive with `-Y`/`--yes` SHALL proceed with undo dropped past that point; a macro/headless invocation with no switch SHALL REFUSE with a clear return code ("needs -Y: destructive-scale, undo would be lost"); a macro with `-Y` SHALL proceed. [CR-CH-053, CR-CH-058]
+
+21.5 THE destructive-scale confirmation SHALL use a SINGLE `-Y` whose prompt text states the undo consequence (NOT a dual `--force --confirm`), per the owner decision. [CR-CH-058]
+
+21.6 FOR a native (Delimited) document, the bytes produced by a CHANGE SHALL be identical to the pre-CR-CH-058 result (safety rule); FIND results and match positions SHALL be reported as document record/line numbers consistent with the index. [CR-CH-058]
+
+21.7 THE windowed FIND/CHANGE rework SHALL NOT change the shell command-dispatch, navigation-stack, focus-latch, or WorkspaceDescriptor-persistence framework seams; it slots a windowed indexer into the existing `CharacterIndexer`-based engine. [framework-conformance.md]
+
+---

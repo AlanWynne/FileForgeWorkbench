@@ -535,3 +535,22 @@ This is a **Wave 4 (Core Editor)** sub-project. It depends on `ff-document-model
   - [x] 38.8 cargo test green; cargo clippy clean
 
 - [x] 39. TCR.md and project-master updated; cargo test --workspace green
+
+
+---
+
+## CR-CH-058 Tasks -- Record-Oriented Edits as Piece-List Splices
+
+- [ ] 40. Record-oriented edits as piece-list splices (F1 edits, F4 destructive-scale guard)
+  - [ ] 40.1 Re-express insert/overstrike/delete and line move/insert/copy/delete as document-model Piece_List splices (via document-model Req 12 primitives), no whole-buffer rewrite
+    - // Validates: Requirement 18.1
+  - [ ] 40.2 Load the target record's window before editing a non-resident record, without reading intervening records
+    - // Validates: Requirement 18.2
+  - [ ] 40.3 Preserve byte-identical native (Delimited) edit results, EditorTransaction snapshots, and modified-line markers
+    - // Validates: Requirement 18.3
+  - [ ] 40.4 Classify destructive-scale operations and route them through the CR-CH-053 Confirmable_Command seam (single -Y, consequence in prompt; macro-no-switch refuses with RC; macro -Y proceeds)
+    - // Validates: Requirement 18.4, 18.5
+  - [ ] 40.5 Keep the splice primitives on the document-model API only; no change to dispatch/nav/focus/persistence seams
+    - // Validates: Requirement 18.6
+  - [ ] 40.6 Write failing tests first: per-operation splice equivalence to a naive model; byte-identical native round-trip; destructive-scale guard matrix (interactive/-Y/macro/macro+-Y)
+  - Covers: Requirement 18 (AC 18.1-18.6)

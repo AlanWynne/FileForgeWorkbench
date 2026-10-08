@@ -26,13 +26,20 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 
 ## Glossary
 
-- **GapBuffer**: A data structure that stores text with a movable gap, providing O(1) amortized insertion and deletion at the cursor position. Rust equivalent of Scintilla's SplitVector. [SCI-DOC-1]
-- **TextBuffer**: The primary text storage struct that owns the gap buffer, manages line tracking, and coordinates with undo recording. Replaces Scintilla's CellBuffer. [SCI-DOC-1]
+- **GapBuffer**: A data structure that stores text with a movable gap, providing O(1) amortized insertion and deletion at the cursor position. Rust equivalent of Scintilla's SplitVector. [SCI-DOC-1] REVISED (CR-CH-058): under the windowed piece-table model the GapBuffer NO LONGER holds the whole file; it survives ONLY as the Append_Buffer (section Requirement 12) that stores the bytes of edited/inserted records. Original record bytes are not resident in the GapBuffer -- they are read on demand through the Immutable_Original_Index. See the FOUNDATION-DESIGN at `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md` section 2.
+- **TextBuffer**: The primary text storage struct that owns the gap buffer, manages line tracking, and coordinates with undo recording. Replaces Scintilla's CellBuffer. [SCI-DOC-1] REVISED (CR-CH-058): the TextBuffer is reframed as the coordinator of the three windowed layers (Immutable_Original_Index + Piece_List + Append_Buffer); the single-contiguous-buffer assumption no longer holds. See Requirement 12.
+- **RecordFormat**: The framing of the editable unit (a RECORD) supplied by the owning Command Environment: `Delimited { terminator: Crlf | Lf | Cr | Mixed }` (native, generalising LineEndMode), `Fixed { lrecl }` (mainframe FB, position-terminated), or `Variable { max_lrecl, rdw }` (mainframe VB, length-prefixed). The editor edits records uniformly regardless of framing. [CR-CH-058]
+- **Record**: The universal editable unit of a document. For a Delimited document a record is a delimiter-terminated line (byte-identical to today's "line"); for Fixed it is one fixed-length slot; for Variable it is one length-prefixed logical record. "Line" remains a synonym for a Delimited-document record. [CR-CH-058]
+- **Immutable_Original_Index**: A lean flat index built on open, one entry per ORIGINAL record (file_offset u64 + byte_length u32 + flags u32, ~16 bytes), never mutated after the open scan; provides O(1) "where is original record K". The one large structure, and because it is immutable it is mmap/spill-friendly. [CR-CH-058]
+- **Piece_List**: A small ordered list of pieces presenting the CURRENT document -- `Original { first_record, count }` (resolves via the Immutable_Original_Index) or `Edited { buf_range, count }` (bytes in the Append_Buffer) -- each carrying a running record-count. Every edit is a piece-list SPLICE; unedited spans stay one Original piece, so the list is small (one entry per contiguous unedited run plus one per edit). [CR-CH-058]
+- **Append_Buffer**: The append-only byte store holding only inserted/edited record bytes (the surviving role of the GapBuffer). Grows with edits, not with file size. [CR-CH-058]
+- **Window_Band**: The physically resident byte cache: a 3-page band (current page + one prefetched page above + one below), a page being the maximum records that fit a full screen at the SMALLEST zoom. Byte residency is decoupled from the logical index. [CR-CH-058]
+- **Total_Records**: The whole-document record count from the index (the authority for scrollbar/navigation extents), DISTINCT from the resident window size. During a background delimited scan it may be an estimate (see Requirement 4). [CR-CH-058]
 - **Document**: The high-level text model struct that wraps TextBuffer and adds encoding awareness, watcher notifications, lifecycle management, and the public API surface. Replaces Scintilla's Document class. [SCI-DOC-8]
 - **DocumentHandle**: An `Arc<RwLock<Document>>` that enables shared ownership across multiple views and background threads. Rust equivalent of Scintilla's reference-counted Document pointer. [SCI-DOC-8]
 - **LineIndex**: The partitioning structure that maps line numbers to byte positions, providing O(log n) lookups in both directions. Replaces Scintilla's LineVector/Partitioning. [SCI-DOC-3]
-- **SparseLineIndex**: The incremental line index built in a background thread during large-file streaming, recording one checkpoint per N lines. [FFE-MVP-1]
-- **StreamingFileReader**: The async file reader that loads content from the VFS in chunks, enabling progressive display before the full file is indexed. [FFE-MVP-1]
+- **SparseLineIndex**: The incremental line index built in a background thread during large-file streaming, recording one checkpoint per N lines. [FFE-MVP-1] REVISED (CR-CH-058): repurposed as the RESIDENT checkpoint layer / seed for the above-budget sparse mode; `finalize` NO LONGER rescans the whole buffer into a dense fully-resident LineIndex (that assumed full residency -- findings.md Q2). See Requirement 4 and Requirement 12.
+- **StreamingFileReader**: The async file reader that loads content from the VFS in chunks, enabling progressive display before the full file is indexed. [FFE-MVP-1] REVISED (CR-CH-058): reframed from progressive-APPEND-to-EOF (which left the whole file resident -- findings.md Q2) to a RANGED/windowed reader that reads records N..M on demand and builds the Immutable_Original_Index without full residency. See Requirement 4 and Requirement 12.
 - **LineEndMode**: An enum specifying which line-end sequences are recognised: Default (CR, LF, CRLF) or Unicode (additionally LS, PS, NEL). [SCI-DOC-7]
 - **BytePosition**: A newtype wrapper around `u64` representing a byte offset within the document buffer. Uses 64-bit to support large documents (>2 GB). [SCI-DOC-1]
 - **LineNumber**: A newtype wrapper around `u64` representing a 0-based line number within the document. [SCI-DOC-3]
@@ -109,23 +116,32 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 
 ---
 
-### Requirement 4: Streaming File Loading
+### Requirement 4: Windowed File Loading and Index Build
 
-**User Story:** As a developer, I want to open any file from the VFS and have it loaded incrementally in the background, so that I can begin viewing content immediately without waiting for the entire file to be read into memory.
+**User Story:** As a developer, I want to open any file from the VFS and begin viewing content instantly while only the visible window (plus overscan) is resident in memory, so that even a multi-gigabyte file opens immediately without being read fully into memory.
 
-**Source:** [FFE-MVP-1], [WB]
+**Source:** [FFE-MVP-1], [WB], CR-CH-058 (FOUNDATION-DESIGN sections 4-5)
+
+**REVISION NOTE (CR-CH-058):** This requirement is REVISED IN PLACE. The former
+model (progressive-append streaming that left the whole file resident and
+"finalize into a COMPLETE index" at 4.5) assumed FULL RESIDENCY and contradicted
+universal windowed loading (findings.md Q2, Q8). The criteria below are reworked
+to windowed/evict-off-window loading with the Immutable_Original_Index as the
+surviving authority. The whole-file-resident guarantees are withdrawn.
 
 #### Acceptance Criteria
 
-1. WHEN a file is opened, THE Document SHALL initiate an async streaming read from the VFS, loading content in configurable chunk sizes (default 64 KB). [FFE-MVP-1, WB]
-2. WHILE a file is loading, THE Document SHALL make already-loaded content available for reading -- consumers SHALL NOT be blocked waiting for the full file to load. [FFE-MVP-1]
-3. WHEN a streaming load is in progress, THE SparseLineIndex SHALL be built incrementally in a background task, recording one checkpoint per configurable number of lines (default 1000 lines). [FFE-MVP-1]
-4. THE Document SHALL expose a `loading_progress()` method that returns the current loading state: not-started, in-progress (with bytes-loaded and estimated-total), complete, or failed. [FFE-MVP-1]
-5. WHEN the streaming load completes successfully, THE Document SHALL finalize the LineIndex from the sparse checkpoints into a complete index, and notify all watchers that loading is complete. [FFE-MVP-1]
-6. IF the VFS reports an error during streaming load (file not found, permission denied, I/O error), THEN THE Document SHALL transition to a failed state, preserve any partially loaded content, and notify watchers with the error details. [FFE-MVP-1]
-7. WHEN no file path is provided (empty session), THE Document SHALL initialize with an empty buffer and a single-line LineIndex. [FFE-MVP-1]
-8. ALL file I/O operations SHALL flow through the VFS abstraction (the `ff-vfs` crate) -- the document model SHALL NOT use `std::fs`, `tokio::fs`, or any platform-specific I/O directly. [WB]
-9. THE streaming reader SHALL be cancellable -- if the document is closed or replaced before loading completes, the background task SHALL terminate without resource leaks. [WB]
+1. WHEN a file is opened, THE Document SHALL load ONLY the first Window_Band (first page plus prefetch) via a ranged read from the VFS, and SHALL NOT read the whole file into memory. Chunk size for ranged reads SHALL remain configurable (default 64 KB). [FFE-MVP-1, WB] REVISED (CR-CH-058)
+2. WHILE the index build is in progress, THE Document SHALL make the resident window readable immediately -- consumers SHALL NOT be blocked waiting for the whole file to be scanned or loaded. [FFE-MVP-1] REVISED (CR-CH-058)
+3. WHEN the owning Command Environment's RecordFormat is `Fixed { lrecl }`, THE Document SHALL build the Immutable_Original_Index ARITHMETICALLY (`offset = K * lrecl`), producing an exact, instant Total_Records with NO scan regardless of file size. [CR-CH-058]
+4. WHEN the owning Command Environment's RecordFormat is `Delimited` or `Variable`, THE Document SHALL build the Immutable_Original_Index by a BACKGROUND record-boundary scan (delimiter scan for Delimited, RDW walk for Variable) scheduled through idle processing, and SHALL expose an ESTIMATED Total_Records (file_size / sampled average record length) until the scan completes. [FFE-MVP-1, CR-CH-058] REVISED (was: loading_progress with estimated-total)
+5. WHEN the background record-boundary scan completes, THE Document SHALL publish the EXACT Total_Records from the completed Immutable_Original_Index and notify all watchers; THE Document SHALL NOT rescan the whole resident buffer into a dense fully-resident index. [FFE-MVP-1, CR-CH-058] REVISED (was 4.5 "finalize into a COMPLETE index")
+6. THE Document SHALL expose an `index_progress()` method returning: not-started, scanning (with records-indexed and estimated-total), complete, or failed; for a `Fixed` document this SHALL report complete immediately. [FFE-MVP-1, CR-CH-058]
+7. IF the VFS reports an error during a ranged read or the index scan (file not found, permission denied, I/O error), THEN THE Document SHALL transition to a failed state, preserve any already-resident window, and notify watchers with the error details. [FFE-MVP-1]
+8. WHEN no file path is provided (empty session), THE Document SHALL initialize with an empty Append_Buffer, a single Original piece of count 0 (or an empty Piece_List) and a Total_Records of 0 presenting a single empty record. [FFE-MVP-1] REVISED (CR-CH-058)
+9. ALL file I/O operations SHALL flow through the VFS abstraction (the `ff-vfs` crate) -- the document model SHALL NOT use `std::fs`, `tokio::fs`, or any platform-specific I/O directly. [WB]
+10. THE background index scan and window prefetch SHALL be cancellable -- if the document is closed or replaced before the scan completes, the background task SHALL terminate without resource leaks. [WB] REVISED (CR-CH-058)
+11. THE Immutable_Original_Index and Piece_List SHALL be built on open and dropped on close (rebuilt on each open); the first build SHALL NOT persist an on-disk index. [CR-CH-058]
 
 ---
 
@@ -238,9 +254,74 @@ The design adapts Scintilla's C++ patterns to idiomatic Rust: traits replace vir
 
 ---
 
+### Requirement 11: Universal Record Abstraction and RecordFormat
+
+**User Story:** As a workbench platform component, I want the editable unit of a document to be a universal RECORD whose framing is supplied by the owning Command Environment, so that a native delimited line and a mainframe fixed-length record are edited through the same model and native editing stays byte-identical.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN section 3), framework-conformance.md, findings.md Q6
+
+#### Acceptance Criteria
+
+11.1 THE document model SHALL define a `RecordFormat` type in `ff-document-model` with variants `Delimited { terminator: Crlf | Lf | Cr | Mixed }`, `Fixed { lrecl }`, and `Variable { max_lrecl, rdw }`, and the editable unit SHALL be a RECORD described by that format. [CR-CH-058]
+
+11.2 WHEN a document is opened, THE Document SHALL obtain its RecordFormat from the owning Command Environment (the native CE SHALL supply `Delimited`, generalising the existing LineEndMode; mainframe CEs supply `Fixed`/`Variable` under a later V-stream gate). [CR-CH-058]
+
+11.3 WHEN the RecordFormat is `Delimited`, THE Document SHALL treat each delimiter-terminated line as a record such that record navigation, line navigation, and the observable "line" API are byte-for-byte equivalent to the pre-CR-CH-058 behaviour (a Delimited record IS a line). [CR-CH-058]
+
+11.4 THE document model SHALL expose record-oriented queries (`total_records()`, `record_start(k)`, `record_byte_length(k)`, `record_from_position(pos)`) alongside the retained line API, with the line API delegating to the record API for Delimited documents. [CR-CH-058]
+
+11.5 THE document model SHALL NOT flatten Fixed/Variable records to delimiter-terminated bytes before the editor sees them; record framing SHALL remain the authority so a later Fixed-format save can re-pad to LRECL (this is the universal replacement for the provider-side flatten-to-newline described in findings.md Q6; the mainframe save itself is OUT OF SCOPE of this gate). [CR-CH-058]
+
+11.6 THE `RecordFormat` and record API SHALL be GUI-independent and SHALL NOT change the shell command-dispatch, navigation-stack, focus-latch, or WorkspaceDescriptor-persistence framework seams. [framework-conformance.md]
+
+---
+
+### Requirement 12: Piece-Table Spine and Windowed Byte Residency
+
+**User Story:** As a developer editing very large files, I want the document represented by a small immutable original index plus a small piece list of changes, with only a windowed band of record bytes resident, so that navigation is fast, edits are cheap anywhere, and memory stays bounded regardless of file size.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN sections 2, 4, 5), findings.md section 3
+
+**FRAMEWORK-TOUCHING NOTE:** This requirement reworks the PUBLIC surface of
+`ff-document-model` (`Document` / `GapBuffer` / `TextBuffer`). Per
+framework-conformance.md this is an owner-confirmed foundational change to a
+core type; it does NOT alter the shell dispatch, navigation, focus, or
+persistence mechanisms.
+
+#### Acceptance Criteria
+
+12.1 THE document model SHALL represent a document as three layers: (A) an Immutable_Original_Index (one lean ~16-byte entry per original record, never mutated after open), (B) an ordered Piece_List of `Original { first_record, count }` / `Edited { buf_range, count }` pieces each carrying a running record-count, and (C) an append-only Append_Buffer holding only edited/inserted record bytes. [CR-CH-058]
+
+12.2 WHEN a line/record is inserted, deleted, moved, copied, or overtyped, THE document model SHALL perform the edit as a Piece_List SPLICE (never an O(file) byte-array shift and never a whole-file rewrite); unedited spans SHALL remain a single Original piece. [CR-CH-058]
+
+12.3 THE record numbers SHALL be `u64` everywhere (no type ceiling); the design SHALL target a ceiling of ~100,000,000 resident-index records (~1.6 GB lean index) as a MEMORY-BUDGET target, not a type limit. [CR-CH-058]
+
+12.4 THE physically resident byte cache SHALL be a Window_Band of 3 pages (current page + one prefetched page above + one below), a page being the maximum records that fit a full screen at the SMALLEST zoom; byte residency SHALL be decoupled from the logical index. [CR-CH-058]
+
+12.5 THE scrollbar and navigation extents SHALL size on Total_Records from the index, NEVER on the resident Window_Band; `total_records` (whole file) and the resident window size SHALL never be fused. [CR-CH-058] (fixes the owner-observed scrollbar-collapses-to-window bug, findings.md section 1)
+
+12.6 ZOOM SHALL NEVER trigger a load: changing zoom SHALL change only how many resident records are RENDERED, never which records are LOADED. [CR-CH-058]
+
+12.7 WHEN scrolling, THE document model SHALL load and evict record bytes at the Window_Band edges with hysteresis and overscan, debounced so that a fast jump performs ONE window load rather than a cascade of boundary loads; dirty (edited) pieces SHALL be PINNED and never evicted until saved. [CR-CH-058]
+
+12.8 WHEN a `down N` / `up N` jump targets a record outside the resident band, THE document model SHALL resolve the target record via the index (O(1) for Fixed, O(log pieces)/linear-over-pieces otherwise), load that window, and SHALL NOT read the intermediate records. [CR-CH-058]
+
+12.9 THE Piece_List search mapping "current record N -> piece" SHALL start as a LINEAR scan over pieces; an order-statistic tree over PIECES MAY be introduced ONLY if fragmentation profiling demands it. [CR-CH-058]
+
+12.10 THE document model SHALL expose configurable budgets matching the existing configuration pattern: window size (records), overscan, checkpoint interval, `max_resident_records` (default ~150,000,000), and spill threshold. [CR-CH-058]
+
+12.11 WHEN the resident index would exceed `max_resident_records`, THE document model SHALL degrade gracefully rather than crash or hang, behind an index interface that admits either a reserved sparse/windowed-index mode OR mmap/spill of the Immutable_Original_Index; this scalability guard SHALL be DESIGNED-FOR now and the first build SHALL ship the lean fully-resident index only. [CR-CH-058]
+
+12.12 FOR a native (Delimited) document, opening, editing, and saving SHALL produce BYTE-IDENTICAL output to the pre-CR-CH-058 behaviour (same bytes, same line endings, same dirty/save-point behaviour), windowing and the record model notwithstanding. [CR-CH-058] (non-negotiable safety rule)
+
+---
+
 ## Cross-References
 
-- **`virtual-file-system`**: The document-model uses VFS for all file access (streaming reads, saves). [WB]
+- **`virtual-file-system`**: The document-model uses VFS for all file access (ranged/windowed reads, saves). [WB]
+- **`command-environments`**: The owning Command Environment SUPPLIES the RecordFormat (Delimited for native, Fixed/Variable for mainframe) and is the SAVE-addressing seam (CR-CH-053 Task 20/21). [CR-CH-058]
+- **`large-file-performance`**: Consumes the windowed record/line access (its Req 7 range access becomes mandatory under CR-CH-058); supplies the render/measurement cache over the Window_Band. [CR-CH-058]
+- **`idle-processing`**: Schedules the background record-boundary scan and the Window_Band prefetch. [CR-CH-058]
 - **`undo-redo-transactions`**: The document-model integrates with the undo system -- insert/delete operations record undo actions. The undo-redo-transactions spec is authoritative for transaction semantics. [SCI-DOC-2]
 - **`edit-operations`**: Higher-level edit operations (character typing, selection replacement, multi-caret edits) use the document-model's insert/delete primitives. [WB]
 - **`display-line-mapping`**: The display-line-mapping crate consumes the LineIndex to map document lines to display lines (accounting for folding, wrapping, exclusion). [SCI-DOC-3]

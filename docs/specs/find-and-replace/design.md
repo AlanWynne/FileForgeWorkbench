@@ -1321,3 +1321,45 @@ All 16 properties listed in the Correctness Properties section are implemented a
 - Literal search on 1 MB document completes in < 50ms (benchmark, not CI gate)
 - Regex search with step-limit prevents hang on pathological patterns
 - FIND ALL on 100K-line document with progress events
+
+
+---
+
+## Design Delta: Windowed FIND/CHANGE and Destructive-Scale Guard (CR-CH-058)
+
+Grounded in `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md`
+sections 6 and 6a and findings.md Q4.
+
+The engine is already abstracted behind the `CharacterIndexer` trait
+(Requirement 18), so the rework is at the edges, not the engine:
+
+- FIND/FIND ALL run over a WINDOWED `CharacterIndexer` that resolves content by
+  record range over the document model's windowed store, replacing the
+  shell-side whole-document `SliceIndexer` snapshot (findings.md Q4). The scan
+  requests record ranges on demand; off-window ranges are read through the
+  document model, not held entirely in RAM.
+- CHANGE / CHANGE ALL produce document-model Piece_List edits (Edited pieces)
+  instead of the current delete-whole-buffer-then-reinsert path.
+- Global substitution: where the substitution is a streaming rule, represent it
+  as a pending TRANSFORM applied at SAVE (near-zero in-memory cost, undoable as
+  one op until save) -- CHOSEN over materialising every record as an Edited
+  piece. This keeps CHANGE ALL cheap and undoable-until-save on huge files.
+- Destructive-scale CHANGE ALL (must materialise beyond the undo budget) is a
+  CR-CH-053 Confirmable_Command: single `-Y` with the consequence in the prompt;
+  macro-no-switch refuses with a return code. This REUSES the existing mechanism;
+  the undo-drop/Detach_Point is handled by undo-redo-transactions (Req 20.4).
+
+Native Delimited CHANGE bytes stay identical to today (safety rule). Match
+positions are reported as document record/line numbers from the index.
+
+Framework-conformance: slots a windowed indexer into the existing engine; no
+change to dispatch/nav/focus/persistence seams.
+
+### Testability
+
+Unit + proptest: windowed indexer returns the same matches as a full-slice
+indexer over the same content (equivalence); CHANGE produces Edited pieces not a
+whole rewrite; byte-identical native CHANGE round-trip; streaming-transform-at-save
+equals eager materialisation for a representative rule; destructive-scale guard
+matrix (interactive / -Y / macro refuse / macro -Y) through the
+Confirmable_Command seam.

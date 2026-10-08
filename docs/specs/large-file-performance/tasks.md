@@ -304,3 +304,20 @@ This is a **Wave 15 (Background Processing and Performance)** sub-project that d
 | NFR-2: Thread Safety | -- | Tasks 4, 6 |
 | NFR-3: Deterministic Behaviour | -- | Tasks 15, 16 |
 | NFR-4: Platform Independence | -- | Task 14 |
+
+
+---
+
+## CR-CH-058 Tasks -- Windowed Residency Integration
+
+- [ ] 17. Windowed residency integration and zoom-never-loads (F2/F4)
+  - [ ] 17.1 Change the content-provider seam to resolve record/line content over the resident Window_Band only, reporting out-of-band records as not-yet-available
+    - // Validates: Requirement 10.1
+  - [ ] 17.2 Ensure a zoom change invalidates caches but issues NO document-model load/evict; size the Window_Band in records at the smallest-zoom page size
+    - // Validates: Requirement 10.2, 10.3
+  - [ ] 17.3 Confirm all cache keys/indices use u64 record/line numbers aligned with index Total_Records
+    - // Validates: Requirement 10.4
+  - [ ] 17.4 Coordinate overscan pre-measurement with the document-model Window_Band prefetch via idle-processing in the scroll direction
+    - // Validates: Requirement 10.5
+  - [ ] 17.5 Write failing tests first: zoom issues no load request; measured record set equals the Window_Band; proptest window-only complexity bound
+  - Covers: Requirement 10 (AC 10.1-10.5)

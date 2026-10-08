@@ -1686,3 +1686,42 @@ proptest! {
 | Req 9 AC 7 | Batch coalescing | InvalidationCoordinator | Property 10 |
 | Req 9 AC 8 | Visibility change no-invalidate | InvalidationCoordinator | -- |
 | Req 9 AC 9 | Invalidation count metric | InvalidationCoordinator | -- |
+
+
+---
+
+## Design Delta: Windowed Residency Integration (CR-CH-058)
+
+Grounded in `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md`
+section 4 and findings.md Q1/Q4/Q8.
+
+The large-file-performance layer is already window-shaped at the render level
+(findings.md Q4: `build_display_list` + `paint.rs` fetch only the visible range)
+but it previously assumed the document model behind it was fully resident. Under
+CR-CH-058 the document model is windowed and record-oriented, so this layer is
+generalised, not replaced:
+
+- The `LineContentProvider` the cache measures through now resolves content over
+  the resident Window_Band only; records outside the band are reported as
+  not-yet-available and excluded from measurement (Req 10.1), replacing the old
+  `LoadingProgress` progressive-append coupling with the record Window_Band
+  availability query.
+- ZOOM-NEVER-LOADS (Req 10.2): a zoom change invalidates measurement caches
+  (existing Req 9.4) but MUST NOT request additional records from the document
+  model. The Window_Band is sized in records at the smallest-zoom page size so
+  zooming in stays within resident bytes (Req 10.3).
+- All cache keys use `u64` record/line numbers consistent with the index
+  Total_Records (Req 10.4; already required by existing Req 7.7).
+- Overscan pre-measurement is coordinated with the document model's Window_Band
+  prefetch via idle-processing in the scroll direction (Req 10.5), reusing the
+  existing `LayoutWorkSource`/`IdleWorkSource` seam.
+
+No new crate dependency is introduced; the integration points with
+ff-document-model, ff-idle-processing, and ff-view-zoom are retained with their
+semantics adjusted to the record Window_Band.
+
+### Testability
+
+Zoom-never-loads and window-only-measurement are verified by egui_kittest
+behaviour tests (zoom change issues no load request; measured record set equals
+the Window_Band) plus unit tests on the content-provider availability path.

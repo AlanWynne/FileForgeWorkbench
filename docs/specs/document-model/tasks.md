@@ -186,6 +186,32 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
   - [x] 18.4 Write integration test: large document stress test (>100K lines, verify O(log n) lookups)
   - Covers: End-to-end validation across Requirements 1–10
 
+- [ ] 19. Universal record abstraction and RecordFormat (F1)
+  - [ ] 19.1 Define `RecordFormat` enum (`Delimited { terminator }`, `Fixed { lrecl }`, `Variable { max_lrecl, rdw }`) in a new `record_format.rs` (keep file under 400 lines)
+  - [ ] 19.2 Add record-oriented queries (`total_records`, `record_start`, `record_byte_length`, `record_from_position`) and make the Delimited line API delegate to them so native line behaviour is byte-identical
+  - [ ] 19.3 Thread the owning Command Environment's RecordFormat into Document open (native CE supplies Delimited, generalising LineEndMode); do NOT flatten Fixed/Variable to newline
+  - [ ] 19.4 Write failing unit tests first: Delimited record == line equivalence; record<->position round-trips; CRLF/LF/CR/Mixed framing
+    - // Validates: Requirement 11.1, 11.2, 11.3, 11.4, 11.5
+  - [ ] 19.5 Keep RecordFormat GUI-independent; no change to shell dispatch/nav/focus/persistence seams
+  - Covers: Requirement 11 (AC 11.1-11.6)
+
+- [ ] 20. Piece-table spine and windowed byte residency (F1 spine, F2 window, F5 guard)
+  - [ ] 20.1 (F1) Define the `Piece` enum, `PieceList` (running record-count), `OriginalIndex` trait + lean fully-resident `Vec` impl (~16-byte entry), and scope the gap buffer to the Append_Buffer role; split by concern (`piece_list.rs`, `original_index.rs`, `append_buffer.rs`) each under 400 lines
+  - [ ] 20.2 (F1) Implement edits as piece-list splices (insert/delete/move/copy/overtype); unedited spans stay one Original piece; dirty pieces tracked for pinning
+  - [ ] 20.3 (F1) Byte-identical native SAVE = re-baseline: walk pieces, emit re-framed bytes, atomic write, collapse pieces, rebuild index, drop undo to that point (rides CR-CH-053 Task 20/21 seam)
+  - [ ] 20.4 (F1) Write failing tests first: splice correctness vs a naive String model; running-count invariant; byte-identical native round-trip on Delimited fixtures
+    - // Validates: Requirement 12.1, 12.2, 12.12
+  - [ ] 20.5 (F2) Implement the Window_Band (3 pages), load/evict at band edges with hysteresis + overscan, pin dirty pieces, and `down N`/`up N` index-resolved window jump with no intermediate reads
+    - // Validates: Requirement 12.4, 12.7, 12.8
+  - [ ] 20.6 (F2) Expose `Total_Records` from the index as the scrollbar/navigation authority, strictly distinct from resident window size; zoom renders only, never loads
+    - // Validates: Requirement 12.5, 12.6
+  - [ ] 20.7 (F2/F5) Linear piece search for "record N -> piece"; add configurable budgets (window records, overscan, checkpoint interval, `max_resident_records` default ~150M, spill threshold) matching the config pattern
+    - // Validates: Requirement 12.3, 12.9, 12.10
+  - [ ] 20.8 (F5) Put the Immutable_Original_Index behind the `OriginalIndex` trait so an above-budget sparse/windowed-index OR mmap/spill mode can replace the resident Vec; first build ships the lean resident index only; add the graceful-degrade guard at `max_resident_records`
+    - // Validates: Requirement 12.11
+  - [ ] 20.9 Write proptests (>=100 iters): estimated->exact Total_Records monotonicity; splice/undo round-trips; record addressing stable across intervening edits
+  - Covers: Requirement 12 (AC 12.1-12.12)
+
 ---
 
 ## Property-Based Test Definitions
@@ -293,10 +319,12 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
 | Req 1: Gap-Buffer Text Storage | AC 1.1–1.10 | Tasks 3, 2 |
 | Req 2: Text Insertion and Deletion | AC 2.1–2.9 | Tasks 6, 7, 16, 17 |
 | Req 3: Line Index and Position Tracking | AC 3.1–3.11 | Tasks 4, 5, 10 |
-| Req 4: Streaming File Loading | AC 4.1–4.9 | Tasks 9, 10, 15, 17 |
+| Req 4: Windowed File Loading and Index Build | AC 4.1-4.11 | Tasks 9, 10, 15, 17, 20 |
 | Req 5: Line End Type Support | AC 5.1–5.6 | Task 7 |
 | Req 6: Document Lifecycle and Shared Ownership | AC 6.1–6.8 | Task 11 |
 | Req 7: Document Watcher and Notification System | AC 7.1–7.7 | Task 12 |
 | Req 8: Character and Encoding Navigation | AC 8.1–8.8 | Tasks 8, 17 |
 | Req 9: Viewport Position Management | AC 9.1–9.8 | Tasks 13, 17 |
 | Req 10: Save Point and Modification State | AC 10.1–10.6 | Task 14 |
+| Req 11: Universal Record Abstraction and RecordFormat | AC 11.1-11.6 | Task 19 |
+| Req 12: Piece-Table Spine and Windowed Byte Residency | AC 12.1-12.12 | Task 20 |

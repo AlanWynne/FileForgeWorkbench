@@ -1277,3 +1277,53 @@ When `max_levels == 0`:
 - `is_dirty()` is tracked by a simple boolean (modified since save) rather than save-point distance
 - Recovery files are NOT written (no undo state to recover)
 - The status message for UNDO/REDO indicates undo is disabled
+
+
+---
+
+## Design Delta: Piece-Splice Operation Addressing (CR-CH-058)
+
+Grounded in `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md`
+section 6 and open-question #2 (verified against the crate: the model is
+operation-based with `EditOperation.inverse()`, `UndoableState`,
+`DocumentUndoManager`, byte data in a `ScrapStack`).
+
+The real design item (not a slot-in): `EditOperation` is keyed by absolute byte
+`position: u64`, which is only stable for a fully-resident document. Under the
+windowed piece-table, positions shift as pieces splice and absolute bytes are
+not meaningful when the file is not resident. Decision:
+
+- ADAPT the operation addressing from absolute byte position to RECORD/PIECE
+  terms. Reuse the existing Logical_Record_ID (Requirement 14) as the stable
+  record handle, plus intra-record offsets and piece-splice descriptors. This
+  dovetails with the existing Rule_Transaction (O(1), re-scan on undo) and
+  Index_Transaction (O(n), materialised Logical_Record_IDs) strategies
+  (Requirement 7) -- CHANGE ALL and block operations already fit these shapes.
+- The undo journal stores INVERSE piece-list splices, not whole-index/document
+  snapshots, so undo memory is proportional to the edit (Requirement 20.2). UNDO
+  applies inverse splices through the document-model piece primitives; native
+  Delimited round-trips are byte-identical (Requirement 20.3, safety rule).
+- Destructive-scale proceed (interactive `-Y` / macro `-Y`) drops undo past that
+  point in a bounded way and records a Detach_Point (reusing the existing
+  save/detach-point machinery, Requirement 5) so the pre-op saved state is
+  reported unreachable (Requirement 20.4).
+- Cumulative undo-pressure is handled separately: soft non-blocking advisory +
+  hard-threshold bounded-undo trim, never blocking, never a macro popup
+  (Requirement 20.5). This reuses the existing bounded-stack eviction
+  (Requirement 1.4) with an added soft-advisory signal.
+
+Alternatives considered and rejected: keeping absolute-byte addressing and
+re-resolving against a resident snapshot (defeats windowing); snapshotting the
+piece list per transaction (memory blows up on long sessions). The inverse-splice
+journal is the chosen design.
+
+Framework-conformance: GUI-independent; no change to dispatch/nav/focus/persistence
+seams.
+
+### Testability
+
+Unit + proptest: inverse-splice reversibility (undo then redo is identity);
+record/Logical_Record_ID addressing stable across intervening inserts/deletes;
+destructive-scale proceed records a Detach_Point and bounds undo; soft/hard
+undo-pressure thresholds trigger advisory/trim without blocking and without a
+macro popup.

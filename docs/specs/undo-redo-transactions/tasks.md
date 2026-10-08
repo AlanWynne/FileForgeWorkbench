@@ -269,3 +269,24 @@ The crate bridges `ff-command` (which produces undo records) and `ff-document-mo
     - Validates: Requirement 19.2
   - [x] 20.5 Write unit tests for RECOVERY: ON/OFF/n operand parsing, immediate effect on recovery writer, interval=0 disables
     - Validates: Requirement 19.2
+
+
+---
+
+## CR-CH-058 Tasks -- Piece-Splice Operation Addressing
+
+- [ ] 21. Piece-splice operation addressing for the windowed model (F1 journal, F4 destructive-scale)
+  - [ ] 21.1 Adapt EditOperation addressing from absolute byte position to record/piece terms (Logical_Record_ID + intra-record offset + piece-splice descriptors)
+    - // Validates: Requirement 20.1
+  - [ ] 21.2 Store inverse piece-list splices in the undo journal (no whole-index/document snapshots); keep undo memory proportional to the edit
+    - // Validates: Requirement 20.2
+  - [ ] 21.3 Apply inverse/forward splices through the document-model piece primitives on UNDO/REDO; byte-identical native round-trip
+    - // Validates: Requirement 20.3
+  - [ ] 21.4 On destructive-scale proceed (-Y), drop undo past that point in a bounded way and record a Detach_Point reusing the save/detach-point machinery
+    - // Validates: Requirement 20.4
+  - [ ] 21.5 Add soft non-blocking undo-pressure advisory + hard-threshold bounded-undo trim (never blocks, never a macro popup)
+    - // Validates: Requirement 20.5
+  - [ ] 21.6 Keep the addressing adaptation GUI-independent; no change to dispatch/nav/focus/persistence seams
+    - // Validates: Requirement 20.6
+  - [ ] 21.7 Write failing tests first: inverse-splice undo/redo identity; record-id addressing stable across intervening edits; destructive-scale Detach_Point; soft/hard pressure thresholds (>=100-iter proptests where applicable)
+  - Covers: Requirement 20 (AC 20.1-20.6)

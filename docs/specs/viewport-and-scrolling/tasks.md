@@ -225,3 +225,22 @@ This plan implements the viewport and scrolling subsystem for FileForgeWorkbench
   ]
 }
 ```
+
+| 15   | Requirement 14 (CR-NR-035) |
+| 17   | Requirement 15 (CR-CH-058) |
+
+---
+
+## CR-CH-058 Tasks -- Scrollbar/Extents from Index Total
+
+- [ ] 17. Scrollbar and extents from index Total_Records, not the resident window (F2/F3)
+  - [ ] 17.1 Add a `total_records` source to the viewport that accepts an estimated-or-exact total from the document model and an `indexing` progress state; size scrollbar range and `max_top_line` from it, never from the resident window
+    - // Validates: Requirement 15.1, 15.2
+  - [ ] 17.2 On the estimated->exact total transition, snap scrollbar range and `max_top_line` to the exact total and re-clamp `top_line`
+    - // Validates: Requirement 15.3
+  - [ ] 17.3 For Fixed-format documents, consume an exact total immediately (no estimated phase); ensure zoom changes never alter the total or range
+    - // Validates: Requirement 15.4, 15.5
+  - [ ] 17.4 Keep the scrollbar fraction/thumb a pure function of the (estimated or exact) total; write unit tests for estimated and exact totals and the re-clamp
+    - // Validates: Requirement 15.6
+  - [ ] 17.5 Full-shell egui_kittest tests: scrollbar reflects index total (not window), estimated->exact snap, zoom-does-not-change-range
+  - Covers: Requirement 15 (AC 15.1-15.6)

@@ -909,3 +909,37 @@ The following properties are suitable for property-based testing with the `propt
 - **Minimum proptest iterations**: 100 per property
 - **Performance benchmarks**: Criterion.rs benchmarks for lookup latency on 1M-line documents
 - **Strategies**: Custom proptest strategies generating valid ContractionState configurations with random visibility/height patterns
+
+
+---
+
+## Design Delta: Record-Oriented Lines and Estimated Totals (CR-CH-058)
+
+Grounded in `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md`
+sections 3-5.
+
+The display-line-mapping layer is already count-and-visibility based and never
+touches record byte content, so it is almost unaffected by windowed byte
+residency. Two concrete decisions:
+
+1. A Document_Line is a document RECORD; for Delimited documents this is
+   byte-identical to the current line mapping (no behavioural change). "Line"
+   and "record" are synonyms here.
+2. The `lines_in_doc()` total is sourced from the document index Total_Records,
+   which MAY be ESTIMATED while a background scan runs. The Contraction_State
+   already supports incremental `insert_lines`/`delete_lines`; the estimated->exact
+   transition is applied as a total-count adjustment that preserves existing
+   visibility/fold/height state for surviving records. One-to-one mode (no
+   folds/wraps/exclusions) stays an O(1) identity map regardless of whether the
+   total is estimated or exact.
+
+Large_Document_Mode (64-bit indexing, existing Requirement 8) is selected
+whenever Total_Records exceeds the 32-bit range, consistent with the document
+model's u64 record numbers. No new navigation stack, dispatch, focus, or
+persistence change.
+
+### Testability
+
+Unit tests: estimated-total identity mapping; estimated->exact total adjustment
+preserves visibility/fold/height for surviving records; 64-bit mode selection at
+large totals. No egui dependency at this layer.

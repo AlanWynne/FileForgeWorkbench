@@ -551,3 +551,33 @@ ISPF editing model.
    recovery interval to n seconds for the current session); changes take effect immediately.
 
 ---
+
+### Requirement 20: Piece-Splice Operation Addressing for the Windowed Model [CR-CH-058]
+
+**User Story:** As the undo system for a windowed, record-oriented document, I want edit operations addressed in RECORD/PIECE terms rather than absolute byte positions, so that undo/redo stays correct when the whole file is not resident and positions shift as pieces splice.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN section 6 and open question #2, verified at the crate), framework-conformance.md
+
+**REVISION NOTE (CR-CH-058):** `EditOperation` is currently keyed by an absolute
+byte `position: u64` assuming a byte-addressable, fully-resident document. Under
+the windowed piece-table model that assumption no longer holds; this requirement
+ADAPTS the operation addressing. It builds on the existing operation-based model
+(`EditOperation.inverse()`, `UndoableState`, `DocumentUndoManager`) and the
+existing Logical_Record_ID / Rule_Transaction / Index_Transaction concepts
+(Requirement 7, 14); it does not replace them.
+
+#### Acceptance Criteria
+
+20.1 THE undo system SHALL address edit operations in RECORD/PIECE terms (record or Logical_Record_ID plus intra-record offset, and/or piece-list splice descriptors), NOT absolute whole-document byte positions, so that an operation remains correctly reversible when the file is not fully resident. [CR-CH-058]
+
+20.2 WHEN a transaction is recorded, THE undo journal SHALL store the INVERSE piece-list splice(s) needed to reverse it, NOT a whole-index or whole-document snapshot, keeping undo memory proportional to the edit and not the file. [CR-CH-058]
+
+20.3 WHEN UNDO or REDO is executed, THE system SHALL apply the inverse/forward piece-list splices through the document-model piece primitives, producing a result byte-identical to the original state (native Delimited documents preserve the safety rule). [CR-CH-058]
+
+20.4 WHEN a destructive-SCALE operation (one that would exceed the undo budget) is proceeded with (interactive `-Y` or macro `-Y` per Requirement 7 bulk transactions and the CR-CH-053 Confirmable_Command mapping), THE undo system SHALL drop undo history past that point in a bounded way and record a Detach_Point so the pre-operation saved state is correctly reported as unreachable. [CR-CH-058]
+
+20.5 THE undo system SHALL handle cumulative undo-memory pressure SEPARATELY from destructive-scale operations: a soft non-blocking advisory when a configurable soft threshold is crossed, and bounded-undo trimming of the oldest entries at a hard threshold; neither SHALL block, and neither SHALL emit a popup in a macro/headless context. [CR-CH-058]
+
+20.6 THE operation-addressing adaptation SHALL remain GUI-independent and SHALL NOT change the shell command-dispatch, navigation-stack, focus-latch, or WorkspaceDescriptor-persistence framework seams. [framework-conformance.md]
+
+---

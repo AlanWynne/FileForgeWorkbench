@@ -534,6 +534,30 @@ This spec covers:
 
 **User Story:** As an ISPF user, I want to issue dataset-level commands (SUBMIT, CREATE, REPLACE, EDIT, BROWSE, VIEW, COMPARE) from within the editor, so that I can manage and navigate datasets without leaving the editing context.
 
+(criteria unchanged -- see existing Requirement 17 acceptance criteria above)
+
+---
+
+### Requirement 18: Record-Oriented Edits as Piece-List Splices [CR-CH-058]
+
+**User Story:** As an editor user working on a windowed, record-oriented document, I want insert/delete/move/copy/overtype to be cheap piece-list splices rather than whole-buffer rewrites, and I want destructive-scale operations to be guarded, so that editing a huge file stays fast and I am never silently stripped of undo.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN sections 6, 6a), framework-conformance.md
+
+#### Acceptance Criteria
+
+18.1 WHEN an edit operation (character insert/overstrike, delete, line move, line insert, line copy, line delete) is applied, THE edit-operations layer SHALL express it as a document-model Piece_List SPLICE (via the record/piece primitives of document-model Requirement 12), NOT as an O(file) byte-array shift or whole-buffer rewrite. [CR-CH-058]
+
+18.2 WHEN the caret is in a record not currently resident in the Window_Band, THE edit-operations layer SHALL cause the document model to load that record's window before applying the edit, without reading intervening records. [CR-CH-058]
+
+18.3 FOR a native (Delimited) document, the observable result of every edit operation (resulting bytes, line endings, modified-line markers, caret/selection behaviour) SHALL be byte-identical to the pre-CR-CH-058 behaviour. [CR-CH-058] (safety rule)
+
+18.4 WHEN a single operation would materialise more changes than the undo budget allows (a destructive-SCALE operation, e.g. a block operation over a huge selection), THE edit-operations layer SHALL route it through the CR-CH-053 Confirmable_Command mechanism (REUSE; no new flag semantics): interactive with no switch SHALL prompt with the undo-loss consequence; interactive with `-Y`/`--yes` SHALL proceed with undo dropped past that point; a macro/headless invocation with no switch SHALL REFUSE with a clear return code; a macro with `-Y` SHALL proceed. [CR-CH-053, CR-CH-058]
+
+18.5 THE destructive-scale confirmation SHALL use a SINGLE `-Y` whose prompt text states the undo consequence (NOT a dual `--force --confirm`), per the owner decision. [CR-CH-058]
+
+18.6 Edit operations SHALL NOT change the shell command-dispatch, navigation-stack, focus-latch, or WorkspaceDescriptor-persistence framework seams; they build on the document-model record/piece primitives only. [framework-conformance.md]
+
 #### Acceptance Criteria
 
 1. WHEN the user issues the SUBMIT primary command from within the editor, THE editor SHALL submit the current document buffer as a batch job via the JES subsystem (ff-jes) and display the assigned job ID in the status bar. [EARS: PC-SUBMIT]

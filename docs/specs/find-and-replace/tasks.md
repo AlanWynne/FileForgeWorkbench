@@ -380,3 +380,22 @@ This is a **Wave 5 (Command Engine)** sub-project that depends on Wave 4 (`ff-do
 | Req 18: Character Indexer Abstraction | AC 18.1–18.6 | Task 3 |
 | Req 19: Performance and Large-File Considerations | AC 19.1–19.7 | Tasks 5, 10, 19 |
 | Req 20: Error Handling and Edge Cases | AC 20.1–20.8 | Tasks 12, 13, 20 |
+
+
+---
+
+## CR-CH-058 Tasks -- Windowed FIND/CHANGE and Destructive-Scale Guard
+
+- [ ] 23. Windowed FIND/CHANGE and destructive-scale guard (F4)
+  - [ ] 23.1 Provide a windowed `CharacterIndexer` resolving content by record range over the document-model windowed store; drive FIND/FIND ALL through it (no whole-document snapshot)
+    - // Validates: Requirement 21.1
+  - [ ] 23.2 Make CHANGE/CHANGE ALL produce document-model Piece_List Edited pieces instead of delete-whole-buffer-then-reinsert
+    - // Validates: Requirement 21.2
+  - [ ] 23.3 Represent streaming-rule global substitutions as a pending transform applied at SAVE (one undoable op until save)
+    - // Validates: Requirement 21.3
+  - [ ] 23.4 Route destructive-scale CHANGE ALL through the CR-CH-053 Confirmable_Command seam (single -Y, consequence in prompt; macro-no-switch refuses with RC; macro -Y proceeds)
+    - // Validates: Requirement 21.4, 21.5
+  - [ ] 23.5 Preserve byte-identical native CHANGE results; report match positions as document record/line numbers; no change to dispatch/nav/focus/persistence seams
+    - // Validates: Requirement 21.6, 21.7
+  - [ ] 23.6 Write failing tests first: windowed-vs-full indexer match equivalence; CHANGE produces Edited pieces; byte-identical native round-trip; streaming-transform equivalence; destructive-scale guard matrix
+  - Covers: Requirement 21 (AC 21.1-21.7)

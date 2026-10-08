@@ -32,7 +32,7 @@ The display-line-mapping crate is a Wave 4 (Core Editor) component. It is consum
 
 ## Glossary
 
-- **Document_Line**: A logical line in the text buffer, identified by a zero-based index. Document lines are the lines stored in the `document-model` crate. [SCI-CS-12.1, FFE-EXCL]
+- **Document_Line**: A logical line in the text buffer, identified by a zero-based index. Document lines are the lines stored in the `document-model` crate. [SCI-CS-12.1, FFE-EXCL] NOTE (CR-CH-058): under the universal record model a Document_Line IS a document RECORD (a Delimited record is byte-identical to today's line); "line" and "record" are synonyms at this layer and the document-line count equals the index Total_Records, which MAY be an estimated value during a background index scan. See Requirement 11.
 - **Display_Line**: A visual line as rendered in the viewport. Display lines are numbered contiguously from zero. A single Document_Line may map to zero display lines (if hidden) or multiple display lines (if wrapped). [SCI-CS-12.1]
 - **Display_Line_Count**: The total number of display lines across the entire document, which equals the sum of the height (in display lines) of all visible document lines. [SCI-CS-12.1]
 - **Line_Height**: The number of display lines occupied by a single Document_Line. A visible, unwrapped line has height 1. A visible, wrapped line has height ≥ 2. A hidden line has effective height 0. [SCI-CS-12.1]
@@ -239,4 +239,24 @@ The display-line-mapping crate is a Wave 4 (Core Editor) component. It is consum
 6. THE `show_all()` method SHALL reset BOTH exclusion-based hiding AND fold-based hiding, making all lines visible and marking all folds as expanded, providing a clean "reset everything" operation.
 7. THE display-line-mapping layer SHALL NOT store fold levels, fold nesting depth, or fold region extents -- those are the responsibility of the syntax-highlighting / language-service layer. The mapping layer only stores per-line visibility and per-line expanded/collapsed flags.
 8. ISPF EXCLUDE/SHOW operations SHALL be flat (not hierarchical): excluding a range simply hides those lines, with no concept of nested exclusion levels. This contrasts with code folding, which IS hierarchical.
+
+---
+
+### Requirement 11: Record-Oriented Document Lines and Estimated Totals [CR-CH-058]
+
+**User Story:** As a developer, I want the display-line mapping to treat document lines as universal records and to tolerate a document whose total record count is still being counted (estimated) during a background index scan, so that mapping stays correct for windowed, record-oriented documents.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN sections 3-5), findings.md Q8
+
+#### Acceptance Criteria
+
+11.1 THE Contraction_State SHALL treat each Document_Line as a document RECORD; for a Delimited document the behaviour SHALL be byte-identical to today's line-based mapping (a Delimited record IS a line). [CR-CH-058]
+
+11.2 THE `lines_in_doc()` total SHALL be sourced from the document index Total_Records; WHEN that total is ESTIMATED (background scan incomplete), the mapping SHALL operate against the currently-known total and SHALL remain internally consistent (one-to-one identity when no folds/wraps/exclusions are active). [CR-CH-058]
+
+11.3 WHEN the document model publishes a revised (exact) Total_Records, THE consuming code SHALL call `insert_lines`/`delete_lines` (or an equivalent total-adjust) so the Contraction_State reflects the exact record count, preserving existing visibility/fold/height state for records that still exist. [CR-CH-058]
+
+11.4 THE mapping layer SHALL NOT require the whole document to be resident -- it operates on counts and per-record visibility/height, never on record byte content, so it is unaffected by windowed byte residency. [CR-CH-058]
+
+11.5 THE 64-bit (Large_Document_Mode) line indexing (Requirement 8) SHALL be used whenever the index Total_Records exceeds the 32-bit range, consistent with the `u64` record numbers of the document model. [CR-CH-058]
 

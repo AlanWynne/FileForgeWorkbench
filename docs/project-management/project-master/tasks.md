@@ -3361,3 +3361,34 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (command-environments-maturation) | CR-CH-053 EXTENDED GATE AUTHORED: built Environment_Registry (replaces closed enum/match/claim-gate) + `dispatch_to_environment` address-by-name + TabState owning-environment binding + FFEDIT SAVE redirect (MODIFIES Req 10.1 routing; native byte-identical) + ff-ce-* FS CE family / ff-ce-host-fs decider + live ProviderRegistry prerequisite. command-environments Req 13-17 (32 criteria), Tasks 17-22, CEM.1-CEM.7. Owner-approved DESIGN-BRIEF Phase-1 core change (mainline/unprefixed); builds ON the framework (no second dispatcher/nav stack; CommandTarget/WorkspaceContext/descriptor unchanged). Pending owner approval before any code. |
+
+## Phase (windowed-record-foundation) -- CR-CH-058: Universal windowed record-oriented document model (piece-table)
+> Owner-approved foundational core change (mainline, unprefixed). Reworks
+> ff-document-model's PUBLIC surface into a piece-table spine: an immutable lean
+> flat ORIGINAL index + a small PIECE LIST of changes + an append buffer; a
+> universal RecordFormat (Delimited/Fixed/Variable) supplied by the owning
+> Command Environment; windowed byte residency as a 3-page band decoupled from the
+> index; scrollbar/extents from the index Total_Records (never the resident
+> window); zoom-never-loads; background delimited/variable index build with
+> estimated-then-exact scrollbar; SAVE = re-baseline (distinct from mid-session
+> compaction); undo adapted from byte-position to record/piece addressing with an
+> inverse-splice journal; destructive-scale ops guarded via CR-CH-053
+> Confirmable_Commands (single -Y). NON-NEGOTIABLE safety rule: native (Delimited)
+> editing stays byte-identical in observable result. Framework-touching
+> (ff-document-model public surface) but NO change to shell dispatch / navigation
+> stack / focus latch / WorkspaceDescriptor persistence. Phasing F1..F5 keeps FFWB
+> building and honours the safety rule at every phase. Grounded in
+> `.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md` + `findings.md`.
+> Affects crates: ff-document-model, ff-viewport-scrolling, ff-display-line-mapping,
+> ff-edit-operations, ff-undo-redo, ff-find-and-replace, ff-large-file-performance
+> (consuming), ff-idle-processing (background scan/prefetch). Pending owner
+> approval before any code.
+- [ ] WRF.1 Requirements gate -- requirements.md updates across document-model (Req 11-12, revised Req 4 + glossary), viewport-and-scrolling (Req 15, revised Req 1.10/Req 2), large-file-performance (Req 10, revised Req 7), display-line-mapping (Req 11), edit-operations (Req 18), undo-redo-transactions (Req 20), find-and-replace (Req 21); design deltas, tasks, TCR NOT COVERED rows, change-log CR-CH-058. (Authored; awaiting owner approval before any code.)
+- [ ] WRF.2 F1 -- Record abstraction + immutable index + piece list + append buffer (no windowing): RecordFormat in ff-document-model; piece-table spine; edits as splices; byte-identical native SAVE = re-baseline; undo via inverse-splice journal (record/piece addressing). document-model tasks 19-20 (F1), edit-operations task 40, undo-redo task 21.
+- [ ] WRF.3 F2 -- Windowed byte residency: 3-page Window_Band, load/evict at band edges with hysteresis, dirty pinned, scrollbar/extents from index Total_Records, zoom-never-loads, down/up N band jump. document-model task 20 (F2), viewport task 17.
+- [ ] WRF.4 F3 -- Background index build + open-time UX: instant open + background delimited/variable scan via idle-processing + estimated-then-exact scrollbar + "indexing..." indicator; arithmetic/instant for Fixed. document-model tasks 19-20 (F3), viewport task 17, display-line-mapping task 14.
+- [ ] WRF.5 F4 -- Windowed FIND/CHANGE via the CharacterIndexer trait + destructive-scale CHANGE ALL guard (Confirmable_Command) + streaming-transform-at-save. find-and-replace task 23, edit-operations task 40 (guard), large-file-performance task 17 (window-only measurement).
+- [ ] WRF.6 F5 -- Scalability guard: max_resident_records budget + reserved sparse/mmap above-budget mode behind the OriginalIndex interface (first build ships lean fully-resident index). document-model task 20 (F5).
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (windowed-record-foundation) | CR-CH-058 GATE AUTHORED: universal windowed record-oriented document model (piece-table spine). document-model Req 11-12 + revised Req 4/glossary; viewport-and-scrolling Req 15 + revised Req 1.10/Req 2; large-file-performance Req 10 + revised Req 7; display-line-mapping Req 11; edit-operations Req 18; undo-redo-transactions Req 20; find-and-replace Req 21. WRF.1-WRF.6 (phasing F1..F5). Framework-touching (ff-document-model public surface) but no dispatch/nav/focus/persistence change; native editing byte-identical (safety rule). Mainline/unprefixed. Pending owner approval before any code. |

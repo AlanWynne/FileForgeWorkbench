@@ -1279,3 +1279,168 @@ The following properties are suitable for property-based testing with the `propt
 - **Testing framework**: `proptest` for property-based tests, `#[tokio::test]` for async tests
 - **Minimum proptest iterations**: 100 per property
 - **Fixtures**: Pre-built text samples with known line counts, encoding edge cases, and CRLF variants
+
+---
+
+## Design Delta: Universal Windowed Record-Oriented Model (CR-CH-058)
+
+This section records the architectural decisions for the piece-table spine,
+RecordFormat, and windowed byte residency. It is grounded in and must not
+contradict the owner-approved
+`.agents/tasks/windowed-record-foundation/FOUNDATION-DESIGN.md` and the
+read-only investigation `.agents/tasks/windowed-record-foundation/findings.md`.
+Where this delta and that design differ, the FOUNDATION-DESIGN wins.
+
+### Overview
+
+The document is reworked from a single fully-resident `GapBuffer` into THREE
+cleanly separated layers (FOUNDATION-DESIGN section 2):
+
+```
+(A) Immutable_Original_Index   original record K -> (file_offset u64, byte_length u32, flags u32)
+(B) Piece_List                 ordered pieces presenting the CURRENT document:
+      Original { first_record, count }   -> resolves via (A), bytes read on demand
+      Edited   { buf_range, count }      -> bytes in the Append_Buffer
+(C) Append_Buffer               bytes of inserted/edited records only (the surviving GapBuffer role)
+```
+
+Byte residency is a SEPARATE concern: the Window_Band (section below) is the
+only physically resident slice of record bytes. The logical document (index +
+pieces) spans the whole file; the physical window does not.
+
+### The three layers (chosen design)
+
+Several representations were considered: (a) keep the fully-resident gap buffer
+and bolt windowing on top; (b) a rope; (c) the piece-table spine. The
+piece-table is CHOSEN (owner-confirmed) because: the one large structure (the
+Immutable_Original_Index) never mutates, so it is mmap/spill-friendly with zero
+coherence risk; edits are O(pieces) splices with no O(file) shift; and undo is a
+journal of inverse splices over a small list rather than whole-index copies.
+The gap buffer is NOT discarded -- it is retained as the Append_Buffer for
+edited/inserted record bytes.
+
+- **Immutable_Original_Index**: a flat `Vec` of lean ~16-byte entries, one per
+  original record. Behind an interface (`OriginalIndex` trait) so the
+  above-budget sparse/mmap mode can replace the fully-resident `Vec`
+  implementation without touching callers (Req 12.11).
+- **Piece_List**: a small `Vec<Piece>` with a running record-count per piece.
+  Linear "record N -> piece" search first (Req 12.9); an order-statistic tree
+  over pieces only if fragmentation profiling demands it.
+- **Append_Buffer**: the existing gap buffer, now scoped to edited bytes only.
+
+### RecordFormat (lives in ff-document-model, CE supplies the value)
+
+`RecordFormat { Delimited { terminator }, Fixed { lrecl }, Variable { max_lrecl, rdw } }`
+lives in `ff-document-model` (owner decision #1). The owning Command Environment
+supplies the value: the native CE returns `Delimited` (generalising the existing
+`LineEndMode`), mainframe CEs return `Fixed`/`Variable` (a later V-stream gate).
+The record API is the authority; the "line" API delegates to it for Delimited
+documents so native line behaviour is byte-identical. This REPLACES the
+provider-side flatten-to-newline (findings.md Q6) as the universal model, though
+the mainframe save is out of scope here.
+
+### Windowed byte residency
+
+The Window_Band is `current page + 1 page above + 1 page below`, a page being
+the maximum records on a full screen at the SMALLEST zoom (so zoom-in never
+needs more bytes than are resident; zoom never loads -- Req 12.6). Load/evict
+happens at band edges with hysteresis + overscan; a fast `down N` jump resolves
+the target via the index and loads ONE window (Req 12.7, 12.8). Dirty pieces are
+pinned (they live in the Append_Buffer). Scrollbar/navigation extents size on
+`Total_Records` from the index, never on the resident window (Req 12.5) -- this
+is the fix for the owner-observed scrollbar-collapse bug.
+
+### Index-vs-buffer extent separation
+
+Two counts are kept strictly distinct: `Total_Records` (whole document, from the
+index; may be an estimate during a background Delimited/Variable scan) and the
+resident window size. Only `Total_Records` feeds the scrollbar and `max_top_line`
+(reconciled with viewport-and-scrolling Req 2/4 and large-file-performance Req 6.2
+"counting..." placeholder).
+
+### Open behaviour
+
+- `Fixed`: arithmetic index (`offset = K*lrecl`), exact + instant, no scan.
+- `Delimited`/`Variable`: instant open on the first window + BACKGROUND
+  record-boundary scan (via `ff-idle-processing`) + estimated-then-exact
+  Total_Records with an "indexing... N%" indicator (owner accepted). The scan is
+  sequential delimiter/RDW only (no UTF-8 decode, no per-record allocation).
+
+### SAVE = re-baseline vs mid-session compaction (distinct)
+
+- **SAVE (re-baseline, undo-dropping):** walk the Piece_List in order, emit each
+  piece's bytes (Original via file+index, Edited via Append_Buffer) re-framed per
+  the owning CE's RecordFormat, atomic write; the saved file becomes the new
+  immutable original, the Piece_List collapses to one `Original{0..N}`, the index
+  rebuilds, and undo is dropped to that point (bounded memory). SAVE rides the
+  CR-CH-053 Task 20/21 "FFEDIT addresses SAVE to the owning CE" seam. For a
+  native Delimited document the emitted bytes are byte-identical to today
+  (Req 12.12).
+- **Compaction (mid-session, undo-preserving):** a background pass merges
+  adjacent compatible Edited pieces to reclaim memory WITHOUT dropping undo.
+  Distinct from re-baseline; a later phase (F-series does not require it on day
+  one).
+
+### Undo operation-addressing adaptation (byte -> record/piece)
+
+`ff-undo-redo` is operation-based (`EditOperation` with `inverse()`,
+`UndoableState`, `DocumentUndoManager`) -- a good fit for op+inverse piece-splices.
+The SUBTLETY (FOUNDATION-DESIGN #2, verified at the crate): `EditOperation` is
+keyed by absolute byte `position: u64` assuming a resident doc, but under the
+windowed piece-table edits are naturally in RECORD/PIECE terms and absolute byte
+positions are not stable when the file is not resident. The design therefore
+ADAPTS the operation addressing from byte-position to record/piece addressing;
+the undo journal stores inverse piece-list splices, NOT whole-index snapshots.
+This leans on the undo-redo spec's existing Logical_Record_ID / Rule_Transaction
+/ Index_Transaction concepts (undo-redo Req 7). Detailed in
+`undo-redo-transactions/design.md`.
+
+### Destructive-scale operations (CR-CH-053 Confirmable_Commands)
+
+A single op that would exceed the undo budget (e.g. CHANGE ALL over 100M records)
+is modelled as a CR-CH-053 Confirmable_Command (REUSE the mechanism, no new flag
+semantics): interactive+no-switch -> confirm popup stating the undo consequence;
+interactive+`-Y`/`--yes` -> proceed, no popup, undo dropped past that point;
+macro/headless+no-switch -> REFUSE with a clear RC; macro+`-Y` -> proceed. Owner
+chose SINGLE `-Y` (consequence in the prompt), NOT dual `--force --confirm`.
+Where a global substitution is expressible as a streaming rule, prefer a
+transform-at-save representation so it stays cheap/undoable-until-save. Cumulative
+undo-memory pressure (slow accumulation) is handled SEPARATELY by a soft
+non-blocking advisory + hard-threshold bounded-undo trim (never blocks, never
+pops up in a macro). This is specified in `find-and-replace/` and
+`undo-redo-transactions/`; `ff-document-model` only supplies the piece-splice
+primitives and the budget signals.
+
+### Public-surface / framework-conformance
+
+This reworks the PUBLIC surface of `Document` / `GapBuffer` / `TextBuffer` --
+flagged explicitly as a foundational, owner-confirmed change
+(framework-conformance.md). It does NOT change shell command-dispatch, the
+navigation stack, the focus-latch, or WorkspaceDescriptor persistence. The
+editor paint path is already window-shaped (findings.md Q4) and the find engine
+is already behind the `CharacterIndexer` trait, so both are generalised rather
+than replaced.
+
+### Testability
+
+- Piece-table / index / record logic: unit + proptest (splice correctness,
+  running-count invariants, record<->position round-trips, estimated->exact total
+  monotonicity). Minimum 100 proptest iterations.
+- Byte-identical native round-trip: open -> edit -> save on Delimited fixtures
+  (CRLF/LF/CR/mixed) MUST reproduce today's bytes (Req 12.12 safety rule).
+- Rendered-widget behaviour (scrollbar sizing from index, zoom-no-load, 3-page
+  paging): egui_kittest harness tests (owned by viewport/large-file specs).
+
+### Phasing (F1..F5, each keeps FFWB building + the safety rule)
+
+- F1: RecordFormat + Immutable_Original_Index + Piece_List + Append_Buffer, still
+  fully-resident index on open (prove piece-table + byte-identical native SAVE +
+  undo via piece journal). No windowing yet.
+- F2: windowed byte residency (Window_Band, scrollbar-from-index,
+  zoom-never-loads, scroll hysteresis, dirty pinned).
+- F3: background index build + open-time UX (instant open, background
+  Delimited/Variable scan, estimated->exact scrollbar + "indexing..." indicator,
+  arithmetic/instant for Fixed).
+- F4: windowed FIND/CHANGE via the existing `CharacterIndexer` trait.
+- F5: scalability guard (`max_resident_records` + reserved sparse/mmap
+  above-budget mode).

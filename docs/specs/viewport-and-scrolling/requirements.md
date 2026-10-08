@@ -66,7 +66,7 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 7. THE viewport model SHALL be owned by the editor session and SHALL NOT depend on any GUI framework type. [WB]
 8. WHEN the GUI shell reports a change in available display height, THE viewport model SHALL update `visible_count` accordingly, and IF `top_line` now exceeds `max_top_line`, THE viewport model SHALL clamp `top_line` to `max_top_line`. [FFE-MVP-2]
 9. THE viewport model SHALL expose accessor methods for all state fields, enabling GUI renderers to query the current viewport without mutation. [WB]
-10. THE viewport model SHALL compute `max_top_line` as `max(1, total_display_lines - visible_count + 1)` where `total_display_lines` is obtained from `display-line-mapping` (or equals the document line count when no mapping is active). [FFE-SCROLL]
+10. THE viewport model SHALL compute `max_top_line` as `max(1, total_display_lines - visible_count + 1)` where `total_display_lines` is obtained from `display-line-mapping` (or equals the document line/record count when no mapping is active). REVISED (CR-CH-058): the total line/record count MAY be an ESTIMATED (still-counting) value supplied by the document model while a background delimited/variable index scan is incomplete; `max_top_line` SHALL be computed against whichever total is currently known (estimated or exact) and SHALL be recomputed when the exact total is published. The total SHALL come from the index Total_Records, NEVER from the resident window. [FFE-SCROLL, CR-CH-058]
 
 ---
 
@@ -75,6 +75,12 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 **User Story:** As a user navigating a document, I want Page Down, Page Up, Line Down, and Line Up to scroll the viewport predictably with proper clamping, so that I can traverse documents of any size without overshooting boundaries.
 
 **Source:** [FFE-MVP-2] criteria 2–5, 12–17; [SCI-EDIT-2.2] criteria 10, 12, 13.
+
+**REVISION NOTE (CR-CH-058):** All `max_top_line` clamping in this requirement
+now clamps against the possibly-ESTIMATED total line/record count from the
+document index (Req 1.10 as revised), not a known-final count and not the
+resident window. When the exact total is published after a background scan,
+`top_line` SHALL be re-clamped. See Requirement 15.
 
 #### Acceptance Criteria
 
@@ -314,4 +320,26 @@ The viewport model is **owned by the editor session**, NOT by the GUI. This ensu
 14.7 WHEN the active scroll amount is DATA and the user presses Page Down or Page Up, THE editor SHALL scroll by `visible_count - 1` lines (one page minus one overlap line), clamped to document bounds.
 
 14.8 THE SCROLL ===> field SHALL be visible and editable when an editor tab (FileEditor or Untitled) is the active tab, not only when a panel view is active.
+
+---
+
+### Requirement 15: Scrollbar and Extents from Index Total, Not the Resident Window [CR-CH-058]
+
+**User Story:** As a user opening a very large file that loads windowed, I want the scrollbar and scroll limits to reflect the WHOLE file, with an "indexing..." indication while the exact total is still being counted, so that the scrollbar never collapses to the size of the resident window.
+
+**Source:** CR-CH-058 (FOUNDATION-DESIGN section 4), findings.md section 1 and Q8
+
+#### Acceptance Criteria
+
+15.1 THE viewport model SHALL size the vertical scrollbar range and all navigation extents on the document index Total_Records (whole file), NEVER on the count of currently-resident (windowed) records. [CR-CH-058]
+
+15.2 WHILE a background record-boundary scan is in progress, THE viewport model SHALL accept an ESTIMATED total from the document model and SHALL expose an "indexing" indication (percentage or counting state) to the GUI shell so an "indexing... N%" indicator can be shown. [CR-CH-058]
+
+15.3 WHEN the document model publishes the EXACT Total_Records after the scan completes, THE viewport model SHALL snap the scrollbar range and `max_top_line` to the exact total and re-clamp `top_line` if it now exceeds `max_top_line`. [CR-CH-058]
+
+15.4 WHEN the RecordFormat is `Fixed`, THE viewport model SHALL receive an exact Total_Records immediately on open (arithmetic index) with no estimated phase. [CR-CH-058]
+
+15.5 A change of zoom level SHALL NOT change the scrollbar range or Total_Records -- zoom affects only how many resident records are rendered, never which are loaded or the document extent. [CR-CH-058]
+
+15.6 THE scrollbar fraction/thumb computation SHALL remain a pure function of the (possibly estimated) Total_Records, `top_line`, `visible_count`, and `max_top_line`, with no dependency on resident-window size or GUI state. [CR-CH-058, WB]
 

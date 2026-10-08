@@ -240,3 +240,18 @@ This plan implements the `ff-display-line-mapping` crate -- the core editor infr
   ]
 }
 ```
+
+
+---
+
+## CR-CH-058 Tasks -- Record-Oriented Lines and Estimated Totals
+
+- [ ] 14. Record-oriented document lines and estimated totals (F3)
+  - [ ] 14.1 Source `lines_in_doc()` total from the document index Total_Records; accept an estimated total and keep one-to-one identity mapping consistent
+    - // Validates: Requirement 11.1, 11.2
+  - [ ] 14.2 Apply the estimated->exact Total_Records transition as a total-count adjustment preserving visibility/fold/height for surviving records
+    - // Validates: Requirement 11.3
+  - [ ] 14.3 Confirm the mapping never requires resident record bytes; select 64-bit Large_Document_Mode when Total_Records exceeds the 32-bit range
+    - // Validates: Requirement 11.4, 11.5
+  - [ ] 14.4 Write failing unit tests first: estimated-total identity; estimated->exact preserves state; 64-bit selection at large totals
+  - Covers: Requirement 11 (AC 11.1-11.5)
