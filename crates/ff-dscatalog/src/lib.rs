@@ -61,7 +61,9 @@ pub mod service;
 pub mod storage;
 pub mod transactions;
 pub mod vfs_provider;
+pub(crate) mod vsam_backend;
 pub mod vsam_service;
+pub mod vsam_service_impl;
 
 // Re-exports for public API
 pub use catalog::{Catalog, CatalogLocation, CatalogMount};
@@ -87,3 +89,4 @@ pub use vsam_service::{
     AccessMode, BrowseDirection, BrowseHandle, KeyField, Record, StubVsamService, VsamCluster,
     VsamError, VsamHandle, VsamParams, VsamService, VsamType,
 };
+pub use vsam_service_impl::CatalogVsamService;

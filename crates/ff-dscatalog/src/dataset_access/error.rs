@@ -104,10 +104,11 @@ pub enum DatasetError {
         reason: String,
     },
 
-    /// A VSAM record operation is defined but its concrete wiring is deferred to
-    /// RC.B.7 (Requirement 35.3). The seam is reachable; the record op is not
-    /// yet implemented.
-    #[error("dataset access: operation not yet wired (RC.B.7): {operation}")]
+    /// A dataset operation whose concrete wiring is not yet available. No
+    /// producer remains now that the VSAM keyed/relative record ops are wired
+    /// (CR-CH-059 RC.B.7); the variant is retained on the `#[non_exhaustive]`
+    /// contract for any future deferred operation.
+    #[error("dataset access: operation not yet wired: {operation}")]
     NotYetWired {
         /// The operation whose concrete wiring is deferred.
         operation: String,

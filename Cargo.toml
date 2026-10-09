@@ -55,7 +55,6 @@ members = [
     "crates/ff-dsalloc",
     "crates/ff-idcams",
     "crates/ff-dataset-catalog",
-    "crates/ff-vsam-services",
     "crates/ff-governance-tests",
     "crates/ff-dscatalog",
     "crates/ff-volume",

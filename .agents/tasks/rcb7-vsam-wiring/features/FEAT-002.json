@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Close the deferred resolve-by-DSN capability (dataset-allocator Req 19.3 / Task 21.3, dataset-catalog Req 34). Add an object-safe resolve(dsn,intent)->DatasetHandle to DatasetAccess (resolving via catalog -> ff-volume -> locator with the Online check, same seam as allocate/open), add a resolve seam to the ff-dsalloc DatasetAllocator bridge, and reshape AllocationOutcome::{Verified,Passed} to carry an opaque DatasetHandle instead of physical_path. Propagate through pipeline.rs/command.rs; the RESOLVE panel now shows the DSN identity instead of a raw path for Verified/Passed (the intended Req 19.3 user-visible change) -- panel tests assert the new display. Independent of FEAT-001 in code, but shares ff-dscatalog so runs after it.",
+  "status": "pending",
+  "steps": [
+    "READ context.json and this FEAT file FIRST.",
+    "Add fn resolve(&self, dsn: &str, intent: AccessIntent) -> Result<DatasetHandle, DatasetError> to the DatasetAccess trait (trait_def.rs) and implement on CatalogDatasetAccess (impl_access.rs or impl_io.rs): resolve via catalog -> ff-volume -> locator with the SAME Online check as open/allocate, returning an opaque handle (no raw path). Keep object-safe. Add a CatalogDatasetAccess convenience if ff-dsalloc needs to resolve without naming ff-volume types. Write FAILING tests first in impl_access_tests.rs (allocate then resolve(dsn) returns a handle whose dsn() matches; unknown DSN -> NotFound; dyn DatasetAccess can call resolve). RED then GREEN.",
+    "Add fn resolve(&self, dsn: &str) -> Result<DatasetHandle, CatalogError> to the DatasetAllocator trait in ff-dsalloc/src/catalog_bridge.rs and implement on MockDatasetAllocator by driving the real CatalogDatasetAccess so it yields a genuine opaque handle. Write the failing test dataset_allocator_resolve_yields_handle first. Keep the trait object-safe.",
+    "Reshape AllocationOutcome in ff-dsalloc/src/allocation.rs: Verified { handle: ff_dscatalog::DatasetHandle, catalog_name, dataset_type } and Passed { handle: ff_dscatalog::DatasetHandle, passing_step } (drop physical_path). In simulate_allocation, the DISP=OLD/SHR/MOD verified path and the PASS path call allocator.resolve(&dsn_str) to acquire the handle instead of reading first.physical_path / pass_entry.physical_path. PassTable tracks the DSN identity. Write failing tests first: verified_outcome_carries_handle_not_path, passed_outcome_carries_handle; keep live_new_allocation_returns_handle_not_path and dry_run_acquires_no_handle green.",
+    "Update ff-dsalloc/src/pipeline.rs: the Verified->Resolved and Passed->Resolved arms read handle.dsn() and build the panel display via dsn_display_path(handle.dsn()) (the Option-A helper RC.B.6 already uses for Allocated) rather than a raw physical_path. Keep ResolutionOutcome as the string-shaped pipeline/panel DTO (the handle stays inside ff-dsalloc). Do NOT edit the pre-existing non-ASCII arrow in the GdgResolved arm.",
+    "Update ff-dsalloc/src/command.rs resolve_single_dsn to build the Resolved display from the resolved DSN (allocator.resolve + dsn_display_path), threading &dyn DatasetAllocator (already available in execute_resolve_command) rather than CatalogProvider::lookup_dsn().physical_path.",
+    "Update ff-dsalloc/src/panel.rs tests that assert a raw physical_path (e.g. panel_model_from_resolve_output using /data/my/data) to assert the new DSN-derived path_or_message; add a test proving a Verified-sourced resolved row shows the DSN identity not a raw storage path. result_to_row changes only if a display tweak is needed.",
+    "Run scoped checks for ff-dscatalog + ff-dsalloc (fmt, check --all-targets, clippy -D warnings, test) and cargo check -p ff-desktop --all-targets (regression guard). Read each log; fix and re-run until clean. Set status completed and record findings (new resolve method name/signature) for FEAT-003/finalize.",
+    "GUARD: if closing resolve-by-DSN appears to force an ff-idcams CODE change or any RC.B.8 scope, STOP and call send_message severity warning describing the blocker; do NOT cross into RC.B.8."
+  ],
+  "acceptance_criteria": [
+    "DatasetAccess has an object-safe resolve-by-DSN returning an opaque DatasetHandle; cargo test -p ff-dscatalog resolve tests pass and the dyn object-safety guard still compiles.",
+    "AllocationOutcome::Verified and ::Passed carry a DatasetHandle (no physical_path field); cargo test -p ff-dsalloc passes incl. verified_outcome_carries_handle_not_path and passed_outcome_carries_handle; live/dry-run handle tests still pass.",
+    "The RESOLVE panel display for Verified/Passed-derived rows is DSN-derived (not a raw storage path); panel.rs tests assert the new display and pass.",
+    "cargo check -p ff-desktop --all-targets is clean (no external consumer of the reshaped outcomes broke).",
+    "No rusqlite import appears in ff-dsalloc; resolution flows only through the mockable DatasetAllocator/CatalogProvider traits. clippy -D warnings and fmt --check clean; edited .rs regions strict ASCII."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-dscatalog -p ff-dsalloc\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo clippy -p ff-dscatalog -p ff-dsalloc -- -D warnings\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo check -p ff-desktop --all-targets\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo fmt\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

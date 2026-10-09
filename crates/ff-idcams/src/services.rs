@@ -318,7 +318,7 @@ pub trait CatalogService: Send + Sync {
     fn import_dataset(&self, params: ImportParams) -> Result<ImportResult, CatalogError>;
 }
 
-/// Trait for VSAM operations — implemented by ff-vsam-services.
+/// Trait for VSAM operations -- implemented by ff-dscatalog.
 ///
 /// ff-idcams depends on this trait only, never on the concrete implementation.
 pub trait VsamService: Send + Sync {

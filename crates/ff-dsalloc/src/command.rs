@@ -75,7 +75,7 @@ pub fn execute_resolve_command(
 
     // Direct DSN resolution (no JCL context)
     if let Some(ref dsn) = params.dsn {
-        return resolve_single_dsn(dsn, &effective_config, catalog);
+        return resolve_single_dsn(dsn, &effective_config, catalog, allocator);
     }
 
     // Full document resolution
@@ -91,34 +91,55 @@ pub fn execute_resolve_command(
 }
 
 /// Resolve a single DSN against catalogs without JCL context.
+///
+/// The displayed path is DSN-derived (via the resolve seam + `dsn_display_path`)
+/// so the RESOLVE panel shows the DSN identity, never a raw storage path
+/// (dataset-allocator Requirement 19.3). The catalog is still consulted first
+/// to distinguish a genuinely-unknown DSN from a resolvable one.
 fn resolve_single_dsn(
     dsn: &str,
     _config: &ResolverConfig,
     catalog: &dyn CatalogProvider,
+    allocator: &dyn DatasetAllocator,
 ) -> ResolveCommandResult {
     match catalog.lookup_dsn(dsn) {
         Ok(matches) if !matches.is_empty() => {
             let first = &matches[0];
-            let mut output = ResolveOutput::new();
-            output.results.push(crate::pipeline::ResolutionResult {
-                ddname: String::new(),
-                step_name: String::new(),
-                original_dsn: Some(dsn.to_string()),
-                substituted_dsn: Some(dsn.to_string()),
-                outcome: crate::pipeline::ResolutionOutcome::Resolved {
-                    physical_path: first.physical_path.clone(),
-                    catalog_name: first.catalog_name.clone(),
-                    dataset_type: crate::pipeline::DatasetType::Ps,
+            let catalog_name = first.catalog_name.clone();
+            match allocator.resolve(dsn) {
+                Ok(handle) => {
+                    let mut output = ResolveOutput::new();
+                    output.results.push(crate::pipeline::ResolutionResult {
+                        ddname: String::new(),
+                        step_name: String::new(),
+                        original_dsn: Some(dsn.to_string()),
+                        substituted_dsn: Some(dsn.to_string()),
+                        outcome: crate::pipeline::ResolutionOutcome::Resolved {
+                            physical_path: crate::pipeline::dsn_display_path(handle.dsn()),
+                            catalog_name,
+                            dataset_type: crate::pipeline::DatasetType::Ps,
+                        },
+                        concatenation_index: 0,
+                    });
+                    output.compute_summary();
+                    let summary = output.summary;
+                    ResolveCommandResult {
+                        success: true,
+                        error: None,
+                        output: Some(output),
+                        summary,
+                    }
+                }
+                Err(e) => ResolveCommandResult {
+                    success: false,
+                    error: Some(format!("Resolve failed: {}", e)),
+                    output: None,
+                    summary: ResolveSummary {
+                        total_dds: 1,
+                        errors: 1,
+                        ..Default::default()
+                    },
                 },
-                concatenation_index: 0,
-            });
-            output.compute_summary();
-            let summary = output.summary;
-            ResolveCommandResult {
-                success: true,
-                error: None,
-                output: Some(output),
-                summary,
             }
         }
         Ok(_) => ResolveCommandResult {

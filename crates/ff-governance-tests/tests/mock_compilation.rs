@@ -9,8 +9,8 @@
 
 use std::path::PathBuf;
 
-// CR-CH-059 RC.A.2: repointed from ff_dataset_catalog / ff_vsam_services to the
-// reconciled ff-dscatalog traits + types (dataset-catalog Requirement 33.6, 33.7).
+// CR-CH-059: these mocks use the reconciled ff-dscatalog traits + types, the
+// single VSAM/catalog authority (dataset-catalog Requirement 33.6, 33.7).
 use ff_dscatalog::{
     AccessMode, BrowseDirection, BrowseHandle, CatalogError, CatalogService, DatasetAttributes,
     DatasetEntry, DatasetFilter, DatasetId, DsnValidationError, Dsorg, DynCatalogService,

@@ -13,7 +13,7 @@ use crate::job_model::JclJob;
 
 /// DSN-derived display path for the panel; keeps the handle locator unexposed
 /// while preserving the path-shaped display (Req 19.3 Option A).
-fn dsn_display_path(dsn: &str) -> String {
+pub(crate) fn dsn_display_path(dsn: &str) -> String {
     format!("/data/{}", dsn.to_lowercase().replace('.', "/"))
 }
 
@@ -352,8 +352,10 @@ fn resolve_single_dd(
                     );
                     diagnostics.extend(alloc_diags);
                     match alloc_outcome {
+                        // Req 19.3 (A): opaque handle; panel display kept
+                        // path-shaped via the DSN (locator not exposed).
                         crate::allocation::AllocationOutcome::Verified {
-                            physical_path,
+                            handle,
                             catalog_name,
                             dataset_type,
                         } => {
@@ -363,7 +365,7 @@ fn resolve_single_dd(
                                 crate::catalog_bridge::CatalogDatasetType::Gdg => DatasetType::Gdg,
                             };
                             ResolutionOutcome::Resolved {
-                                physical_path,
+                                physical_path: dsn_display_path(handle.dsn()),
                                 catalog_name,
                                 dataset_type: dt,
                             }
@@ -383,11 +385,12 @@ fn resolve_single_dd(
                                 catalog_name: "dry-run".to_string(),
                             }
                         }
+                        // Req 19.3 (A): opaque handle; DSN-derived display.
                         crate::allocation::AllocationOutcome::Passed {
-                            physical_path,
+                            handle,
                             passing_step,
                         } => ResolutionOutcome::Resolved {
-                            physical_path,
+                            physical_path: dsn_display_path(handle.dsn()),
                             catalog_name: format!("passed from {}", passing_step),
                             dataset_type: DatasetType::Ps,
                         },

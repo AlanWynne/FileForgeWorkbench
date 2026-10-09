@@ -7,14 +7,15 @@
 //! encodes/decodes records with the RECFM codecs. It introduces no second
 //! dispatcher, navigation stack, or persistence format.
 //!
-//! The concrete `CatalogDatasetAccess` wires the NON-VSAM (PS/PO sequential +
-//! member) paths end-to-end. The VSAM keyed/relative record ops are DEFINED
-//! with their backend seam reachable but return `DatasetError::NotYetWired`
-//! (RC.B.7 owns the concrete VSAM wiring; this run does not enter that scope).
+//! The concrete `CatalogDatasetAccess` wires both the sequential (PS/PO +
+//! member) paths and the VSAM keyed/relative record ops end-to-end: VSAM
+//! clusters open over an in-crate `VsamBackend` (KSDS/ESDS/RRDS) and `point` /
+//! `get` / `put` operate at the keyed/relative position (see `impl_vsam.rs`).
 
 mod error;
 mod impl_access;
 mod impl_io;
+mod impl_vsam;
 mod trait_def;
 mod types;
 
@@ -22,6 +23,8 @@ mod types;
 mod impl_access_tests;
 #[cfg(test)]
 mod impl_io_tests;
+#[cfg(test)]
+mod impl_vsam_tests;
 
 pub use error::DatasetError;
 pub use impl_access::CatalogDatasetAccess;

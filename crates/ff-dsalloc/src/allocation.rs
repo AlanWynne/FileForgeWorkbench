@@ -28,8 +28,6 @@ pub struct PassEntry {
     pub dsn: String,
     /// Step that passed this dataset.
     pub passing_step: String,
-    /// Resolved physical path.
-    pub physical_path: String,
 }
 
 impl PassTable {
@@ -38,14 +36,15 @@ impl PassTable {
         Self::default()
     }
 
-    /// Record a dataset as passed.
-    pub fn record_pass(&mut self, dsn: &str, step: &str, path: &str) {
+    /// Record a dataset as passed. The pass table tracks the DSN identity (not
+    /// a raw physical path); the opaque handle is re-acquired via the allocator
+    /// resolve seam when the dataset is later picked up (Requirement 19.3).
+    pub fn record_pass(&mut self, dsn: &str, step: &str) {
         self.entries.insert(
             dsn.to_uppercase(),
             PassEntry {
                 dsn: dsn.to_uppercase(),
                 passing_step: step.to_string(),
-                physical_path: path.to_string(),
             },
         );
     }
@@ -60,8 +59,12 @@ impl PassTable {
 #[derive(Debug, Clone, PartialEq)]
 pub enum AllocationOutcome {
     /// Dataset exists and was verified (DISP=OLD/SHR).
+    ///
+    /// Carries an opaque `ff_dscatalog::DatasetHandle` obtained via the
+    /// `DatasetAllocator::resolve` seam, NOT a raw physical path
+    /// (dataset-allocator Requirement 19.3, 34.5).
     Verified {
-        physical_path: String,
+        handle: ff_dscatalog::DatasetHandle,
         catalog_name: String,
         dataset_type: CatalogDatasetType,
     },
@@ -78,8 +81,12 @@ pub enum AllocationOutcome {
     /// New dataset would be allocated (DISP=NEW, dry-run mode).
     WouldAllocate { dsn: String },
     /// Dataset passed from a prior step.
+    ///
+    /// Carries an opaque `ff_dscatalog::DatasetHandle` obtained via the
+    /// `DatasetAllocator::resolve` seam, NOT a raw physical path (Requirement
+    /// 19.3).
     Passed {
-        physical_path: String,
+        handle: ff_dscatalog::DatasetHandle,
         passing_step: String,
     },
     /// No allocation needed (SYSOUT, DUMMY, inline).
@@ -160,11 +167,7 @@ pub fn simulate_allocation(
                                     // the (unchanged) Verified/Passed display;
                                     // the opaque handle carries the identity.
                                     if disp.normal_disp == Some(DispAction::Pass) {
-                                        let path = format!(
-                                            "/data/{}",
-                                            dsn_str.to_lowercase().replace('.', "/")
-                                        );
-                                        pass_table.record_pass(&dsn_str, &dd.step_name, &path);
+                                        pass_table.record_pass(&dsn_str, &dd.step_name);
                                     }
                                     return (
                                         AllocationOutcome::Allocated {
@@ -190,9 +193,7 @@ pub fn simulate_allocation(
                         }
                         ResolveMode::DryRun => {
                             if disp.normal_disp == Some(DispAction::Pass) {
-                                let path =
-                                    format!("/data/{}", dsn_str.to_lowercase().replace('.', "/"));
-                                pass_table.record_pass(&dsn_str, &dd.step_name, &path);
+                                pass_table.record_pass(&dsn_str, &dd.step_name);
                             }
                             return (
                                 AllocationOutcome::WouldAllocate { dsn: dsn_str },
@@ -219,31 +220,63 @@ pub fn simulate_allocation(
         DispStatus::Old | DispStatus::Shr => {
             // Check pass table first
             if let Some(pass_entry) = pass_table.lookup(&dsn_str) {
-                return (
-                    AllocationOutcome::Passed {
-                        physical_path: pass_entry.physical_path.clone(),
-                        passing_step: pass_entry.passing_step.clone(),
-                    },
-                    diagnostics,
-                );
+                let passing_step = pass_entry.passing_step.clone();
+                // Re-acquire the opaque handle via the resolve seam (Req 19.3)
+                // instead of carrying a raw physical path.
+                match allocator.resolve(&dsn_str) {
+                    Ok(handle) => {
+                        return (
+                            AllocationOutcome::Passed {
+                                handle,
+                                passing_step,
+                            },
+                            diagnostics,
+                        );
+                    }
+                    Err(e) => {
+                        diagnostics.push(
+                            LintDiagnostic::new(
+                                DiagnosticCode::CatalogQueryFailed,
+                                dd.line_number,
+                                dd.column_range,
+                                format!("Resolve failed: {}", e),
+                            )
+                            .with_ddname(&dd.ddname),
+                        );
+                        return (AllocationOutcome::Skipped, diagnostics);
+                    }
+                }
             }
 
             // Verify dataset exists in catalog
             match catalog.dataset_exists(&dsn_str) {
                 Ok(true) => {
+                    // Acquire the opaque handle via the resolve seam (Req 19.3)
+                    // instead of reading a raw physical path from the catalog.
+                    let handle = match allocator.resolve(&dsn_str) {
+                        Ok(handle) => handle,
+                        Err(e) => {
+                            diagnostics.push(
+                                LintDiagnostic::new(
+                                    DiagnosticCode::CatalogQueryFailed,
+                                    dd.line_number,
+                                    dd.column_range,
+                                    format!("Resolve failed: {}", e),
+                                )
+                                .with_ddname(&dd.ddname),
+                            );
+                            return (AllocationOutcome::Skipped, diagnostics);
+                        }
+                    };
+                    if disp.normal_disp == Some(DispAction::Pass) {
+                        pass_table.record_pass(&dsn_str, &dd.step_name);
+                    }
                     match catalog.lookup_dsn(&dsn_str) {
                         Ok(matches) if !matches.is_empty() => {
                             let first = &matches[0];
-                            if disp.normal_disp == Some(DispAction::Pass) {
-                                pass_table.record_pass(
-                                    &dsn_str,
-                                    &dd.step_name,
-                                    &first.physical_path,
-                                );
-                            }
                             return (
                                 AllocationOutcome::Verified {
-                                    physical_path: first.physical_path.clone(),
+                                    handle,
                                     catalog_name: first.catalog_name.clone(),
                                     dataset_type: first.dataset_type,
                                 },
@@ -251,10 +284,11 @@ pub fn simulate_allocation(
                             );
                         }
                         _ => {
-                            // Has entry but lookup failed — still report as verified
+                            // Has entry but lookup detail missing -- still
+                            // report as verified with the resolved handle.
                             return (
                                 AllocationOutcome::Verified {
-                                    physical_path: String::new(),
+                                    handle,
                                     catalog_name: String::new(),
                                     dataset_type: CatalogDatasetType::Ps,
                                 },
@@ -296,16 +330,30 @@ pub fn simulate_allocation(
         DispStatus::Mod => {
             // MOD: verify existence for append; if not found AND SPACE provided, treat as NEW
             match catalog.dataset_exists(&dsn_str) {
-                Ok(true) => {
-                    return (
-                        AllocationOutcome::Verified {
-                            physical_path: String::new(),
-                            catalog_name: String::new(),
-                            dataset_type: CatalogDatasetType::Ps,
-                        },
-                        diagnostics,
-                    );
-                }
+                Ok(true) => match allocator.resolve(&dsn_str) {
+                    Ok(handle) => {
+                        return (
+                            AllocationOutcome::Verified {
+                                handle,
+                                catalog_name: String::new(),
+                                dataset_type: CatalogDatasetType::Ps,
+                            },
+                            diagnostics,
+                        );
+                    }
+                    Err(e) => {
+                        diagnostics.push(
+                            LintDiagnostic::new(
+                                DiagnosticCode::CatalogQueryFailed,
+                                dd.line_number,
+                                dd.column_range,
+                                format!("Resolve failed: {}", e),
+                            )
+                            .with_ddname(&dd.ddname),
+                        );
+                        return (AllocationOutcome::Skipped, diagnostics);
+                    }
+                },
                 Ok(false) => {
                     if dd.space.is_some() {
                         // Treat as NEW
@@ -653,6 +701,91 @@ mod tests {
             matches!(outcome, AllocationOutcome::WouldAllocate { .. }),
             "dry-run must not acquire a handle"
         );
+    }
+
+    #[test]
+    fn verified_outcome_carries_handle_not_path() {
+        // Validates: Requirement 19.3 -- DISP=OLD on an existing dataset yields
+        // a Verified outcome carrying an opaque handle, not a physical path.
+        let mut catalog = MockCatalog::new();
+        catalog.add_dataset(
+            "OLD.VERIFY.DS",
+            "/data/old/verify/ds",
+            CatalogDatasetType::Ps,
+            "PROD",
+        );
+        let config = ResolverConfig::default();
+        let mut pass_table = PassTable::new();
+        let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
+        let dd = make_dd(
+            "OLD.VERIFY.DS",
+            DispParameter {
+                status: DispStatus::Old,
+                normal_disp: Some(DispAction::Keep),
+                abnormal_disp: None,
+            },
+        );
+        let (outcome, _diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
+        match outcome {
+            AllocationOutcome::Verified { handle, .. } => {
+                assert_eq!(handle.dsn(), "OLD.VERIFY.DS");
+            }
+            other => panic!("expected Verified with a handle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn passed_outcome_carries_handle() {
+        // Validates: Requirement 19.3 -- a dataset PASSed by a prior step and
+        // picked up with DISP=OLD yields a Passed outcome carrying an opaque
+        // handle, not a physical path.
+        let mut catalog = MockCatalog::new();
+        catalog.add_dataset(
+            "PASS.PICK.DS",
+            "/data/pass/pick/ds",
+            CatalogDatasetType::Ps,
+            "PROD",
+        );
+        let config = ResolverConfig::default();
+        let mut pass_table = PassTable::new();
+        let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
+        // Record a prior PASS of the DSN, then pick it up with DISP=OLD.
+        pass_table.record_pass("PASS.PICK.DS", "STEP0");
+        let dd = make_dd(
+            "PASS.PICK.DS",
+            DispParameter {
+                status: DispStatus::Old,
+                normal_disp: Some(DispAction::Keep),
+                abnormal_disp: None,
+            },
+        );
+        let (outcome, _diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
+        match outcome {
+            AllocationOutcome::Passed {
+                handle,
+                passing_step,
+            } => {
+                assert_eq!(handle.dsn(), "PASS.PICK.DS");
+                assert_eq!(passing_step, "STEP0");
+            }
+            other => panic!("expected Passed with a handle, got {other:?}"),
+        }
     }
 
     #[test]

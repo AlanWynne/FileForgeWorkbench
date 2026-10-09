@@ -432,15 +432,15 @@ This task plan implements the `ff-dataset-allocator` crate -- the JCL Dataset Al
 
 > Phase RC.B step 6 (allocator side). Retarget the `catalog_bridge` from the wrongly-named `ff-dataset-catalog` to `ff-dscatalog` and return a `DatasetHandle` via `DatasetAccess` instead of a raw `physical_path`. The resolution pipeline, DISP semantics, and the CR-CH-057 Volume charging flow (Task 19) are preserved. All tasks `[ ]`; TDD-first; SCOPED `-p ff-dsalloc` checks. Sequenced AFTER dataset-catalog Tasks 38 + 40 and BEFORE dataset-catalog Task 42 (ff-dataset-catalog deletion).
 
-- [ ] 21. Retarget catalog_bridge to ff-dscatalog and return a DatasetHandle
+- [x] 21. Retarget catalog_bridge to ff-dscatalog and return a DatasetHandle
   - NOTE (RC.B.6, Option A): the live DISP=NEW allocate path now returns an opaque `DatasetHandle` via `DatasetAccess`; `AllocationOutcome::Allocated` carries the handle. The `Verified`/`Passed` variants (existing-dataset resolution via catalog lookup / pass table, NOT via allocate) still carry `physical_path` -- handle-ising them needs a resolve-by-DSN -> handle on `DatasetAccess` that is intentionally NOT in the RC.B.6 contract. Task 21.3 therefore stays `[ ]` (partial); its Verified/Passed half is DEFERRED to RC.B.7 (when `DatasetAccess` gains resolve-by-DSN). The RESOLVE panel display is intentionally unchanged (no user-visible behaviour change in RC.B.6).
   - [x] 21.1 Correct the `catalog_bridge` source and doc comments that name `ff-dataset-catalog` to `ff-dscatalog`; bind the local `CatalogProvider`/`CatalogResolver` trait to the reconciled `CatalogService` (dataset-catalog Requirement 33).
     - Validates: Requirement 19.1
   - [x] 21.2 Change allocation to obtain a `DatasetHandle` via `DatasetAccess` (dataset-catalog Requirement 34) for DISP=NEW/MOD-as-NEW, instead of returning a raw `physical_path`.
     - Validates: Requirement 19.2
-  - [ ] 21.3 Reshape `AllocationOutcome::{Verified, Allocated}` to carry an opaque `DatasetHandle`; update downstream consumers to use the handle.
-    - PARTIAL (Option A): `Allocated { handle }` done; `Verified`/`Passed` handle-isation DEFERRED to RC.B.7 (needs `DatasetAccess` resolve-by-DSN).
-    - Validates: Requirement 19.3 (partial)
+  - [x] 21.3 Reshape `AllocationOutcome::{Verified, Allocated, Passed}` to carry an opaque `DatasetHandle`; update downstream consumers to use the handle.
+    - DONE (RC.B.7 FEAT-002): `Allocated`/`Verified`/`Passed` all carry a handle; `Verified`/`Passed` resolve by DSN via `DatasetAccess` (`verified_outcome_carries_handle_not_path`, `passed_outcome_carries_handle`).
+    - Validates: Requirement 19.3
   - [x] 21.4 Confirm the allocator still depends on the catalog via a mockable trait and still has NO `rusqlite` import.
     - Validates: Requirement 19.4
   - [x] 21.5 Preserve dry-run vs live `ResolveMode` and the Task 19 Volume charging/failure semantics: dry-run reports what WOULD be allocated (no live handle); live acquires the handle via `DatasetAccess`.

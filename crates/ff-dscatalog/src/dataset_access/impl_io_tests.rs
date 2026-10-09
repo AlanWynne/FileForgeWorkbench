@@ -1,5 +1,6 @@
-//! Tests for `DatasetAccess` error mapping, object-safety, the deferred VSAM
-//! point() paths, and dispose (CR-CH-059, Requirement 34.1/34.7/34.8).
+//! Tests for `DatasetAccess` error mapping, object-safety, the wired VSAM
+//! keyed/relative point() paths, and dispose (CR-CH-059, Requirement
+//! 34.1/34.2/34.7/34.8/35.3).
 //!
 //! Split from `impl_access_tests.rs` to keep each test file under the ~200-line
 //! testing.md guidance.
@@ -18,6 +19,8 @@ use super::trait_def::DatasetAccess;
 use super::types::{AccessIntent, DdRequest, Positioner, StepOutcome};
 use crate::dataset::{Dsorg, Recfm};
 use crate::error::CatalogError;
+use crate::vsam_service::{VsamParams, VsamType};
+use crate::Record;
 
 // === Fixtures ===================================================
 
@@ -111,40 +114,79 @@ fn dataset_access_is_object_safe_as_dyn() {
     assert_eq!(handle.dsn(), "USR.DYN");
 }
 
-// === VSAM paths DEFINED, concrete op deferred (Req 34.1; RC.B.7 deferred) ============
+// === VSAM keyed/relative record ops wired (Req 34.1, 34.2, 35.3) ============
 
 #[test]
-fn point_on_ksds_returns_not_yet_wired() {
-    // Validates: Requirement 34.1 (defined); RC.B.7 deferral
+fn point_on_ksds_round_trips_keyed_record() {
+    // Validates: Requirement 34.1 -- KSDS keyed read-after-write through
+    // point + put + get; boundaries come from the backend, not CRLF.
     let dir = TempDir::new().unwrap();
     let a = access(&dir, 1000);
     let handle = a
         .allocate(&dd("USR.KSDS", Recfm::F, 10, Dsorg::PS))
         .expect("allocate");
-    let mut open = a.open(&handle, AccessIntent::Read).expect("open");
-    let err = a
-        .point(&mut open, &Positioner::Key(b"KEY1".to_vec()))
-        .expect_err("not yet wired");
-    assert!(
-        matches!(err, DatasetError::NotYetWired { .. }),
-        "got {err:?}"
-    );
+    let params = VsamParams {
+        key_length: Some(4),
+        key_offset: Some(0),
+        record_length: Some(10),
+        slot_size: None,
+    };
+    let mut open = a
+        .open_vsam(&handle, VsamType::Ksds, &params, AccessIntent::Update)
+        .expect("open vsam");
+    a.point(&mut open, &Positioner::Key(b"KEY1".to_vec()))
+        .expect("point");
+    a.put(
+        &mut open,
+        &Record {
+            key: b"KEY1".to_vec(),
+            data: b"A\r\nB".to_vec(),
+        },
+    )
+    .expect("put");
+    a.point(&mut open, &Positioner::Key(b"KEY1".to_vec()))
+        .expect("re-point");
+    let read = a.get(&mut open).expect("get").expect("present");
+    assert_eq!(read.key, b"KEY1".to_vec());
+    assert_eq!(read.data, b"A\r\nB".to_vec(), "record survives CR/LF bytes");
 }
 
 #[test]
-fn point_relative_rrds_returns_not_yet_wired() {
-    // Validates: Requirement 34.1 (defined); RC.B.7 deferral
+fn point_relative_rrds_round_trips_and_rejects_rrn_zero() {
+    // Validates: Requirement 34.1 -- RRDS point(Rrn) put/get; RRN 0 rejected
     let dir = TempDir::new().unwrap();
     let a = access(&dir, 1000);
     let handle = a
         .allocate(&dd("USR.RRDS", Recfm::F, 10, Dsorg::PS))
         .expect("allocate");
-    let mut open = a.open(&handle, AccessIntent::Read).expect("open");
+    let mut open = a
+        .open_vsam(
+            &handle,
+            VsamType::Rrds,
+            &VsamParams::default(),
+            AccessIntent::Update,
+        )
+        .expect("open vsam");
+    a.point(&mut open, &Positioner::Rrn(5)).expect("point");
+    a.put(
+        &mut open,
+        &Record {
+            key: Vec::new(),
+            data: b"five".to_vec(),
+        },
+    )
+    .expect("put");
+    a.point(&mut open, &Positioner::Rrn(5)).expect("re-point");
+    assert_eq!(
+        a.get(&mut open).expect("get").expect("present").data,
+        b"five"
+    );
+
     let err = a
-        .point(&mut open, &Positioner::Rrn(5))
-        .expect_err("not yet wired");
+        .point(&mut open, &Positioner::Rrn(0))
+        .expect_err("rrn 0 rejected");
     assert!(
-        matches!(err, DatasetError::NotYetWired { .. }),
+        matches!(err, DatasetError::BadPositioner { .. }),
         "got {err:?}"
     );
 }

@@ -695,9 +695,9 @@ These tasks consolidate the drifted dataset stack onto `ff-dscatalog` as the sin
     - DEFERRED (RC.B.7): the concrete VSAM keyed point (KSDS) and relative point (RRDS) record ops. The `point()` method is DEFINED and object-safe; it returns a typed `NotYetWired` error today (tests `point_on_ksds_returns_not_yet_wired` / `point_relative_rrds_returns_not_yet_wired`), with the concrete get/put/browse over the KSDS/ESDS/RRDS backends landing in Task 41 (RC.B.7).
     - Validates: Requirement 34.1, 34.2, 34.3, 34.4, 34.5, 34.6, 34.7, 34.8 (keyed/relative VSAM record ops deferred to RC.B.7); volume-model Requirement 12.1-12.4
 
-- [ ] 41. Wire VSAM under DatasetAccess, then retire ff-vsam-services (RC.B step 7)
-  - [ ] 41.1 Implement the concrete reconciled `VsamService` get/put/browse over the KSDS/ESDS/RRDS backends through `DatasetAccess` on the unified physical seam.
-  - [ ] 41.2 Remove the `ff-vsam-services` crate and its root `Cargo.toml` member line once no consumer references it; grep-verify no `ff-vsam-services` / `ff_vsam_services` live references.
+- [x] 41. Wire VSAM under DatasetAccess, then retire ff-vsam-services (RC.B step 7)
+  - [x] 41.1 Implement the concrete reconciled `VsamService` get/put/browse over the KSDS/ESDS/RRDS backends through `DatasetAccess` on the unified physical seam.
+  - [x] 41.2 Remove the `ff-vsam-services` crate and its root `Cargo.toml` member line once no consumer references it; grep-verify no `ff-vsam-services` / `ff_vsam_services` live references.
     - Validates: Requirement 35.3; dataset-ownership-model Requirement 22.3
 
 - [ ] 42. Delete ff-dataset-catalog once no consumer references it (RC.A tail step 9)

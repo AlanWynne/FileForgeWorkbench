@@ -11,9 +11,13 @@
 //! Validates: dataset-catalog Requirement 34.1, 34.5; dataset-allocator
 //! Requirement 19.3.
 
+use std::sync::Arc;
+
 use ff_volume::{AllocationUnit, GeometryProfile, VolumeId};
 
 use crate::dataset::{Dsorg, Recfm};
+use crate::vsam_backend::VsamBackend;
+use crate::vsam_service::VsamType;
 
 // === AccessIntent ===================================================
 
@@ -166,6 +170,27 @@ pub struct OpenDataset {
     pub(crate) pending: Vec<Vec<u8>>,
     /// Whether `pending` holds unflushed writes.
     pub(crate) dirty: bool,
+    /// VSAM positioning state for a keyed/relative open. `None` for the
+    /// sequential (PS/PO) path, which does not use a `VsamBackend`.
+    pub(crate) vsam: Option<VsamOpen>,
+}
+
+// === VsamOpen ===================================================
+
+/// The VSAM positioning state carried by a keyed/relative `OpenDataset`
+/// (Requirement 34.1, 35.3).
+///
+/// `point` sets `position`; `get`/`put` then operate at that position over the
+/// shared `VsamBackend`. The backend lives behind an `Arc` so `OpenDataset`
+/// stays `Clone` without duplicating the physical connections.
+#[derive(Debug, Clone)]
+pub(crate) struct VsamOpen {
+    /// The VSAM type selected from the cluster.
+    pub(crate) vsam_type: VsamType,
+    /// The concrete record backend for the open cluster.
+    pub(crate) backend: Arc<VsamBackend>,
+    /// The current position established by `point`, if any.
+    pub(crate) position: Option<Positioner>,
 }
 
 impl OpenDataset {

@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-003",
+  "type": "chore",
+  "description": "Retire the stub-only ff-vsam-services crate (dataset-catalog Task 41.2, ownership Req 22.3, Req 35.3): grep-confirm no code dependency, remove the crates/ff-vsam-services directory and its root Cargo.toml member line, re-express the governance rules/tests against ff-dscatalog (no dangling references, convert edited comment separators to ASCII), and fix the stale doc comments naming ff-vsam-services as the VSAM authority (comment-only; NO ff-idcams trait code change). Then update TCR/tasks/RESUME docs and run the full scoped verification set, ending with the owner full-gate hand-off. MUST run AFTER FEAT-001 (VSAM wired first).",
+  "status": "pending",
+  "steps": [
+    "READ context.json and this FEAT file FIRST. Confirm FEAT-001 is completed (VSAM wired under DatasetAccess) before removing the crate.",
+    "Grep-confirm no shipping crate Cargo.toml lists ff-vsam-services and no .rs has use ff_vsam_services (ff-governance-tests dev-deps only ff-dscatalog). Then delete the crates/ff-vsam-services/ directory and remove the \"crates/ff-vsam-services\", line from root Cargo.toml [workspace].members. Read root Cargo.toml back to confirm absence.",
+    "Re-express governance in crates/ff-governance-tests/src/compliance.rs: replace the two DependencyRule entries with crate_name \"ff-vsam-services\" and the ff-vfs->ff-vsam-services prohibition with rules asserting ff-dscatalog OWNS VSAM and the DAG stays acyclic (ff-dscatalog must not depend on ff-idcams/ff-dsalloc; ff-vfs must not depend on ff-dscatalog), per ownership Req 22.3/22.6. Convert any U+2500 box-drawing comment separators you touch to ASCII // === ... ===.",
+    "Update crates/ff-governance-tests/tests/architecture_compliance.rs: remove/replace ff-vsam-services in required_crates (all_governed_crates_exist) and dataset_crates (prohibited_rules_cover_all_dataset_crates); delete or re-point vsam_services_has_no_upstream_dependencies at ff-dscatalog. Ensure prohibited_rules_cover_all_dataset_crates finds a rule for every crate in its updated list. ASCII-ify any edited separator comments.",
+    "Fix stale doc comments (comment-only): crates/ff-dataset-catalog/src/lib.rs (~line 21) rename the 'owned by ff-vsam-services' VSAM-authority note to ff-dscatalog; crates/ff-idcams/src/services.rs (~line 321) update the doc that says the VSAM trait is implemented by ff-vsam-services to reference the reconciled ff-dscatalog VsamService. Do NOT touch ff-idcams's private VsamService trait CODE or any method (RC.B.8). ASCII only (no em dashes/curly quotes).",
+    "Flip TCR rows in docs/quality/TCR.md: the ff-dscatalog 'Req 34 VSAM point ops DEFERRED/NotYetWired' row -> PASS naming the new VSAM tests; add a PASS row for Req 35.3; the ff-dsalloc 'Req 19.3 PARTIAL/DEFERRED' row -> PASS (Req 19.3 FULL) citing the new handle tests. Use the TCR emoji convention.",
+    "Mark tasks: docs/specs/dataset-catalog/tasks.md Task 41/41.1/41.2 [x]; docs/specs/dataset-allocator/tasks.md Task 21.3 [x] and Task 21 [x] if complete; docs/project-management/project-master/tasks.md RC.B.7 row code-complete-pending-gate. Do NOT mark RC.B.8/Task 42. Checkbox markers only [ ]/[x].",
+    "Update docs/status/RESUME-dataset-rationalisation.md: RC.B.7 code-complete pending the owner's full cargo gate --build (VSAM wired under DatasetAccess; Req 19.3 FULL; ff-vsam-services removed + governance re-expressed; next RC.B.8). ASCII.",
+    "Run the FULL scoped verification set from context.json (fmt; check ff-dscatalog/ff-dsalloc/ff-governance-tests --all-targets; clippy -p ff-dscatalog -p ff-dsalloc -- -D warnings; test ff-dscatalog+ff-dsalloc; test ff-governance-tests; check ff-desktop --all-targets; check ff-volume; confirm root Cargo.toml; check_line_limits.py). Read every log, fix and re-run until clean. Set status completed with findings.",
+    "GUARD: if retiring ff-vsam-services appears to force an ff-idcams CODE change (beyond the doc comment) or any other RC.B.8 scope, STOP and send_message severity warning; do NOT proceed into RC.B.8."
+  ],
+  "acceptance_criteria": [
+    "crates/ff-vsam-services/ is deleted and root Cargo.toml no longer lists it; grep for ff-vsam-services/ff_vsam_services finds only intentional historical/spec text (no code dependency, no 'authority' claim).",
+    "cargo test -p ff-governance-tests passes with no reference to a non-existent crate; all_governed_crates_exist and prohibited_rules_cover_all_dataset_crates pass with the updated crate lists; governance intent re-expressed so ff-dscatalog owns VSAM with the DAG acyclic.",
+    "Stale doc comments in ff-dataset-catalog/src/lib.rs and ff-idcams/src/services.rs name ff-dscatalog as the reconciled VSAM authority; ff-idcams private VsamService trait CODE is unchanged.",
+    "TCR rows for dataset-catalog Req 34 VSAM point ops + Req 35.3 and dataset-allocator Req 19.3 are PASS; the former RC.B.6 PARTIAL/DEFERRED rows are updated in place; Task 41/41.1/41.2 and Task 21.3 (and Task 21 if complete) marked [x]; RC.B.8/Task 42 untouched; RESUME doc updated.",
+    "Every scoped verification command is clean (incl. ff-desktop and ff-volume checks and check_line_limits.py); all edited .rs regions are strict ASCII; no --workspace/cargo gate was run; nothing committed or pushed.",
+    "RC.B.8 scope was not entered (no ff-idcams code repoint, no editor SAVE change, no ff-dataset-catalog deletion)."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-governance-tests\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo check -p ff-dscatalog -p ff-dsalloc -p ff-governance-tests --all-targets\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo check -p ff-volume\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-dscatalog -p ff-dsalloc\"",
+    "C:\\tools\\python\\python.exe tools\\python\\check_line_limits.py  (redirect+read)",
+    "read root Cargo.toml and confirm ff-vsam-services is absent from [workspace].members"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

@@ -2,11 +2,12 @@
 //! the `DatasetAccess` trait impl (CR-CH-059, Requirement 34).
 //!
 //! The sequential (PS/PO) paths are wired end-to-end over the record codecs and
-//! the single `ff_vfs::StorageProvider` seam. The VSAM keyed/relative paths
-//! resolve their Volume + locator (proving the seam is reachable) and then
-//! return `DatasetError::NotYetWired` -- the concrete VSAM record op is RC.B.7.
+//! the single `ff_vfs::StorageProvider` seam. The VSAM keyed/relative paths are
+//! wired over the concrete `VsamBackend` (KSDS/ESDS/RRDS): `get`/`put`/`point`
+//! delegate to the VSAM record path (see `impl_vsam.rs`) when the open dataset
+//! carries VSAM positioning state.
 //!
-//! Validates: dataset-catalog Requirement 34.1, 34.2, 34.3; volume-model
+//! Validates: dataset-catalog Requirement 34.1, 34.2, 34.3, 35.3; volume-model
 //! Requirement 12.1, 12.2, 12.4.
 
 use ff_volume::DatasetId;
@@ -33,9 +34,9 @@ impl CatalogDatasetAccess {
         }
     }
 
-    /// True when the handle addresses a VSAM cluster (keyed/relative). VSAM is
-    /// NOT a `Dsorg` variant; the keyed/relative record op is driven by `point`
-    /// and deferred to RC.B.7.
+    /// True when a positioner is keyed/relative (VSAM). VSAM is NOT a `Dsorg`
+    /// variant; the keyed/relative record op is driven by `point` over the
+    /// cluster's `VsamBackend`.
     fn is_vsam_positioner(positioner: &Positioner) -> bool {
         matches!(positioner, Positioner::Key(_) | Positioner::Rrn(_))
     }
@@ -67,11 +68,15 @@ impl CatalogDatasetAccess {
             cursor: 0,
             pending: Vec::new(),
             dirty: false,
+            vsam: None,
         })
     }
 
     /// Shared `get` implementation (Requirement 34.2).
     fn get_impl(&self, open: &mut OpenDataset) -> Result<Option<Record>, DatasetError> {
+        if open.vsam.is_some() {
+            return self.get_vsam(open);
+        }
         if open.handle.inner.dsorg == Dsorg::GDG {
             return Err(DatasetError::BadPositioner {
                 reason: "GDG base has no sequential records".to_string(),
@@ -91,6 +96,9 @@ impl CatalogDatasetAccess {
 
     /// Shared `put` implementation (Requirement 34.2).
     fn put_impl(&self, open: &mut OpenDataset, record: &Record) -> Result<(), DatasetError> {
+        if open.vsam.is_some() {
+            return self.put_vsam(open, record);
+        }
         if open.intent == AccessIntent::Read {
             return Err(DatasetError::InvalidIntent {
                 reason: "cannot put on a dataset opened for read".to_string(),
@@ -167,23 +175,20 @@ impl CatalogDatasetAccess {
         Ok(())
     }
 
-    /// Shared `point` implementation. The keyed/relative branches resolve the
-    /// Volume + locator (seam reachable) then defer the concrete VSAM record op
-    /// to RC.B.7 (Requirement 34.1; 35.3).
+    /// Shared `point` implementation. For a VSAM open the keyed/relative
+    /// positioner is established over the cluster's backend (Requirement 34.1,
+    /// 35.3); a positioner on a sequential dataset is rejected.
     fn point_impl(
         &self,
         open: &mut OpenDataset,
         positioner: &Positioner,
     ) -> Result<(), DatasetError> {
+        if open.vsam.is_some() {
+            return self.point_vsam(open, positioner);
+        }
         if Self::is_vsam_positioner(positioner) {
-            // Prove the physical seam is reachable, then defer (RC.B.7).
-            let _locator = self.resolve_locator(&open.handle)?;
-            let op = match positioner {
-                Positioner::Key(_) => "point(keyed)",
-                Positioner::Rrn(_) => "point(relative)",
-            };
-            return Err(DatasetError::NotYetWired {
-                operation: op.to_string(),
+            return Err(DatasetError::BadPositioner {
+                reason: "keyed/relative positioner requires a VSAM cluster open".to_string(),
             });
         }
         Err(DatasetError::BadPositioner {
@@ -197,6 +202,10 @@ impl CatalogDatasetAccess {
 impl DatasetAccess for CatalogDatasetAccess {
     fn allocate(&self, dd: &DdRequest) -> Result<DatasetHandle, DatasetError> {
         self.allocate_impl(dd)
+    }
+
+    fn resolve(&self, dsn: &str, intent: AccessIntent) -> Result<DatasetHandle, DatasetError> {
+        self.resolve_impl(dsn, intent)
     }
 
     fn open(

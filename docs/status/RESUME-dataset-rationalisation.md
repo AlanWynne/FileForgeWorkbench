@@ -126,8 +126,42 @@ sign-off); it begins only on an explicit owner "start RC.B".
   edge; any other crate on the old AllocationOutcome shape (grep showed consumers
   are internal to ff-dsalloc).
 - RC.B.6 (define DatasetAccess + retarget ff-dsalloc) -- done above.
-- RC.B.7 (wire VSAM under DatasetAccess, retire ff-vsam-services) -- after B.6.
-- RC.B.8 (repoint ff-idcams + record-aware SAVE, delete ff-dataset-catalog) -- after B.7.
+- RC.B.7 (wire VSAM under DatasetAccess, retire ff-vsam-services) -- DONE,
+  CODE-COMPLETE PENDING the owner's full `cargo gate --build`. Delivered across
+  three slices:
+  - FEAT-001 (completed by a prior workflow that WEDGED on an infra fault, then
+    recovered -- code verified on disk): concrete `VsamService` get/put/browse +
+    `point()` wired over the KSDS/ESDS/RRDS backends through `DatasetAccess`;
+    scoped `cargo test -p ff-dscatalog` = 309 pass incl.
+    `point_on_ksds_round_trips_keyed_record`,
+    `point_relative_rrds_round_trips_and_rejects_rrn_zero` and resolve-by-DSN.
+  - FEAT-002 (same prior run; verified on disk): `AllocationOutcome`
+    `Verified`/`Passed` handle-ised via DatasetAccess resolve-by-DSN; the RESOLVE
+    panel shows DSN identity; scoped `cargo test -p ff-dsalloc` = 123+6 pass incl.
+    `verified_outcome_carries_handle_not_path`, `passed_outcome_carries_handle`.
+  - FEAT-003 (completed THIS run): retired `ff-vsam-services` -- deleted
+    `crates/ff-vsam-services`, removed its root `Cargo.toml` member line,
+    reconciled the governance rules/tests (removed the 3 ff-vsam-services
+    DependencyRules in compliance.rs; removed the `vsam_services_has_no_upstream_dependencies`
+    test and the ff-vsam-services entries in the crate-list arrays in
+    architecture_compliance.rs), and fixed stale doc comments
+    (ff-dataset-catalog lib.rs/traits.rs, ff-idcams services.rs doc only -- trait
+    CODE untouched, that repoint is RC.B.8). Scoped checks clean:
+    `cargo test -p ff-governance-tests` GREEN (9 architecture + 7 mock compilation);
+    `cargo check` on ff-governance-tests/ff-dscatalog/ff-dsalloc/ff-idcams and
+    ff-desktop clean; grep shows NO live `ff-vsam-services`/`ff_vsam_services`
+    references in any *.toml/*.rs. ff-idcams trait repoint deliberately NOT
+    crossed into (that is RC.B.8).
+  TCR flipped to PASS: dataset-catalog Req 35.3, ownership Req 22.3, and the
+  now-closed RC.B.6 deferrals Req 34 (VSAM point ops) + Req 19.3 (Verified/Passed
+  handle-isation). Tasks marked: dataset-catalog Task 41 (41.1+41.2) [x],
+  dataset-allocator Task 21 + 21.3 [x], master RC.B.7 [x] code-complete-pending-gate.
+  OWNER-GATE CONFIRMED: full `cargo gate --build` CLEAN on 2026-10-09 21:09
+  (run 942d619a; all phases ok; 9752 tests pass, 0 fail; empty gate.review.log).
+  Uncommitted on `main`. NOTE: the RC.B.7 workflow wedged twice on infra (an agent
+  restart, then a ~52-min silent stall); FEAT-001/002 were already complete+tested
+  on disk when found, FEAT-003 finished via a focused coder run.
+- RC.B.8 (repoint ff-idcams + record-aware SAVE, delete ff-dataset-catalog) -- NEXT (last RC.B step).
 
 ## NEXT ACTIONS (in order)
 

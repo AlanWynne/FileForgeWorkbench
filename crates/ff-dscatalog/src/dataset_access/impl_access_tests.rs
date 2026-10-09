@@ -304,5 +304,63 @@ fn allocate_rejects_duplicate_dsn() {
     );
 }
 
+// === resolve-by-DSN (Req 34.5; dataset-allocator Req 19.3) =====================
+
+#[test]
+fn resolve_by_dsn_returns_handle_matching_the_dsn() {
+    // Validates: Requirement 34.5; dataset-allocator Requirement 19.3
+    let dir = TempDir::new().unwrap();
+    let a = access(&dir, 1000);
+    a.allocate(&dd("USR.RESOLVE", Recfm::FB, 80, Dsorg::PS))
+        .expect("allocate");
+    let handle = a
+        .resolve("USR.RESOLVE", AccessIntent::Read)
+        .expect("resolve existing dataset");
+    assert_eq!(handle.dsn(), "USR.RESOLVE");
+    assert_eq!(handle.dsorg(), Dsorg::PS);
+    // The resolved handle is usable with open, proving it carries a real
+    // locator (no raw path exposed on the surface).
+    let open = a.open(&handle, AccessIntent::Read).expect("open resolved");
+    assert_eq!(open.handle().dsn(), "USR.RESOLVE");
+}
+
+#[test]
+fn resolve_unknown_dsn_reports_not_found() {
+    // Validates: Requirement 34.5 -- resolving an uncatalogued DSN is NotFound
+    let dir = TempDir::new().unwrap();
+    let a = access(&dir, 1000);
+    let err = a
+        .resolve("USR.NOPE", AccessIntent::Read)
+        .expect_err("unknown dsn");
+    assert!(matches!(err, DatasetError::NotFound { .. }), "got {err:?}");
+}
+
+#[test]
+fn resolve_normalises_dsn_case() {
+    // Validates: Requirement 34.5 -- resolution uses the catalog's uppercase key
+    let dir = TempDir::new().unwrap();
+    let a = access(&dir, 1000);
+    a.allocate(&dd("USR.CASED", Recfm::FB, 80, Dsorg::PS))
+        .expect("allocate");
+    let handle = a
+        .resolve("usr.cased", AccessIntent::Read)
+        .expect("resolve lower-case dsn");
+    assert_eq!(handle.dsn(), "USR.CASED");
+}
+
+#[test]
+fn dyn_dataset_access_can_resolve_by_dsn() {
+    // Validates: Requirement 34.8 -- resolve is object-safe (callable via dyn)
+    let dir = TempDir::new().unwrap();
+    let a = access(&dir, 1000);
+    a.allocate(&dd("USR.DYN", Recfm::FB, 80, Dsorg::PS))
+        .expect("allocate");
+    let dyn_access: &dyn DatasetAccess = &a;
+    let handle = dyn_access
+        .resolve("USR.DYN", AccessIntent::Read)
+        .expect("resolve via dyn");
+    assert_eq!(handle.dsn(), "USR.DYN");
+}
+
 // Error-mapping, object-safety, VSAM point(), and dispose tests live in the
 // sibling `impl_io_tests.rs` (split for the ~200-line testing.md guidance).

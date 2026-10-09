@@ -141,6 +141,13 @@ pub struct DatasetAllocationRequest {
 pub trait DatasetAllocator: Send + Sync {
     /// Acquire a `DatasetHandle` for a live (DISP=NEW) allocation.
     fn allocate(&self, request: &DatasetAllocationRequest) -> Result<DatasetHandle, CatalogError>;
+
+    /// Resolve an EXISTING dataset by name to an opaque `DatasetHandle`
+    /// (dataset-allocator Requirement 19.3). Used by the DISP=OLD/SHR/MOD
+    /// verified path and the DISP=PASS path so a verified/passed outcome
+    /// carries a handle rather than a raw physical path. The returned handle is
+    /// opaque -- no physical path is exposed.
+    fn resolve(&self, dsn: &str) -> Result<DatasetHandle, CatalogError>;
 }
 
 /// Mock allocator returning a canned opaque handle for tests.
@@ -196,6 +203,32 @@ impl DatasetAllocator for MockDatasetAllocator {
                 catalog: "mock".to_string(),
                 detail: e.to_string(),
             })
+    }
+
+    fn resolve(&self, dsn: &str) -> Result<DatasetHandle, CatalogError> {
+        // Drive the real DatasetAccess resolve-by-DSN seam. For an existing
+        // dataset the resolve succeeds directly; if the DSN was not allocated
+        // through this mock (the common verified/passed case, where the catalog
+        // reports it exists without the mock having created it) allocate it
+        // on demand so the mock still yields a genuine opaque handle via the
+        // same seam.
+        match self
+            .access
+            .resolve_existing(dsn, ff_dscatalog::AccessIntent::Read)
+        {
+            Ok(handle) => Ok(handle),
+            Err(ff_dscatalog::DatasetError::NotFound { .. }) => self
+                .access
+                .allocate_sequential(dsn, ff_dscatalog::Recfm::FB, 80, 0, 1, 1, 16)
+                .map_err(|e| CatalogError::AllocationFailed {
+                    catalog: "mock".to_string(),
+                    detail: e.to_string(),
+                }),
+            Err(e) => Err(CatalogError::QueryFailed {
+                catalog: "mock".to_string(),
+                detail: e.to_string(),
+            }),
+        }
     }
 }
 
@@ -391,6 +424,30 @@ mod tests {
             .expect("allocate via DatasetAccess");
         // The only observable facet is the DSN; no raw path is exposed.
         assert_eq!(handle.dsn(), "NEW.HANDLE.DS");
+    }
+
+    #[test]
+    fn dataset_allocator_resolve_yields_handle() {
+        // Validates: Requirement 19.3 -- the allocator resolve seam returns an
+        // opaque ff_dscatalog::DatasetHandle for an existing DSN.
+        let allocator = MockDatasetAllocator::new();
+        // Allocate first, then resolve the same DSN -> genuine opaque handle.
+        let request = DatasetAllocationRequest {
+            dsn: "RESOLVE.ME.DS".to_string(),
+            attributes: DcbAttributes::hardcoded_defaults(),
+            space: None,
+        };
+        allocator.allocate(&request).expect("allocate");
+        let handle = allocator.resolve("RESOLVE.ME.DS").expect("resolve");
+        assert_eq!(handle.dsn(), "RESOLVE.ME.DS");
+    }
+
+    #[test]
+    fn dataset_allocator_resolve_is_object_safe_as_dyn() {
+        // Validates: Requirement 19.3, 19.4 -- resolve is callable behind dyn.
+        let allocator: Box<dyn DatasetAllocator> = Box::new(MockDatasetAllocator::new());
+        let handle = allocator.resolve("DYN.RESOLVE.DS").expect("dyn resolve");
+        assert_eq!(handle.dsn(), "DYN.RESOLVE.DS");
     }
 
     #[test]

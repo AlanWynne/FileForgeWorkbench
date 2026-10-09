@@ -227,7 +227,8 @@ mod tests {
 
     #[test]
     fn panel_model_from_resolve_output() {
-        // Validates: Requirement 11 AC 1, AC 2
+        // Validates: Requirement 11 AC 1, AC 2; Requirement 19.3 -- the resolved
+        // row carries the DSN-derived display path the pipeline now produces.
         let output = make_output(vec![
             ResolutionResult {
                 ddname: "SYSUT1".to_string(),
@@ -258,6 +259,43 @@ mod tests {
         assert_eq!(panel.rows.len(), 2);
         assert_eq!(panel.rows[0].status, PanelStatus::Resolved);
         assert_eq!(panel.rows[1].status, PanelStatus::Skipped);
+    }
+
+    #[test]
+    fn verified_sourced_row_shows_dsn_identity_not_raw_path() {
+        // Validates: Requirement 19.3 -- a DISP=SHR verified dataset resolves to
+        // a panel row whose displayed path is DSN-derived, NOT the raw storage
+        // path the catalog happens to hold.
+        use crate::catalog_bridge::{CatalogDatasetType, MockCatalog, MockDatasetAllocator};
+        use crate::config::ResolverConfig;
+        use crate::pipeline::resolve_document;
+
+        let mut catalog = MockCatalog::new();
+        // The catalog's raw path is deliberately unrelated to the DSN-derived
+        // display, so a leak of the raw path would be visible.
+        catalog.add_dataset(
+            "PROD.PAYROLL.MASTER",
+            "/raw/storage/opaque/location",
+            CatalogDatasetType::Ps,
+            "PROD",
+        );
+        let jcl = "\
+//MYJOB  JOB (ACCT),'PGMR'
+//STEP1  EXEC PGM=IEFBR14
+//INPUT  DD DSN=PROD.PAYROLL.MASTER,DISP=SHR
+";
+        let config = ResolverConfig::default();
+        let allocator = MockDatasetAllocator::new();
+        let output = resolve_document(jcl, &config, &catalog, &allocator);
+        let panel = ResolutionPanelModel::from_resolve_output(&output);
+
+        assert_eq!(panel.rows.len(), 1);
+        let row = &panel.rows[0];
+        assert_eq!(row.status, PanelStatus::Resolved);
+        // DSN-derived display (Option A helper) -- the raw storage path never
+        // reaches the panel.
+        assert_eq!(row.path_or_message, "/data/prod/payroll/master");
+        assert_ne!(row.path_or_message, "/raw/storage/opaque/location");
     }
 
     #[test]

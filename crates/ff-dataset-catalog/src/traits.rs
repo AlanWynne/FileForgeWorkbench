@@ -76,7 +76,7 @@ pub enum Dsorg {
     Po,
     /// Direct Access.
     Da,
-    /// VSAM (sub-types handled by ff-vsam-services).
+    /// VSAM (sub-types handled by ff-dscatalog).
     Vsam,
 }
 

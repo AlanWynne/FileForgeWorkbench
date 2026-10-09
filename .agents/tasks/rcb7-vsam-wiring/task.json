@@ -1,0 +1,7 @@
+{
+  "task_id": "task-rcb7-vsam-wiring",
+  "task_description": "CR-CH-059 Phase RC.B.7: wire concrete VSAM record ops (KSDS/ESDS/RRDS) under the DatasetAccess contract over the existing ff-vfs::StorageProvider backends; close the deferred resolve-by-DSN so ff-dsalloc AllocationOutcome::{Verified,Passed} carry an opaque DatasetHandle; retire the stub-only ff-vsam-services crate and re-express governance/docs against ff-dscatalog. All edits DIRECTLY on main, uncommitted (owner reviews + runs full gate). Do NOT enter RC.B.8 (no ff-idcams code repoint, no editor SAVE change, no ff-dataset-catalog deletion).",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

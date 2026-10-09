@@ -14,6 +14,7 @@
 //! volume-model Requirement 12.1, 12.2, 12.3, 12.4.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use ff_vfs::{StorageLocator, StorageProvider};
@@ -23,7 +24,7 @@ use ff_volume::{
 };
 
 use super::error::DatasetError;
-use super::types::{DatasetHandle, DdRequest, HandleInner, StepOutcome};
+use super::types::{AccessIntent, DatasetHandle, DdRequest, HandleInner, StepOutcome};
 
 // === Per-dataset state ===================================================
 
@@ -36,6 +37,13 @@ pub(crate) struct DatasetState {
     pub(crate) alloc: ff_volume::AllocationUnit,
     pub(crate) max_extents: u32,
     pub(crate) catalogued: bool,
+    /// Record format snapshot, so an opaque handle can be reconstructed on
+    /// `resolve` without re-reading a DD request.
+    pub(crate) recfm: crate::dataset::Recfm,
+    /// Logical record length snapshot.
+    pub(crate) lrecl: u32,
+    /// Dataset organization snapshot.
+    pub(crate) dsorg: crate::dataset::Dsorg,
 }
 
 /// Interior-mutable state behind the `&self` trait surface.
@@ -57,11 +65,29 @@ pub(crate) struct AccessState {
 pub struct CatalogDatasetAccess {
     pub(crate) provider: Arc<dyn StorageProvider>,
     pub(crate) state: Mutex<AccessState>,
+    /// Root directory under which the VSAM record backends (KSDS/ESDS/RRDS)
+    /// store their per-cluster physical objects. VSAM record I/O cannot flow
+    /// through the byte-only `StorageProvider` seam, so the keyed/relative
+    /// backends are rooted here (Requirement 35.3).
+    pub(crate) vsam_root: PathBuf,
 }
 
 impl CatalogDatasetAccess {
     /// Create an access layer over `provider` and `registry`.
+    ///
+    /// The VSAM record backends are rooted in a process-unique directory under
+    /// the system temp dir; use [`Self::with_vsam_root`] to pin a specific root.
     pub fn new(provider: Arc<dyn StorageProvider>, registry: VolumeRegistry) -> Self {
+        let vsam_root = std::env::temp_dir().join(format!("ffwb-vsam-{}", uuid::Uuid::new_v4()));
+        Self::with_vsam_root(provider, registry, vsam_root)
+    }
+
+    /// Create an access layer with an explicit VSAM backend root.
+    pub fn with_vsam_root(
+        provider: Arc<dyn StorageProvider>,
+        registry: VolumeRegistry,
+        vsam_root: PathBuf,
+    ) -> Self {
         Self {
             provider,
             state: Mutex::new(AccessState {
@@ -69,6 +95,7 @@ impl CatalogDatasetAccess {
                 datasets: HashMap::new(),
                 next_dataset_id: 1,
             }),
+            vsam_root,
         }
     }
 
@@ -142,6 +169,22 @@ impl CatalogDatasetAccess {
         self.allocate_impl(&dd)
     }
 
+    /// Resolve an existing dataset by name to an opaque `DatasetHandle`
+    /// (dataset-allocator Requirement 19.3). A public convenience so a consumer
+    /// that depends only on `ff-dscatalog` (e.g. `ff-dsalloc`) can resolve a
+    /// DSN without naming the `ff-volume` locator types or importing the
+    /// `DatasetAccess` trait.
+    ///
+    /// # Errors
+    /// As `DatasetAccess::resolve`.
+    pub fn resolve_existing(
+        &self,
+        dsn: &str,
+        intent: AccessIntent,
+    ) -> Result<DatasetHandle, DatasetError> {
+        self.resolve_impl(dsn, intent)
+    }
+
     /// Normalise a DSN to the catalog's uppercase form.
     pub(crate) fn key(dsn: &str) -> String {
         dsn.trim().to_uppercase()
@@ -159,6 +202,41 @@ impl CatalogDatasetAccess {
                 dsorg: dd.dsorg,
             },
         }
+    }
+
+    /// Resolve an existing dataset by name to an opaque `DatasetHandle`,
+    /// honouring the Volume Online check (dataset-allocator Requirement 19.3,
+    /// dataset-catalog Requirement 34.5). The `intent` is accepted for parity
+    /// with `open`/`allocate`; resolution exposes no raw path.
+    pub(crate) fn resolve_impl(
+        &self,
+        dsn: &str,
+        _intent: AccessIntent,
+    ) -> Result<DatasetHandle, DatasetError> {
+        let key = Self::key(dsn);
+        let state = self.state.lock().expect("access state poisoned");
+        let ds = state
+            .datasets
+            .get(&key)
+            .ok_or_else(|| DatasetError::NotFound { dsn: key.clone() })?;
+        // Resolve through ff-volume, honouring the Online check (volume-model
+        // 2.4) -- the SAME seam open/allocate use. A failed resolve (e.g. an
+        // Offline Volume) surfaces as the mapped DatasetError.
+        let resolved = ds.volumes.resolve(&state.registry)?;
+        let primary = resolved
+            .into_iter()
+            .find(|r| r.sequence_number == 1)
+            .ok_or_else(|| DatasetError::NotFound { dsn: key.clone() })?;
+        Ok(DatasetHandle {
+            inner: HandleInner {
+                dsn: key,
+                volume_id: primary.volume.volume_id(),
+                locator: primary.locator,
+                recfm: ds.recfm,
+                lrecl: ds.lrecl,
+                dsorg: ds.dsorg,
+            },
+        })
     }
 
     /// Resolve a handle's locator as a `StorageLocator` through the Volume
@@ -236,6 +314,9 @@ impl CatalogDatasetAccess {
                 alloc: dd.space,
                 max_extents: dd.max_extents,
                 catalogued: true,
+                recfm: dd.recfm,
+                lrecl: dd.lrecl,
+                dsorg: dd.dsorg,
             },
         );
 

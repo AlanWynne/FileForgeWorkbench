@@ -31,6 +31,21 @@ pub trait DatasetAccess: Send + Sync {
     /// for a duplicate DSN.
     fn allocate(&self, dd: &DdRequest) -> Result<DatasetHandle, DatasetError>;
 
+    /// Resolve an existing dataset by name to an opaque `DatasetHandle`,
+    /// honouring the SAME Volume Online check as `open` / `allocate`
+    /// (dataset-allocator Requirement 19.3, dataset-catalog Requirement 34.5).
+    ///
+    /// This closes the deferred resolve-by-DSN capability: a consumer holding
+    /// only a DSN (e.g. the JCL allocator verifying a DISP=OLD/SHR dataset or
+    /// passing one between steps) obtains the opaque handle without ever
+    /// naming a raw physical path. The `intent` selects the access the handle
+    /// will be used for; resolution itself exposes no path.
+    ///
+    /// # Errors
+    /// `DatasetError::NotFound` if the DSN is not catalogued;
+    /// `DatasetError::VolumeUnavailable` if the resolved Volume is Offline.
+    fn resolve(&self, dsn: &str, intent: AccessIntent) -> Result<DatasetHandle, DatasetError>;
+
     /// Open a previously allocated/resolved dataset for the given intent,
     /// selecting the RECFM codec and resolving the physical locator
     /// (Requirement 34.1, 34.3).
@@ -49,7 +64,7 @@ pub trait DatasetAccess: Send + Sync {
     /// (Requirement 34.2).
     ///
     /// # Errors
-    /// `DatasetError::NotYetWired` for a keyed (VSAM) open (RC.B.7);
+    /// `DatasetError::BadPositioner` for a VSAM open with no prior `point`;
     /// `DatasetError::Codec` on a malformed record stream.
     fn get(&self, open: &mut OpenDataset) -> Result<Option<Record>, DatasetError>;
 
@@ -58,15 +73,17 @@ pub trait DatasetAccess: Send + Sync {
     ///
     /// # Errors
     /// `DatasetError::InvalidIntent` if the dataset was opened read-only;
-    /// `DatasetError::NotYetWired` for a keyed (VSAM) put (RC.B.7).
+    /// `DatasetError::BadPositioner` for a VSAM put with no prior `point`.
     fn put(&self, open: &mut OpenDataset, record: &Record) -> Result<(), DatasetError>;
 
     /// Position the open dataset for keyed (KSDS) or relative (RRDS/ESDS)
-    /// access (Requirement 34.1). The concrete VSAM record op is RC.B.7.
+    /// access (Requirement 34.1). For a VSAM cluster open this establishes the
+    /// key/RRN position over the backend; `get`/`put` then operate there.
     ///
     /// # Errors
     /// `DatasetError::BadPositioner` if the positioner does not match the
-    /// dataset; `DatasetError::NotYetWired` for the deferred VSAM op (RC.B.7).
+    /// dataset organization (e.g. a keyed/relative positioner on a sequential
+    /// dataset, a mismatched VSAM type, or relative record number 0).
     fn point(&self, open: &mut OpenDataset, positioner: &Positioner) -> Result<(), DatasetError>;
 
     /// Flush any pending writes through the codec and release the open dataset

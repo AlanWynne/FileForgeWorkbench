@@ -90,13 +90,6 @@ pub const PROHIBITED_DEPENDENCIES: &[DependencyRule] = &[
             "VFS is domain-agnostic infrastructure; domain crates depend on VFS, not vice versa",
         requirement_ref: "Requirement 2 AC 3; Requirement 7 AC 3",
     },
-    DependencyRule {
-        crate_name: "ff-vfs",
-        prohibited_dependency: "ff-vsam-services",
-        reason:
-            "VFS is domain-agnostic infrastructure; domain crates depend on VFS, not vice versa",
-        requirement_ref: "Requirement 2 AC 3; Requirement 7 AC 3",
-    },
     // ff-dataset-catalog shall not depend on upstream orchestrators
     DependencyRule {
         crate_name: "ff-dataset-catalog",
@@ -109,19 +102,6 @@ pub const PROHIBITED_DEPENDENCIES: &[DependencyRule] = &[
         prohibited_dependency: "ff-dsalloc",
         reason: "Catalog is a lower-level service; allocator depends on catalog, not vice versa",
         requirement_ref: "Requirement 3 AC 3; Requirement 7 AC 3",
-    },
-    // ff-vsam-services shall not depend on upstream orchestrators
-    DependencyRule {
-        crate_name: "ff-vsam-services",
-        prohibited_dependency: "ff-idcams",
-        reason: "VSAM services is a lower-level service; IDCAMS orchestrates, VSAM provides",
-        requirement_ref: "Requirement 5 AC 3; Requirement 7 AC 3",
-    },
-    DependencyRule {
-        crate_name: "ff-vsam-services",
-        prohibited_dependency: "ff-dsalloc",
-        reason: "VSAM services is a lower-level service; allocator does not interact with VSAM",
-        requirement_ref: "Requirement 5 AC 3; Requirement 7 AC 3",
     },
     // ff-dsalloc shall not depend on ff-idcams
     DependencyRule {

@@ -18,7 +18,7 @@
 //!
 //! - Physical dataset allocation workflows driven by JCL (owned by ff-dsalloc)
 //! - Dataset content I/O beyond path resolution (content flows through ff-vfs)
-//! - VSAM record storage or retrieval logic (owned by ff-vsam-services)
+//! - VSAM record storage or retrieval logic (owned by ff-dscatalog)
 //! - JCL parsing (owned by ff-dsalloc)
 //! - IDCAMS command processing (owned by ff-idcams)
 
