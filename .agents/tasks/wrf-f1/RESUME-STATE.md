@@ -36,12 +36,29 @@ would be overwritten". Cause = the owner's uncommitted main-workspace work edite
 those two shared files. The FF is clean at the commit level (main is a direct
 ancestor of 20af25e, 5 commits behind); only the dirty working tree blocks it.
 
-RESOLUTION (owner decided 2026-10-09): HOLD the F1 merge. The main-workspace
-dataset/volume work "must be kept... it is in progress right now"; the owner
-will let it reach a committable level, commit it, THEN F1 fast-forwards cleanly
-on top. The agent must NOT stash/commit/overwrite that work. F1 stays safely on
-its branch (20af25e/7bae8e4), gate-clean, until the owner says the dataset work
-is committed and gives the go-ahead to merge F1.
+UPDATE (2026-10-09, Option A executed): the other chat committed+pushed the
+dataset/volume work to origin/main as CR-CH-059 (main advanced cdb0389 ->
+03fd2e1). F1 then DIVERGED from main (no longer a fast-forward). Per owner
+"Option A", F1 was REBASED onto main (03fd2e1). Rebase CLEAN: the only conflicts
+were in docs/status/change-log.md (both streams added a CR-NR-107 entry) --
+resolved by KEEPING main's authoritative "Walrus external project" CR-NR-107 and
+DROPPING the superseded FFWB-internal WAL/WBL version from this branch (that
+design is preserved in .agents/tasks/wal-wbl/DESIGN-NOTE.md and git history). All
+7 F1 commits replayed; the 4 ff-document-model code commits applied with NO
+conflict (zero code-file overlap with CR-CH-059). Rebased tip = fb30f22. Scoped
+re-verify on the rebased tree: cargo test -p ff-document-model --lib = 186
+passed, 0 failed (ff-vfs recompiled against CR-CH-059 and F1 still green).
+
+STILL PENDING: fast-forward main -> fb30f22. BLOCKED AGAIN (2026-10-09): main's
+working tree now has FRESH uncommitted edits in
+crates/ff-dscatalog/src/dataset_access/* -- the other chat is ACTIVELY working on
+main right now. A fast-forward would move main's HEAD under a live session; the
+agent STOPPED rather than disrupt it. The FF files (ff-document-model + 3 docs)
+do NOT overlap the dataset_access edits, so no clobber risk, but moving main mid
+-session needs owner confirmation. When the other session is at rest (or you say
+go), FF is: git -C <main> merge --ff-only feature/windowed-record-foundation.
+Full `cargo gate --build` on the rebased tree is still the owner's step before
+calling the merge done. Safety: pre-rebase F1 tip was 628fb32 (recoverable).
 
 ## Also pending (not blocking)
 
