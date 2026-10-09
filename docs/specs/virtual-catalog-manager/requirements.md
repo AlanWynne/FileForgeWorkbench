@@ -635,3 +635,121 @@ Files/Catalog manager, so that the menu accurately reflects what the option does
 
 11.3 THE `[FILES]` tab SHALL persist in the session and be restored on next launch as a
      `FilesPanel` tab kind. [WB]
+
+---
+
+### Requirement 17: Volume Management Context (VTOC / Volume Report)
+
+**User Story:** As a mainframe developer, I want a dedicated Volume management Context that lists my
+emulated Volumes (the VTOC / volume report) and lets me define, vary online/offline, set
+read-write/read-only, and resize Volumes, so that I can administer physical storage without the
+Volume concept being hidden or jammed inline into another dialog.
+
+**Source:** CR-NR-105 / CR-CH-057 owner decision A; `volume-model` Requirements 1, 2, 7, 8, 10
+(the Volume entity, status/access-mode, capacity, VTOC_View, and DEFINE VOLUME it REFERENCES, not
+restates). Content was rephrased for compliance with licensing restrictions.
+
+> **Framework conformance:** The Volume management Context is a `WorkspaceContext` dispatched via
+> `render_workspace_context` returning an `InteriorFocus`; it is NOT a bespoke render arm, a second
+> navigation stack, or a hand-wired focus ring. Every action below (DEFINE VOLUME, vary online/
+> offline, set read-write/read-only, alter capacity) is a COMMAND resolved through the single
+> `resolve_target` / `dispatch_command_target` front door. State-changing intent is communicated
+> from render by RETURNING an action enum the shell applies in an `apply_volume_action` method
+> (the pending_action pattern); render never mutates the shell.
+
+#### Acceptance Criteria
+
+17.1 WHEN the user issues the Volume-management command (e.g. `VOLUMES` or `VTOC`, or selects the
+     corresponding menu option), THE shell SHALL open a Volume management Context whose body is a
+     Volume_Report listing every defined Volume with, per Volume: VOLSER, display name, status
+     (Online / Offline), access mode (ReadWrite / ReadOnly), and capacity counters (total / used /
+     free tracks or cylinders). The listing is the VTOC_View of `volume-model` Requirement 8.
+
+17.2 THE Volume management Context SHALL be a `WorkspaceContext` dispatched via
+     `render_workspace_context`, returning an `InteriorFocus` whose first interior control is a
+     guaranteed-present control (the Volume list's filter field) carrying a STABLE `egui::Id`
+     (e.g. `egui::Id::new("volume_report_filter")`); it SHALL NOT hand-wire a focus ring nor leave
+     the interior focus anchors unset.
+
+17.3 WHEN the user activates the `New Volume` / `Define Volume...` action in the Volume management
+     Context, THE shell SHALL open a Define_Volume_Dialog collecting at minimum a VOLSER, a host
+     path (which becomes the Volume `storage_uri`), a capacity (tracks or cylinders), and an initial
+     status, and on confirm SHALL invoke the `DEFINE VOLUME` command (NOT call volume-creation logic
+     directly).
+
+17.4 WHEN the user confirms the Define_Volume_Dialog with a VOLSER that already exists, THE dialog
+     SHALL display an inline duplicate-VOLSER error adjacent to the VOLSER field without closing
+     (surfacing the `volume-model` Requirement 10.3 / Requirement 1.2 failure).
+
+17.5 WHEN the user selects a Volume in the report and activates `Vary Online` or `Vary Offline`,
+     THE shell SHALL invoke the corresponding set-online / set-offline command (`volume-model`
+     Requirement 2.3) through the single command-dispatch path, and the Volume_Report SHALL reflect
+     the new status on the next frame.
+
+17.6 WHEN the user selects a Volume and activates `Set Read-Write` or `Set Read-Only`, THE shell
+     SHALL invoke the corresponding access-mode command through the single command-dispatch path,
+     and the Volume_Report SHALL reflect the new access mode on the next frame.
+
+17.7 WHEN the user selects a Volume and activates `Alter Capacity...`, THE shell SHALL open an
+     alter-capacity input and on confirm SHALL invoke an `ALTER VOLUME` capacity command; the new
+     capacity SHALL be a hard cap that MAY be larger or smaller than the current cap but SHALL NOT
+     permit over-commit (if the requested cap is below the Volume's currently used space, the shell
+     SHALL reject it with a reported error and leave the capacity unchanged).
+
+17.8 WHEN the Volume management Context is persisted and restored across sessions, THE shell SHALL
+     persist it as a `WorkspaceDescriptor` (a `CustomWorkspace` kind) and restore it by re-opening
+     the descriptor; transient per-frame report data SHALL NOT be persisted.
+
+17.9 WHEN the user presses `PF3` / `F3` or types `END` in the Volume management Context command
+     field, THE shell SHALL pop one navigation level via the per-tab Navigation_Stack (transform in
+     place), returning to the previous Context; opening the Volume management Context SHALL NOT
+     introduce a second navigation stack.
+
+17.10 THE single-user default MAY auto-select or auto-create a single default Volume so that a
+      casual user never needs to open the Volume management Context; when a default Volume already
+      exists, the auto-create path SHALL NOT create a second one.
+
+---
+
+### Requirement 18: Volume Picker in the Catalog-Creation Dialog
+
+**User Story:** As a mainframe developer creating a Mainframe catalog, I want to pick which existing
+Volume the catalog's datasets live on, or define a new Volume inline and come back, so that I bind
+the catalog to physical storage without leaving the creation flow.
+
+**Source:** CR-NR-105 / CR-CH-057 owner decision A (volume picker in the catalog dialog) and
+decision B (DEFINE VOLUME is the admin act); `volume-model` Requirements 1, 9, 10. Content was
+rephrased for compliance with licensing restrictions.
+
+> **Framework conformance:** The volume picker is a control WITHIN the existing
+> `Catalog_Manager_Dialog` (Requirement 3), NOT a new dispatcher or navigation stack. The
+> `Define new volume...` path opens the SAME Define_Volume_Dialog as Requirement 17.3 and invokes
+> the SAME `DEFINE VOLUME` command; on completion it returns to the catalog dialog with the newly
+> defined Volume pre-selected.
+
+#### Acceptance Criteria
+
+18.1 WHEN the `Catalog_Manager_Dialog` is open for a new Mainframe catalog, THE dialog SHALL present
+     a `Volume` picker control that lists the VOLSERs of all currently defined Volumes plus a
+     trailing `Define new volume...` entry.
+
+18.2 WHEN the user selects an existing Volume in the picker, THE dialog SHALL record that Volume's
+     VOLSER as the catalog's target Volume so that datasets allocated in the catalog resolve to that
+     Volume (consistent with `volume-model` Requirement 9's many-catalogs-per-Volume model).
+
+18.3 WHEN the user selects `Define new volume...`, THE shell SHALL open the SAME Define_Volume_Dialog
+     as Requirement 17.3 (invoking the `DEFINE VOLUME` command on confirm), and on successful
+     definition SHALL return to the `Catalog_Manager_Dialog` with the newly defined Volume
+     pre-selected in the picker.
+
+18.4 WHEN the user cancels the `Define new volume...` path, THE shell SHALL return to the
+     `Catalog_Manager_Dialog` with the picker selection unchanged and no Volume defined.
+
+18.5 WHEN no Volume has been defined yet AND the single-user default has auto-created a default
+     Volume (Requirement 17.10), THE picker SHALL pre-select that default Volume so a casual user
+     can confirm the catalog without interacting with the picker.
+
+18.6 THE Volume picker SHALL be the ONLY place a Volume is chosen in the catalog-creation flow;
+     the dialog SHALL NOT present an inline Volume editor (VOLSER, path, capacity fields) -- those
+     belong exclusively to the Define_Volume_Dialog reached via `Define new volume...`.
+

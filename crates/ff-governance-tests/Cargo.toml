@@ -11,6 +11,7 @@ publish = false
 toml = { workspace = true }
 
 [dev-dependencies]
-ff-dataset-catalog = { path = "../ff-dataset-catalog" }
-ff-vsam-services = { path = "../ff-vsam-services" }
+# CR-CH-059 RC.A.2: repointed from the DEPRECATED-FOR-MERGE trait-only crates
+# ff-dataset-catalog / ff-vsam-services to the reconciled ff-dscatalog traits.
+ff-dscatalog = { path = "../ff-dscatalog" }
 pretty_assertions = { workspace = true }

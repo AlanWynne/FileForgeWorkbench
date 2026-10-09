@@ -14,9 +14,9 @@
 //!
 //! ## Supported Dataset Types
 //!
-//! - **PS (Sequential)** — Single flat files stored in `storage/`
-//! - **PO (Partitioned — PDS/PDSE)** — Libraries of members stored in `pds/`
-//! - **GDG (Generation Data Group)** — Versioned dataset collections in `gdg/`
+//! - **PS (Sequential)** -- Single flat files stored in `storage/`
+//! - **PO (Partitioned -- PDS/PDSE)** -- Libraries of members stored in `pds/`
+//! - **GDG (Generation Data Group)** -- Versioned dataset collections in `gdg/`
 //!
 //! ## Architecture
 //!
@@ -37,11 +37,13 @@
 pub mod audit;
 pub mod catalog;
 pub mod catalog_registry;
+pub mod catalog_resolve;
 pub mod codecs;
 pub mod commands;
 pub mod config;
 pub mod context_menu;
 pub mod dataset;
+pub mod dataset_access;
 pub mod dsn;
 pub mod encoding;
 pub mod error;
@@ -53,15 +55,22 @@ pub mod pds;
 pub mod properties;
 pub mod repository;
 pub mod schema;
+pub mod schema_v4;
 pub mod security;
+pub mod service;
 pub mod storage;
 pub mod transactions;
 pub mod vfs_provider;
+pub mod vsam_service;
 
 // Re-exports for public API
 pub use catalog::{Catalog, CatalogLocation, CatalogMount};
 pub use catalog_registry::CatalogRegistry;
 pub use dataset::{AllocParams, DatasetRecord, Dsorg, PartitionedSubtype, Recfm};
+pub use dataset_access::{
+    AccessIntent, CatalogDatasetAccess, DatasetAccess, DatasetError, DatasetHandle, DdRequest,
+    OpenDataset, Positioner, StepOutcome,
+};
 pub use dsn::{Dsn, MemberName};
 pub use error::CatalogError;
 pub use gdg::{GdgBase, GdgGeneration, GdgStatus};
@@ -69,4 +78,12 @@ pub use hierarchy::CatalogScope;
 pub use pds::PdsMemberInfo;
 pub use properties::DatasetProperties;
 pub use repository::Repository;
+pub use service::{
+    validate_dsn_string, CatalogService, DatasetAttributes, DatasetEntry, DatasetFilter, DatasetId,
+    DsnValidationError, DynCatalogService, GenerationInfo, ResolutionResult,
+};
 pub use vfs_provider::CatalogVfsProvider;
+pub use vsam_service::{
+    AccessMode, BrowseDirection, BrowseHandle, KeyField, Record, StubVsamService, VsamCluster,
+    VsamError, VsamHandle, VsamParams, VsamService, VsamType,
+};

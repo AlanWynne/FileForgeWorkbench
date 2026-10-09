@@ -1858,6 +1858,7 @@ name = "ff-dsalloc"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "ff-dscatalog",
  "pretty_assertions",
  "proptest",
  "serde",
@@ -1876,6 +1877,7 @@ dependencies = [
  "ff-config",
  "ff-logging",
  "ff-vfs",
+ "ff-volume",
  "futures-core",
  "percent-encoding",
  "pretty_assertions",
@@ -2091,8 +2093,7 @@ dependencies = [
 name = "ff-governance-tests"
 version = "0.1.0"
 dependencies = [
- "ff-dataset-catalog",
- "ff-vsam-services",
+ "ff-dscatalog",
  "pretty_assertions",
  "toml 0.8.23",
 ]
@@ -2398,11 +2399,9 @@ dependencies = [
 name = "ff-posix-provider"
 version = "0.1.0"
 dependencies = [
- "async-trait",
- "ff-connector-local-fs",
  "ff-vfs",
  "pretty_assertions",
- "tokio",
+ "tempfile",
 ]
 
 [[package]]
@@ -2687,6 +2686,19 @@ dependencies = [
  "pretty_assertions",
  "proptest",
  "serde",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "ff-volume"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "ff-vfs",
+ "pretty_assertions",
+ "proptest",
+ "serde",
+ "tempfile",
  "thiserror 2.0.20",
 ]
 

@@ -17,7 +17,9 @@ use crate::error::CatalogError;
 ///   1 -- initial schema (catalog_metadata, datasets, gdg_bases, gdg_generations)
 ///   2 -- added audit_log table (Req 27.4, 27.5)
 ///   3 -- added scope column to datasets (Req 29.1, 29.4)
-pub const SCHEMA_VERSION: &str = "3";
+///   4 -- added volumes + dataset_volumes tables, dual-read of storage_path
+///        (Req 32.1, 32.2, 32.5; the Volume type is owned by ff-volume)
+pub const SCHEMA_VERSION: &str = "4";
 
 /// SQL to create the catalog_metadata table.
 const CREATE_METADATA_TABLE: &str = "
@@ -121,6 +123,12 @@ const MIGRATIONS: &[(&str, &str)] = &[
     ("2", CREATE_AUDIT_LOG_TABLE),
     // v2 -> v3: add scope column to datasets
     ("3", ADD_SCOPE_COLUMN),
+    // v3 -> v4: add volumes + dataset_volumes tables (Req 32.1, 32.2). The row
+    // SEED (one Volume per Repository + a DatasetVolume per dataset) runs on
+    // mount via schema_v4::migrate_v3_to_v4, where the Repository root and
+    // catalog name are known; this DDL only creates the tables so a
+    // connection-only migration never corrupts the DB.
+    ("4", crate::schema_v4::CREATE_V4_TABLES),
 ];
 
 /// Apply any pending forward migrations to bring the schema up to the current version.
@@ -265,6 +273,13 @@ pub fn initialize_database(conn: &Connection, catalog_name: &str) -> Result<(), 
             source: e,
         })?;
 
+    // Schema v4: volumes + dataset_volumes tables (Req 32.1, 32.2).
+    conn.execute_batch(crate::schema_v4::CREATE_V4_TABLES)
+        .map_err(|e| CatalogError::SqliteError {
+            operation: "create_v4_tables".to_string(),
+            source: e,
+        })?;
+
     // Insert default metadata using parameterized queries
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
@@ -353,6 +368,66 @@ mod tests {
         assert!(tables.contains(&"gdg_bases".to_string()));
         assert!(tables.contains(&"gdg_generations".to_string()));
         assert!(tables.contains(&"audit_log".to_string()));
+        assert!(tables.contains(&"volumes".to_string()));
+        assert!(tables.contains(&"dataset_volumes".to_string()));
+    }
+
+    #[test]
+    fn schema_v4_creates_volumes_and_dataset_volumes() {
+        // Validates: Requirement 32.1, 32.2
+        let conn = Connection::open_in_memory().unwrap();
+        initialize_database(&conn, "TEST").unwrap();
+
+        // volumes enforces UNIQUE volser and the status/access_mode CHECKs.
+        conn.execute(
+            "INSERT INTO datasets (dsn, dsorg, storage_path) VALUES ('A.B', 'PS', 'storage/A/B')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO volumes (volume_id, volser, storage_uri, status, access_mode, total_units, used_units) \
+             VALUES (1, 'VOL001', '/repo', 'Online', 'ReadWrite', 1000, 0)",
+            [],
+        )
+        .unwrap();
+        let dup = conn.execute(
+            "INSERT INTO volumes (volume_id, volser, storage_uri, status, access_mode, total_units, used_units) \
+             VALUES (2, 'VOL001', '/repo2', 'Online', 'ReadWrite', 1000, 0)",
+            [],
+        );
+        assert!(dup.is_err(), "volser must be UNIQUE");
+
+        // dataset_volumes composite PK (dataset_id, sequence_number).
+        conn.execute(
+            "INSERT INTO dataset_volumes (dataset_id, volume_id, sequence_number, is_primary, locator) \
+             VALUES (1, 1, 1, 1, 'storage/A/B')",
+            [],
+        )
+        .unwrap();
+        let dup_pk = conn.execute(
+            "INSERT INTO dataset_volumes (dataset_id, volume_id, sequence_number, is_primary, locator) \
+             VALUES (1, 1, 1, 0, 'other')",
+            [],
+        );
+        assert!(
+            dup_pk.is_err(),
+            "(dataset_id, sequence_number) must be unique"
+        );
+    }
+
+    #[test]
+    fn fresh_db_reports_version_4() {
+        // Validates: Requirement 32.1
+        let conn = Connection::open_in_memory().unwrap();
+        initialize_database(&conn, "TEST").unwrap();
+        let version: String = conn
+            .query_row(
+                "SELECT value FROM catalog_metadata WHERE key = 'schema_version'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(version, "4");
     }
 
     #[test]
@@ -429,7 +504,7 @@ mod tests {
             > 0;
         assert!(has_audit_after, "audit_log should exist after migration");
 
-        // schema_version must be updated to 3 (v1->v2->v3 chain)
+        // schema_version must be updated to 4 (v1->v2->v3->v4 chain)
         let version: String = conn
             .query_row(
                 "SELECT value FROM catalog_metadata WHERE key = 'schema_version'",
@@ -437,7 +512,21 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(version, "3");
+        assert_eq!(version, "4");
+
+        // The v4 tables are created by the chained migration.
+        let has_volumes: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='volumes'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap()
+            > 0;
+        assert!(
+            has_volumes,
+            "volumes table should exist after chained migration"
+        );
     }
 
     #[test]
@@ -489,6 +578,7 @@ mod tests {
             .unwrap();
         assert_eq!(scope, "master");
 
+        // The v2->v3 start still chains through to the current version 4.
         let version: String = conn
             .query_row(
                 "SELECT value FROM catalog_metadata WHERE key = 'schema_version'",
@@ -496,7 +586,7 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(version, "3");
+        assert_eq!(version, "4");
     }
 
     #[test]
@@ -548,7 +638,7 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(version, "3");
+        assert_eq!(version, "4");
     }
 
     #[test]
@@ -661,7 +751,7 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(version, "3");
+        assert_eq!(version, "4");
     }
 
     #[test]

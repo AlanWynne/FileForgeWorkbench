@@ -427,3 +427,101 @@ All work is in `ff-desktop` (new modules) plus a new POSIX VFS provider.
           add new BU rows for Req 13.1-13.5 and Req 16.1-16.6 with status reflecting
           test results.
   - [x] 27.2 Update `docs/specs/project-master/tasks.md` -- add Phase BU entry.
+
+---
+
+## Phase VU -- Volume Management Context + Volume Picker (CR-NR-105 / CR-CH-057, Requirements 17-18)
+
+> Dedicated Volume management WorkspaceContext (VTOC/volume report + DEFINE VOLUME / vary / set
+> RW-RO / alter capacity, EACH a command) and a volume picker in the catalog-creation dialog.
+> Depends on the `ff-volume` crate (volume-model VM.2-VM.4) for the Volume entity and command
+> handlers; this phase is the ff-desktop UI wiring ON TOP of those commands. TDD-first; SCOPED
+> `-p ff-desktop` checks only, then hand off the full gate.
+
+- [ ] 28. Volume management Context -- WorkspaceContext scaffold
+  - [ ] 28.1 Add a `TabKind` variant for the Volume management Context in `tab_state.rs`, and a
+          `WorkspaceKind` arm in `shell/nav_stack.rs` (`descriptor_for_current_context` +
+          `reconstruct_custom`) so it persists/restores as a `WorkspaceDescriptor::CustomWorkspace`
+    - Validates: Requirement 17.1, 17.8
+  - [ ] 28.2 Create `VolumeReportPanel` state struct (holding the filter text + selected VOLSER)
+          on the shell inside a grouped sub-struct (not a new flat `WorkbenchShell` field)
+    - Validates: Requirement 17.1
+  - [ ] 28.3 `impl WorkspaceContext for VolumeReportPanel` returning
+          `InteriorFocus::single(egui::Id::new("volume_report_filter"))`; give the filter field that
+          stable id; render one report row per Volume (VOLSER, name, status, access mode,
+          total/used/free tracks or cylinders) from the `ff-volume` VTOC_View
+    - Validates: Requirement 17.1, 17.2
+  - [ ] 28.4 Add the central-panel arm using the owned-panel swap (`mem::take` ->
+          `render_workspace_context` -> put back -> apply stashed action); do NOT hand-write the
+          focus latch
+    - Validates: Requirement 17.2
+  - [ ] 28.5 Write failing full-shell `egui_kittest` test `full_shell_volume_context_first_tab_focuses_filter_field`
+          modelled on `full_shell_theme_editor_first_tab_focuses_theme_selector`
+    - Validates: Requirement 17.2
+  - [ ] 28.6 Run `cargo test -p ff-desktop` -- confirm the new focus test passes (green)
+
+- [ ] 29. Volume-management command + menu wiring
+  - [ ] 29.1 Register the Volume-management command (e.g. `VOLUMES` / `VTOC`) so it resolves through
+          `resolve_target` / `dispatch_command_target` to open the Volume management Context (a
+          `CustomWorkspace`/`Menu` target); add the menu option in the relevant `menus/*.toml`
+    - Validates: Requirement 17.1
+  - [ ] 29.2 Wire `PF3`/`F3`/`END` in the Volume management Context command field to pop one level
+          via the per-tab Navigation_Stack (`navigate_to` with the pop semantics), not a new stack
+    - Validates: Requirement 17.9
+  - [ ] 29.3 Write unit tests: command resolves to open the Context; END pops to the previous Context
+    - Validates: Requirement 17.1, 17.9
+  - [ ] 29.4 Run `cargo test -p ff-desktop` -- green
+
+- [ ] 30. Define_Volume_Dialog + volume actions (pending-action pattern)
+  - [ ] 30.1 Create `DefineVolumeForm` modal (VOLSER, host path -> storage_uri, capacity unit +
+          quantity, initial status) reused by the Context and the catalog picker
+    - Validates: Requirement 17.3, 18.3
+  - [ ] 30.2 Return a `VolumeAction` enum from `VolumeReportPanel::render`
+          (DefineVolume / SetStatus / SetAccess / AlterCapacity); add `apply_volume_action` on the
+          shell that dispatches each via the single command path (DEFINE VOLUME, set-online/offline,
+          set RW/RO, ALTER VOLUME capacity)
+    - Validates: Requirement 17.3, 17.5, 17.6, 17.7
+  - [ ] 30.3 Surface the duplicate-VOLSER failure as an inline error on the VOLSER field without
+          closing the dialog
+    - Validates: Requirement 17.4
+  - [ ] 30.4 Surface the alter-capacity over-commit rejection (reported by the `ff-volume` command
+          handler) as an inline error; leave capacity unchanged on rejection
+    - Validates: Requirement 17.7
+  - [ ] 30.5 Write unit tests for `apply_volume_action` (each action dispatches the right command),
+          duplicate-VOLSER inline error, and over-commit rejection
+    - Validates: Requirement 17.3-17.7
+  - [ ] 30.6 Run `cargo test -p ff-desktop` -- green
+
+- [ ] 31. Single-user default Volume
+  - [ ] 31.1 Add an idempotent startup auto-create of one default Volume (reusing the `DEFINE VOLUME`
+          command path) that runs only when zero Volumes exist, mirroring the default-Home-catalog
+          pattern
+    - Validates: Requirement 17.10
+  - [ ] 31.2 Write unit tests: no Volumes -> one default created; a Volume exists -> no second created
+    - Validates: Requirement 17.10
+  - [ ] 31.3 Run `cargo test -p ff-desktop` -- green
+
+- [ ] 32. Volume picker in the Catalog_Manager_Dialog
+  - [ ] 32.1 Add a `Volume` picker combo to the Mainframe branch of `catalog_manager_dialog.rs`
+          listing defined VOLSERs plus a trailing `Define new volume...` entry; capture the combo
+          `response.id` each frame onto the dialog state
+    - Validates: Requirement 18.1
+  - [ ] 32.2 Store the selected VOLSER as the catalog's target Volume (add an optional
+          `volume_volser` field to the catalog registry record; additive, absent -> default Volume)
+    - Validates: Requirement 18.2
+  - [ ] 32.3 Wire `Define new volume...` to open the shared `DefineVolumeForm` (same `DEFINE VOLUME`
+          command); on success return to the catalog dialog with the new Volume pre-selected; on
+          cancel leave the selection unchanged
+    - Validates: Requirement 18.3, 18.4
+  - [ ] 32.4 Pre-select the single-user default Volume in the picker when it exists
+    - Validates: Requirement 18.5
+  - [ ] 32.5 Confirm no inline Volume editor is present in the catalog dialog (picker is the only
+          Volume-choosing control)
+    - Validates: Requirement 18.6
+  - [ ] 32.6 Write unit tests: picker lists VOLSERs + define-new sentinel; selecting a VOLSER records
+          it; define-new returns pre-selected; default pre-selected when present
+    - Validates: Requirement 18.1-18.6
+  - [ ] 32.7 Run `cargo test -p ff-desktop` -- green
+  - [ ] 32.8 Run `cargo clippy -p ff-desktop -- -D warnings` -- clean
+  - [ ] 32.9 Run `cargo fmt`
+  - [ ] 32.10 Update `docs/quality/TCR.md` Req 17.1-17.10 and 18.1-18.6 rows; hand off the full gate

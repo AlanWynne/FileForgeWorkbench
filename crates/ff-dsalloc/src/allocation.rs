@@ -3,7 +3,9 @@
 //! Interprets DISP parameters and simulates dataset allocation,
 //! supporting both dry-run and live modes.
 
-use crate::catalog_bridge::{CatalogDatasetType, CatalogProvider};
+use crate::catalog_bridge::{
+    CatalogDatasetType, CatalogProvider, DatasetAllocationRequest, DatasetAllocator,
+};
 use crate::config::{ResolveMode, ResolverConfig};
 use crate::dd_statement::DdStatement;
 use crate::diagnostic::{DiagnosticCode, LintDiagnostic};
@@ -64,8 +66,13 @@ pub enum AllocationOutcome {
         dataset_type: CatalogDatasetType,
     },
     /// New dataset allocated (DISP=NEW, live mode).
+    ///
+    /// Carries an opaque `ff_dscatalog::DatasetHandle` obtained via the
+    /// `DatasetAccess::allocate` seam, NOT a raw physical path (dataset-allocator
+    /// Requirement 19.3, 34.5). Downstream consumers (the JES executor) use the
+    /// handle.
     Allocated {
-        physical_path: String,
+        handle: ff_dscatalog::DatasetHandle,
         catalog_name: String,
     },
     /// New dataset would be allocated (DISP=NEW, dry-run mode).
@@ -86,6 +93,7 @@ pub enum AllocationOutcome {
 pub fn simulate_allocation(
     dd: &DdStatement,
     catalog: &dyn CatalogProvider,
+    allocator: &dyn DatasetAllocator,
     config: &ResolverConfig,
     pass_table: &mut PassTable,
     _temp_registry: &TempDatasetRegistry,
@@ -138,15 +146,29 @@ pub fn simulate_allocation(
                                 .dcb
                                 .clone()
                                 .unwrap_or_else(DcbAttributes::hardcoded_defaults);
-                            match catalog.allocate_dataset(&dsn_str, &attrs, dd.space.as_ref()) {
-                                Ok(path) => {
-                                    // Record PASS if applicable
+                            // Acquire a handle via the DatasetAccess seam
+                            // (Requirement 19.2, 19.3) instead of a raw path.
+                            let request = DatasetAllocationRequest {
+                                dsn: dsn_str.clone(),
+                                attributes: attrs,
+                                space: dd.space.clone(),
+                            };
+                            match allocator.allocate(&request) {
+                                Ok(handle) => {
+                                    // Record PASS if applicable. The pass table
+                                    // still tracks a DSN-derived path string for
+                                    // the (unchanged) Verified/Passed display;
+                                    // the opaque handle carries the identity.
                                     if disp.normal_disp == Some(DispAction::Pass) {
+                                        let path = format!(
+                                            "/data/{}",
+                                            dsn_str.to_lowercase().replace('.', "/")
+                                        );
                                         pass_table.record_pass(&dsn_str, &dd.step_name, &path);
                                     }
                                     return (
                                         AllocationOutcome::Allocated {
-                                            physical_path: path,
+                                            handle,
                                             catalog_name: "default".to_string(),
                                         },
                                         diagnostics,
@@ -293,12 +315,18 @@ pub fn simulate_allocation(
                                     .dcb
                                     .clone()
                                     .unwrap_or_else(DcbAttributes::hardcoded_defaults);
-                                match catalog.allocate_dataset(&dsn_str, &attrs, dd.space.as_ref())
-                                {
-                                    Ok(path) => {
+                                // MOD-as-NEW also acquires a handle via the seam
+                                // (Requirement 19.2, 19.3).
+                                let request = DatasetAllocationRequest {
+                                    dsn: dsn_str.clone(),
+                                    attributes: attrs,
+                                    space: dd.space.clone(),
+                                };
+                                match allocator.allocate(&request) {
+                                    Ok(handle) => {
                                         return (
                                             AllocationOutcome::Allocated {
-                                                physical_path: path,
+                                                handle,
                                                 catalog_name: "default".to_string(),
                                             },
                                             diagnostics,
@@ -360,7 +388,7 @@ pub fn simulate_allocation(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog_bridge::MockCatalog;
+    use crate::catalog_bridge::{MockCatalog, MockDatasetAllocator};
     use crate::dd_statement::DdKind;
     use crate::dsn::DsnReference;
     use crate::operands::{DispAction, DispParameter, DispStatus, SpaceAllocation, SpaceUnit};
@@ -390,6 +418,7 @@ mod tests {
         let config = ResolverConfig::default(); // DryRun
         let mut pass_table = PassTable::new();
         let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
         let dd = make_dd(
             "NEW.DATA",
             DispParameter {
@@ -399,8 +428,14 @@ mod tests {
             },
         );
 
-        let (outcome, diags) =
-            simulate_allocation(&dd, &catalog, &config, &mut pass_table, &temp_registry);
+        let (outcome, diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
         assert!(matches!(outcome, AllocationOutcome::WouldAllocate { .. }));
         assert!(diags.is_empty());
     }
@@ -413,6 +448,7 @@ mod tests {
         let config = ResolverConfig::default();
         let mut pass_table = PassTable::new();
         let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
         let dd = make_dd(
             "EXISTS.DATA",
             DispParameter {
@@ -422,8 +458,14 @@ mod tests {
             },
         );
 
-        let (_, diags) =
-            simulate_allocation(&dd, &catalog, &config, &mut pass_table, &temp_registry);
+        let (_, diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
         assert_eq!(diags.len(), 1);
         assert_eq!(diags[0].code, DiagnosticCode::DispConflict);
     }
@@ -435,6 +477,7 @@ mod tests {
         let config = ResolverConfig::default();
         let mut pass_table = PassTable::new();
         let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
         let dd = make_dd(
             "MISSING.DATA",
             DispParameter {
@@ -444,8 +487,14 @@ mod tests {
             },
         );
 
-        let (_, diags) =
-            simulate_allocation(&dd, &catalog, &config, &mut pass_table, &temp_registry);
+        let (_, diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("not found"));
     }
@@ -457,6 +506,7 @@ mod tests {
         let config = ResolverConfig::default();
         let mut pass_table = PassTable::new();
         let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
         let dd = make_dd(
             "MISSING.DATA",
             DispParameter {
@@ -466,8 +516,14 @@ mod tests {
             },
         );
 
-        let (_, diags) =
-            simulate_allocation(&dd, &catalog, &config, &mut pass_table, &temp_registry);
+        let (_, diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
         assert!(!diags.is_empty());
     }
 
@@ -478,6 +534,7 @@ mod tests {
         let config = ResolverConfig::default();
         let mut pass_table = PassTable::new();
         let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
         let mut dd = make_dd(
             "MISSING.DATA",
             DispParameter {
@@ -493,8 +550,14 @@ mod tests {
             directory: None,
         });
 
-        let (outcome, diags) =
-            simulate_allocation(&dd, &catalog, &config, &mut pass_table, &temp_registry);
+        let (outcome, diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
         assert!(matches!(outcome, AllocationOutcome::WouldAllocate { .. }));
         assert!(diags.is_empty());
     }
@@ -506,6 +569,7 @@ mod tests {
         let config = ResolverConfig::default();
         let mut pass_table = PassTable::new();
         let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
         let dd = make_dd(
             "PASS.DATA",
             DispParameter {
@@ -515,8 +579,80 @@ mod tests {
             },
         );
 
-        let _ = simulate_allocation(&dd, &catalog, &config, &mut pass_table, &temp_registry);
+        let _ = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
         assert!(pass_table.lookup("PASS.DATA").is_some());
+    }
+
+    #[test]
+    fn live_new_allocation_returns_handle_not_path() {
+        // Validates: Requirement 19.2, 19.3 -- live NEW yields an opaque handle
+        let catalog = MockCatalog::new();
+        let config = ResolverConfig {
+            resolve_mode: ResolveMode::Live,
+            ..ResolverConfig::default()
+        };
+        let mut pass_table = PassTable::new();
+        let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
+        let dd = make_dd(
+            "LIVE.NEW.DS",
+            DispParameter {
+                status: DispStatus::New,
+                normal_disp: Some(DispAction::Catlg),
+                abnormal_disp: None,
+            },
+        );
+        let (outcome, _diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
+        match outcome {
+            AllocationOutcome::Allocated { handle, .. } => {
+                assert_eq!(handle.dsn(), "LIVE.NEW.DS");
+            }
+            other => panic!("expected Allocated with a handle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dry_run_acquires_no_handle() {
+        // Validates: Requirement 19.5 -- dry-run reports WouldAllocate, no handle
+        let catalog = MockCatalog::new();
+        let config = ResolverConfig::default(); // DryRun
+        let mut pass_table = PassTable::new();
+        let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
+        let dd = make_dd(
+            "DRY.NEW.DS",
+            DispParameter {
+                status: DispStatus::New,
+                normal_disp: Some(DispAction::Catlg),
+                abnormal_disp: None,
+            },
+        );
+        let (outcome, _diags) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
+        assert!(
+            matches!(outcome, AllocationOutcome::WouldAllocate { .. }),
+            "dry-run must not acquire a handle"
+        );
     }
 
     #[test]
@@ -526,6 +662,7 @@ mod tests {
         let config = ResolverConfig::default();
         let mut pass_table = PassTable::new();
         let temp_registry = TempDatasetRegistry::new();
+        let allocator = MockDatasetAllocator::new();
         let dd = DdStatement {
             ddname: "DD1".to_string(),
             line_number: 1,
@@ -542,8 +679,14 @@ mod tests {
             raw_operands: String::new(),
         };
 
-        let (outcome, _) =
-            simulate_allocation(&dd, &catalog, &config, &mut pass_table, &temp_registry);
+        let (outcome, _) = simulate_allocation(
+            &dd,
+            &catalog,
+            &allocator,
+            &config,
+            &mut pass_table,
+            &temp_registry,
+        );
         // Should attempt NEW allocation (dry-run)
         assert!(matches!(outcome, AllocationOutcome::WouldAllocate { .. }));
     }

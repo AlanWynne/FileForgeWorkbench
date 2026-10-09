@@ -17,6 +17,7 @@ use crate::error::CatalogError;
 use crate::hierarchy::CatalogScope;
 use crate::repository::Repository;
 use crate::schema;
+use crate::schema_v4;
 
 // === CatalogLocation ========================================================
 
@@ -149,6 +150,14 @@ impl Catalog {
                 operation: "mount".to_string(),
                 source: e,
             })?;
+
+        // Schema v4 dual-read seed (Req 32.5): now that the Repository root and
+        // catalog name are known, seed one Volume per Repository and a
+        // DatasetVolume per existing dataset (locator = storage_path). The seed
+        // is idempotent (skips when a Volume for this root already exists), so a
+        // re-mount of an already-migrated catalog is a no-op and no bytes move.
+        let repo_root = repository.root().display().to_string();
+        schema_v4::migrate_v3_to_v4(&conn, &repo_root, &name)?;
 
         // Purge stale temp files
         repository.purge_temp()?;
@@ -593,7 +602,29 @@ impl Catalog {
     /// Get the physical path for a dataset.
     pub fn physical_path(&self, dsn: &Dsn) -> Result<PathBuf, CatalogError> {
         let record = self.lookup(dsn)?;
-        Ok(self.repository.root().join(&record.storage_path))
+        self.resolve_locator(&record)
+    }
+
+    /// Resolve a dataset's physical path through the schema-v4 DatasetVolume
+    /// indirection with a `storage_path` dual-read fallback (Requirement 32.3).
+    /// Delegates to `catalog_resolve::resolve_locator`.
+    ///
+    /// # Errors
+    /// `CatalogError::VolumeUnavailable` for the first unavailable Volume, or
+    /// `CatalogError::SqliteError` on a database error.
+    pub fn resolve_locator(&self, record: &DatasetRecord) -> Result<PathBuf, CatalogError> {
+        crate::catalog_resolve::resolve_locator(&self.conn, self.repository.root(), record)
+    }
+
+    /// Resolve an uncataloged dataset by explicit VOL=SER plus UNIT, with no
+    /// `datasets` row (Requirement 32.7, 32.6). Delegates to
+    /// `catalog_resolve::resolve_uncataloged`.
+    ///
+    /// # Errors
+    /// `CatalogError::VolumeUnavailable` when no Volume matches `volser` or the
+    /// matching Volume is Offline.
+    pub fn resolve_uncataloged(&self, volser: &str, unit: &str) -> Result<PathBuf, CatalogError> {
+        crate::catalog_resolve::resolve_uncataloged(&self.conn, volser, unit)
     }
 
     /// Get the repository reference.

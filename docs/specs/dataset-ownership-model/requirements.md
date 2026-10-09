@@ -24,9 +24,9 @@ The individual subsystem specs (`dataset-catalog`, `dataset-allocator`, `IDCAMS-
 - **Authority_Rule**: A constraint specifying that all operations of a given type MUST flow through the owning subsystem's API. Violations of authority rules are architectural defects. [ADR-001]
 - **Dependency_Direction**: The permitted call direction between subsystems. If A → B is permitted, A may invoke B's API. If A → B is prohibited, A SHALL NOT depend on or invoke B. [ADR-001]
 - **ff-vfs**: The Virtual File System crate -- owns resource URIs, provider registration, provider routing, resource access abstraction, provider capabilities, file watching, and search abstraction. [ADR-001]
-- **ff-dataset-catalog**: The Dataset Catalog crate -- owns dataset definitions, catalog entries, dataset attributes, dataset aliases, GDG catalog metadata, dataset resolution APIs, and dataset naming validation. [ADR-001]
+- **ff-dataset-catalog**: The Dataset Catalog crate -- owns dataset definitions, catalog entries, dataset attributes, dataset aliases, GDG catalog metadata, dataset resolution APIs, and dataset naming validation. [ADR-001] (CR-CH-059 correction: the IMPLEMENTATION authority is the `ff-dscatalog` crate; the `ff-dataset-catalog` crate is a trait-only governance fixture marked DEPRECATED-FOR-MERGE. Read this entry's ownership as held by `ff-dscatalog`. See Requirement 22.)
 - **ff-dataset-allocator**: The Dataset Allocator crate -- owns DD statement interpretation, DISP processing, symbolic substitution, referback resolution, GDG reference resolution, and allocation workflows. [ADR-001]
-- **ff-vsam-services**: The VSAM Services crate (future) -- owns KSDS behaviour, ESDS behaviour, RRDS behaviour, LDS behaviour, alternate indexes, record insertion, record retrieval, and key management. [ADR-001]
+- **ff-vsam-services**: The VSAM Services crate (future) -- owns KSDS behaviour, ESDS behaviour, RRDS behaviour, LDS behaviour, alternate indexes, record insertion, record retrieval, and key management. [ADR-001] (CR-CH-059 correction: the `ff-vsam-services` crate is a trait-only fixture marked DEPRECATED-FOR-MERGE; its `VsamService` role is fulfilled by a reconciled `VsamService` exposed from `ff-dscatalog` and backed by the existing KSDS/ESDS/RRDS backends. See Requirement 22.)
 - **ff-idcams**: The IDCAMS Emulator crate -- owns DEFINE command parsing, LISTCAT command parsing, ALTER command parsing, DELETE command parsing, REPRO command parsing, IMPORT command parsing, and EXPORT command parsing. [ADR-001]
 - **Interface_Contract**: A defined API surface through which one subsystem exposes capabilities to others. Contracts specify method signatures, error types, and behavioural guarantees. [ADR-001]
 - **Single_Authority_Principle**: The architectural rule that each responsibility has exactly one authoritative owner. No two subsystems SHALL independently implement the same capability. [ADR-001]
@@ -71,6 +71,8 @@ The individual subsystem specs (`dataset-catalog`, `dataset-allocator`, `IDCAMS-
 
 ### Requirement 3: ff-dataset-catalog Ownership Boundary
 
+> **CR-CH-059 correction:** The catalog-ownership authority described below is held by the `ff-dscatalog` crate (the crate that actually implements the SQLite-backed catalog). Read every `ff-dataset-catalog` ownership label in this Requirement as `ff-dscatalog`. The boundary is unchanged; only the owning crate name is corrected. See Requirement 22.
+
 **User Story:** As a platform architect, I want the Dataset Catalog to be the single authority for dataset metadata, catalog entries, naming validation, and resolution APIs, so that all subsystems obtain dataset information from one consistent source.
 
 **Source:** ADR-001 -- ff-dataset-catalog ownership definition. [ADR-001]
@@ -105,6 +107,8 @@ The individual subsystem specs (`dataset-catalog`, `dataset-allocator`, `IDCAMS-
 ---
 
 ### Requirement 5: ff-vsam-services Ownership Boundary
+
+> **CR-CH-059 correction:** The VSAM-ownership responsibilities described below are fulfilled by the reconciled `VsamService` exposed from `ff-dscatalog` (backed by the existing KSDS/ESDS/RRDS backends), not by a separate `ff-vsam-services` crate, which is marked DEPRECATED-FOR-MERGE. Read "the ff-vsam-services crate" below as "the reconciled `VsamService` surface in `ff-dscatalog`". The boundary is unchanged. See Requirement 22.
 
 **User Story:** As a platform architect, I want VSAM record-level operations (KSDS, ESDS, RRDS, LDS behaviour) isolated in a dedicated ff-vsam-services crate, so that VSAM implementation details are decoupled from catalog metadata and IDCAMS command parsing.
 
@@ -341,7 +345,7 @@ The individual subsystem specs (`dataset-catalog`, `dataset-allocator`, `IDCAMS-
 #### Acceptance Criteria
 
 1. THE project CI pipeline SHALL include a dependency direction check that parses all workspace crate `Cargo.toml` files and verifies that no prohibited dependencies exist (as defined in Requirement 7).
-2. THE project SHALL maintain an architectural fitness function (test or script) that verifies: (a) ff-vfs has zero dependencies on domain crates; (b) ff-dataset-catalog has zero dependencies on ff-idcams or ff-dataset-allocator; (c) ff-vsam-services has zero dependencies on ff-idcams or ff-dataset-allocator.
+2. THE project SHALL maintain an architectural fitness function (test or script) that verifies: (a) ff-vfs has zero dependencies on domain crates; (b) the catalog authority crate (`ff-dscatalog`, per Requirement 22) has zero dependencies on ff-idcams or ff-dsalloc; (c) the reconciled VSAM service surface has zero dependencies on ff-idcams or ff-dsalloc. (CR-CH-059 correction: the fitness function asserts the corrected `ff-dscatalog` catalog authority and the eventual no-live-reference rule for the DEPRECATED-FOR-MERGE trait crates. The `architecture_compliance` test is NOT changed in RC.A because the trait crates still exist and are still legitimately referenced by name there; the test change lands with their deletion in RC.B.)
 3. WHEN a new crate is added to the workspace that participates in the dataset subsystem, THE architectural fitness function SHALL be updated to include the new crate's permitted and prohibited dependencies. THE workspace build SHALL prevent addition of a new dataset subsystem crate until the fitness function is updated with appropriate dependency rules -- omitting this update SHALL cause CI failure.
 4. THE project SHALL include integration tests that verify trait-based coupling: each dependent crate SHALL compile and pass basic tests with a mock implementation of its upstream trait (e.g., ff-dataset-allocator compiles with a mock `CatalogService`), proving that no concrete-type coupling exists.
 5. THE architectural fitness function SHALL be executable via `cargo test --test architecture_compliance` and SHALL return a non-zero exit code when violations are detected, causing the CI build to fail immediately.
@@ -396,3 +400,23 @@ The individual subsystem specs (`dataset-catalog`, `dataset-allocator`, `IDCAMS-
 3. THE `ff-volume` crate SHALL NOT depend on `ff-dataset-catalog`, `ff-dataset-allocator`, or `ff-idcams` -- preserving the acyclic DAG so that ADR-002 is enforceable by construction.
 4. THE catalog SHALL NOT physically contain dataset bytes; physical storage belongs to the Volume (this restates ADR-002 at the ownership layer).
 5. THE physical existence of an Uncataloged_Dataset (resolvable by VOL=SER plus UNIT) SHALL be owned by the Volume layer; the catalog layer SHALL own only cataloged resolution.
+
+---
+
+### Requirement 22: Catalog Authority Is ff-dscatalog -- ADR-001 Governance Correction (CR-CH-059)
+
+**User Story:** As a platform architect, I want ADR-001 corrected so that the catalog authority named in the governance model is the crate that actually implements the catalog (`ff-dscatalog`), so that the governance text stops contradicting the implementation and the two orphan trait crates are formally marked for retirement.
+
+> **Note -- governance correction, not a re-architecture.** The IMPLEMENTATION authority has always been `ff-dscatalog` (dataset-catalog spec confirms this and renamed its own references in tasks 31.3/31.4). This Requirement brings the GOVERNANCE text (Requirements 1-21, which use the legacy name `ff-dataset-catalog` as a logical ownership label) into line with that fact and records the retirement of the two trait-only crates. Where Requirements 1-21 say `ff-dataset-catalog` as the catalog OWNER, read it as `ff-dscatalog`; where they describe `ff-vsam-services` as a FUTURE separate crate, read it as "the reconciled `VsamService` exposed by `ff-dscatalog`". The ownership BOUNDARIES in Requirements 1-21 are unchanged; only the crate NAME that holds the catalog authority and the home of the VSAM/catalog service traits are corrected.
+
+**Source:** CR-CH-059; `.agents/tasks/dataset-vision-fit/report.md` sections A.4, C (KEEP/MERGE/RETIRE table), E item 1; `.agents/tasks/dscatalog-duplicate/report.md` (VERDICT + removal procedure); `.agents/tasks/mainframe-dataset-emulation/architecture-revision-findings.md` Q3/Q7. ADR-001 amendment. Content was rephrased for compliance with licensing restrictions.
+
+#### Acceptance Criteria
+
+1. THE single catalog authority SHALL be the `ff-dscatalog` crate -- the crate that implements the SQLite-backed catalog, DSN parsing/validation, PDS/GDG, record codecs, and the VSAM/record storage backends. Every place in Requirements 1-21 that names `ff-dataset-catalog` as the catalog OWNER SHALL be read as naming `ff-dscatalog`.
+2. THE `ff-dataset-catalog` crate SHALL be marked DEPRECATED-FOR-MERGE: it is a trait-only governance fixture (consumed solely by `ff-governance-tests` as a dev-dependency) whose reconciled `CatalogService` / `DynCatalogService` interface SHALL be merged into `ff-dscatalog` and whose crate SHALL then be removed (dataset-catalog Requirement 35).
+3. THE `ff-vsam-services` crate SHALL be marked DEPRECATED-FOR-MERGE: its `VsamService` trait role SHALL be fulfilled by a reconciled `VsamService` exposed from `ff-dscatalog` and backed by the existing KSDS/ESDS/RRDS backends; the separate crate SHALL be retired once no consumer references it (dataset-catalog Requirement 35).
+4. WHEN the reconciled `CatalogService` / `VsamService` traits are defined in `ff-dscatalog`, they SHALL use `ff-dscatalog`'s own types (`Dsorg {PS,PO,GDG}`, `Recfm {F,FB,V,VB,U}`, `Dsn`) -- the divergent `ff-dataset-catalog` enums (`Dsorg {Ps,Po,Da,Vsam}`, `Recfm {F,Fb,V,Vb,U}`) SHALL NOT be carried forward. VSAM SHALL be modelled as a cluster entity, NOT a `Dsorg` variant.
+5. THE object-safe trait pattern of Requirement 15.7 (an ergonomic `CatalogService` plus a `DynCatalogService` wrapper for dynamic dispatch and mocks) SHALL be preserved in the reconciled traits so that `ff-dsalloc` and `ff-idcams` depend on an interface they can mock.
+6. THE dependency-direction rules of Requirement 7 (including the CR-CH-057 `ff-volume` layer) SHALL be preserved under the corrected names: `ff-idcams -> ff-dsalloc -> ff-dscatalog -> ff-volume -> storage providers`, with `ff-vfs` as the universal infrastructure dependency, and the DAG SHALL remain acyclic.
+7. THE catalog authority SHALL continue to hold metadata and Volume locators only (ADR-002) -- the correction of the owner NAME SHALL NOT weaken the "catalogs never own bytes" invariant.

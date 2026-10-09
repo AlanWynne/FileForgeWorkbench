@@ -3,15 +3,15 @@
 //! An insert frame's byte offset is its stable record address. Updates append
 //! replacement frames and deletes append tombstones; old frames are untouched.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 
+use ff_vfs::{StorageCapability, StorageLocator, StorageProvider, StorageStat, VfsError};
 use uuid::Uuid;
 
-use super::{ObjectId, ObjectStat, ProviderCapability, StorageProvider};
 use crate::error::CatalogError;
 
 const OBJECTS_DIR: &str = "datasets/objects";
@@ -45,6 +45,7 @@ pub type EsdsRecordAddress = u64;
 
 /// Native-file provider for VSAM ESDS datasets.
 pub struct NativeEsdsProvider {
+    root: PathBuf,
     data_path: PathBuf,
     index_path: PathBuf,
     dataset_id: Uuid,
@@ -55,6 +56,7 @@ impl std::fmt::Debug for NativeEsdsProvider {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("NativeEsdsProvider")
+            .field("root", &self.root)
             .field("data_path", &self.data_path)
             .field("index_path", &self.index_path)
             .field("dataset_id", &self.dataset_id)
@@ -65,6 +67,7 @@ impl std::fmt::Debug for NativeEsdsProvider {
 impl NativeEsdsProvider {
     /// Open or create an ESDS and rebuild its sidecar index from the data file.
     pub fn open(repository_root: impl AsRef<Path>, dataset_id: Uuid) -> Result<Self, CatalogError> {
+        let root = repository_root.as_ref().to_path_buf();
         let data_path = data_path(repository_root.as_ref(), dataset_id)?;
         let index_path = index_path(&data_path);
         fs::create_dir_all(data_path.parent().expect("ESDS path has a parent"))
@@ -85,6 +88,7 @@ impl NativeEsdsProvider {
         file.seek(SeekFrom::End(0))
             .map_err(|source| io_error("open_esds", source))?;
         Ok(Self {
+            root,
             data_path,
             index_path,
             dataset_id,
@@ -283,96 +287,113 @@ impl NativeEsdsProvider {
     }
 }
 
+// === ff_vfs::StorageProvider -- the single physical seam (CR-CH-059) =========
+
 impl StorageProvider for NativeEsdsProvider {
-    fn capabilities(&self) -> &[ProviderCapability] {
-        static CAPABILITIES: &[ProviderCapability] = &[
-            ProviderCapability::RecordRead,
-            ProviderCapability::RecordWrite,
-            ProviderCapability::AppendOnly,
-        ];
-        CAPABILITIES
+    fn capabilities(&self) -> HashSet<StorageCapability> {
+        [
+            StorageCapability::RecordRead,
+            StorageCapability::RecordWrite,
+            StorageCapability::AppendOnly,
+        ]
+        .into_iter()
+        .collect()
     }
 
-    fn allocate(
-        &self,
-        workspace_root: &Path,
-        _is_container: bool,
-    ) -> Result<(ObjectId, String), CatalogError> {
+    fn allocate(&self, _name: &str) -> Result<StorageLocator, VfsError> {
         let id = Uuid::new_v4();
-        Self::open(workspace_root, id)?;
-        Ok((id, locator(id)))
+        Self::open(&self.root, id).map_err(VfsError::from)?;
+        Ok(StorageLocator::new(locator(id)))
     }
 
-    fn open(&self, workspace_root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
-        let path = validate_locator(workspace_root, locator)?;
-        if path.is_file() {
-            Ok(path)
-        } else {
-            Err(CatalogError::DatasetNotFound {
-                dsn: locator.into(),
-                operation: "open_esds".into(),
-            })
+    fn open(&self, locator: &StorageLocator) -> Result<Vec<u8>, VfsError> {
+        let path = validate_locator(&self.root, locator.as_str()).map_err(VfsError::from)?;
+        if !path.is_file() {
+            return Err(VfsError::NotFound {
+                uri: locator.as_str().to_string(),
+                operation: "open_esds".to_string(),
+            });
         }
-    }
-
-    fn stat(&self, workspace_root: &Path, locator: &str) -> Result<ObjectStat, CatalogError> {
-        let path = self.open(workspace_root, locator)?;
-        let size = fs::metadata(path)
-            .map_err(|source| io_error("stat_esds", source))?
-            .len();
-        Ok(ObjectStat {
-            size,
-            is_container: false,
-            locator: locator.into(),
+        fs::read(&path).map_err(|source| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "open_esds".to_string(),
+            source,
         })
     }
 
-    fn rename(
-        &self,
-        _workspace_root: &Path,
-        _locator: &str,
-        _new_locator: &str,
-    ) -> Result<(), CatalogError> {
+    fn stat(&self, locator: &StorageLocator) -> Result<StorageStat, VfsError> {
+        let path = validate_locator(&self.root, locator.as_str()).map_err(VfsError::from)?;
+        if !path.is_file() {
+            return Err(VfsError::NotFound {
+                uri: locator.as_str().to_string(),
+                operation: "stat_esds".to_string(),
+            });
+        }
+        let size = fs::metadata(&path)
+            .map_err(|source| io_error("stat_esds", source))
+            .map_err(VfsError::from)?
+            .len();
+        Ok(StorageStat {
+            name: locator.as_str().to_string(),
+            size_bytes: Some(size),
+            is_container: false,
+            attributes: Vec::new(),
+        })
+    }
+
+    fn rename(&self, _locator: &StorageLocator, _new_name: &str) -> Result<(), VfsError> {
         Ok(())
     }
 
-    fn delete(&self, workspace_root: &Path, locator: &str) -> Result<(), CatalogError> {
-        let path = self.open(workspace_root, locator)?;
-        fs::remove_file(&path).map_err(|source| io_error("delete_esds", source))?;
+    fn delete(&self, locator: &StorageLocator) -> Result<(), VfsError> {
+        let path = validate_locator(&self.root, locator.as_str()).map_err(VfsError::from)?;
+        if !path.is_file() {
+            return Err(VfsError::NotFound {
+                uri: locator.as_str().to_string(),
+                operation: "delete_esds".to_string(),
+            });
+        }
+        fs::remove_file(&path)
+            .map_err(|source| io_error("delete_esds", source))
+            .map_err(VfsError::from)?;
         let sidecar = index_path(&path);
         if sidecar.exists() {
-            fs::remove_file(sidecar).map_err(|source| io_error("delete_esds", source))?;
+            fs::remove_file(sidecar)
+                .map_err(|source| io_error("delete_esds", source))
+                .map_err(VfsError::from)?;
         }
         Ok(())
     }
 
-    fn list(&self, workspace_root: &Path, _locator: &str) -> Result<Vec<String>, CatalogError> {
-        let directory = workspace_root.join(OBJECTS_DIR);
+    fn list(&self) -> Result<Vec<(StorageLocator, String)>, VfsError> {
+        let directory = self.root.join(OBJECTS_DIR);
         if !directory.is_dir() {
             return Ok(Vec::new());
         }
         let mut result = Vec::new();
-        for entry in fs::read_dir(directory).map_err(|source| io_error("list_esds", source))? {
-            let entry = entry.map_err(|source| io_error("list_esds", source))?;
+        for entry in fs::read_dir(directory)
+            .map_err(|source| io_error("list_esds", source))
+            .map_err(VfsError::from)?
+        {
+            let entry = entry
+                .map_err(|source| io_error("list_esds", source))
+                .map_err(VfsError::from)?;
             let name = entry.file_name().to_string_lossy().into_owned();
             if name.ends_with(DATA_SUFFIX)
                 && Uuid::parse_str(name.trim_end_matches(DATA_SUFFIX)).is_ok()
             {
-                result.push(format!("{OBJECTS_DIR}/{name}"));
+                let locator = format!("{OBJECTS_DIR}/{name}");
+                result.push((StorageLocator::new(locator), name));
             }
         }
-        result.sort();
+        result.sort_by(|a, b| a.1.cmp(&b.1));
         Ok(result)
     }
 
-    fn reconcile(
-        &self,
-        workspace_root: &Path,
-        known_locators: &[String],
-    ) -> Result<Vec<String>, CatalogError> {
+    fn reconcile(&self, catalogue_names: &[String]) -> Result<Vec<String>, VfsError> {
         let mut discrepancies = Vec::new();
-        for locator in known_locators {
-            match validate_locator(workspace_root, locator) {
+        for locator in catalogue_names {
+            match validate_locator(&self.root, locator) {
                 Ok(path) if !path.is_file() => {
                     discrepancies.push(format!("missing physical object for locator '{locator}'"))
                 }
@@ -679,28 +700,23 @@ mod tests {
 
     #[test]
     fn rejects_invalid_locators() {
-        let (directory, provider) = provider();
-        assert!(matches!(
-            provider.open(directory.path(), "../../outside.esds"),
-            Err(CatalogError::RepositoryCorrupt { .. })
-        ));
-        assert!(matches!(
-            provider.open(directory.path(), "datasets/objects/not-a-uuid.esds"),
-            Err(CatalogError::RepositoryCorrupt { .. })
-        ));
+        // Validates: Requirement 13.3 -- invalid locators map to a VfsError.
+        let (_directory, provider) = provider();
+        assert!(provider
+            .open(&StorageLocator::new("../../outside.esds"))
+            .is_err());
+        assert!(provider
+            .open(&StorageLocator::new("datasets/objects/not-a-uuid.esds"))
+            .is_err());
     }
 
     #[test]
     fn capabilities_advertise_append_only_record_access() {
+        // Validates: Requirement 13.2 -- capabilities over the ff-vfs seam.
         let (_directory, provider) = provider();
-        assert!(provider
-            .capabilities()
-            .contains(&ProviderCapability::AppendOnly));
-        assert!(provider
-            .capabilities()
-            .contains(&ProviderCapability::RecordRead));
-        assert!(provider
-            .capabilities()
-            .contains(&ProviderCapability::RecordWrite));
+        let caps = provider.capabilities();
+        assert!(caps.contains(&StorageCapability::AppendOnly));
+        assert!(caps.contains(&StorageCapability::RecordRead));
+        assert!(caps.contains(&StorageCapability::RecordWrite));
     }
 }

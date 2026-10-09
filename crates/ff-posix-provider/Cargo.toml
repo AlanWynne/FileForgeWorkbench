@@ -6,11 +6,12 @@ authors.workspace = true
 license.workspace = true
 description = "POSIX VFS provider (scheme posix, root-jailed local FS) for FileForgeWorkbench"
 
+# CR-CH-059 RC.A.4: reduced to pure path helpers + a re-export of the single
+# posix provider (ff_vfs::PosixNativeProvider). The former local-FS-backed
+# VfsProvider impl was retired, so its deps are no longer required.
 [dependencies]
-ff-connector-local-fs = { path = "../ff-connector-local-fs" }
 ff-vfs = { path = "../ff-vfs" }
-async-trait = "0.1"
-tokio = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

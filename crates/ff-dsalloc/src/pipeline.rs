@@ -11,6 +11,12 @@ use crate::config::ResolverConfig;
 use crate::diagnostic::{DiagnosticSeverity, LintDiagnostic};
 use crate::job_model::JclJob;
 
+/// DSN-derived display path for the panel; keeps the handle locator unexposed
+/// while preserving the path-shaped display (Req 19.3 Option A).
+fn dsn_display_path(dsn: &str) -> String {
+    format!("/data/{}", dsn.to_lowercase().replace('.', "/"))
+}
+
 /// Dataset type returned from resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DatasetType {
@@ -213,6 +219,7 @@ pub fn resolve_document(
     text: &str,
     config: &ResolverConfig,
     catalog: &dyn CatalogProvider,
+    allocator: &dyn crate::catalog_bridge::DatasetAllocator,
 ) -> ResolveOutput {
     use std::time::Instant;
 
@@ -246,6 +253,7 @@ pub fn resolve_document(
             let result = resolve_single_dd(
                 dd,
                 catalog,
+                allocator,
                 config,
                 &mut pass_table,
                 &mut temp_registry,
@@ -279,9 +287,13 @@ pub fn resolve_document(
 }
 
 /// Resolve a single DD statement.
+// Threads the catalog + allocator seams plus the pipeline state through one
+// function; the argument count is inherent to the resolution step.
+#[allow(clippy::too_many_arguments)]
 fn resolve_single_dd(
     dd: &crate::dd_statement::DdStatement,
     catalog: &dyn CatalogProvider,
+    allocator: &dyn crate::catalog_bridge::DatasetAllocator,
     config: &ResolverConfig,
     pass_table: &mut crate::allocation::PassTable,
     temp_registry: &mut crate::temp_registry::TempDatasetRegistry,
@@ -333,6 +345,7 @@ fn resolve_single_dd(
                     let (alloc_outcome, alloc_diags) = crate::allocation::simulate_allocation(
                         dd,
                         catalog,
+                        allocator,
                         config,
                         pass_table,
                         temp_registry,
@@ -355,11 +368,13 @@ fn resolve_single_dd(
                                 dataset_type: dt,
                             }
                         }
+                        // Req 19.3 (A): opaque handle; panel display kept
+                        // path-shaped via the DSN (locator not exposed).
                         crate::allocation::AllocationOutcome::Allocated {
-                            physical_path,
+                            handle,
                             catalog_name,
                         } => ResolutionOutcome::Allocated {
-                            physical_path,
+                            physical_path: dsn_display_path(handle.dsn()),
                             catalog_name,
                         },
                         crate::allocation::AllocationOutcome::WouldAllocate { .. } => {
@@ -413,7 +428,7 @@ fn resolve_single_dd(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog_bridge::{CatalogDatasetType, MockCatalog};
+    use crate::catalog_bridge::{CatalogDatasetType, MockCatalog, MockDatasetAllocator};
 
     #[test]
     fn resolve_document_handles_sysout_and_dummy() {
@@ -427,7 +442,8 @@ mod tests {
 ";
         let config = ResolverConfig::default();
         let catalog = MockCatalog::new();
-        let output = resolve_document(jcl, &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let output = resolve_document(jcl, &config, &catalog, &allocator);
 
         assert_eq!(output.results.len(), 3);
         assert!(matches!(
@@ -463,7 +479,8 @@ mod tests {
 ";
         let config = ResolverConfig::default();
         let catalog = MockCatalog::new();
-        let output = resolve_document(jcl, &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let output = resolve_document(jcl, &config, &catalog, &allocator);
 
         // All 3 DDs should have results — none dropped
         assert_eq!(output.results.len(), 3);
@@ -486,7 +503,8 @@ mod tests {
             "PROD",
         );
         let config = ResolverConfig::default();
-        let output = resolve_document(jcl, &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let output = resolve_document(jcl, &config, &catalog, &allocator);
 
         assert_eq!(output.results.len(), 1);
         assert!(matches!(
@@ -506,7 +524,8 @@ mod tests {
 ";
         let config = ResolverConfig::default();
         let catalog = MockCatalog::new();
-        let output = resolve_document(jcl, &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let output = resolve_document(jcl, &config, &catalog, &allocator);
 
         assert!(output.summary.total_dds > 0);
     }

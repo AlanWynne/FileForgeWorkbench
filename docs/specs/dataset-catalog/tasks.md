@@ -624,32 +624,32 @@ This task plan implements the `ff-dscatalog` crate ? the mainframe dataset files
 
 These tasks integrate the first-class Volume layer (volume-model spec, new `ff-volume` crate) into `ff-dscatalog`: the catalog becomes a pure metadata locator, schema v4 adds `volumes` and `dataset_volumes`, resolution gains the DatasetVolume indirection, and a dual-read migration seeds a Volume per existing Repository without moving bytes. All tasks are `[ ]` (pending owner approval; this is a documentation gate). Follow TDD per `testing.md`.
 
-- [ ] 33. Schema v4 -- volumes + dataset_volumes tables and forward migration
-  - [ ] 33.1 Add the `volumes` table (volume_id, volser UNIQUE, storage_uri, status, access_mode, capacity counters) to the schema and bump SCHEMA_VERSION to 4.
-  - [ ] 33.2 Add the `dataset_volumes` table (dataset_id, volume_id, sequence_number, is_primary, locator) with the DatasetVolume constraints.
-  - [ ] 33.3 Implement the forward migration: seed one Volume per existing catalog/Repository (storage_uri = current root, status Online), and insert a `dataset_volumes` row (locator = storage_path, sequence 1, is_primary) for each existing dataset; preserve `storage_path` for dual-read; move NO bytes.
+- [x] 33. Schema v4 -- volumes + dataset_volumes tables and forward migration
+  - [x] 33.1 Add the `volumes` table (volume_id, volser UNIQUE, storage_uri, status, access_mode, capacity counters) to the schema and bump SCHEMA_VERSION to 4.
+  - [x] 33.2 Add the `dataset_volumes` table (dataset_id, volume_id, sequence_number, is_primary, locator) with the DatasetVolume constraints.
+  - [x] 33.3 Implement the forward migration: seed one Volume per existing catalog/Repository (storage_uri = current root, status Online), and insert a `dataset_volumes` row (locator = storage_path, sequence 1, is_primary) for each existing dataset; preserve `storage_path` for dual-read; move NO bytes.
     - Validates: Requirement 32.1, 32.2, 32.5
 
-- [ ] 34. Resolution via DatasetVolume indirection + Volume online check
-  - [ ] 34.1 Change `resolve_dsn` to go Dataset -> DatasetVolume (by sequence) -> Volume -> locator, with dual-read fallback to `storage_path` for unmigrated rows.
-  - [ ] 34.2 Verify each required Volume is Online during resolution; report the first unavailable Volume.
-  - [ ] 34.3 Ensure the catalog persists metadata + locators only; no dataset bytes are stored in the catalog database.
+- [x] 34. Resolution via DatasetVolume indirection + Volume online check
+  - [x] 34.1 Change `resolve_dsn` to go Dataset -> DatasetVolume (by sequence) -> Volume -> locator, with dual-read fallback to `storage_path` for unmigrated rows.
+  - [x] 34.2 Verify each required Volume is Online during resolution; report the first unavailable Volume.
+  - [x] 34.3 Ensure the catalog persists metadata + locators only; no dataset bytes are stored in the catalog database.
     - Validates: Requirement 32.3, 32.4
 
-- [ ] 35. Depend on `ff-volume`
-  - [ ] 35.1 Add the `ff-volume` dependency to `ff-dscatalog`'s `Cargo.toml`; obtain the Volume type and its behaviour from `ff-volume`; do not redefine the Volume type in the catalog.
+- [x] 35. Depend on `ff-volume`
+  - [x] 35.1 Add the `ff-volume` dependency to `ff-dscatalog`'s `Cargo.toml`; obtain the Volume type and its behaviour from `ff-volume`; do not redefine the Volume type in the catalog.
     - Validates: Requirement 32.8
 
-- [ ] 36. Multivolume, shared-volume, and uncataloged (VOL=SER + UNIT) resolution
-  - [ ] 36.1 Permit many catalogs to register datasets on one shared Volume and one dataset to reside on multiple Volumes (ordered DatasetVolume sequence) at the schema level.
-  - [ ] 36.2 Implement the uncataloged resolution path (VOL=SER + UNIT) that resolves a dataset on a Volume with no catalog row.
+- [x] 36. Multivolume, shared-volume, and uncataloged (VOL=SER + UNIT) resolution
+  - [x] 36.1 Permit many catalogs to register datasets on one shared Volume and one dataset to reside on multiple Volumes (ordered DatasetVolume sequence) at the schema level.
+  - [x] 36.2 Implement the uncataloged resolution path (VOL=SER + UNIT) that resolves a dataset on a Volume with no catalog row.
     - Validates: Requirement 32.6, 32.7
 
-- [ ] 37. Tests -- migration dual-read, volume resolution, uncataloged resolve, shared-volume registration
-  - [ ] 37.1 Migration test: v3 -> v4 seeds a Volume per Repository, populates dataset_volumes from storage_path, moves no bytes, dual-read still resolves.
-  - [ ] 37.2 Resolution test: resolve via DatasetVolume -> Volume -> locator; offline Volume reports the online-check error.
-  - [ ] 37.3 Uncataloged test: a dataset on a Volume with no catalog row resolves by VOL=SER + UNIT.
-  - [ ] 37.4 Cardinality test: two catalogs register datasets on one shared Volume; one dataset spans two Volumes.
+- [x] 37. Tests -- migration dual-read, volume resolution, uncataloged resolve, shared-volume registration
+  - [x] 37.1 Migration test: v3 -> v4 seeds a Volume per Repository, populates dataset_volumes from storage_path, moves no bytes, dual-read still resolves.
+  - [x] 37.2 Resolution test: resolve via DatasetVolume -> Volume -> locator; offline Volume reports the online-check error.
+  - [x] 37.3 Uncataloged test: a dataset on a Volume with no catalog row resolves by VOL=SER + UNIT.
+  - [x] 37.4 Cardinality test: two catalogs register datasets on one shared Volume; one dataset spans two Volumes.
     - Validates: Requirement 32.1, 32.2, 32.3, 32.4, 32.5, 32.6, 32.7
 
 ### Acceptance Criteria Coverage (CR-CH-057)
@@ -664,3 +664,55 @@ These tasks integrate the first-class Volume layer (volume-model spec, new `ff-v
 | Req 32 | 32.6 (shared volume + multivolume) | 36.1, 37.4 |
 | Req 32 | 32.7 (uncataloged VOL=SER + UNIT) | 36.2, 37.3 |
 | Req 32 | 32.8 (depend on ff-volume; no redefine) | 35.1 |
+
+---
+
+## Mainframe Dataset Stack Rationalisation (CR-CH-059)
+
+These tasks consolidate the drifted dataset stack onto `ff-dscatalog` as the single authority, add the reconciled service traits and the `DatasetAccess` contract, collapse the duplicate physical seam, and retire the orphan trait crates. All tasks are `[ ]` (pending owner approval; this is a documentation gate). Additive-first ordering: nothing is deleted until its reconciled replacement exists and consumers are repointed. Follow TDD per `testing.md`. See the design.md "Mainframe Dataset Stack Rationalisation (CR-CH-059)" section and the "DO NOT build before consolidation" waste list.
+
+> **Phase mapping (report section E):** Task 38 = Phase RC.A step 2; Task 39 = Phase RC.A step 3 (with virtual-file-system); Task 40 = Phase RC.B step 6 (DatasetAccess); Task 41 = Phase RC.B step 7 (VSAM under DatasetAccess + retire ff-vsam-services); Task 42 = Phase RC.A tail step 9 (delete ff-dataset-catalog).
+
+- [x] 38. Reconciled CatalogService / VsamService traits + single Dsorg/Recfm (RC.A step 2)
+  - [x] 38.1 Add a reconciled `CatalogService` trait + object-safe `DynCatalogService` to `ff-dscatalog` using its own `Dsn`/`Dsorg`/`Recfm` types, covering the dataset-ownership-model Req 15 operation set.
+  - [x] 38.2 Add a reconciled `VsamService` trait backed by the existing KSDS/ESDS/RRDS backends, covering the dataset-ownership-model Req 16 operation set; keep it object-safe.
+  - [x] 38.3 Confirm there is exactly ONE `Dsorg {PS,PO,GDG}` and ONE `Recfm {F,FB,V,VB,U}` in use; model VSAM as a `VsamCluster` entity (not a `Dsorg` variant).
+  - [x] 38.4 Repoint `ff-governance-tests` dev-dependency + `tests/mock_compilation.rs` from `ff_dataset_catalog` to the reconciled `ff-dscatalog` traits/types; verify `cargo test -p ff-governance-tests`.
+    - Validates: Requirement 33.1, 33.2, 33.3, 33.4, 33.5, 33.6, 33.7; dataset-ownership-model Requirement 22.2-22.5
+
+- [x] 39. Unify the physical seam onto ff-vfs::StorageProvider; delete the duplicate (RC.A step 3)
+  - [x] 39.1 Reimplement the five backends (NativeFile, ESDS, KSDS/SqliteRecord, RRDS, ISAM) against `ff-vfs::StorageProvider`; carry UUID/workspace_root behind the opaque `StorageLocator`; map errors to `VfsError`.
+  - [x] 39.2 Delete `ff-dscatalog::storage::StorageProvider` (the duplicate trait); register the backends via `register_storage` / `get_storage`.
+  - [x] 39.3 Keep the record codecs in `ff-dscatalog` with no fs/SQLite/egui dependency (unchanged).
+    - Validates: Requirement 35.1b; virtual-file-system Requirement 13.1-13.5
+
+- [x] 40. Define the DatasetAccess trait in ff-dscatalog (RC.B step 6)
+  - [x] 40.1 Define `DatasetAccess` (allocate/open/get/put/point/close/dispose) with `DatasetHandle`, `OpenDataset`, `Record`, `Positioner`, `AccessIntent`, `StepOutcome`, `DatasetError`; keep it object-safe (or add an object-safe companion).
+  - [x] 40.2 Implement RECFM-aware get/put over the record codecs (fixed/variable-RDW/U/keyed); never a host text-line delimiter.
+  - [x] 40.3 Resolve location through `ff-volume` (Dataset -> DatasetVolume -> Volume -> locator) and perform physical I/O through the single `ff-vfs::StorageProvider` seam; map `DatasetError` to `VfsError` across the seam.
+  - [x] 40.4 Honour Volume status/access mode on allocate and charge SPACE against the Volume (coordinate with dataset-allocator Req 17); return a `DatasetHandle`.
+  - [x] 40.5 Tests: allocate->open->put->get->close round-trips per RECFM; offline/read-only Volume rejection; dispose KEEP/CATLG/UNCATLG/PASS/DELETE; `dyn DatasetAccess` mock substitution. (All passing in `dataset_access::impl_access_tests` / `impl_io_tests`.)
+    - DEFERRED (RC.B.7): the concrete VSAM keyed point (KSDS) and relative point (RRDS) record ops. The `point()` method is DEFINED and object-safe; it returns a typed `NotYetWired` error today (tests `point_on_ksds_returns_not_yet_wired` / `point_relative_rrds_returns_not_yet_wired`), with the concrete get/put/browse over the KSDS/ESDS/RRDS backends landing in Task 41 (RC.B.7).
+    - Validates: Requirement 34.1, 34.2, 34.3, 34.4, 34.5, 34.6, 34.7, 34.8 (keyed/relative VSAM record ops deferred to RC.B.7); volume-model Requirement 12.1-12.4
+
+- [ ] 41. Wire VSAM under DatasetAccess, then retire ff-vsam-services (RC.B step 7)
+  - [ ] 41.1 Implement the concrete reconciled `VsamService` get/put/browse over the KSDS/ESDS/RRDS backends through `DatasetAccess` on the unified physical seam.
+  - [ ] 41.2 Remove the `ff-vsam-services` crate and its root `Cargo.toml` member line once no consumer references it; grep-verify no `ff-vsam-services` / `ff_vsam_services` live references.
+    - Validates: Requirement 35.3; dataset-ownership-model Requirement 22.3
+
+- [ ] 42. Delete ff-dataset-catalog once no consumer references it (RC.A tail step 9)
+  - [ ] 42.1 After Tasks 38 (repoint) land, remove the `crates/ff-dataset-catalog/` directory and its `[workspace].members` entry.
+  - [ ] 42.2 Grep-verify no `ff-dataset-catalog` / `ff_dataset_catalog` live references remain across specs, `Cargo.toml`, and `.rs`.
+    - Validates: Requirement 35.1a/c/d, 35.2; dataset-ownership-model Requirement 22.1, 22.2
+
+### Acceptance Criteria Coverage (CR-CH-059)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 33: Reconciled traits + single Dsorg/Recfm | 33.1-33.7 | 38.1-38.4 |
+| Req 34: DatasetAccess contract | 34.1-34.8 | 40.1-40.5 |
+| Req 35: Retirement sequence | 35.1b (seam) | 39.1-39.3 |
+| Req 35 | 35.1a/c/d, 35.2 (delete ff-dataset-catalog) | 42.1, 42.2 |
+| Req 35 | 35.3 (VSAM then retire ff-vsam-services) | 41.1, 41.2 |
+| Req 35 | 35.4 (collapse posix) | virtual-file-system tasks (RC.A step 4) |
+| Req 35 | 35.5 (do-not-build note) | design.md note; enforced across tasks |

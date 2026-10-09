@@ -581,3 +581,21 @@ This task plan implements the `ff-jes` crate -- the FileForge Workbench Job Entr
   - [x] 34.9 Implement SET P2 persistence: persist all SET P2 settings via session mechanism (extends Task 29.1)
   - [x] 34.10 Write unit tests for each SET P2 command, default values, and round-trip persistence
   - Covers: Requirement 18 (AC 18.22, 18.23, 18.24, 18.25, 18.26, 18.27, 18.28, 18.29, 18.30)
+
+---
+
+## Mainframe Dataset Stack Rationalisation (CR-CH-059)
+
+> Phase RC.C contract/dependency work only -- JES itself stays DEFERRED (ROADMAP PLUGIN phase 6). This task fixes the wrong crate names in this spec and records the future JCL executor's dependency contract (ff-dsalloc + DatasetAccess only). It builds NO JES runtime behaviour. All tasks `[ ]`.
+
+- [x] 35. Crate-name correction and JCL-executor dependency contract (docs/contract only)
+  - [x] 35.1 Confirm every `ff-dataset-catalog` -> `ff-dscatalog` and `ff-dataset-allocator` -> `ff-dsalloc` correction in `jes-emulator/requirements.md` (Introduction, Req 1.7, Req 11, Req 12.5) and `design.md`; no live legacy crate reference remains.
+    - Note: RC.A.1 verified by grep -- every legacy name in requirements.md sits inside a "corrected ... by CR-CH-059" note; no live reference.
+    - Validates: Requirement 19.3
+  - [x] 35.2 Record (requirements + design) that the future JCL executor depends ONLY on `ff-dsalloc` (DD/DISP allocation returning a `DatasetHandle`) and the `DatasetAccess` trait for record I/O -- never SQLite, `storage_path`, or `physical_path`.
+    - Validates: Requirement 19.1, 19.2
+  - [x] 35.3 Record the sequencing constraint: the executor is not started before the reconciled traits + `DatasetAccess` (dataset-catalog Reqs 33, 34) and the `ff-dsalloc` handle return (dataset-allocator Req 19) have landed; JES stays deferred.
+    - Validates: Requirement 19.4, 19.5
+  - [x] 35.4 Update `docs/quality/TCR.md` Req 19.1-19.5 rows (documentation-only; no runtime test since JES is deferred -- rows noted as doc/contract criteria).
+
+> Note: When the `ff-jes` crate's `Cargo.toml` is next edited (a later, separate change), its `ff-dataset-catalog` / `ff-dataset-allocator` dependency lines are renamed to `ff-dscatalog` / `ff-dsalloc` as part of the consolidation (dataset-catalog Task 42 grep-verify). This task does not itself edit Rust/Cargo files (docs-only gate).

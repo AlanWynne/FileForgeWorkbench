@@ -23,8 +23,9 @@
 //! ## Position in Architecture
 //!
 //! `ff-dsalloc` is a **Wave 13 (Dataset Catalog and Mainframe Emulation)** crate.
-//! It depends on `ff-dataset-catalog` for DSN resolution and uses trait-based
-//! abstractions for catalog access and language service queries.
+//! It depends on `ff-dscatalog` for DSN resolution and the `DatasetAccess`
+//! contract, and uses trait-based abstractions for catalog access and language
+//! service queries so it stays mockable (dataset-allocator Requirement 19.4).
 
 // ─── Public Modules ─────────────────────────────────────────────────────────
 
@@ -90,12 +91,16 @@ pub mod traits;
 
 // ─── Public API Re-exports ──────────────────────────────────────────────────
 
-pub use catalog_bridge::{CatalogError, CatalogMatch, CatalogProvider, GdgGeneration, GdgInfo};
+pub use catalog_bridge::{
+    CatalogError, CatalogMatch, CatalogProvider, DatasetAllocationRequest, DatasetAllocator,
+    GdgGeneration, GdgInfo, MockDatasetAllocator,
+};
 pub use config::{ResolveMode, ResolverConfig};
 pub use dd_statement::DdStatement;
 pub use diagnostic::{DiagnosticCode, DiagnosticSeverity, LintDiagnostic};
 pub use dsn::{DatasetName, DsnReference};
 pub use error::JclResolverError;
+pub use ff_dscatalog::DatasetHandle;
 pub use job_model::{ExecTarget, JclJob, JclStep};
 pub use operands::{
     DcbAttributes, DispAction, DispParameter, DispStatus, DsOrg, SpaceAllocation, SpaceUnit,

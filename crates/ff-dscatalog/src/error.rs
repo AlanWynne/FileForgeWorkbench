@@ -202,6 +202,18 @@ pub enum CatalogError {
         /// The operation that was attempted.
         operation: String,
     },
+
+    /// A required Volume is unavailable (Offline, ReadOnly, or missing) during
+    /// resolution (Requirement 32.3). Identifies the first unavailable Volume.
+    #[error("[catalog] {operation}: volume unavailable: {volser} ({reason})")]
+    VolumeUnavailable {
+        /// The VOLSER (or reference) of the first unavailable Volume.
+        volser: String,
+        /// Why the Volume is unavailable (e.g. Offline, not found).
+        reason: String,
+        /// The operation that was attempted.
+        operation: String,
+    },
 }
 
 impl From<CatalogError> for VfsError {

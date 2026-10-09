@@ -372,3 +372,109 @@ The Mainframe qualifier-group / dataset-duality presentation (ADR-002 D2 --
 HlqGroup, sibling dataset+group nodes, PDS-members-as-files, GDG) is Slice B, which
 WILL extend this spec (next free Requirement number here is 17; note the existing
 Requirement 11 gap must be confirmed intentional before Slice B authoring).
+
+---
+
+## Design Delta: Volume Management Context + Volume Picker (CR-NR-105 / CR-CH-057, Requirements 17-18)
+
+This delta is purely ADDITIVE. It introduces no change to the catalog registry, the POSIX/Native
+providers, the dataset-allocation dialog, or the DSN resolution of sections 7 and 10. It builds ON
+the `ff-volume` crate (owner of the Volume entity, `volume-model` Requirements 1-11) and the
+established FFWB framework seams.
+
+### 11.1 Volume Management Context -- a WorkspaceContext (Requirement 17)
+
+The Volume management Context is a NEW `WorkspaceContext`, modelled on the Theme Editor / Menus
+Editor Contexts (the pattern mandated by `wiring-standard.md`). Its pure state and egui render live
+in a panel struct (`VolumeReportPanel`) held on the shell inside a grouped sub-struct, NOT as a new
+flat field on `WorkbenchShell`.
+
+- **TabKind / Kind registry:** add a `TabKind` variant for the Volume management Context and, since
+  it is navigable and persistable, a `WorkspaceKind` arm in `shell/nav_stack.rs`
+  (`descriptor_for_current_context` + `reconstruct_custom`) so it round-trips as a
+  `WorkspaceDescriptor::CustomWorkspace { kind, params }` (Requirement 17.8).
+- **Trait + dispatch:** `impl WorkspaceContext for VolumeReportPanel` with
+  `render(&mut self, ui, &mut ShellServices) -> InteriorFocus`. The central-panel arm uses the
+  owned-panel swap: `mem::take` the panel, `render_workspace_context(ctx, ui, &mut panel)`, put it
+  back, then apply the stashed action. The focus latch is NOT hand-written (Requirement 17.2).
+- **InteriorFocus:** the first interior control is the Volume_Report filter field, given a stable
+  `egui::Id::new("volume_report_filter")`; `render` returns `InteriorFocus::single(that_id)` (or a
+  `{ first, last }` pair if a distinct last control is warranted). The filter field is guaranteed
+  present even when the Volume list is empty, so it anchors both the first-Tab target and the
+  Shift+Tab reverse boundary.
+- **Body:** the report lists one row per Volume (VOLSER, name, status, access mode, total/used/free
+  tracks or cylinders) -- a direct rendering of the `volume-model` VTOC_View (Requirement 8). The
+  Context does not compute capacity itself; it reads the derived counters exposed by `ff-volume`.
+
+### 11.2 Volume actions via the pending-action pattern (Requirement 17.3-17.7)
+
+`VolumeReportPanel::render` returns a `VolumeAction` enum (the pending_action pattern); the shell
+applies it in a new `apply_volume_action` method. Each action maps to a command dispatched through
+the single `resolve_target` / `dispatch_command_target` front door -- NO bespoke intercept:
+
+| UI affordance | VolumeAction | Command dispatched |
+|---|---|---|
+| `New Volume` / `Define Volume...` confirm | `DefineVolume(params)` | `DEFINE VOLUME` (volume-model Req 10) |
+| `Vary Online` / `Vary Offline` | `SetStatus(volser, status)` | set-online / set-offline (volume-model Req 2.3/2.5) |
+| `Set Read-Write` / `Set Read-Only` | `SetAccess(volser, mode)` | access-mode command (volume-model Req 2.5) |
+| `Alter Capacity...` confirm | `AlterCapacity(volser, cap)` | `ALTER VOLUME` capacity command |
+
+`render` never mutates the shell; the shell owns all state transitions. After an action is applied
+the Volume_Report reflects the new state on the next frame (Requirements 17.5, 17.6).
+
+### 11.3 Define_Volume_Dialog (shared by Requirement 17.3 and 18.3)
+
+A single modal dialog struct `DefineVolumeForm` is reused by BOTH the Volume management Context and
+the catalog-creation volume picker. It collects VOLSER, host path (-> `storage_uri`), capacity
+(unit + quantity), and initial status; on confirm the owning code path invokes `DEFINE VOLUME`.
+Duplicate-VOLSER failures surface as an inline error adjacent to the VOLSER field without closing
+(Requirement 17.4). The alter-capacity over-commit guard (Requirement 17.7) is enforced by the
+command handler (`ff-volume`), with the dialog surfacing the reported error; the dialog does not
+re-implement the capacity rule.
+
+### 11.4 Volume picker in the Catalog_Manager_Dialog (Requirement 18)
+
+The existing `Catalog_Manager_Dialog` (section 2.5, Requirement 3) gains a `Volume` picker when the
+selected catalog type is Mainframe. It is a combo listing defined VOLSERs plus a trailing
+`Define new volume...` sentinel entry:
+
+- Selecting an existing VOLSER stores it as the catalog's target Volume (Requirement 18.2). This
+  binds the catalog to a Volume in the many-catalogs-per-Volume model (`volume-model` Requirement 9);
+  the catalog registry gains an OPTIONAL `volume_volser` field persisted alongside the existing
+  catalog fields (additive; absent for pre-Volume catalogs, resolved to the default Volume).
+- Selecting `Define new volume...` opens the shared `DefineVolumeForm` (same `DEFINE VOLUME`
+  command); on success control returns to the catalog dialog with the new Volume pre-selected
+  (Requirement 18.3); on cancel the picker selection is unchanged (Requirement 18.4).
+- The picker is the ONLY Volume-choosing control in the catalog flow; no inline Volume editor is
+  added to the catalog dialog (Requirement 18.6).
+
+The combo's `response.id` is captured each frame and stored on the dialog state so that any focus
+assertion against it uses the fresh same-frame id (per `workspace-conformance.md`); the picker lives
+inside the dialog, which is itself inside the Catalog_Explorer_Context, so it does not change that
+Context's reported interior focus anchors.
+
+### 11.5 Single-user default Volume (Requirements 17.10, 18.5)
+
+At startup, if no Volume is defined, the shell MAY auto-create one default Volume (reusing the same
+`DEFINE VOLUME` command path, so there is one creation code path) so casual users never meet the
+Volume concept. The auto-create is idempotent -- it runs only when zero Volumes exist, mirroring the
+default-Home-catalog pattern in section 8. The catalog-dialog picker pre-selects this default Volume
+(Requirement 18.5).
+
+### 11.6 Testing (Requirement 17.2)
+
+Per `workspace-conformance.md`, the Volume management Context ships a full-shell `egui_kittest`
+`build_eframe` test asserting the FIRST Tab from the command field lands EXACTLY on
+`volume_report_filter` (no phantom stop), modelled on
+`full_shell_theme_editor_first_tab_focuses_theme_selector`. The `apply_volume_action` effect and the
+`DEFINE VOLUME` / vary / set-access / alter-capacity command handlers get unit tests. The command
+contracts themselves are specified in `volume-model` and (for `DEFINE VOLUME`) `idcams-emulator`;
+this spec only tests the UI wiring (dialog -> command, picker -> selection, report render + focus).
+
+### 11.7 No framework change
+
+Everything here uses existing seams: a new `WorkspaceContext` + `render_workspace_context` dispatch,
+new `Function`/command targets resolved by `resolve_target`, a `menus/*.toml` option for the
+Volume-management command, a `WorkspaceDescriptor` for persistence, and the pending_action effect
+mechanism. No second navigation stack, no second dispatcher, no built-in file written to disk, no
+new flat shell field. This conforms to `framework-conformance.md` and `wiring-standard.md`.

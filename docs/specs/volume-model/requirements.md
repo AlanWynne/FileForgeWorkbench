@@ -226,3 +226,25 @@ A central scoping decision (owner-approved): **tracks, cylinders, and extents ar
 11.1 THE geometry conversions (Requirement 3) SHALL be deterministic: identical inputs under an identical Geometry_Profile SHALL always produce identical track, cylinder, and byte results.
 11.2 THE reporting counters (Requirement 8) SHALL be derived metadata computed in time proportional to the number of extents (O(n) in extents, O(1) for a dataset with a single extent); they SHALL NOT scan physical content.
 11.3 WHEN a Volume is defined over an existing Repository root, NO dataset bytes SHALL move -- the migration SHALL add metadata only (ADR-003: physical object names are opaque and renames are metadata-only).
+
+---
+
+## Requirements Added by CR-CH-059 -- DatasetAccess Resolves Location Through ff-volume
+
+### Requirement 12: DatasetAccess and the storage_path -> DatasetVolume Locator (CR-CH-059)
+
+**User Story:** As a platform architect, I want it recorded that the `DatasetAccess` contract resolves a dataset's physical location through `ff-volume`, and that the catalog's legacy `storage_path` migrates to a `DatasetVolume` locator at schema v4, so that the single access interface sits on the Volume layer that `ff-volume` already owns.
+
+> **Note -- reference, do NOT duplicate.** The Volume entity, VOLSER, status/access mode, geometry, extents, capacity, VTOC view, DatasetVolume association, and the schema v4 migration are ALREADY owned by Requirements 1-11 of this spec and by dataset-catalog Requirement 32. This Requirement adds ONLY the statement that `DatasetAccess` (dataset-catalog Requirement 34) resolves location through those existing structures. It introduces no new Volume model.
+
+**Source:** CR-CH-059; `.agents/tasks/dataset-vision-fit/report.md` sections A.2, D, E items 5-6; dataset-catalog Requirements 32, 34; dataset-ownership-model Requirement 21. Content was rephrased for compliance with licensing restrictions.
+
+#### Acceptance Criteria
+
+12.1 THE `DatasetAccess` contract (dataset-catalog Requirement 34) SHALL resolve a dataset's physical location through `ff-volume` by the existing Dataset -> DatasetVolume (by sequence) -> Volume -> locator path (dataset-catalog Requirement 32.3, this spec Requirement 9), honouring the Volume Online check (Requirement 2.4).
+
+12.2 THE legacy catalog `storage_path` SHALL be migrated to the `DatasetVolume` locator at schema v4 (dataset-catalog Requirement 32.5) with dual-read during the transition; `DatasetAccess` SHALL read location via the `DatasetVolume` locator, NOT via `storage_path`.
+
+12.3 THE `ff-volume` crate SHALL remain the owner of the Volume entity and SHALL NOT depend on `ff-dscatalog`, `ff-dsalloc`, or `ff-idcams` (dataset-ownership-model Requirement 21.3) -- `DatasetAccess` lives in `ff-dscatalog` and CONSUMES `ff-volume`, keeping the DAG acyclic.
+
+12.4 THE allocation flow that `DatasetAccess::allocate` drives SHALL charge SPACE against the Volume per dataset-allocator Requirement 17 and SHALL surface the two distinct failures (dataset x37-style per Requirements 5-6, Volume_Full per Requirement 7) unchanged -- this Requirement adds no new failure mode.

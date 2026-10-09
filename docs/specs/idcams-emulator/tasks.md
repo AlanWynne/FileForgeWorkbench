@@ -494,6 +494,66 @@ This task plan implements the `ff-idcams` crate -- the IDCAMS (Access Method Ser
 
 ---
 
+## Phase VI -- DEFINE VOLUME Command + VOLUMES() Binding (CR-NR-105 / CR-CH-057, Requirement 27)
+
+> Add the DEFINE VOLUME verb (parse + orchestrate via a downstream `ff-volume`-backed VolumeService)
+> and bind DEFINE CLUSTER VOLUMES() to real Volume entities. Keeps ff-idcams a thin orchestrator.
+> TDD-first; SCOPED `-p ff-idcams` checks.
+
+- [ ] 28. DEFINE VOLUME command + VOLUMES() binding
+  - [ ] 28.1 Add `Command::DefineVolume(DefineVolumeCommand)` to `src/parser/ast.rs` (volser, path,
+          capacity CYL/TRK, optional status)
+    - Validates: Requirement 27.1
+  - [ ] 28.2 Add the `DEFINE VOLUME` parser arm reusing CYLINDERS/TRACKS operand parsing
+    - Validates: Requirement 27.1
+  - [ ] 28.3 Add the `DefineVolumeCommand` Pretty_Printer arm; write the parse -> print -> parse
+          round-trip test
+    - Validates: Requirement 27.8
+  - [ ] 28.4 Define the `VolumeService` downstream trait (`define_volume`, `resolve_volume`) and
+          inject it into `IdcamsServices`; provide a mock in tests
+    - Validates: Requirement 27.2
+  - [ ] 28.5 Add the DEFINE VOLUME executor arm: call `define_volume`; map success to CC 0 / IDC0001I
+          and duplicate VOLSER to CC 12 (duplicate-name message)
+    - Validates: Requirement 27.2, 27.3, 27.4
+  - [ ] 28.6 Bind DEFINE CLUSTER VOLUMES(volser...) to real Volumes via `resolve_volume` + the
+          DatasetVolume association; error with CC 12 on an unknown VOLSER (no cluster created)
+    - Validates: Requirement 27.5, 27.6
+  - [ ] 28.7 Honour Volume status/access on DEFINE VOLUME and VOLUMES()-bound DEFINE CLUSTER
+          (Offline/ReadOnly rejected, surfaced as the IDCAMS CC)
+    - Validates: Requirement 27.7
+  - [ ] 28.8 Write failing unit tests (mock VolumeService): parse DEFINE VOLUME; define success;
+          duplicate VOLSER; VOLUMES() binds; unknown VOLSER error; offline/read-only rejected;
+          pretty-print round-trip
+    - Validates: Requirement 27.1-27.8
+  - [ ] 28.9 Run `cargo test -p ff-idcams` -- red then green
+  - [ ] 28.10 Run `cargo clippy -p ff-idcams -- -D warnings` -- clean; `cargo fmt`
+  - [ ] 28.11 Update `docs/quality/TCR.md` Req 27.1-27.8 rows; hand off the full gate
+
+---
+
+## Mainframe Dataset Stack Rationalisation (CR-CH-059)
+
+> Phase RC.A/RC.B step 2 + the repoint. Repoint `ff-idcams`'s private service traits at the reconciled `ff-dscatalog` traits, and route DEFINE/REPRO/DELETE dataset operations through the `DatasetAccess` contract. `ff-idcams` stays a thin orchestrator (Requirement 21). All tasks `[ ]`; TDD-first; SCOPED `-p ff-idcams` checks. Sequenced AFTER dataset-catalog Tasks 38 (reconciled traits) + 40 (DatasetAccess) and BEFORE dataset-catalog Tasks 41/42 (crate deletion).
+
+- [ ] 29. Repoint private service traits at ff-dscatalog; map DEFINE/REPRO/DELETE onto DatasetAccess
+  - [ ] 29.1 Remove `ff-idcams`'s private `CatalogService` / `VsamService` trait definitions; depend on the reconciled traits from `ff-dscatalog` (dataset-catalog Requirement 33).
+    - Validates: Requirement 28.1
+  - [ ] 29.2 Update `IdcamsServices`, `MockCatalogService`, and `MockVsamService` to the reconciled trait method shapes and types (`Dsorg {PS,PO,GDG}`, `Recfm {F,FB,V,VB,U}`, `Dsn`).
+    - Validates: Requirement 28.2
+  - [ ] 29.3 Route DEFINE (CLUSTER/GDG + DEFINE VOLUME binding) dataset creation through the reconciled traits and, where record storage is allocated/initialised, through `DatasetAccess` (dataset-catalog Requirement 34).
+    - Validates: Requirement 28.3
+  - [ ] 29.4 Route REPRO record get/put through `DatasetAccess` / the reconciled `VsamService`, honouring RECFM/LRECL via the codecs; no record-copy logic in `ff-idcams`.
+    - Validates: Requirement 28.4
+  - [ ] 29.5 Route DELETE through `CatalogService::delete_dataset` + `VsamService` / `DatasetAccess::dispose`, preserving the atomic-execution guarantee (Requirement 22).
+    - Validates: Requirement 28.5
+  - [ ] 29.6 Verify no live `ff-dataset-catalog` / `ff-vsam-services` reference remains in `ff-idcams`; confirm syntax/output/CC behaviour is unchanged by the repoint.
+    - Validates: Requirement 28.6, 28.7
+  - [ ] 29.7 Write failing unit tests (reconciled mocks): DEFINE/REPRO/DELETE route through the reconciled traits + DatasetAccess; CC/output unchanged. Run `cargo test -p ff-idcams` red then green; `cargo clippy -p ff-idcams -- -D warnings`; `cargo fmt`.
+    - Validates: Requirement 28.1-28.7
+  - [ ] 29.8 Update `docs/quality/TCR.md` Req 28.1-28.7 rows; hand off the full gate.
+
+---
+
 ## Acceptance Criteria Coverage
 
 | Requirement | Criteria | Covered by Task(s) |

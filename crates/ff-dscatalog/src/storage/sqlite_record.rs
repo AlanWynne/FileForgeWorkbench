@@ -5,16 +5,16 @@
 //! record payloads.  The database path is derived from the physical dataset UUID
 //! and never from a dataset name.
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 
+use ff_vfs::{StorageCapability, StorageLocator, StorageProvider, StorageStat, VfsError};
 use rusqlite::{params, Connection, OptionalExtension};
 use uuid::Uuid;
 
 use crate::error::CatalogError;
-
-use super::{ObjectId, ObjectStat, ProviderCapability, StorageProvider};
 
 const INDEXED_DIR: &str = "indexed";
 const RECORD_TABLE: &str = "KSDS_RECORDS";
@@ -125,6 +125,7 @@ pub struct AlternateIndex {
 
 /// A dedicated SQLite database containing records for one KSDS dataset.
 pub struct SqliteRecordProvider {
+    root: PathBuf,
     database_path: PathBuf,
     dataset_id: Uuid,
     key_definition: KsdsKeyDefinition,
@@ -135,6 +136,7 @@ impl std::fmt::Debug for SqliteRecordProvider {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("SqliteRecordProvider")
+            .field("root", &self.root)
             .field("database_path", &self.database_path)
             .field("dataset_id", &self.dataset_id)
             .field("key_definition", &self.key_definition)
@@ -155,6 +157,7 @@ impl SqliteRecordProvider {
     ) -> Result<Self, CatalogError> {
         validate_key_definition(&key_definition)?;
 
+        let root = repository_root.as_ref().to_path_buf();
         let indexed_dir = repository_root.as_ref().join(INDEXED_DIR);
         fs::create_dir_all(&indexed_dir).map_err(|source| CatalogError::IoError {
             operation: "open_ksds".to_string(),
@@ -170,6 +173,7 @@ impl SqliteRecordProvider {
         initialise_database(&connection, &key_definition)?;
 
         Ok(Self {
+            root,
             database_path,
             dataset_id,
             key_definition,
@@ -732,64 +736,65 @@ fn indexed_path(root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
     Ok(root.join(path))
 }
 
+// === ff_vfs::StorageProvider -- the single physical seam (CR-CH-059) =========
+
 impl StorageProvider for SqliteRecordProvider {
-    fn capabilities(&self) -> &[ProviderCapability] {
-        static CAPABILITIES: [ProviderCapability; 3] = [
-            ProviderCapability::RecordRead,
-            ProviderCapability::RecordWrite,
-            ProviderCapability::KeyedAccess,
-        ];
-        &CAPABILITIES
+    fn capabilities(&self) -> HashSet<StorageCapability> {
+        [
+            StorageCapability::RecordRead,
+            StorageCapability::RecordWrite,
+            StorageCapability::KeyedAccess,
+        ]
+        .into_iter()
+        .collect()
     }
 
-    fn allocate(
-        &self,
-        workspace_root: &Path,
-        _is_container: bool,
-    ) -> Result<(ObjectId, String), CatalogError> {
+    fn allocate(&self, _name: &str) -> Result<StorageLocator, VfsError> {
         let id = Uuid::new_v4();
         let definition = KsdsKeyDefinition::new(0, 1);
-        Self::open(workspace_root, id, definition)?;
-        Ok((id, format!("{INDEXED_DIR}/{id}.sqlite")))
+        Self::open(&self.root, id, definition).map_err(VfsError::from)?;
+        Ok(StorageLocator::new(format!("{INDEXED_DIR}/{id}.sqlite")))
     }
 
-    fn open(&self, workspace_root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
-        let path = indexed_path(workspace_root, locator)?;
+    fn open(&self, locator: &StorageLocator) -> Result<Vec<u8>, VfsError> {
+        let path = indexed_path(&self.root, locator.as_str()).map_err(VfsError::from)?;
         if !path.is_file() {
-            return Err(CatalogError::DatasetNotFound {
-                dsn: locator.to_string(),
+            return Err(VfsError::NotFound {
+                uri: locator.as_str().to_string(),
                 operation: "open_ksds".to_string(),
             });
         }
-        Ok(path)
-    }
-
-    fn stat(&self, workspace_root: &Path, locator: &str) -> Result<ObjectStat, CatalogError> {
-        let path = indexed_path(workspace_root, locator)?;
-        let metadata = fs::metadata(&path).map_err(|source| CatalogError::IoError {
-            operation: "stat_ksds".to_string(),
+        fs::read(&path).map_err(|source| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "open_ksds".to_string(),
             source,
-        })?;
-        Ok(ObjectStat {
-            size: metadata.len(),
-            is_container: false,
-            locator: locator.to_string(),
         })
     }
 
-    fn rename(
-        &self,
-        _workspace_root: &Path,
-        _locator: &str,
-        _new_locator: &str,
-    ) -> Result<(), CatalogError> {
+    fn stat(&self, locator: &StorageLocator) -> Result<StorageStat, VfsError> {
+        let path = indexed_path(&self.root, locator.as_str()).map_err(VfsError::from)?;
+        let metadata = fs::metadata(&path).map_err(|source| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "stat_ksds".to_string(),
+            source,
+        })?;
+        Ok(StorageStat {
+            name: locator.as_str().to_string(),
+            size_bytes: Some(metadata.len()),
+            is_container: false,
+            attributes: Vec::new(),
+        })
+    }
+
+    fn rename(&self, _locator: &StorageLocator, _new_name: &str) -> Result<(), VfsError> {
         Ok(())
     }
 
-    fn delete(&self, workspace_root: &Path, locator: &str) -> Result<(), CatalogError> {
-        let path = indexed_path(workspace_root, locator)?;
+    fn delete(&self, locator: &StorageLocator) -> Result<(), VfsError> {
+        let path = indexed_path(&self.root, locator.as_str()).map_err(VfsError::from)?;
         if path.exists() {
-            fs::remove_file(path).map_err(|source| CatalogError::IoError {
+            fs::remove_file(path).map_err(|source| VfsError::Io {
+                uri: locator.as_str().to_string(),
                 operation: "delete_ksds".to_string(),
                 source,
             })?;
@@ -797,39 +802,36 @@ impl StorageProvider for SqliteRecordProvider {
         Ok(())
     }
 
-    fn list(&self, workspace_root: &Path, _locator: &str) -> Result<Vec<String>, CatalogError> {
-        let indexed_dir = workspace_root.join(INDEXED_DIR);
+    fn list(&self) -> Result<Vec<(StorageLocator, String)>, VfsError> {
+        let indexed_dir = self.root.join(INDEXED_DIR);
         if !indexed_dir.is_dir() {
             return Ok(Vec::new());
         }
         let mut locators = Vec::new();
-        for entry in fs::read_dir(indexed_dir).map_err(|source| CatalogError::IoError {
+        for entry in fs::read_dir(indexed_dir).map_err(|source| VfsError::Io {
+            uri: INDEXED_DIR.to_string(),
             operation: "list_ksds".to_string(),
             source,
         })? {
-            let entry = entry.map_err(|source| CatalogError::IoError {
+            let entry = entry.map_err(|source| VfsError::Io {
+                uri: INDEXED_DIR.to_string(),
                 operation: "list_ksds".to_string(),
                 source,
             })?;
             if entry.path().extension().and_then(|ext| ext.to_str()) == Some("sqlite") {
-                locators.push(format!(
-                    "{INDEXED_DIR}/{}",
-                    entry.file_name().to_string_lossy()
-                ));
+                let name = entry.file_name().to_string_lossy().into_owned();
+                let locator = format!("{INDEXED_DIR}/{name}");
+                locators.push((StorageLocator::new(locator), name));
             }
         }
-        locators.sort();
+        locators.sort_by(|a, b| a.1.cmp(&b.1));
         Ok(locators)
     }
 
-    fn reconcile(
-        &self,
-        workspace_root: &Path,
-        known_locators: &[String],
-    ) -> Result<Vec<String>, CatalogError> {
+    fn reconcile(&self, catalogue_names: &[String]) -> Result<Vec<String>, VfsError> {
         let mut discrepancies = Vec::new();
-        for locator in known_locators {
-            match indexed_path(workspace_root, locator) {
+        for locator in catalogue_names {
+            match indexed_path(&self.root, locator) {
                 Ok(path) if !path.is_file() => {
                     discrepancies.push(format!("missing physical object for locator '{locator}'"));
                 }

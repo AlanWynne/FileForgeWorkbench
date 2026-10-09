@@ -1,7 +1,16 @@
-//! Catalog resolution bridge — trait abstraction and mock implementation.
+//! Catalog resolution bridge -- trait abstraction and mock implementation.
 //!
 //! The `CatalogProvider` trait abstracts catalog access for testability.
-//! Production would delegate to `ff-dataset-catalog`; tests use `MockCatalog`.
+//! Production delegates to `ff-dscatalog` (through its reconciled
+//! `CatalogService` trait, dataset-catalog Requirement 33); tests use
+//! `MockCatalog`. The `DatasetAllocator` trait wraps
+//! `ff_dscatalog::DatasetAccess::allocate` so a live allocation returns an
+//! opaque `ff_dscatalog::DatasetHandle` rather than a raw physical path
+//! (dataset-allocator Requirement 19.1, 19.2, 19.3). The allocator keeps NO
+//! direct SQLite access -- it depends on the catalog only through these mockable
+//! traits (Requirement 19.4).
+
+use ff_dscatalog::DatasetHandle;
 
 use crate::operands::{DcbAttributes, SpaceAllocation};
 
@@ -80,7 +89,7 @@ pub struct GdgGeneration {
 
 /// Trait abstracting catalog access for testability.
 ///
-/// Production implementation delegates to `ff-dataset-catalog`.
+/// Production implementation delegates to `ff-dscatalog`.
 /// Test implementations can provide canned responses.
 pub trait CatalogProvider: Send + Sync {
     /// Look up a DSN in mounted catalogs.
@@ -106,7 +115,91 @@ pub trait CatalogProvider: Send + Sync {
     fn dataset_exists(&self, dsn: &str) -> Result<bool, CatalogError>;
 }
 
-/// Mock catalog for testing — provides canned responses.
+/// A resolved allocation request handed to a `DatasetAllocator`.
+///
+/// The allocator owns the JCL DISP/SPACE/DCB parse; this request is the
+/// already-parsed form it passes to the `DatasetAccess` seam. It is a thin
+/// local DTO so `ff-dsalloc` need not reconstruct `ff_dscatalog::DdRequest`
+/// (which carries Volume-layer types) at the trait boundary.
+#[derive(Debug, Clone)]
+pub struct DatasetAllocationRequest {
+    /// The dataset name to allocate.
+    pub dsn: String,
+    /// DCB attributes (RECFM/LRECL/BLKSIZE).
+    pub attributes: DcbAttributes,
+    /// The SPACE request, if any.
+    pub space: Option<SpaceAllocation>,
+}
+
+/// Trait wrapping `ff_dscatalog::DatasetAccess::allocate` for the allocator
+/// (dataset-allocator Requirement 19.2, 19.3).
+///
+/// Production wires this to a concrete `DatasetAccess`; tests substitute
+/// `MockDatasetAllocator`. The returned handle is opaque -- the allocator and
+/// its downstream consumers (the JES executor) hold it instead of a physical
+/// path (Requirement 19.3).
+pub trait DatasetAllocator: Send + Sync {
+    /// Acquire a `DatasetHandle` for a live (DISP=NEW) allocation.
+    fn allocate(&self, request: &DatasetAllocationRequest) -> Result<DatasetHandle, CatalogError>;
+}
+
+/// Mock allocator returning a canned opaque handle for tests.
+///
+/// It drives the real `ff_dscatalog::DatasetAccess` over an in-memory Volume
+/// and a native storage provider so the handle it yields is a genuine opaque
+/// `DatasetHandle`, proving the seam without a live catalog database.
+pub struct MockDatasetAllocator {
+    access: ff_dscatalog::CatalogDatasetAccess,
+}
+
+impl Default for MockDatasetAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Debug for MockDatasetAllocator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MockDatasetAllocator").finish()
+    }
+}
+
+impl MockDatasetAllocator {
+    /// Create a mock allocator backed by an in-memory Volume and a transient
+    /// native storage provider.
+    pub fn new() -> Self {
+        let dir = std::env::temp_dir().join(format!(
+            "ffwb-dsalloc-mock-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = std::fs::create_dir_all(&dir);
+        Self {
+            access: ff_dscatalog::CatalogDatasetAccess::in_memory(dir),
+        }
+    }
+}
+
+impl DatasetAllocator for MockDatasetAllocator {
+    fn allocate(&self, request: &DatasetAllocationRequest) -> Result<DatasetHandle, CatalogError> {
+        self.access
+            .allocate_sequential(
+                &request.dsn,
+                ff_dscatalog::Recfm::FB,
+                request.attributes.lrecl.unwrap_or(80),
+                request.attributes.blksize.unwrap_or(0),
+                1,
+                1,
+                16,
+            )
+            .map_err(|e| CatalogError::AllocationFailed {
+                catalog: "mock".to_string(),
+                detail: e.to_string(),
+            })
+    }
+}
+
+/// Mock catalog for testing -- provides canned responses.
 #[derive(Debug, Clone, Default)]
 pub struct MockCatalog {
     /// Datasets available in the mock catalog.
@@ -115,7 +208,7 @@ pub struct MockCatalog {
     pub members: std::collections::HashMap<String, Vec<String>>,
     /// GDG definitions.
     pub gdgs: std::collections::HashMap<String, GdgInfo>,
-    /// Allocated datasets (DSN → path).
+    /// Allocated datasets (DSN -> path).
     pub allocated: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
 }
 
@@ -281,5 +374,38 @@ mod tests {
             .unwrap();
         assert!(!path.is_empty());
         assert_eq!(catalog.allocated.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn dataset_allocator_yields_opaque_handle_via_dataset_access() {
+        // Validates: Requirement 19.2, 19.3 -- the allocator seam returns an
+        // opaque ff_dscatalog::DatasetHandle, not a physical path.
+        let allocator = MockDatasetAllocator::new();
+        let request = DatasetAllocationRequest {
+            dsn: "NEW.HANDLE.DS".to_string(),
+            attributes: DcbAttributes::hardcoded_defaults(),
+            space: None,
+        };
+        let handle = allocator
+            .allocate(&request)
+            .expect("allocate via DatasetAccess");
+        // The only observable facet is the DSN; no raw path is exposed.
+        assert_eq!(handle.dsn(), "NEW.HANDLE.DS");
+    }
+
+    #[test]
+    fn dataset_allocator_is_object_safe_as_dyn() {
+        // Validates: Requirement 19.4 -- the allocator is mockable behind a dyn
+        // trait (no direct SQLite in ff-dsalloc).
+        let allocator: Box<dyn DatasetAllocator> = Box::new(MockDatasetAllocator::new());
+        let request = DatasetAllocationRequest {
+            dsn: "DYN.ALLOC.DS".to_string(),
+            attributes: DcbAttributes::hardcoded_defaults(),
+            space: None,
+        };
+        assert_eq!(
+            allocator.allocate(&request).expect("dyn allocate").dsn(),
+            "DYN.ALLOC.DS"
+        );
     }
 }

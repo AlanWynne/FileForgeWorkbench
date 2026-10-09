@@ -13,16 +13,22 @@
 //!           <member-uuid>.dat
 //!       staging/              -- in-progress allocations
 //!
-//! Validates: Requirement 18.1, 18.2, 18.3, 19.5, 20.1, 20.2, 20.3, 20.4,
-//!            20.5, 20.6, 20.7, 28.1, 28.2
+//! CR-CH-059 RC.A.3: this backend now implements the SINGLE physical seam
+//! `ff_vfs::StorageProvider` (opaque `StorageLocator`, `HashSet<StorageCapability>`,
+//! `VfsError`). The former workspace_root is carried behind the struct; the
+//! opaque locator encodes the relative UUID path. The duplicate
+//! `ff-dscatalog::storage::StorageProvider` trait is retired.
+//!
+//! Validates: virtual-file-system Requirement 13.1, 13.2, 13.3; dataset-catalog
+//!            Requirement 20.1-20.7, 28.1, 28.2 (behaviour preserved).
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use ff_vfs::{StorageCapability, StorageLocator, StorageProvider, StorageStat, VfsError};
 use uuid::Uuid;
 
 use crate::error::CatalogError;
-
-use super::{ObjectId, ObjectStat, ProviderCapability, StorageProvider};
 
 const OBJECTS_DIR: &str = "datasets/objects";
 const STAGING_DIR: &str = "datasets/staging";
@@ -30,11 +36,22 @@ const STAGING_DIR: &str = "datasets/staging";
 /// Storage provider for PS, PDS/PDSE, GDG, and POSIX content.
 ///
 /// Physical objects are identified by stable UUIDs assigned at allocation time.
-/// Logical dataset names are never used as physical paths.
+/// Logical dataset names are never used as physical paths. The workspace root is
+/// captured at construction so the `ff_vfs::StorageProvider` methods need not
+/// thread it (Requirement 13.3).
 #[derive(Debug, Clone, Default)]
-pub struct NativeFileProvider;
+pub struct NativeFileProvider {
+    /// Workspace root under which physical objects live.
+    root: PathBuf,
+}
 
 impl NativeFileProvider {
+    /// Construct a provider rooted at `root` (used by the `ff_vfs::StorageProvider`
+    /// methods, which do not thread a workspace root).
+    pub fn with_root(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
+
     /// Resolve the physical path for a locator within a workspace root.
     ///
     /// Validates the resolved path stays within the workspace root to prevent
@@ -86,25 +103,20 @@ impl NativeFileProvider {
     pub fn staging_locator(id: &Uuid) -> String {
         format!("{STAGING_DIR}/{id}.dat")
     }
-}
 
-impl StorageProvider for NativeFileProvider {
-    fn capabilities(&self) -> &[ProviderCapability] {
-        // Validates: Requirement 19.2
-        &[
-            ProviderCapability::StreamRead,
-            ProviderCapability::StreamWrite,
-            ProviderCapability::MemberOperations,
-            ProviderCapability::AtomicRename,
-        ]
-    }
+    // === Inherent record/object operations (workspace_root threaded) =========
+    //
+    // These preserve the pre-CR-CH-059 behaviour the catalog logic relies on.
+    // They are NOT the physical seam; the seam is `impl StorageProvider` below.
 
-    fn allocate(
+    /// Allocate a new physical object, returning its stable UUID and locator.
+    ///
+    /// Validates: Requirement 20.1, 20.2, 20.3, 20.4, 20.5
+    pub fn allocate_object(
         &self,
         workspace_root: &Path,
         is_container: bool,
-    ) -> Result<(ObjectId, String), CatalogError> {
-        // Validates: Requirement 20.1, 20.2, 20.3, 20.4, 20.5
+    ) -> Result<(Uuid, String), CatalogError> {
         let id = Uuid::new_v4();
         let locator = if is_container {
             Self::container_locator(&id)
@@ -135,7 +147,8 @@ impl StorageProvider for NativeFileProvider {
         Ok((id, locator))
     }
 
-    fn open(&self, workspace_root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
+    /// Open a physical object, returning its resolved path.
+    pub fn open_path(&self, workspace_root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
         let path = Self::resolve_path(workspace_root, locator)?;
         if !path.exists() {
             return Err(CatalogError::DatasetNotFound {
@@ -146,31 +159,8 @@ impl StorageProvider for NativeFileProvider {
         Ok(path)
     }
 
-    fn stat(&self, workspace_root: &Path, locator: &str) -> Result<ObjectStat, CatalogError> {
-        let path = Self::resolve_path(workspace_root, locator)?;
-        let meta = std::fs::metadata(&path).map_err(|e| CatalogError::IoError {
-            operation: "stat".to_string(),
-            source: e,
-        })?;
-        Ok(ObjectStat {
-            size: if meta.is_file() { meta.len() } else { 0 },
-            is_container: meta.is_dir(),
-            locator: locator.to_string(),
-        })
-    }
-
-    fn rename(
-        &self,
-        _workspace_root: &Path,
-        _locator: &str,
-        _new_locator: &str,
-    ) -> Result<(), CatalogError> {
-        // UUID-based layout: rename is catalogue-only, no filesystem move.
-        // Validates: Requirement 20.6
-        Ok(())
-    }
-
-    fn delete(&self, workspace_root: &Path, locator: &str) -> Result<(), CatalogError> {
+    /// Delete a physical object.
+    pub fn delete_object(&self, workspace_root: &Path, locator: &str) -> Result<(), CatalogError> {
         let path = Self::resolve_path(workspace_root, locator)?;
         if path.is_dir() {
             std::fs::remove_dir_all(&path).map_err(|e| CatalogError::IoError {
@@ -186,7 +176,12 @@ impl StorageProvider for NativeFileProvider {
         Ok(())
     }
 
-    fn list(&self, workspace_root: &Path, locator: &str) -> Result<Vec<String>, CatalogError> {
+    /// List child locators for a container object (e.g. PDS members).
+    pub fn list_children(
+        &self,
+        workspace_root: &Path,
+        locator: &str,
+    ) -> Result<Vec<String>, CatalogError> {
         let path = Self::resolve_path(workspace_root, locator)?;
         if !path.is_dir() {
             return Ok(vec![]);
@@ -208,12 +203,14 @@ impl StorageProvider for NativeFileProvider {
         Ok(entries)
     }
 
-    fn reconcile(
+    /// Compare catalogue entries with physical objects and report discrepancies.
+    ///
+    /// Validates: Requirement 27.1, 27.2, 27.3
+    pub fn reconcile_locators(
         &self,
         workspace_root: &Path,
         known_locators: &[String],
     ) -> Result<Vec<String>, CatalogError> {
-        // Validates: Requirement 27.1, 27.2, 27.3
         let mut discrepancies = Vec::new();
         for locator in known_locators {
             match Self::resolve_path(workspace_root, locator) {
@@ -227,6 +224,119 @@ impl StorageProvider for NativeFileProvider {
             }
         }
         Ok(discrepancies)
+    }
+}
+
+// === ff_vfs::StorageProvider -- the single physical seam =====================
+
+impl StorageProvider for NativeFileProvider {
+    fn capabilities(&self) -> HashSet<StorageCapability> {
+        // Validates: Requirement 13.2 (capability mapping is lossless 1:1).
+        [
+            StorageCapability::StreamRead,
+            StorageCapability::StreamWrite,
+            StorageCapability::MemberOperations,
+            StorageCapability::AtomicRename,
+        ]
+        .into_iter()
+        .collect()
+    }
+
+    fn allocate(&self, name: &str) -> Result<StorageLocator, VfsError> {
+        // `name` ending in '/' requests a container (PDS/PDSE library).
+        let is_container = name.ends_with('/');
+        let (_id, locator) = self
+            .allocate_object(&self.root, is_container)
+            .map_err(VfsError::from)?;
+        Ok(StorageLocator::new(locator))
+    }
+
+    fn open(&self, locator: &StorageLocator) -> Result<Vec<u8>, VfsError> {
+        let path = self
+            .open_path(&self.root, locator.as_str())
+            .map_err(VfsError::from)?;
+        if path.is_dir() {
+            return Ok(Vec::new());
+        }
+        std::fs::read(&path).map_err(|e| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "open".to_string(),
+            source: e,
+        })
+    }
+
+    fn stat(&self, locator: &StorageLocator) -> Result<StorageStat, VfsError> {
+        let path = NativeFileProvider::resolve_path(&self.root, locator.as_str())
+            .map_err(VfsError::from)?;
+        let meta = std::fs::metadata(&path).map_err(|e| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "stat".to_string(),
+            source: e,
+        })?;
+        Ok(StorageStat {
+            name: locator.as_str().to_string(),
+            size_bytes: Some(if meta.is_file() { meta.len() } else { 0 }),
+            is_container: meta.is_dir(),
+            attributes: Vec::new(),
+        })
+    }
+
+    fn rename(&self, _locator: &StorageLocator, _new_name: &str) -> Result<(), VfsError> {
+        // UUID-based layout: rename is catalogue-only, no filesystem move.
+        // Validates: Requirement 20.6
+        Ok(())
+    }
+
+    fn delete(&self, locator: &StorageLocator) -> Result<(), VfsError> {
+        self.delete_object(&self.root, locator.as_str())
+            .map_err(VfsError::from)
+    }
+
+    fn list(&self) -> Result<Vec<(StorageLocator, String)>, VfsError> {
+        let objects_dir = self.root.join(OBJECTS_DIR);
+        if !objects_dir.is_dir() {
+            return Ok(Vec::new());
+        }
+        let mut entries = Vec::new();
+        for entry in std::fs::read_dir(&objects_dir).map_err(|e| VfsError::Io {
+            uri: OBJECTS_DIR.to_string(),
+            operation: "list".to_string(),
+            source: e,
+        })? {
+            let entry = entry.map_err(|e| VfsError::Io {
+                uri: OBJECTS_DIR.to_string(),
+                operation: "list".to_string(),
+                source: e,
+            })?;
+            if let Some(name) = entry.file_name().to_str() {
+                let locator = format!("{OBJECTS_DIR}/{name}");
+                entries.push((StorageLocator::new(locator), name.to_string()));
+            }
+        }
+        entries.sort_by(|a, b| a.1.cmp(&b.1));
+        Ok(entries)
+    }
+
+    fn write(&self, locator: &StorageLocator, data: &[u8]) -> Result<(), VfsError> {
+        let path = NativeFileProvider::resolve_path(&self.root, locator.as_str())
+            .map_err(VfsError::from)?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| VfsError::Io {
+                uri: locator.as_str().to_string(),
+                operation: "write".to_string(),
+                source: e,
+            })?;
+        }
+        std::fs::write(&path, data).map_err(|e| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "write".to_string(),
+            source: e,
+        })
+    }
+
+    fn reconcile(&self, catalogue_names: &[String]) -> Result<Vec<String>, VfsError> {
+        self.reconcile_locators(&self.root, catalogue_names)
+            .map_err(VfsError::from)
     }
 }
 
@@ -277,216 +387,5 @@ fn is_reserved_name(name: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use proptest::prelude::*;
-    use tempfile::TempDir;
-
-    fn tmp() -> TempDir {
-        tempfile::tempdir().expect("tempdir")
-    }
-
-    #[test]
-    fn allocate_sequential_creates_file_with_uuid_name() {
-        // Validates: Requirement 20.1, 20.2, 20.3
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (id, locator) = provider.allocate(dir.path(), false).unwrap();
-        assert!(locator.contains(&id.to_string()));
-        assert!(locator.ends_with(".dat"));
-        assert!(dir.path().join(&locator).exists());
-    }
-
-    #[test]
-    fn allocate_container_creates_directory_with_uuid_name() {
-        // Validates: Requirement 20.1, 20.2
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (id, locator) = provider.allocate(dir.path(), true).unwrap();
-        assert!(locator.contains(&id.to_string()));
-        assert!(dir.path().join(&locator).is_dir());
-    }
-
-    #[test]
-    fn locator_does_not_contain_dsn_components() {
-        // Validates: Requirement 20.3, 20.5 -- DSN not in physical path
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (_id, locator) = provider.allocate(dir.path(), false).unwrap();
-        assert!(!locator.contains("PAYROLL"));
-        assert!(!locator.contains("INPUT"));
-    }
-
-    #[test]
-    fn two_allocations_produce_distinct_locators() {
-        // Validates: Requirement 20.4 -- deterministic and unique
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (_, loc1) = provider.allocate(dir.path(), false).unwrap();
-        let (_, loc2) = provider.allocate(dir.path(), false).unwrap();
-        assert_ne!(loc1, loc2);
-    }
-
-    #[test]
-    fn rename_is_noop_on_filesystem() {
-        // Validates: Requirement 20.6 -- rename does not move physical object
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (_, locator) = provider.allocate(dir.path(), false).unwrap();
-        let path_before = dir.path().join(&locator);
-        provider
-            .rename(dir.path(), &locator, "new_locator")
-            .unwrap();
-        // File still at original path
-        assert!(path_before.exists());
-    }
-
-    #[test]
-    fn open_returns_path_for_existing_object() {
-        // Validates: Requirement 19.5
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (_, locator) = provider.allocate(dir.path(), false).unwrap();
-        let path = provider.open(dir.path(), &locator).unwrap();
-        assert!(path.exists());
-    }
-
-    #[test]
-    fn open_returns_error_for_missing_object() {
-        // Validates: Requirement 19.5
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let err = provider
-            .open(dir.path(), "datasets/objects/nonexistent.dat")
-            .unwrap_err();
-        assert!(matches!(err, CatalogError::DatasetNotFound { .. }));
-    }
-
-    #[test]
-    fn stat_returns_correct_metadata() {
-        // Validates: Requirement 19.5
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (_, locator) = provider.allocate(dir.path(), false).unwrap();
-        let stat = provider.stat(dir.path(), &locator).unwrap();
-        assert!(!stat.is_container);
-        assert_eq!(stat.locator, locator);
-    }
-
-    #[test]
-    fn delete_removes_file() {
-        // Validates: Requirement 19.5
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (_, locator) = provider.allocate(dir.path(), false).unwrap();
-        let path = dir.path().join(&locator);
-        assert!(path.exists());
-        provider.delete(dir.path(), &locator).unwrap();
-        assert!(!path.exists());
-    }
-
-    #[test]
-    fn path_traversal_rejected() {
-        // Validates: Requirement 20.7, 28.1, 28.2
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let err = provider.open(dir.path(), "../../etc/passwd").unwrap_err();
-        assert!(matches!(err, CatalogError::RepositoryCorrupt { .. }));
-    }
-
-    #[test]
-    fn reserved_device_name_rejected() {
-        // Validates: Requirement 20.7
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let err = provider
-            .open(dir.path(), "datasets/objects/NUL.dat")
-            .unwrap_err();
-        assert!(matches!(err, CatalogError::RepositoryCorrupt { .. }));
-    }
-
-    #[test]
-    fn reconcile_reports_missing_objects() {
-        // Validates: Requirement 27.1, 27.2, 27.3
-        let dir = tmp();
-        let provider = NativeFileProvider;
-        let (_, locator) = provider.allocate(dir.path(), false).unwrap();
-        let missing = "datasets/objects/missing-uuid.dat".to_string();
-        let discrepancies = provider
-            .reconcile(dir.path(), &[locator, missing.clone()])
-            .unwrap();
-        assert_eq!(discrepancies.len(), 1);
-        assert!(discrepancies[0].contains("missing-uuid"));
-    }
-
-    #[test]
-    fn capabilities_include_stream_read_write() {
-        // Validates: Requirement 19.2
-        let provider = NativeFileProvider;
-        let caps = provider.capabilities();
-        assert!(caps.contains(&ProviderCapability::StreamRead));
-        assert!(caps.contains(&ProviderCapability::StreamWrite));
-    }
-
-    // === Property test: path traversal rejection (Task 26.3) ==============
-
-    /// Generate locator strings that contain traversal sequences or reserved names.
-    fn traversal_locator_strategy() -> impl Strategy<Value = String> {
-        // Combine a traversal prefix with an optional suffix
-        let traversal_prefixes = prop_oneof![
-            Just("../../etc/passwd".to_string()),
-            Just("../secret".to_string()),
-            Just("..\\windows\\system32".to_string()),
-            Just("..".to_string()),
-            Just("datasets/objects/../../etc/shadow".to_string()),
-            Just("datasets/../../../root/.ssh/id_rsa".to_string()),
-            // Windows reserved device names
-            Just("NUL".to_string()),
-            Just("CON".to_string()),
-            Just("PRN".to_string()),
-            Just("AUX".to_string()),
-            Just("COM1".to_string()),
-            Just("LPT1".to_string()),
-            Just("NUL.dat".to_string()),
-            Just("datasets/objects/NUL.dat".to_string()),
-            Just("datasets/objects/CON".to_string()),
-            // Double-slash variants
-            Just("//etc/passwd".to_string()),
-            Just("datasets//objects//../../etc".to_string()),
-        ];
-        traversal_prefixes
-    }
-
-    proptest! {
-        #[test]
-        fn path_traversal_and_reserved_names_always_rejected(
-            locator in traversal_locator_strategy()
-        ) {
-            // Validates: Requirement 28.1, 28.2, 20.7
-            // Property: any locator containing traversal sequences or reserved
-            // device names MUST be rejected by resolve_path with RepositoryCorrupt.
-            let dir = tmp();
-            let result = NativeFileProvider::resolve_path(dir.path(), &locator);
-            // Either rejected outright, or if it resolves, it must stay within root
-            match result {
-                Err(CatalogError::RepositoryCorrupt { .. }) => {
-                    // Correct: traversal or reserved name rejected
-                }
-                Ok(resolved) => {
-                    // If it resolved, it must be within the workspace root
-                    let root = dir.path().canonicalize()
-                        .unwrap_or_else(|_| dir.path().to_path_buf());
-                    prop_assert!(
-                        resolved.starts_with(&root) || resolved.starts_with(dir.path()),
-                        "resolved path {:?} escaped workspace root {:?}",
-                        resolved,
-                        root
-                    );
-                }
-                Err(_) => {
-                    // Other errors (e.g. IoError) are also acceptable for invalid locators
-                }
-            }
-        }
-    }
-}
+#[path = "native_tests.rs"]
+mod tests;

@@ -689,3 +689,85 @@ pub enum MessageCode {
 
 ---
 
+## Design Delta: DEFINE VOLUME Command + VOLUMES() Binding (CR-NR-105 / CR-CH-057, Requirement 27)
+
+This delta is ADDITIVE and keeps `ff-idcams` a thin orchestrator (Requirement 21). It adds one
+parser arm, one executor arm, and one downstream trait method; it introduces NO storage logic and
+does NOT redefine the Volume entity (owned by `ff-volume`).
+
+### Parser (Requirement 27.1, 27.8)
+
+A new AST variant `Command::DefineVolume(DefineVolumeCommand)` is added alongside the existing
+`DefineCluster` / `DefineGdg` / etc. variants:
+
+```rust
+/// DEFINE VOLUME command representation (FFWB extension).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DefineVolumeCommand {
+    pub volser: String,            // 1-6 chars
+    pub path: String,              // host directory -> Volume storage_uri
+    pub capacity: SpaceAllocation, // CYLINDERS(n) or TRACKS(n)
+    pub status: Option<VolumeStatus>, // optional initial status (default Online)
+}
+```
+
+The recursive-descent parser gains a `DEFINE VOLUME` arm reusing the existing CYLINDERS/TRACKS
+operand parsing. The Pretty_Printer (Requirement 26) gains a `DefineVolumeCommand` arm so the verb
+round-trips (Requirement 27.8).
+
+### Downstream service trait (Requirement 27.2, 27.5-27.7)
+
+The orchestrator delegates to a downstream Volume service, backed by `ff-volume`, through a new
+trait method on the injected services (mirroring `CatalogService` / `VsamService`):
+
+```rust
+pub trait VolumeService: Send + Sync {
+    /// Register a host path as an emulated Volume. Fails on duplicate VOLSER.
+    fn define_volume(&self, spec: &VolumeSpec) -> Result<(), VolumeError>;
+    /// Resolve a VOLSER to a Volume handle (for VOLUMES() binding + status checks).
+    fn resolve_volume(&self, volser: &str) -> Result<VolumeHandle, VolumeError>;
+}
+```
+
+`DEFINE VOLUME` execution calls `define_volume`; a `DEFINE CLUSTER ... VOLUMES(volser...)` execution
+calls `resolve_volume` for each VOLSER and binds the created dataset to those Volume(s) via the
+DatasetVolume association (volume-model Requirement 9). An unknown VOLSER (Requirement 27.6) or an
+Offline/ReadOnly Volume (Requirement 27.7) surfaces as the mapped IDCAMS condition code.
+
+### Executor + message mapping (Requirement 27.3, 27.4, 27.6, 27.7)
+
+A new executor arm `src/executor/define.rs` (or a sibling `define_volume.rs`) dispatches
+`Command::DefineVolume`. Return-code / message mapping reuses the existing catalogue:
+
+| Outcome | CC | Message |
+|---|---|---|
+| DEFINE VOLUME success | 0 | IDC0001I (naming the Volume) |
+| Duplicate VOLSER | 12 | IDC0514E-style duplicate-name message (reused for VOLSER) |
+| VOLUMES() names an undefined Volume | 12 | a reported unknown-VOLSER error |
+| Target Volume Offline / ReadOnly | 12 | the downstream status/access error surfaced as the CC |
+
+No new storage code lives in `ff-idcams`; the atomic-execution / rollback pattern (Requirement 22)
+applies unchanged if a later downstream step fails after `define_volume` succeeds.
+
+### Framework conformance
+
+Within FFWB the `DEFINE VOLUME` verb reaches the shell through the single command-dispatch front
+door (command parity), identical to how a typed command, menu option, or key binding reaches any
+other command. This delta adds no second dispatcher and no bespoke intercept.
+
+---
+
+## Design Delta: Repoint Private Service Traits at ff-dscatalog; DEFINE/REPRO/DELETE via DatasetAccess (CR-CH-059, Requirement 28)
+
+This delta changes WHICH traits `ff-idcams` depends on and routes dataset operations through the single contract; it adds NO parsing or storage logic and keeps `ff-idcams` a thin orchestrator (Requirement 21).
+
+- `ff-idcams` stops carrying its own `CatalogService` / `VsamService` trait copies and depends on the reconciled traits exposed by `ff-dscatalog` (dataset-catalog Requirement 33; Requirement 28.1). `IdcamsServices`, `MockCatalogService`, and `MockVsamService` are updated to the reconciled method shapes and types (`Dsorg {PS,PO,GDG}`, `Recfm {F,FB,V,VB,U}`, `Dsn`); divergent local types are not reintroduced (Requirement 28.2).
+- Operational commands route through the one contract: DEFINE (CLUSTER/GDG and the DEFINE VOLUME binding of Requirement 27) creates datasets via the reconciled `CatalogService`/`VsamService` and, where it allocates/initialises record storage, via `DatasetAccess` (dataset-catalog Requirement 34; Requirement 28.3); REPRO record get/put flows through `DatasetAccess` / the reconciled `VsamService`, honouring RECFM/LRECL via the codecs (Requirement 28.4); DELETE flows through `CatalogService::delete_dataset` + `VsamService` / `DatasetAccess::dispose`, preserving atomicity (Requirement 28.5).
+- Sequencing: the repoint lands AFTER the reconciled traits exist in `ff-dscatalog` and BEFORE `ff-dataset-catalog` / `ff-vsam-services` are deleted (Requirement 28.6), so `ff-idcams` never references a removed crate.
+- IDCAMS syntax, output formatting, LASTCC/MAXCC, and condition codes are unchanged (Requirement 28.7).
+
+The DatasetAccess trait shape and the reconciled-trait design are in [dataset-catalog](./../dataset-catalog/design.md); not duplicated here.
+
+### No further design changes required
+
+- The IDCAMS parser, AST, pretty-printer, modal-command, return-code, and SYSIN designs are unchanged; only the downstream trait dependency and the dataset-operation routing change.

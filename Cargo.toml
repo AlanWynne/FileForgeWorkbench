@@ -58,6 +58,7 @@ members = [
     "crates/ff-vsam-services",
     "crates/ff-governance-tests",
     "crates/ff-dscatalog",
+    "crates/ff-volume",
     "crates/ff-idle-processing",
     "crates/ff-large-file-performance",
     "crates/ff-database-tool",
@@ -134,6 +135,13 @@ notify = { version = "7", default-features = false, features = [
 egui_commonmark = { version = "0.22", features = ["pulldown_cmark"] }
 rfd = "0.15"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+# SQLite backend. Declared once at the workspace level so every consumer
+# inherits the same version and the same `bundled` feature -- a drift between
+# two crates would otherwise compile two copies of the bundled C library.
+# Current consumers: ff-dscatalog (catalog DB). Future internal persistence
+# layers (e.g. a SQLite-backed ff-volume) and the ff-database-tool Database
+# Context should inherit this entry rather than re-pinning rusqlite.
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 # Release profile applies workspace-wide. Cargo only honours [profile.*] in the
 # ROOT manifest (profiles in a member crate are ignored with a warning), so the

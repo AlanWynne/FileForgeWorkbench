@@ -138,6 +138,24 @@ This task plan implements the architectural governance infrastructure for the Da
 
 ---
 
+## Mainframe Dataset Stack Rationalisation (CR-CH-059)
+
+> Phase RC.A step 1. The ADR-001 governance correction: name `ff-dscatalog` as the catalog authority, mark the two trait crates deprecated-for-merge, and update the fitness function to assert the corrected names + retirement. Documentation + fitness-function change; no runtime behaviour change. All tasks `[ ]`.
+
+- [x] 13. ADR-001 catalog-authority correction and fitness-function update
+  - [x] 13.1 Record (in this spec's design.md delta and Requirement 22) that the catalog authority is `ff-dscatalog`; every "catalog owner = ff-dataset-catalog" in Requirements 1-21 reads as `ff-dscatalog`.
+    - Validates: Requirement 22.1
+  - [x] 13.2 Mark `ff-dataset-catalog` and `ff-vsam-services` DEPRECATED-FOR-MERGE; record that the reconciled `CatalogService` / `VsamService` move into `ff-dscatalog` using its own types with VSAM as a cluster entity.
+    - Validates: Requirement 22.2, 22.3, 22.4
+  - [x] 13.3 Confirm the object-safe `CatalogService` + `DynCatalogService` pattern and the acyclic chain `ff-idcams -> ff-dsalloc -> ff-dscatalog -> ff-volume -> storage providers` under the corrected names; ADR-002 unchanged.
+    - Validates: Requirement 22.5, 22.6, 22.7
+  - [x] 13.4 Update the architectural fitness function to assert the corrected catalog-authority name and that NO live `ff-dataset-catalog` / `ff-vsam-services` reference remains after consolidation (coordinate with dataset-catalog Tasks 41, 42).
+    - Note: RC.A documents the corrected name in Req 18 AC 2 and Req 22; the `architecture_compliance.rs` test change lands with the actual crate deletion in RC.B (crates still exist and are still legitimately named).
+    - Validates: Requirement 22.1, 22.2, 22.3; Requirement 18 AC 2
+  - [x] 13.5 Update `docs/quality/TCR.md` Req 22.1-22.7 rows.
+
+---
+
 ## Acceptance Criteria Coverage
 
 | Requirement | Criteria | Covered by Task(s) |

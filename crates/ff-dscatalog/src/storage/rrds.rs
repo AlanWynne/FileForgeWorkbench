@@ -1,15 +1,15 @@
 //! SQLite-backed VSAM relative-record dataset storage.
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 
+use ff_vfs::{StorageCapability, StorageLocator, StorageProvider, StorageStat, VfsError};
 use rusqlite::{params, Connection, OptionalExtension};
 use uuid::Uuid;
 
 use crate::error::CatalogError;
-
-use super::{ObjectId, ObjectStat, ProviderCapability, StorageProvider};
 
 const RELATIVE_DIR: &str = "relative";
 
@@ -31,6 +31,7 @@ pub struct RrdsRecord {
 
 /// A dedicated SQLite database containing one RRDS dataset.
 pub struct SqliteRrdsProvider {
+    root: PathBuf,
     database_path: PathBuf,
     dataset_id: Uuid,
     connection: Mutex<Connection>,
@@ -39,6 +40,7 @@ pub struct SqliteRrdsProvider {
 impl std::fmt::Debug for SqliteRrdsProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SqliteRrdsProvider")
+            .field("root", &self.root)
             .field("database_path", &self.database_path)
             .field("dataset_id", &self.dataset_id)
             .finish_non_exhaustive()
@@ -48,6 +50,7 @@ impl std::fmt::Debug for SqliteRrdsProvider {
 impl SqliteRrdsProvider {
     /// Open or create `<repository_root>/relative/<uuid>.sqlite`.
     pub fn open(repository_root: impl AsRef<Path>, dataset_id: Uuid) -> Result<Self, CatalogError> {
+        let root = repository_root.as_ref().to_path_buf();
         let directory = repository_root.as_ref().join(RELATIVE_DIR);
         fs::create_dir_all(&directory).map_err(|source| CatalogError::IoError {
             operation: "open_rrds".into(),
@@ -69,6 +72,7 @@ impl SqliteRrdsProvider {
             )
             .map_err(|source| sqlite_error("create_rrds_schema", source))?;
         Ok(Self {
+            root,
             database_path,
             dataset_id,
             connection: Mutex::new(connection),
@@ -181,85 +185,87 @@ impl SqliteRrdsProvider {
     }
 }
 
+// === ff_vfs::StorageProvider -- the single physical seam (CR-CH-059) =========
+
 impl StorageProvider for SqliteRrdsProvider {
-    fn capabilities(&self) -> &[ProviderCapability] {
-        static CAPABILITIES: &[ProviderCapability] = &[
-            ProviderCapability::RecordRead,
-            ProviderCapability::RecordWrite,
-            ProviderCapability::RelativeAccess,
-        ];
-        CAPABILITIES
+    fn capabilities(&self) -> HashSet<StorageCapability> {
+        [
+            StorageCapability::RecordRead,
+            StorageCapability::RecordWrite,
+            StorageCapability::RelativeAccess,
+        ]
+        .into_iter()
+        .collect()
     }
 
-    fn allocate(
-        &self,
-        _workspace_root: &Path,
-        _is_container: bool,
-    ) -> Result<(ObjectId, String), CatalogError> {
-        Err(CatalogError::RepositoryCorrupt {
-            path: self.database_path.display().to_string(),
-            reason: "an RRDS provider must be opened with its dataset UUID".into(),
-            operation: "allocate_rrds".into(),
+    fn allocate(&self, _name: &str) -> Result<StorageLocator, VfsError> {
+        Err(VfsError::UnsupportedOperation {
+            operation: "allocate_rrds".to_string(),
+            provider: "rrds".to_string(),
         })
     }
 
-    fn open(&self, workspace_root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
-        let id = parse_locator(locator)?;
-        let path = workspace_root
-            .join(RELATIVE_DIR)
-            .join(format!("{id}.sqlite"));
-        if path.is_file() {
-            Ok(path)
-        } else {
-            Err(CatalogError::DatasetNotFound {
-                dsn: locator.into(),
-                operation: "open_rrds".into(),
-            })
-        }
-    }
-
-    fn stat(&self, workspace_root: &Path, locator: &str) -> Result<ObjectStat, CatalogError> {
-        let path = self.open(workspace_root, locator)?;
-        let size = fs::metadata(&path)
-            .map_err(|source| CatalogError::IoError {
-                operation: "stat_rrds".into(),
-                source,
-            })?
-            .len();
-        Ok(ObjectStat {
-            size,
-            is_container: false,
-            locator: locator.into(),
-        })
-    }
-
-    fn rename(
-        &self,
-        _workspace_root: &Path,
-        _locator: &str,
-        _new_locator: &str,
-    ) -> Result<(), CatalogError> {
-        Ok(())
-    }
-
-    fn delete(&self, workspace_root: &Path, locator: &str) -> Result<(), CatalogError> {
-        let path = self.open(workspace_root, locator)?;
-        fs::remove_file(path).map_err(|source| CatalogError::IoError {
-            operation: "delete_rrds".into(),
+    fn open(&self, locator: &StorageLocator) -> Result<Vec<u8>, VfsError> {
+        let path = self.resolve_path(locator.as_str())?;
+        fs::read(&path).map_err(|source| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "open_rrds".to_string(),
             source,
         })
     }
 
-    fn list(&self, _workspace_root: &Path, _locator: &str) -> Result<Vec<String>, CatalogError> {
+    fn stat(&self, locator: &StorageLocator) -> Result<StorageStat, VfsError> {
+        let path = self.resolve_path(locator.as_str())?;
+        let size = fs::metadata(&path)
+            .map_err(|source| VfsError::Io {
+                uri: locator.as_str().to_string(),
+                operation: "stat_rrds".to_string(),
+                source,
+            })?
+            .len();
+        Ok(StorageStat {
+            name: locator.as_str().to_string(),
+            size_bytes: Some(size),
+            is_container: false,
+            attributes: Vec::new(),
+        })
+    }
+
+    fn rename(&self, _locator: &StorageLocator, _new_name: &str) -> Result<(), VfsError> {
+        Ok(())
+    }
+
+    fn delete(&self, locator: &StorageLocator) -> Result<(), VfsError> {
+        let path = self.resolve_path(locator.as_str())?;
+        fs::remove_file(path).map_err(|source| VfsError::Io {
+            uri: locator.as_str().to_string(),
+            operation: "delete_rrds".to_string(),
+            source,
+        })
+    }
+
+    fn list(&self) -> Result<Vec<(StorageLocator, String)>, VfsError> {
         Ok(Vec::new())
     }
 
-    fn reconcile(
-        &self,
-        _workspace_root: &Path,
-        _known_locators: &[String],
-    ) -> Result<Vec<String>, CatalogError> {
+    fn reconcile(&self, _catalogue_names: &[String]) -> Result<Vec<String>, VfsError> {
         Ok(Vec::new())
+    }
+}
+
+impl SqliteRrdsProvider {
+    /// Resolve a UUID locator to its physical database path under the root.
+    fn resolve_path(&self, locator: &str) -> Result<PathBuf, VfsError> {
+        let id = parse_locator(locator).map_err(VfsError::from)?;
+        let path = self.root.join(RELATIVE_DIR).join(format!("{id}.sqlite"));
+        if path.is_file() {
+            Ok(path)
+        } else {
+            Err(VfsError::NotFound {
+                uri: locator.to_string(),
+                operation: "open_rrds".to_string(),
+            })
+        }
     }
 }
 

@@ -12,8 +12,8 @@ The subsystem integrates with the workbench platform through:
 - **Layout and Docking** (`ff-layout`): Job Monitor panels implement `DockablePanel`
 - **Workflow Engine** (`ff-workflow`): multi-step job execution modelled as state-machine workflows
 - **Virtual File System** (`ff-vfs`): dataset resolution and job log access flow through VFS
-- **Dataset Catalog** (`ff-dataset-catalog`): DSN resolution leverages the existing catalog subsystem
-- **Dataset Allocator** (`ff-dataset-allocator`): disposition handling (NEW/OLD/SHR/MOD) and allocation semantics for job DD statements
+- **Dataset Catalog** (`ff-dscatalog`): DSN resolution leverages the existing catalog subsystem (crate name corrected from `ff-dataset-catalog` by CR-CH-059; see Requirement 19)
+- **Dataset Allocator** (`ff-dsalloc`): disposition handling (NEW/OLD/SHR/MOD) and allocation semantics for job DD statements (crate name corrected from `ff-dataset-allocator` by CR-CH-059; see Requirement 19)
 
 **Source references:**
 - **JES** = FFW-JES EARS Requirements document
@@ -60,7 +60,7 @@ The subsystem integrates with the workbench platform through:
 
 6. WHEN `shutdown` is called, THE JesPlugin SHALL persist all retained job output and catalog state, close all resources.
 
-7. THE JesPlugin's `metadata` SHALL declare the plugin name as `"ffw-jes"`, declare capabilities `[Commands, Viewers, Providers]`, and specify dependencies on `ff-vfs`, `ff-workflow`, `ff-dataset-catalog`, and `ff-dataset-allocator`.
+7. THE JesPlugin's `metadata` SHALL declare the plugin name as `"ffw-jes"`, declare capabilities `[Commands, Viewers, Providers]`, and specify dependencies on `ff-vfs`, `ff-workflow`, `ff-dscatalog`, and `ff-dsalloc`. (Crate names corrected from `ff-dataset-catalog` / `ff-dataset-allocator` by CR-CH-059.)
 
 8. THE JesPlugin SHALL be independently enable/disable-able and SHALL support independent versioning from the workbench core.
 
@@ -298,17 +298,17 @@ The subsystem integrates with the workbench platform through:
 
 #### Acceptance Criteria
 
-1. WHEN a job definition references `DSN=qualifier.name`, THE system SHALL resolve the DSN through the `ff-dataset-allocator` crate's allocation API (which delegates to `ff-dataset-catalog` for catalog lookup).
+1. WHEN a job definition references `DSN=qualifier.name`, THE system SHALL resolve the DSN through the `ff-dsalloc` crate's allocation API (which delegates to `ff-dscatalog` for catalog lookup). (Crate names corrected by CR-CH-059.)
 
 2. IF a referenced DSN is not found in the catalog AND the job definition does not specify `DISP=NEW`, THEN THE system SHALL fail allocation with an error message written to the job log.
 
-3. WHEN a job allocates a new dataset (`DISP=NEW`), THE system SHALL delegate to the `ff-dataset-allocator` crate's allocation API, which creates the catalog entry and physical file via `ff-dataset-catalog`.
+3. WHEN a job allocates a new dataset (`DISP=NEW`), THE system SHALL delegate to the `ff-dsalloc` crate's allocation API, which creates the catalog entry and obtains a dataset handle via `ff-dscatalog` (`DatasetAccess`, dataset-catalog Requirement 34). (Crate names corrected by CR-CH-059; the allocator returns a handle, not a raw physical file path -- dataset-allocator Requirement 19.)
 
 4. THE system SHALL write dataset resolution messages to the job log for each DD statement (resolved path, catalog entry metadata).
 
-5. THE system SHALL support Generation Data Group references (`DSN=MY.FILE.GDG(+1)`, `(0)`, `(-1)`) by delegating to the `ff-dataset-allocator` GDG relative generation resolution (which queries `ff-dataset-catalog` for generation state).
+5. THE system SHALL support Generation Data Group references (`DSN=MY.FILE.GDG(+1)`, `(0)`, `(-1)`) by delegating to the `ff-dsalloc` GDG relative generation resolution (which queries `ff-dscatalog` for generation state). (Crate names corrected by CR-CH-059.)
 
-6. THE JES subsystem SHALL leverage the existing file-tree-panel "Catalogs" node (provided by `ff-dataset-catalog`'s VFS provider) for dataset browsing -- it SHALL NOT create a separate DatasetExplorerPanel. The JES Job Monitor's dataset references link to the file-tree-panel's catalog view.
+6. THE JES subsystem SHALL leverage the existing file-tree-panel "Catalogs" node (provided by `ff-dscatalog`'s VFS provider, scheme `catalog`) for dataset browsing -- it SHALL NOT create a separate DatasetExplorerPanel. The JES Job Monitor's dataset references link to the file-tree-panel's catalog view.
 
 11.7. Dataset resolution SHALL work consistently on Windows, Linux, and macOS using the dataset-catalog's platform-independent path mapping.
 
@@ -330,7 +330,7 @@ The subsystem integrates with the workbench platform through:
 
 4. THE Job API SHALL support event subscription -- callers can register callbacks for job state transitions (QUEUED→ACTIVE, ACTIVE→COMPLETED, etc.).
 
-5. THE Dataset API SHALL delegate to the `ff-dataset-allocator` crate for allocation operations (DISP=NEW/OLD/SHR/MOD) and `ff-dataset-catalog` for catalog metadata queries.
+5. THE Dataset API SHALL delegate to the `ff-dsalloc` crate for allocation operations (DISP=NEW/OLD/SHR/MOD) and `ff-dscatalog` for catalog metadata queries. (Crate names corrected by CR-CH-059.)
 
 ---
 
@@ -655,3 +655,25 @@ SET-1, SET-8, SET-9, SET-12, SET-13, PERSIST-1 (PAR). [JES, FFW-ARCH]
 28. THE `SET SCHARS <chars>` command SHALL define the set of special characters recognised as field delimiters in overtype and filter expressions.
 29. THE `SET SCREEN <rows> <cols>` command SHALL set the logical screen dimensions used for panel layout calculations.
 30. ALL SET P2 command settings (BCOLOR, CONFIRM, CURSOR, DATE, DELAY, HEX, SCHARS, SCREEN) SHALL be persisted across sessions using the same mechanism as SET P1 settings defined in Requirement 17.17.
+
+---
+
+### Requirement 19: JCL Executor Depends Only on ff-dsalloc + DatasetAccess (CR-CH-059 Contract)
+
+**User Story:** As a platform architect, I want the (future) JCL executor to depend only on `ff-dsalloc` and the `DatasetAccess` trait for all dataset work -- never on SQLite, physical paths, or the catalog's concrete type -- so that when JES is eventually built (deferred to PLUGIN phase 6) it sits cleanly on the rationalised dataset stack and does not re-open the seam blur.
+
+> **Scope note:** These are CONTRACT / DEPENDENCY criteria, NOT an instruction to build JES. JES remains DEFERRED (ROADMAP PLUGIN phase 6). This Requirement records what the executor MUST depend on when it is built, and corrects the crate names used throughout this spec.
+
+**Source:** CR-CH-059; `.agents/tasks/dataset-vision-fit/report.md` sections A.3, D ("ff-jes depends on ff-dsalloc + this trait only -- it never touches SQLite or physical paths"), E ("DEFER: JES/JCL executor itself ... but it MUST target the section-D DatasetAccess trait"). Content was rephrased for compliance with licensing restrictions.
+
+#### Acceptance Criteria
+
+19.1 WHEN the JCL executor is implemented (future), THE executor SHALL depend ONLY on `ff-dsalloc` (for DD/DISP allocation producing a `DatasetHandle`) and the `DatasetAccess` trait (dataset-catalog Requirement 34) for record-level dataset I/O -- it SHALL NOT depend on SQLite, on a raw `storage_path`, on `ff-dsalloc`'s legacy `physical_path`, or on the catalog's concrete SQLite type.
+
+19.2 THE executor SHALL bind each DD to a dataset by obtaining a `DatasetHandle` from `ff-dsalloc` (dataset-allocator Requirement 19) and SHALL perform open/get/put/point/close/dispose through `DatasetAccess`.
+
+19.3 THE crate names used in this specification SHALL be `ff-dscatalog` (catalog) and `ff-dsalloc` (allocator); the legacy names `ff-dataset-catalog` / `ff-dataset-allocator` SHALL NOT appear as live crate references (corrected in the Introduction, Requirement 1.7, and Requirement 11 criteria by CR-CH-059).
+
+19.4 THE executor SHALL NOT be started before the rationalisation steps it depends on have landed: the reconciled traits + `DatasetAccess` in `ff-dscatalog` (dataset-catalog Requirements 33, 34) and the `ff-dsalloc` handle return (dataset-allocator Requirement 19) -- building JES against the current `storage_path` / `physical_path` is a documented "do not build before consolidation" waste (dataset-catalog Requirement 35.5).
+
+19.5 JES itself SHALL remain DEFERRED (ROADMAP PLUGIN phase 6); this Requirement adds no build obligation and no new JES runtime behaviour -- it constrains only the executor's future dependencies and fixes the crate names.

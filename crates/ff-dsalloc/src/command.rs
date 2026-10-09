@@ -3,7 +3,7 @@
 //! Registers and handles the `dataset.resolve` command for interactive
 //! DSN-to-path tracing via the command framework.
 
-use crate::catalog_bridge::CatalogProvider;
+use crate::catalog_bridge::{CatalogProvider, DatasetAllocator};
 use crate::config::{ResolveMode, ResolverConfig};
 use crate::pipeline::{ResolveOutput, ResolveSummary};
 
@@ -52,6 +52,7 @@ pub fn execute_resolve_command(
     language_id: &str,
     config: &ResolverConfig,
     catalog: &dyn CatalogProvider,
+    allocator: &dyn DatasetAllocator,
 ) -> ResolveCommandResult {
     // Language guard: must be JCL
     if language_id != "jcl" && params.dsn.is_none() {
@@ -78,7 +79,7 @@ pub fn execute_resolve_command(
     }
 
     // Full document resolution
-    let output = crate::pipeline::resolve_document(text, &effective_config, catalog);
+    let output = crate::pipeline::resolve_document(text, &effective_config, catalog, allocator);
     let summary = output.summary;
 
     ResolveCommandResult {
@@ -146,7 +147,7 @@ fn resolve_single_dsn(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog_bridge::{CatalogDatasetType, MockCatalog};
+    use crate::catalog_bridge::{CatalogDatasetType, MockCatalog, MockDatasetAllocator};
 
     #[test]
     fn command_rejects_non_jcl_document() {
@@ -155,7 +156,8 @@ mod tests {
         let config = ResolverConfig::default();
         let catalog = MockCatalog::new();
 
-        let result = execute_resolve_command(&params, "", "cobol", &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let result = execute_resolve_command(&params, "", "cobol", &config, &catalog, &allocator);
         assert!(!result.success);
         assert_eq!(
             result.error.as_deref(),
@@ -171,7 +173,8 @@ mod tests {
         let catalog = MockCatalog::new();
         let jcl = "//MYJOB  JOB (ACCT),'PGMR'\n//STEP1  EXEC PGM=IEFBR14\n//DD1    DD SYSOUT=A\n";
 
-        let result = execute_resolve_command(&params, jcl, "jcl", &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let result = execute_resolve_command(&params, jcl, "jcl", &config, &catalog, &allocator);
         assert!(result.output.is_some());
     }
 
@@ -192,7 +195,8 @@ mod tests {
         };
         let config = ResolverConfig::default();
 
-        let result = execute_resolve_command(&params, "", "jcl", &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let result = execute_resolve_command(&params, "", "jcl", &config, &catalog, &allocator);
         assert!(result.success);
     }
 
@@ -207,7 +211,8 @@ mod tests {
         let catalog = MockCatalog::new();
         let jcl = "//MYJOB  JOB (ACCT),'PGMR'\n//STEP1  EXEC PGM=IEFBR14\n//DD1    DD SYSOUT=A\n";
 
-        let result = execute_resolve_command(&params, jcl, "jcl", &config, &catalog);
+        let allocator = MockDatasetAllocator::new();
+        let result = execute_resolve_command(&params, jcl, "jcl", &config, &catalog, &allocator);
         // Should execute in Live mode (override)
         assert!(result.output.is_some());
     }

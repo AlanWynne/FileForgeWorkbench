@@ -284,3 +284,47 @@ The VFS defines **async method signatures** for all I/O operations (Tokio-based)
 12.4 THE system SHALL provide a `workspace.reconcile` command that compares catalogue state with provider state and reports discrepancies without automatically changing data.
 
 12.5 THE system SHALL provide a `workspace.diagnose` command that reports orphaned physical objects and dangling catalogue entries.
+
+---
+
+## Requirements Added by CR-CH-059 -- Single StorageProvider Seam and Single posix Registrant
+
+> **Source:** `.agents/tasks/dataset-vision-fit/report.md` sections A.2, C (target DAG), E items 3-4; `.agents/tasks/mainframe-dataset-emulation/architecture-revision-findings.md` Q4-Q5, Q7. Content was rephrased for compliance with licensing restrictions.
+
+---
+
+### Requirement 13: Single Physical StorageProvider Seam
+
+**User Story:** As a platform architect, I want exactly ONE physical StorageProvider trait -- the `ff-vfs::StorageProvider` seam -- so that the mainframe record/VSAM backends plug into the same physical layer as every other backend and the two-layer model (interface over physical) is true end-to-end.
+
+**Source:** CR-CH-059; builds ON Requirement 9 (StorageProvider interface, already in this spec). This Requirement makes `ff-vfs::StorageProvider` the SOLE physical seam and retires the divergent duplicate in `ff-dscatalog`.
+
+#### Acceptance Criteria
+
+13.1 THE `ff-vfs::StorageProvider` trait (Requirement 9) SHALL be the SINGLE physical storage seam for the whole workspace -- there SHALL be exactly one `StorageProvider` trait definition, and it SHALL live in `ff-vfs`.
+
+13.2 THE duplicate `ff-dscatalog::storage::StorageProvider` trait (the UUID `ObjectId` / `&[ProviderCapability]` / `workspace_root`-threaded variant) SHALL be retired; the five mainframe backends (NativeFile, ESDS, KSDS/SqliteRecord, RRDS, ISAM) SHALL implement `ff-vfs::StorageProvider` instead.
+
+13.3 WHEN a mainframe backend is reimplemented against `ff-vfs::StorageProvider`, its UUID/`workspace_root` locator SHALL be carried behind the opaque `StorageLocator` (Requirement 9.5) and its errors SHALL map to `VfsError` variants (Requirement 9.4) -- no provider-specific locator or error type SHALL leak through the seam.
+
+13.4 THE record codecs (FixedCodec, VariableCodec with 4-byte RDW, BinaryCodec, TextCodec) SHALL remain in `ff-dscatalog` and SHALL have no filesystem, SQLite, or egui dependency (unchanged from Requirement 17 of dataset-catalog) -- the seam unification SHALL NOT move or alter the codecs.
+
+13.5 THE mainframe backends SHALL register through the registry's physical-storage path (`register_storage(scheme, ...)` / `get_storage`), the same path `PosixNativeProvider` already uses -- there SHALL be no second storage-registration mechanism.
+
+---
+
+### Requirement 14: Single posix Provider Registrant
+
+**User Story:** As a platform architect, I want exactly ONE provider registered for the `posix` scheme, so that the registry's forbidden-duplicate-scheme rule (Requirement 3.3) is never tripped and there is one POSIX design to reason about.
+
+**Source:** CR-CH-059; `.agents/tasks/mainframe-dataset-emulation/architecture-revision-findings.md` Q5 (three native/posix providers, two registering `posix`).
+
+#### Acceptance Criteria
+
+14.1 THERE SHALL be exactly ONE provider registered for VFS scheme `posix` -- the two current `posix` registrants (`ff-posix-provider::PosixProvider` and `ff-vfs::PosixNativeProvider`) SHALL be collapsed to a single chosen design.
+
+14.2 THE chosen single `posix` registrant SHALL be `ff-vfs::PosixNativeProvider` (the dual-trait design that already implements BOTH `VfsProvider` and `ff-vfs::StorageProvider`), because it demonstrates one object cleanly spanning the interface seam and the single physical seam of Requirement 13; the standalone `ff-posix-provider` wrapper SHALL be retired or reduced to a re-export so that only one object registers scheme `posix`.
+
+14.3 THE Native (`local`) provider (`ff-connector-local-fs::LocalFsProvider`) SHALL be unaffected -- it remains the sole `local`-scheme registrant.
+
+14.4 WHEN the collapse is complete, THE registry SHALL contain exactly one registrant per scheme (`local`, `posix`, `catalog`), and attempting to register a second provider for any of those schemes SHALL still fail per Requirement 3.3.

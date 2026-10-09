@@ -1133,3 +1133,25 @@ The following properties are suitable for property-based testing with the `propt
 | `thiserror` | Derive macro for `VfsError` enum |
 | `pin-project-lite` | Pin projections for stream implementations in search and fallback search |
 | `proptest` | Property-based testing framework (dev-dependency) |
+
+---
+
+## Design Delta: Single StorageProvider Seam + Single posix Registrant (CR-CH-059, Requirements 13-14)
+
+This delta makes the existing `ff-vfs::StorageProvider` (section 4 / Requirement 9) the SOLE physical seam and collapses the duplicate `posix` registrant. It is contained to the registry wiring plus a one-crate change in `ff-dscatalog`; the `ff-vfs` public trait surfaces (`VfsProvider`, `StorageProvider`) are UNCHANGED in shape.
+
+### One physical seam
+
+- `ff-vfs::StorageProvider` is the single physical trait (Requirement 13.1). The duplicate `ff-dscatalog::storage::StorageProvider` (UUID `ObjectId` / `&[ProviderCapability]` / `workspace_root`-threaded) is deleted and the five mainframe backends (NativeFile, ESDS, KSDS/SqliteRecord, RRDS, ISAM) are reimplemented against `ff-vfs::StorageProvider` (Requirement 13.2). This is a `ff-dscatalog` + registry change; no `ff-vfs` type changes.
+- Mainframe backend UUID/`workspace_root` locators ride behind the opaque `StorageLocator` (Requirement 9.5), and backend errors map to `VfsError` (Requirement 9.4) -- nothing provider-specific leaks (Requirement 13.3).
+- Backends register through the existing `register_storage(scheme, ...)` / `get_storage` path that `PosixNativeProvider` already uses (Requirement 13.5). Record codecs stay in `ff-dscatalog` with no fs/SQLite/egui dependency (Requirement 13.4).
+
+### One posix registrant
+
+- The two `posix` registrants collapse to `ff-vfs::PosixNativeProvider` (the dual-trait object that implements both `VfsProvider` and `ff-vfs::StorageProvider`), chosen because it already demonstrates one object spanning both seams (Requirement 14.1-14.2). `ff-posix-provider` is retired or reduced to a re-export. The `local` provider (`ff-connector-local-fs`) is unaffected (Requirement 14.3). The registry's forbidden-duplicate-scheme rule (Requirement 3.3) still guarantees exactly one registrant per scheme (Requirement 14.4).
+
+The DatasetAccess contract that sits above this physical seam is designed in [dataset-catalog](./../dataset-catalog/design.md) -- not duplicated here.
+
+### No further design changes required
+
+- The `VfsProvider`/`StorageProvider` trait definitions, the registry's two-map structure, URI routing, and the error taxonomy are unchanged in shape; only the duplicate physical trait and the duplicate `posix` registrant are removed.

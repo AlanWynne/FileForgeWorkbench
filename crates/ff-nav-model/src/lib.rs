@@ -442,7 +442,6 @@ mod tests {
         let provider = {
             let _g = rt.enter();
             ff_posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
-                .expect("provider")
         };
         let uri = ResourceUri::new("posix", "/old.txt");
         let new_uri = rename_uri(&uri, "new.txt");
@@ -471,7 +470,6 @@ mod tests {
         let provider = {
             let _g = rt.enter();
             ff_posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
-                .expect("provider")
         };
 
         rt.block_on(provider.delete("/file.txt", DeleteOptions { recursive: false }))
@@ -495,7 +493,6 @@ mod tests {
         let provider = {
             let _g = rt.enter();
             ff_posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
-                .expect("provider")
         };
         // child_uri mirrors the shell's path construction for a new child.
         let parent = ResourceUri::new("posix", "/");
@@ -546,7 +543,6 @@ mod tests {
         let provider = {
             let _g = rt.enter();
             ff_posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
-                .expect("provider")
         };
         rt.block_on(provider.delete(&rel, DeleteOptions { recursive: false }))
             .expect("delete catalog-relative file");
@@ -570,7 +566,6 @@ mod tests {
         let provider = {
             let _g = rt.enter();
             ff_posix_provider::PosixProvider::new(tmp.path().to_path_buf(), false)
-                .expect("provider")
         };
         // Copy /src.txt -> /dest/src.txt (child_uri mirrors the shell's dest path).
         let target = ResourceUri::new("posix", "/dest");

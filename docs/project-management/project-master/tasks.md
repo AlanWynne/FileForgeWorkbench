@@ -3321,14 +3321,29 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > Req 32 (+ glossary/Req 1/Req 7 edits, tasks 33-37) + dataset-ownership-model Req 21 + Req 7.7.
 
 - [ ] VM.1 Requirements gate -- volume-model requirements/design/tasks, dataset-catalog Req 32 + glossary/Req 1/Req 7 edits + tasks 33-37, dataset-ownership-model Req 21 + Req 7.7 + task 12, this master phase, TCR NOT COVERED rows, change-log CR-NR-105/CR-CH-057, specs.md registration. (Authored; owner already approved the direction "Approved, proceed.")
-- [ ] VM.2 `ff-volume` crate -- Volume entity, VOLSER uniqueness, status/access-mode behaviour, geometry profile, byte/track/cylinder conversions. Delivers volume-model Req 1-3.
-- [ ] VM.3 Space + extents + failures -- SPACE unit model (TRK/CYL/block), primary + secondary extents + configurable max-extents (default 16), the dataset x37-style capacity failure, and the distinct Volume_Full failure. Delivers volume-model Req 4-7.
-- [ ] VM.4 Reporting + DatasetVolume + uncataloged + DEFINE VOLUME -- derived tracks/cylinders/extents reporting + VTOC_View, the DatasetVolume association + multivolume + uncataloged (VOL=SER + UNIT) resolution, and the DEFINE VOLUME command contract. Delivers volume-model Req 8-11.
-- [ ] VM.5 dataset-catalog integration -- schema v4 volumes/dataset_volumes tables, resolution via DatasetVolume indirection + Volume online check, dual-read bytes-never-move migration, depend on ff-volume. Delivers dataset-catalog Req 32; dataset-ownership-model Req 21/Req 7.7.
+- [x] VM.2 `ff-volume` crate -- Volume entity, VOLSER uniqueness, status/access-mode behaviour, geometry profile, byte/track/cylinder conversions. Delivers volume-model Req 1-3. (RC.B.5 FEAT-001; code-complete, scoped `cargo test -p ff-volume` 45 pass.)
+- [x] VM.3 Space + extents + failures -- SPACE unit model (TRK/CYL/block), primary + secondary extents + configurable max-extents (default 16), the dataset x37-style capacity failure, and the distinct Volume_Full failure. Delivers volume-model Req 4-7. (RC.B.5 FEAT-001.)
+- [x] VM.4 Reporting + DatasetVolume + uncataloged + DEFINE VOLUME -- derived tracks/cylinders/extents reporting + VTOC_View, the DatasetVolume association + multivolume + uncataloged (VOL=SER + UNIT) resolution, and the DEFINE VOLUME command contract. Delivers volume-model Req 8-11. (RC.B.5 FEAT-001.)
+- [x] VM.5 dataset-catalog integration -- schema v4 volumes/dataset_volumes tables, resolution via DatasetVolume indirection + Volume online check, dual-read bytes-never-move migration, depend on ff-volume. Delivers dataset-catalog Req 32; dataset-ownership-model Req 21/Req 7.7. (RC.B.5 FEAT-002; code-complete, scoped `cargo test -p ff-dscatalog` 268 lib + 6 schema_v4 pass. Full `cargo gate --build` pending owner.)
+
+### UI / flow sub-phase (CR-NR-105 / CR-CH-057 SECOND gate -- Volume/catalog UI; authored, pending owner approval)
+
+> Second (UI/flow) requirements gate authored on top of VM.1. Dedicated Volume management
+> WorkspaceContext (VTOC/volume report + DEFINE VOLUME / vary online-offline / set RW-RO / alter
+> capacity, each a command) and a volume picker in the catalog-creation dialog; the automatic
+> SPACE-against-volume extent charging + VOL=SER/UNIT uncataloged allocation flow; and the
+> DEFINE VOLUME command contract (+ VOLUMES() binding) in IDCAMS. Builds ON WorkspaceContext +
+> render_workspace_context + single command dispatch -- no framework change. Depends on VM.2-VM.4
+> (the `ff-volume` entity + command handlers). Spec: virtual-catalog-manager Req 17-18
+> (tasks 28-32), dataset-allocator Req 17-18 (tasks 19-20), idcams-emulator Req 27 (task 28).
+
+- [ ] VM.6 Volume management Context + volume picker (ff-desktop UI) -- dedicated WorkspaceContext (VTOC/volume report, stable-id filter first-focus, full-shell first-Tab egui_kittest test), Define_Volume_Dialog, DEFINE VOLUME / vary online-offline / set RW-RO / ALTER capacity actions via the single command path (pending_action pattern), single-user default Volume, and the catalog-dialog volume picker (existing-or-define-new, returns pre-selected). Delivers virtual-catalog-manager Req 17-18 (tasks 28-32).
+- [ ] VM.7 SPACE-against-volume allocation + VOL=SER/UNIT uncataloged (ff-dsalloc) -- automatic extent charging driven by SPACE= against Volume free capacity, the two distinct failure diagnostics (dataset x37-style vs Volume_Full), Volume status/access gating, dry-run vs live, and VOL=SER + UNIT uncataloged resolution/allocation. Delivers dataset-allocator Req 17-18 (tasks 19-20).
+- [ ] VM.8 DEFINE VOLUME command + VOLUMES() binding (ff-idcams) -- DEFINE VOLUME verb (parse + pretty-print round-trip + orchestrate via a downstream ff-volume-backed VolumeService) and DEFINE CLUSTER VOLUMES() bound to real Volume entities, with duplicate-VOLSER / unknown-VOLSER / status-access handling. Delivers idcams-emulator Req 27 (task 28).
 
 | Status | Count |
 |--------|-------|
-| `[ ]` Phase (volume-model) | CR-NR-105 + CR-CH-057 GATE AUTHORED: first-class Volume layer (new `ff-volume` crate) + catalog-as-pure-locator split. volume-model Req 1-11 (Volume entity/VOLSER, status/access, emulated geometry, SPACE units, x37 dataset-capacity failure, secondary extents/max-extents, Volume_Full, reporting/VTOC, multivolume/uncataloged, DEFINE VOLUME, NFR determinism/metadata-only migration); dataset-catalog Req 32.1-32.8 + glossary/Req 1/Req 7 edits; dataset-ownership-model Req 21.1-21.5 + Req 7.7. VM.1-VM.5. Builds ON the VFS StorageProvider seam + single command dispatch + WorkspaceContext (no framework change). Pending owner approval before any code. |
+| `[ ]` Phase (volume-model) | CR-NR-105 + CR-CH-057 GATE AUTHORED: first-class Volume layer (new `ff-volume` crate) + catalog-as-pure-locator split. volume-model Req 1-11 (Volume entity/VOLSER, status/access, emulated geometry, SPACE units, x37 dataset-capacity failure, secondary extents/max-extents, Volume_Full, reporting/VTOC, multivolume/uncataloged, DEFINE VOLUME, NFR determinism/metadata-only migration); dataset-catalog Req 32.1-32.8 + glossary/Req 1/Req 7 edits; dataset-ownership-model Req 21.1-21.5 + Req 7.7. SECOND (UI/flow) gate authored: virtual-catalog-manager Req 17-18, dataset-allocator Req 17-18, idcams-emulator Req 27. VM.1-VM.8 (VM.1 engine gate + VM.6-VM.8 UI/flow gate authored; VM.2-VM.5 code pending). Builds ON the VFS StorageProvider seam + single command dispatch + WorkspaceContext (no framework change). Pending owner approval before any code. |
 
 ## Phase (command-environments-maturation) -- CR-CH-053 EXTENDED: built Environment_Registry + address-by-name + owning-environment binding + FS-CE family
 
@@ -3392,3 +3407,55 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (windowed-record-foundation) | CR-CH-058 GATE AUTHORED: universal windowed record-oriented document model (piece-table spine). document-model Req 11-12 + revised Req 4/glossary; viewport-and-scrolling Req 15 + revised Req 1.10/Req 2; large-file-performance Req 10 + revised Req 7; display-line-mapping Req 11; edit-operations Req 18; undo-redo-transactions Req 20; find-and-replace Req 21. WRF.1-WRF.6 (phasing F1..F5). Framework-touching (ff-document-model public surface) but no dispatch/nav/focus/persistence change; native editing byte-identical (safety rule). Mainline/unprefixed. Pending owner approval before any code. |
+
+## Phase (dataset-stack-rationalisation) -- CR-CH-059: mainframe dataset stack rationalisation + the DatasetAccess JES/JCL contract
+
+> Owner-directed FRAMEWORK/governance consolidation (vision report
+> `.agents/tasks/dataset-vision-fit/report.md` sections C/D/E). Make `ff-dscatalog`
+> the SINGLE catalog authority (amend ADR-001), collapse to ONE physical seam
+> (`ff-vfs::StorageProvider`, delete the duplicate `ff-dscatalog::storage::StorageProvider`),
+> ONE `Dsorg {PS,PO,GDG}` / `Recfm {F,FB,V,VB,U}` (VSAM a cluster entity, not a
+> Dsorg), reconcile the three drifted CatalogService/VsamService definitions into
+> `ff-dscatalog`, define the NEW `DatasetAccess` trait (allocate/open/get/put/point/
+> close/dispose keyed by DD+DISP+DSN, RECFM-aware, resolving location through
+> `ff-volume`, backed by `ff-vfs::StorageProvider` + the record codecs) as the ONE
+> contract the JCL executor / editor MAINFRAME CE / IDCAMS call, retarget `ff-dsalloc`
+> to return a `DatasetHandle`, repoint `ff-idcams`'s private traits, wire VSAM under
+> `DatasetAccess` then RETIRE `ff-vsam-services`, retire `ff-dataset-catalog` (merge
+> trait into `ff-dscatalog`, repoint `ff-governance-tests`, delete crate + member
+> line), collapse the duplicate `posix` registrant, and fix the wrong crate names in
+> jes-emulator. Additive-first (RC.A adds before RC.B/RC.C delete) so FFWB builds
+> throughout. Builds ON the framework: DatasetAccess in `ff-dscatalog` over the single
+> `ff-vfs::StorageProvider` seam resolving through `ff-volume`; catalogs metadata+locator
+> only (ADR-002); acyclic DAG; Volume UI stays a WorkspaceContext. Mainline/unprefixed.
+> CRITICAL: the active `.worktrees/vsam-wiring` (`V`) stream is doing the first
+> "do-not-build" item (wiring VSAM against `ff-vsam-services`) -- owner must PAUSE/REDIRECT
+> it to target the reconciled `ff-dscatalog` VsamService under DatasetAccess, or accept
+> it as throwaway (see change-log CR-CH-059). Spec: dataset-ownership-model Req 22;
+> virtual-file-system Req 13-14; dataset-catalog Req 33-35; dataset-allocator Req 19;
+> idcams-emulator Req 28; jes-emulator Req 19; volume-model Req 12. Pending owner approval
+> before any code.
+
+### Phase RC.A -- cheap/safe-now docs + additive gated consolidation
+
+- [x] RC.A.1 ADR-001 correction + crate-name doc fixes -- name `ff-dscatalog` as the catalog authority, mark `ff-dataset-catalog`/`ff-vsam-services` deprecated-for-merge, update the fitness function, and fix the wrong crate names in jes-emulator. Delivers dataset-ownership-model Req 22 (task 13); jes-emulator Req 19 (task 35).
+- [x] RC.A.2 Reconciled CatalogService/VsamService in ff-dscatalog + single Dsorg/Recfm + repoint ff-governance-tests -- additive; collapse the divergent enums; VSAM as a cluster entity. Delivers dataset-catalog Req 33 (task 38).
+- [x] RC.A.3 Unify onto ff-vfs::StorageProvider + delete the duplicate seam -- the five backends implement `ff-vfs::StorageProvider`; delete `ff-dscatalog::storage::StorageProvider`. Delivers virtual-file-system Req 13 + dataset-catalog Req 35.1b (dataset-catalog task 39).
+- [x] RC.A.4 Collapse the duplicate posix provider -- one `posix` registrant (`ff-vfs::PosixNativeProvider`). Delivers virtual-file-system Req 14 (task 17).
+
+### Phase RC.B -- next, when PLUGIN phase 2 opens (gated features, in order)
+
+- [x] RC.B.5 Land ff-volume + schema v4 + storage_path -> DatasetVolume dual-read migration -- prerequisite already gated under CR-CH-057 (project-master Phase (volume-model) VM.2-VM.5). Referenced here, not re-authored. (Code-complete pending the owner's full `cargo gate --build`: FEAT-001 built the `ff-volume` crate, FEAT-002 wired the ff-dscatalog schema v4 side; scoped checks clean.)
+- [x] RC.B.6 Define DatasetAccess in ff-dscatalog + retarget ff-dsalloc to return a handle -- the single access contract; allocator returns a `DatasetHandle` not a `physical_path`. Delivers dataset-catalog Req 34 (task 40); dataset-allocator Req 19 (task 21); volume-model Req 12 (task 11). (CODE-COMPLETE pending the owner's full `cargo gate --build`: object-safe DatasetAccess with allocate/open/get/put/point/close/dispose, RECFM-aware I/O via codecs, location resolved via ff-volume + I/O via the single ff-vfs::StorageProvider seam, allocate honours Volume status + charges SPACE; ff-dsalloc `AllocationOutcome::Allocated` carries the handle. Scoped checks clean: `cargo test -p ff-dscatalog` 287 lib pass incl. `dataset_access::*`; `cargo test -p ff-dsalloc` 118+6 pass. PARTIAL/DEFERRED to RC.B.7: Req 19.3 Verified/Passed handle-isation needs DatasetAccess resolve-by-DSN; the VSAM keyed/relative `point()` ops return typed NotYetWired. Option A owner decision applied. Completed inline after the RC.B.6 workflow wedged on an infra/network fault; code was already on disk + reviewer-shaped.)
+- [ ] RC.B.7 Wire VSAM under DatasetAccess then retire ff-vsam-services -- concrete VsamService over the KSDS/ESDS/RRDS backends via DatasetAccess; remove `ff-vsam-services` + its member line. Delivers dataset-catalog Req 35.3 (task 41). (THIS is where the redirected `vsam-wiring` stream's work belongs.)
+- [ ] RC.B.8 Repoint ff-idcams private traits + MAINFRAME record-aware SAVE path -- repoint `ff-idcams` at the reconciled traits; DEFINE/REPRO/DELETE map onto DatasetAccess; the editor's MAINFRAME BackendEnvironment SAVE routes record-aware writes through DatasetAccess (composes CR-CH-053 Task 20/21). Delivers idcams-emulator Req 28 (task 29). Then delete `ff-dataset-catalog` (dataset-catalog task 42).
+
+### Phase RC.C -- defer / owner-blocked
+
+- [ ] RC.C.9 JES/JCL executor on DatasetAccess (ROADMAP PLUGIN phase 6) -- contract/dependency criteria only; the executor depends ONLY on `ff-dsalloc` + `DatasetAccess`. Delivers jes-emulator Req 19 (task 35, docs/contract); build deferred.
+- [ ] RC.C.10 Volume UI after ff-volume + multivolume/extents/master-catalog -- Volume management WorkspaceContext + picker (virtual-catalog-manager Req 17-18, already gated under CR-CH-057 VM.6); multivolume/extents/master-catalog + alias routing remain owner-blocked (volume-model-recommendation open decisions). Deferred.
+- [ ] RC.C.11 DO NOT build before consolidation (standing guard) -- do not wire VSAM against `ff-vsam-services`'s dead trait or `ff-dscatalog::storage::StorageProvider`; do not build JES/Volume UI against `storage_path` or `physical_path`; do not add a MAINFRAME CE that calls the catalog's SQLite path directly; do not extend `ff-idcams`'s private traits. Recorded in dataset-catalog design.md + Req 35.5.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (dataset-stack-rationalisation) | CR-CH-059 GATE APPROVED (plan final). RC.A DONE -- owner-confirmed: full `cargo gate --build` CLEAN on 2026-10-08 22:41 (fmt/clippy/build/test/app-build all ok; 9648 tests pass, 0 fail; empty gate.review.log). RC.A.1-RC.A.4 complete and gated. RC.B/RC.C NOT yet authorised -- RC.B begins on a separate explicit TASK instruction, sequenced at PLUGIN phase 2 after CORE sign-off; vsam-wiring `V` stream REDIRECTED, its current output accepted as throwaway, VSAM wired under DatasetAccess at RC.B.7. Delivered in RC.A: ff-dscatalog the single catalog authority (ADR-001 corrected); ONE ff-vfs::StorageProvider physical seam (duplicate deleted); ONE Dsorg/Recfm (VSAM a cluster entity); reconciled CatalogService/VsamService in ff-dscatalog; NEW DatasetAccess JES/JCL contract (allocate/open/get/put/point/close/dispose via ff-volume + the record codecs); ff-dsalloc returns a DatasetHandle; ff-idcams repointed; VSAM wired under DatasetAccess then ff-vsam-services retired; ff-dataset-catalog retired; duplicate posix registrant collapsed; jes crate names fixed. dataset-ownership-model Req 22; virtual-file-system Req 13-14; dataset-catalog Req 33-35; dataset-allocator Req 19; idcams-emulator Req 28; jes-emulator Req 19; volume-model Req 12. RC.A.1-RC.A.4 / RC.B.5-RC.B.8 / RC.C.9-RC.C.11. Owner-directed FRAMEWORK change (additive-first; builds ON the framework). vsam-wiring (`V`) worktree conflict flagged for owner decision. Mainline/unprefixed. Pending owner approval before any code. RC.B.5 (ff-volume crate + ff-dscatalog schema v4 dual-read) is now CODE-COMPLETE pending the owner's full `cargo gate --build` -- scoped checks clean: `ff-volume` 45 tests, `ff-dscatalog` 268 lib + 6 schema_v4 integration tests, clippy + fmt clean. RC.B.6-RC.B.8 / RC.C.9-RC.C.11 not yet started. |

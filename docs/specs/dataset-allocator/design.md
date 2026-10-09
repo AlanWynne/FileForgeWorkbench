@@ -1298,6 +1298,77 @@ Resolution state (temporary tables, pass tables, GDG state) is scoped to a singl
 
 ---
 
+## Design Delta: SPACE-Against-Volume Allocation + VOL=SER/UNIT Uncataloged (CR-NR-105 / CR-CH-057, Requirements 17-18)
+
+This delta is ADDITIVE and consumes the `ff-volume` crate; it does not reshape the resolution
+pipeline, the `CatalogProvider`/`CatalogResolver` traits, or the DISP/allocation data models above.
+
+### Allocation unit mapping (Requirement 17.1-17.2)
+
+The existing `SpaceAllocation` model (`SpaceUnit::{Trk, Cyl, Blksize(u32)}` plus primary/secondary)
+is mapped onto the `volume-model` allocation-unit model (`volume-model` Requirement 4.4). The
+allocator OWNS the JCL SPACE keyword parsing (already implemented, section Data Models /
+`SpaceAllocation`); `ff-volume` OWNS the extent accounting. The allocator calls a new `ff-volume`
+charging API when a DISP=NEW allocation is simulated in live mode, passing the mapped unit kind and
+the primary/secondary quantities. The dataset's allocated space (primary extent) and its per-extent
+secondary size are recorded by `ff-volume`; the allocator holds no extent state of its own.
+
+### Two distinct failure points surfaced through the resolver (Requirement 17.4-17.5)
+
+The allocator distinguishes the two `ff-volume` failures and maps them to distinct lint diagnostics
+so a caller can tell which cause occurred:
+
+| ff-volume failure | Cause | Allocator diagnostic |
+|---|---|---|
+| x37-style space-abend (B37/D37/E37) | dataset exceeded allocatable capacity / Max_Extents reached | a NEW `DiagnosticCode` (e.g. `DatasetSpaceAbend`) identifying the dataset + reason |
+| Volume_Full | target Volume lacks free space | a NEW `DiagnosticCode` (e.g. `VolumeFull`) identifying the VOLSER |
+
+These are added to the `DiagnosticCode` enum (continuing the `JCLnnn` numbering) without disturbing
+existing codes. A Volume_Full never consumes a dataset extent (volume-model Requirement 7.4) and the
+x37 path never reports Volume_Full for the Max_Extents cause (Requirement 17.4).
+
+### Volume status / access-mode gating (Requirement 17.6-17.7, 18.6)
+
+Before charging space, the allocator asks `ff-volume` whether the target Volume is Online and
+ReadWrite. An Offline Volume rejects the allocation (volume-model Requirement 2.1) and a ReadOnly
+Volume rejects a NEW allocation or extend (Requirement 2.2), each surfaced as an existing-style
+reported diagnostic. These checks run identically for a cataloged target and a VOL=SER + UNIT target.
+
+### Dry-run vs live (Requirement 17.8-17.9)
+
+The existing `ResolveMode::{DryRun, Live}` governs charging: dry-run reports what WOULD be charged
+(no `ff-volume` mutation); live calls the `ff-volume` charging API. When SPACE= is omitted on a
+DISP=NEW DD, the allocator applies the configured default SPACE before charging so every new dataset
+has a defined primary extent.
+
+### VOL=SER + UNIT uncataloged path (Requirement 18)
+
+A new resolution branch is added AFTER catalog lookup and BEFORE the final unresolved-DSN
+diagnostic: when the catalog does not resolve the DSN but the DD carries `VOL=SER=volser` + `UNIT=`,
+the allocator resolves directly against the Volume named by that VOLSER via `ff-volume`
+(volume-model Requirement 9.5). This requires:
+
+- parsing the `VOL=SER=` and `UNIT=` operands on the DD (an additive extension to the DD operand
+  parser; `DdStatement` gains optional `vol_ser: Option<String>` and `unit: Option<String>` fields);
+- a new `ResolutionOutcome` variant (e.g. `UncatalogedOnVolume { volser, physical_path }`) so the
+  resolution panel can show the uncataloged resolution distinctly;
+- for DISP=NEW with VOL=SER + UNIT, creating the dataset as an Uncataloged_Dataset on the Volume
+  (volume-model Requirement 9.4) and charging SPACE per the Requirement 17 flow;
+- for DISP=OLD/SHR, an ERROR diagnostic when the uncataloged dataset is not found on the named
+  Volume, and an ERROR when the VOLSER names an undefined Volume.
+
+VOL=SER + UNIT is an ADDITIONAL path; a DD with neither a catalog hit nor a VOL=SER + UNIT pair still
+produces the existing unresolved-DSN diagnostic (Requirement 18.5).
+
+### Crate dependency
+
+`ff-dataset-allocator` gains a dependency on the new `ff-volume` crate (the Volume entity + charging
++ status API). It does NOT depend on `ff-dataset-catalog` for the Volume type (that crate also
+depends on `ff-volume`), preserving the acyclic ownership DAG (dataset-ownership-model Requirement
+21 / Requirement 7.7).
+
+---
+
 ## Correctness Properties
 
 These properties are suitable for property-based testing with `proptest`. They validate invariants that must hold across all valid inputs.
@@ -1588,3 +1659,21 @@ sequenceDiagram
     Pipe-->>Cmd: ResolveOutput
     Cmd-->>User: display in Resolution Panel
 ```
+
+---
+
+## Design Delta: Retarget catalog_bridge to ff-dscatalog + Return a DatasetHandle (CR-CH-059, Requirement 19)
+
+This delta corrects the crate NAME the `catalog_bridge` references and changes the allocation RETURN; it does not reshape the resolution pipeline. The allocator keeps ownership of DD parsing, DISP interpretation, symbolic substitution, referbacks, and GDG reference detection (dataset-ownership-model Requirement 4).
+
+- The local `CatalogProvider` trait and `catalog_bridge` doc comments that today name `ff-dataset-catalog` ("Production would delegate to `ff-dataset-catalog`") are corrected to `ff-dscatalog` and bound to the reconciled `CatalogService` trait (dataset-catalog Requirement 33; Requirement 19.1).
+- `AllocationOutcome::{Verified, Allocated}` currently carry `physical_path: String`. They are reshaped to carry an opaque `DatasetHandle` obtained via `DatasetAccess` (dataset-catalog Requirement 34; Requirements 19.2-19.3). Downstream consumers (the future JES executor) use the handle, not a path.
+- The allocator still depends on the catalog through a mockable trait and still contains NO `rusqlite` import (dataset-ownership-model Requirements 4.7, 12.2, 12.3; Requirement 19.4).
+- Dry-run vs live `ResolveMode` and the CR-CH-057 Volume charging/failure semantics (Requirement 17) are preserved: dry-run reports what WOULD be allocated without acquiring a live handle; live acquires the handle via `DatasetAccess` (Requirement 19.5).
+- Sequencing: this retarget lands AFTER the reconciled `CatalogService` + `DatasetAccess` exist in `ff-dscatalog` and BEFORE `ff-dataset-catalog` is deleted (Requirement 19.6), so the allocator never references a removed crate.
+
+The DatasetAccess trait shape is designed in [dataset-catalog](./../dataset-catalog/design.md); not duplicated here.
+
+### No further design changes required
+
+- The resolution pipeline, DISP semantics, referback/GDG/temp handling, and the Volume charging delta (CR-CH-057) are unchanged; only the catalog crate name and the allocation return type change.

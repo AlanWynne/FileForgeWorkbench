@@ -646,6 +646,33 @@ mod tests {
         assert_eq!(data, b"async content");
     }
 
+    // Validates: virtual-file-system Requirement 14.1, 14.4 -- exactly one
+    // posix registrant; a second posix registration is rejected.
+    #[test]
+    fn posix_native_provider_is_sole_posix_registrant() {
+        use crate::registry::ProviderRegistry;
+        use std::sync::Arc;
+
+        let dir = TempDir::new().unwrap();
+        let registry = ProviderRegistry::new();
+
+        let provider: Arc<dyn VfsProvider> = Arc::new(make_provider(&dir, false));
+        registry
+            .register(provider)
+            .expect("first posix registration");
+
+        // Req 14.4: a second posix registrant must be rejected.
+        let second: Arc<dyn VfsProvider> = Arc::new(make_provider(&dir, true));
+        match registry.register(second) {
+            Err(VfsError::DuplicateScheme { scheme }) => assert_eq!(scheme, "posix"),
+            other => panic!("expected DuplicateScheme for posix, got {other:?}"),
+        }
+
+        // Req 14.4: exactly one registrant per scheme.
+        let schemes = registry.list_schemes();
+        assert_eq!(schemes.iter().filter(|s| s.as_str() == "posix").count(), 1);
+    }
+
     // Validates: Requirement 10.1 -- async list via VfsProvider
     #[tokio::test]
     async fn async_list_returns_entries() {

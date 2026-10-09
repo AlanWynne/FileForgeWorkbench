@@ -365,6 +365,92 @@ This task plan implements the `ff-dataset-allocator` crate -- the JCL Dataset Al
 
 ---
 
+## Phase VA -- SPACE-Against-Volume Allocation + VOL=SER/UNIT Uncataloged (CR-NR-105 / CR-CH-057, Requirements 17-18)
+
+> Automatic extent charging against a Volume driven by SPACE=, the two distinct failure points
+> (dataset x37-style vs Volume_Full) surfaced as diagnostics, Volume status/access gating, and the
+> VOL=SER + UNIT uncataloged resolution/allocation path. Depends on the `ff-volume` crate
+> (volume-model VM.2-VM.4) for the charging/status API. TDD-first; SCOPED `-p ff-dsalloc` checks.
+
+- [ ] 19. SPACE-against-Volume allocation flow (Requirement 17)
+  - [ ] 19.1 Add the `ff-volume` dependency to `crates/ff-dataset-allocator/Cargo.toml` (NOT via
+          ff-dataset-catalog) so the ownership DAG stays acyclic
+    - Validates: Requirement 17.1
+  - [ ] 19.2 Map `SpaceAllocation` (TRK/CYL/Blksize + primary/secondary) onto the `ff-volume`
+          allocation-unit model and charge the primary extent on DISP=NEW in live mode; record the
+          per-extent secondary size
+    - Validates: Requirement 17.1, 17.2
+  - [ ] 19.3 Drive secondary-extent acquisition on simulated growth when below Max_Extents and the
+          Volume has free space
+    - Validates: Requirement 17.3
+  - [ ] 19.4 Add distinct `DiagnosticCode` variants for the dataset x37-style space-abend and for
+          Volume_Full; map the two `ff-volume` failures to them (x37 for Max_Extents reached;
+          Volume_Full for insufficient Volume free space, consuming no extent)
+    - Validates: Requirement 17.4, 17.5
+  - [ ] 19.5 Gate allocation on Volume status/access: reject on Offline (before charging) and on
+          ReadOnly (NEW or extend) with the reported errors
+    - Validates: Requirement 17.6, 17.7
+  - [ ] 19.6 Honour dry-run (report only) vs live (charge via ff-volume); apply the configured
+          default SPACE when SPACE= is omitted on DISP=NEW
+    - Validates: Requirement 17.8, 17.9
+  - [ ] 19.7 Write failing unit tests (mock ff-volume): primary charge, secondary acquisition, x37
+          on Max_Extents, Volume_Full distinct + no extent consumed, offline/read-only rejection,
+          dry-run vs live, default-SPACE applied
+    - Validates: Requirement 17.1-17.9
+  - [ ] 19.8 Write property test: a successful allocation reduces Volume free space by exactly the
+          charged extents; a Volume_Full leaves Volume free space and dataset extent count unchanged
+    - Validates: Requirement 17.5
+  - [ ] 19.9 Run `cargo test -p ff-dsalloc` -- confirm red then green
+
+- [ ] 20. VOL=SER + UNIT uncataloged resolution and allocation (Requirement 18)
+  - [ ] 20.1 Extend the DD operand parser to capture `VOL=SER=volser` and `UNIT=` into optional
+          `DdStatement` fields (`vol_ser`, `unit`)
+    - Validates: Requirement 18.1
+  - [ ] 20.2 Add a resolution branch AFTER catalog lookup and BEFORE the unresolved-DSN diagnostic:
+          when the DSN is uncataloged and VOL=SER + UNIT are present, resolve against the named
+          Volume via ff-volume; add the `UncatalogedOnVolume` `ResolutionOutcome` variant
+    - Validates: Requirement 18.1, 18.5
+  - [ ] 20.3 For DISP=NEW with VOL=SER + UNIT, create the dataset as an Uncataloged_Dataset on the
+          Volume and charge SPACE per Task 19
+    - Validates: Requirement 18.2
+  - [ ] 20.4 Emit ERROR diagnostics: DISP=OLD/SHR uncataloged-not-found-on-Volume (identifying DSN +
+          VOLSER); VOL=SER naming an undefined Volume (identifying the unknown VOLSER)
+    - Validates: Requirement 18.3, 18.4
+  - [ ] 20.5 Apply the Task 19.5 status/access gating to the VOL=SER + UNIT path
+    - Validates: Requirement 18.6
+  - [ ] 20.6 Write failing unit tests: VOL=SER+UNIT resolves uncataloged; DISP=NEW creates +
+          charges; OLD/SHR not-found error; undefined-VOLSER error; neither-catalog-nor-VOLSER keeps
+          the existing unresolved-DSN diagnostic; offline/read-only Volume rejected
+    - Validates: Requirement 18.1-18.6
+  - [ ] 20.7 Run `cargo test -p ff-dsalloc` -- red then green
+  - [ ] 20.8 Run `cargo clippy -p ff-dsalloc -- -D warnings` -- clean; `cargo fmt`
+  - [ ] 20.9 Update `docs/quality/TCR.md` Req 17.1-17.9 and 18.1-18.6 rows; hand off the full gate
+
+---
+
+## Mainframe Dataset Stack Rationalisation (CR-CH-059)
+
+> Phase RC.B step 6 (allocator side). Retarget the `catalog_bridge` from the wrongly-named `ff-dataset-catalog` to `ff-dscatalog` and return a `DatasetHandle` via `DatasetAccess` instead of a raw `physical_path`. The resolution pipeline, DISP semantics, and the CR-CH-057 Volume charging flow (Task 19) are preserved. All tasks `[ ]`; TDD-first; SCOPED `-p ff-dsalloc` checks. Sequenced AFTER dataset-catalog Tasks 38 + 40 and BEFORE dataset-catalog Task 42 (ff-dataset-catalog deletion).
+
+- [ ] 21. Retarget catalog_bridge to ff-dscatalog and return a DatasetHandle
+  - NOTE (RC.B.6, Option A): the live DISP=NEW allocate path now returns an opaque `DatasetHandle` via `DatasetAccess`; `AllocationOutcome::Allocated` carries the handle. The `Verified`/`Passed` variants (existing-dataset resolution via catalog lookup / pass table, NOT via allocate) still carry `physical_path` -- handle-ising them needs a resolve-by-DSN -> handle on `DatasetAccess` that is intentionally NOT in the RC.B.6 contract. Task 21.3 therefore stays `[ ]` (partial); its Verified/Passed half is DEFERRED to RC.B.7 (when `DatasetAccess` gains resolve-by-DSN). The RESOLVE panel display is intentionally unchanged (no user-visible behaviour change in RC.B.6).
+  - [x] 21.1 Correct the `catalog_bridge` source and doc comments that name `ff-dataset-catalog` to `ff-dscatalog`; bind the local `CatalogProvider`/`CatalogResolver` trait to the reconciled `CatalogService` (dataset-catalog Requirement 33).
+    - Validates: Requirement 19.1
+  - [x] 21.2 Change allocation to obtain a `DatasetHandle` via `DatasetAccess` (dataset-catalog Requirement 34) for DISP=NEW/MOD-as-NEW, instead of returning a raw `physical_path`.
+    - Validates: Requirement 19.2
+  - [ ] 21.3 Reshape `AllocationOutcome::{Verified, Allocated}` to carry an opaque `DatasetHandle`; update downstream consumers to use the handle.
+    - PARTIAL (Option A): `Allocated { handle }` done; `Verified`/`Passed` handle-isation DEFERRED to RC.B.7 (needs `DatasetAccess` resolve-by-DSN).
+    - Validates: Requirement 19.3 (partial)
+  - [x] 21.4 Confirm the allocator still depends on the catalog via a mockable trait and still has NO `rusqlite` import.
+    - Validates: Requirement 19.4
+  - [x] 21.5 Preserve dry-run vs live `ResolveMode` and the Task 19 Volume charging/failure semantics: dry-run reports what WOULD be allocated (no live handle); live acquires the handle via `DatasetAccess`.
+    - Validates: Requirement 19.5
+  - [x] 21.6 Unit tests (reconciled mock + mock DatasetAccess): bridge names ff-dscatalog; allocation returns a handle; dry-run acquires no handle; outcome carries a handle not a path. (Passing: `dataset_allocator_yields_opaque_handle_via_dataset_access`, `dataset_allocator_is_object_safe_as_dyn`, `live_new_allocation_returns_handle_not_path`, `dry_run_acquires_no_handle`.)
+    - Validates: Requirement 19.1, 19.2, 19.4, 19.5 (19.3 partial per 21.3)
+  - [x] 21.7 Update `docs/quality/TCR.md` Req 19.1-19.6 rows (19.3 marked PARTIAL); hand off the full gate.
+
+---
+
 ## Acceptance Criteria Coverage
 
 | Requirement | Criteria | Covered by Task(s) |

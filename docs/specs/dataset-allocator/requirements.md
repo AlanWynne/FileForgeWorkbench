@@ -354,6 +354,82 @@ The `ff-dataset-allocator` crate is a Wave 13 (Dataset Catalog and Mainframe Emu
 
 ---
 
+### Requirement 17: SPACE-Against-Volume Allocation Flow (Automatic Extent Charging)
+
+**User Story:** As a mainframe developer, I want a DISP=NEW allocation with a SPACE= request to charge space against the target Volume automatically, so that allocation behaves like z/OS dynamic allocation: the Volume loses free space and the dataset gains extents without me managing the Volume by hand.
+
+**Source:** CR-NR-105 / CR-CH-057 owner decision B (level 2: allocating SPACE on a Volume is automatic, driven by SPACE= requests, charged as extents against Volume free capacity). Builds ON `volume-model` Requirements 4, 5, 6, 7 (SPACE unit model, dataset extents, x37-style failure, Volume_Full). Content was rephrased for compliance with licensing restrictions.
+
+> **Framework / ownership note:** The allocator OWNS parsing of the JCL SPACE keyword and the allocation flow; the Volume entity, extent accounting, and both failure points are OWNED by `ff-volume` and are only CONSUMED here (the allocation-unit model of `volume-model` Requirement 4.4). The allocator does not redefine the Volume or extent types.
+
+#### Acceptance Criteria
+
+17.1 WHEN the allocator simulates a DISP=NEW allocation with a SPACE= operand, THE allocator SHALL map the parsed SPACE (unit kind plus primary and secondary quantities) onto the `volume-model` allocation-unit model (Requirement 4.4) and charge the primary extent against the target Volume's free capacity.
+
+17.2 WHEN the primary extent is charged, THE allocator SHALL record the dataset's allocated space as its primary extent (volume-model Requirement 5.1) and SHALL record the SPACE secondary quantity as the per-extent secondary allocation size used on later growth (volume-model Requirement 4.5).
+
+17.3 WHEN a simulated write or append would exceed the dataset's current allocated space AND a further secondary extent is available (below Max_Extents and within Volume free space), THE allocator SHALL cause a secondary extent to be acquired and charged against the Volume (volume-model Requirements 5.2, 6.2).
+
+17.4 WHEN a secondary extent cannot be acquired because Max_Extents has been reached, THE allocator SHALL report the dataset-level x37-style space-abend failure (volume-model Requirements 5.3, 6.3) and SHALL NOT report Volume_Full for that cause.
+
+17.5 WHEN an allocation or extent acquisition requires more free space than the target Volume currently has, THE allocator SHALL report the Volume_Full failure (volume-model Requirements 7.2, 7.4) as a cause DISTINCT from the dataset x37-style failure, and SHALL NOT consume a dataset extent.
+
+17.6 WHEN the target Volume is Offline, THE allocator SHALL reject the DISP=NEW allocation with the reported offline-Volume error (volume-model Requirement 2.1) before charging any space.
+
+17.7 WHEN the target Volume's access mode is ReadOnly, THE allocator SHALL reject a DISP=NEW allocation or any extend operation targeting that Volume with the reported read-only error (volume-model Requirement 2.2).
+
+17.8 THE allocator SHALL run in dry-run mode without charging real Volume space (reporting what WOULD be charged) and in live mode charging the Volume via the `ff-volume` API, consistent with the existing dry-run / live `ResolveMode` (Requirement 14).
+
+17.9 WHEN SPACE= is omitted on a DISP=NEW allocation, THE allocator SHALL apply the configured default SPACE (an existing resolver default) before charging, so that every new dataset has a defined primary extent.
+
+---
+
+### Requirement 18: Uncataloged Allocation and Resolution by VOL=SER + UNIT
+
+**User Story:** As a mainframe developer, I want a DD that specifies VOL=SER and UNIT without a catalog entry to resolve and allocate directly against the named Volume, so that uncataloged datasets behave as they do on z/OS.
+
+**Source:** CR-NR-105 / CR-CH-057 (uncataloged datasets permitted; resolved by VOL=SER + UNIT). Builds ON `volume-model` Requirements 9.4, 9.5. Content was rephrased for compliance with licensing restrictions.
+
+#### Acceptance Criteria
+
+18.1 WHEN a DD statement carries a `VOL=SER=volser` operand together with a `UNIT=` operand and no catalog entry resolves the DSN, THE allocator SHALL resolve the dataset directly against the Volume identified by that VOLSER, without requiring a catalog row (volume-model Requirement 9.5).
+
+18.2 WHEN a DISP=NEW allocation specifies VOL=SER + UNIT, THE allocator SHALL create the dataset as an Uncataloged_Dataset on the named Volume (volume-model Requirement 9.4) and SHALL charge its SPACE against that Volume per Requirement 17.
+
+18.3 WHEN a DISP=OLD/SHR DD specifies VOL=SER + UNIT for a dataset that does not physically exist on the named Volume, THE allocator SHALL produce an ERROR diagnostic identifying the DSN, the VOLSER, and that the uncataloged dataset was not found on that Volume.
+
+18.4 WHEN a DD specifies VOL=SER=volser naming a Volume that is not defined, THE allocator SHALL produce an ERROR diagnostic identifying the unknown VOLSER.
+
+18.5 WHEN a DD provides neither a resolvable catalog entry nor a VOL=SER + UNIT pair, THE allocator SHALL continue to report the existing unresolved-DSN diagnostic (Requirement 2.4 / Requirement 10.2) -- VOL=SER + UNIT is an ADDITIONAL resolution path, not a replacement.
+
+18.6 THE VOL=SER + UNIT resolution path SHALL honour the Volume status and access-mode checks of Requirement 17.6 and 17.7 (an Offline or ReadOnly Volume is rejected the same way as for a cataloged target).
+
+---
+
+### Requirement 19: Retarget catalog_bridge to ff-dscatalog and Return a DatasetHandle via DatasetAccess (CR-CH-059)
+
+**User Story:** As a platform architect, I want the allocator's catalog bridge to name and depend on the real catalog crate (`ff-dscatalog`), and to return a `DatasetHandle` obtained through the `DatasetAccess` contract instead of a raw physical path, so that the DD/DISP front half of the JCL model joins the record-aware back half through one interface.
+
+**Source:** CR-CH-059; `.agents/tasks/dataset-vision-fit/report.md` sections A.3 (allocator resolves to a physical path, names the WRONG crate), D (DatasetAccess), E item 6; dataset-ownership-model Requirements 4, 7, 12 (allocator depends on a `CatalogService` trait, never SQLite directly). Content was rephrased for compliance with licensing restrictions.
+
+> **Framework / ownership note:** The allocator OWNS DD parsing, DISP interpretation, symbolic substitution, referbacks, and GDG reference detection; it CONSUMES the catalog via a trait and now obtains dataset handles via `DatasetAccess`. This Requirement corrects the crate NAME the allocator's `catalog_bridge` references (it currently names `ff-dataset-catalog`) and changes its RETURN from `physical_path` to a handle; the Volume charging flow (Requirement 17) and VOL=SER/UNIT path (Requirement 18) are unchanged and compose with it.
+
+#### Acceptance Criteria
+
+19.1 THE allocator's `catalog_bridge` SHALL depend on and name `ff-dscatalog` (through the reconciled `CatalogService` trait, dataset-catalog Requirement 33) -- all references to the wrongly-named `ff-dataset-catalog` in the `catalog_bridge` source and doc comments SHALL be corrected to `ff-dscatalog`.
+
+19.2 WHEN the allocator simulates or performs an allocation (DISP=NEW) or verifies/resolves an existing dataset (DISP=OLD/SHR/MOD), THE allocator SHALL obtain a `DatasetHandle` via the `DatasetAccess` contract (dataset-catalog Requirement 34) rather than returning a raw `physical_path` string.
+
+19.3 THE allocator's `AllocationOutcome` variants (currently carrying `physical_path`) SHALL be reshaped to carry a `DatasetHandle` (opaque, per dataset-catalog Requirement 34.5); downstream consumers (including the JES executor) SHALL use the handle, not a physical path.
+
+19.4 THE allocator SHALL continue to depend on the catalog through a trait interface it can mock (dataset-ownership-model Requirement 4.7, 12.2) and SHALL NOT contain `use rusqlite` or any direct SQLite access (dataset-ownership-model Requirement 12.3) -- the retarget SHALL NOT introduce direct database access.
+
+19.5 THE existing dry-run vs live `ResolveMode` (Requirement 14) and the Volume charging / failure semantics (Requirement 17) SHALL be preserved: in dry-run the allocator reports what WOULD be allocated without acquiring a live handle; in live mode it acquires the handle via `DatasetAccess`.
+
+19.6 THE retarget SHALL be sequenced AFTER the reconciled `CatalogService` trait and `DatasetAccess` exist in `ff-dscatalog` (dataset-catalog Requirements 33, 34) and BEFORE the `ff-dataset-catalog` crate is deleted (dataset-catalog Requirement 35.1) -- so that the allocator never references a removed crate.
+
+---
+
 ## Cross-Cutting Concerns
 
 ### Performance

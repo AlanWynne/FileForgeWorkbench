@@ -1693,4 +1693,20 @@ All property-based tests use `proptest` with a minimum of 100 iterations per pro
 // Validates: Requirement X.Y
 ```
 
-Integration tests use `tempfile::TempDir` for database and spool storage, and mock implementations of `ff-dataset-allocator`'s `CatalogProvider` trait for DSN resolution testing without a live catalog.
+Integration tests use `tempfile::TempDir` for database and spool storage, and mock implementations of `ff-dsalloc`'s `CatalogProvider` trait for DSN resolution testing without a live catalog. (Crate name corrected from `ff-dataset-allocator` by CR-CH-059.)
+
+---
+
+## Design Delta: JCL Executor Depends Only on ff-dsalloc + DatasetAccess (CR-CH-059, Requirement 19)
+
+This delta is CONTRACT/DEPENDENCY only; JES itself stays DEFERRED (ROADMAP PLUGIN phase 6). It records what the future JCL executor must depend on and corrects the crate names used throughout this spec.
+
+- When built, the JCL executor depends ONLY on `ff-dsalloc` (DD/DISP allocation producing a `DatasetHandle`) and the `DatasetAccess` trait (dataset-catalog Requirement 34) for record I/O -- never on SQLite, a raw `storage_path`, `ff-dsalloc`'s legacy `physical_path`, or the catalog's concrete SQLite type (Requirement 19.1). It binds each DD to a handle from `ff-dsalloc` (dataset-allocator Requirement 19) and performs open/get/put/point/close/dispose through `DatasetAccess` (Requirement 19.2).
+- The crate names in this spec are corrected to `ff-dscatalog` / `ff-dsalloc` throughout (Introduction, Requirement 1.7, Requirement 11, Requirement 12.5; Requirement 19.3). The legacy names are not live references.
+- The executor is not started before the rationalisation it depends on has landed (reconciled traits + `DatasetAccess` + the `ff-dsalloc` handle return); building JES against `storage_path`/`physical_path` is a documented waste (dataset-catalog Requirement 35.5; Requirement 19.4).
+
+The DatasetAccess trait shape is in [dataset-catalog](./../dataset-catalog/design.md); not duplicated here.
+
+### No further design changes required
+
+- No JES runtime behaviour, panel, scheduling, or plugin design changes; this delta constrains only the future executor's dependencies and fixes crate names.

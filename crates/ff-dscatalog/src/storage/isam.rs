@@ -8,17 +8,16 @@
 //!
 //! Validates: Requirement 24.1, 24.2, 24.3
 
-use std::path::{Path, PathBuf};
+use std::collections::HashSet;
+use std::path::Path;
 use std::sync::Arc;
 
+use ff_vfs::{StorageCapability, StorageLocator, StorageProvider, StorageStat, VfsError};
 use uuid::Uuid;
 
 use crate::error::CatalogError;
 
-use super::{
-    AlternateIndex, KsdsKeyDefinition, KsdsRecord, ObjectId, ObjectStat, ProviderCapability,
-    SqliteRecordProvider, StorageProvider,
-};
+use super::{AlternateIndex, KsdsKeyDefinition, KsdsRecord, SqliteRecordProvider};
 
 /// ISAM provider backed by `SqliteRecordProvider`.
 ///
@@ -106,55 +105,48 @@ impl IsamProvider {
     }
 }
 
+// === ff_vfs::StorageProvider -- the single physical seam (CR-CH-059) =========
+//
+// ISAM delegates every physical-seam operation to its inner KSDS provider,
+// which carries the workspace root behind its own struct.
+
 impl StorageProvider for IsamProvider {
-    fn capabilities(&self) -> &[ProviderCapability] {
-        static CAPABILITIES: [ProviderCapability; 3] = [
-            ProviderCapability::RecordRead,
-            ProviderCapability::RecordWrite,
-            ProviderCapability::KeyedAccess,
-        ];
-        &CAPABILITIES
+    fn capabilities(&self) -> HashSet<StorageCapability> {
+        [
+            StorageCapability::RecordRead,
+            StorageCapability::RecordWrite,
+            StorageCapability::KeyedAccess,
+        ]
+        .into_iter()
+        .collect()
     }
 
-    fn allocate(
-        &self,
-        workspace_root: &Path,
-        is_container: bool,
-    ) -> Result<(ObjectId, String), CatalogError> {
-        self.inner.allocate(workspace_root, is_container)
+    fn allocate(&self, name: &str) -> Result<StorageLocator, VfsError> {
+        self.inner.allocate(name)
     }
 
-    fn open(&self, workspace_root: &Path, locator: &str) -> Result<PathBuf, CatalogError> {
-        self.inner.open(workspace_root, locator)
+    fn open(&self, locator: &StorageLocator) -> Result<Vec<u8>, VfsError> {
+        self.inner.open(locator)
     }
 
-    fn stat(&self, workspace_root: &Path, locator: &str) -> Result<ObjectStat, CatalogError> {
-        self.inner.stat(workspace_root, locator)
+    fn stat(&self, locator: &StorageLocator) -> Result<StorageStat, VfsError> {
+        self.inner.stat(locator)
     }
 
-    fn rename(
-        &self,
-        workspace_root: &Path,
-        locator: &str,
-        new_locator: &str,
-    ) -> Result<(), CatalogError> {
-        self.inner.rename(workspace_root, locator, new_locator)
+    fn rename(&self, locator: &StorageLocator, new_name: &str) -> Result<(), VfsError> {
+        self.inner.rename(locator, new_name)
     }
 
-    fn delete(&self, workspace_root: &Path, locator: &str) -> Result<(), CatalogError> {
-        StorageProvider::delete(self.inner.as_ref(), workspace_root, locator)
+    fn delete(&self, locator: &StorageLocator) -> Result<(), VfsError> {
+        StorageProvider::delete(self.inner.as_ref(), locator)
     }
 
-    fn list(&self, workspace_root: &Path, locator: &str) -> Result<Vec<String>, CatalogError> {
-        self.inner.list(workspace_root, locator)
+    fn list(&self) -> Result<Vec<(StorageLocator, String)>, VfsError> {
+        self.inner.list()
     }
 
-    fn reconcile(
-        &self,
-        workspace_root: &Path,
-        known_locators: &[String],
-    ) -> Result<Vec<String>, CatalogError> {
-        self.inner.reconcile(workspace_root, known_locators)
+    fn reconcile(&self, catalogue_names: &[String]) -> Result<Vec<String>, VfsError> {
+        self.inner.reconcile(catalogue_names)
     }
 }
 
@@ -287,25 +279,24 @@ mod tests {
 
     #[test]
     fn isam_provider_implements_storage_provider_trait() {
-        // Validates: Requirement 24.3
+        // Validates: Requirement 24.3; virtual-file-system Requirement 13.1, 13.2
         let dir = tempfile::tempdir().unwrap();
         let id = Uuid::new_v4();
         let provider: Box<dyn StorageProvider> =
             Box::new(IsamProvider::open(dir.path(), id, KsdsKeyDefinition::new(0, 3)).unwrap());
         assert!(provider
             .capabilities()
-            .contains(&ProviderCapability::KeyedAccess));
+            .contains(&StorageCapability::KeyedAccess));
     }
 
     #[test]
     fn isam_storage_provider_allocate_and_stat() {
-        // Validates: Requirement 24.3
+        // Validates: Requirement 24.3; virtual-file-system Requirement 13.3
         let dir = tempfile::tempdir().unwrap();
         let id = Uuid::new_v4();
         let provider = IsamProvider::open(dir.path(), id, KsdsKeyDefinition::new(0, 3)).unwrap();
-        let (new_id, locator) = provider.allocate(dir.path(), false).unwrap();
-        assert_ne!(new_id, id);
-        let stat = provider.stat(dir.path(), &locator).unwrap();
+        let locator = provider.allocate("ISAM.NEW").unwrap();
+        let stat = provider.stat(&locator).unwrap();
         assert!(!stat.is_container);
     }
 }

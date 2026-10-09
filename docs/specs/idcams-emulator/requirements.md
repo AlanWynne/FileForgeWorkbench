@@ -554,3 +554,57 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) -- the command 
 6. THE Pretty_Printer SHALL support a compact mode (minimal whitespace, single line where possible) and a verbose mode (one parameter per line for readability).
 7. FOR ALL valid command ASTs, THE Pretty_Printer SHALL produce syntactically valid IDCAMS control statements -- the output SHALL always be parseable without error.
 
+---
+
+### Requirement 27: DEFINE VOLUME Command Contract and VOLUMES() Binding
+
+**User Story:** As a mainframe developer, I want an FFWB-extension DEFINE VOLUME command that registers a host directory as an emulated Volume, and I want DEFINE CLUSTER's VOLUMES() parameter to bind to real Volume entities, so that IDCAMS scripts administer and target the first-class Volume layer.
+
+**Source:** CR-NR-105 / CR-CH-057; `volume-model` Requirement 10 (DEFINE VOLUME), Requirement 1 (Volume entity / VOLSER uniqueness), Requirement 9 (DatasetVolume binding). This Requirement ADDS the DEFINE VOLUME verb; the VOLUMES() parsing of Requirement 2.7 is unchanged and only its EXECUTION binding is specified here. Content was rephrased for compliance with licensing restrictions.
+
+> **Ownership note (framework-conformance):** `ff-idcams` remains a THIN orchestrator (Requirement 21). It parses DEFINE VOLUME and orchestrates it by delegating to a downstream Volume service (the `ff-volume`-backed trait); it performs no storage logic itself and does not redefine the Volume entity. Invocation flows through the existing IDCAMS invocation paths (Requirement 20); within FFWB the DEFINE VOLUME verb reaches the shell through the single command-dispatch front door like any other command (command parity).
+
+#### Acceptance Criteria
+
+27.1 WHEN the IDCAMS_Parser parses a DEFINE VOLUME command, THE IDCAMS_Parser SHALL extract into a DefineVolumeCommand structure at minimum: a VOLSER (1-6 characters), a host path, a capacity (expressed in CYLINDERS or TRACKS), and an optional initial status.
+
+27.2 WHEN DEFINE VOLUME is executed, THE Command_Executor SHALL invoke the downstream Volume service to register the host path as an emulated Volume with the parsed VOLSER, capacity, and status, creating the Volume's storage layout (volume-model Requirement 10.1).
+
+27.3 IF DEFINE VOLUME specifies a VOLSER that already exists, THEN THE Command_Executor SHALL return condition code 12 with a duplicate-VOLSER message (volume-model Requirements 10.3, 1.2) and SHALL NOT create a second Volume.
+
+27.4 WHEN DEFINE VOLUME completes successfully, THE Command_Executor SHALL set LASTCC to 0 and emit an IDC0001I-style confirmation message naming the Volume.
+
+27.5 WHEN a DEFINE CLUSTER command specifies a VOLUMES(volser...) parameter, THE Command_Executor SHALL bind the created dataset to the real Volume(s) identified by those VOLSERs via the DatasetVolume association (volume-model Requirement 9), rather than treating the volume serial as an opaque unvalidated string.
+
+27.6 IF a DEFINE CLUSTER VOLUMES(volser) names a VOLSER that is not a defined Volume, THEN THE Command_Executor SHALL return a reported error identifying the unknown VOLSER and SHALL NOT create the cluster.
+
+27.7 WHEN DEFINE VOLUME or a VOLUMES()-bound DEFINE CLUSTER targets a Volume, THE Command_Executor SHALL honour the Volume's status and access mode (an Offline or ReadOnly Volume is rejected per volume-model Requirements 2.1, 2.2) with the downstream error surfaced as the IDCAMS condition code.
+
+27.8 THE DefineVolumeCommand SHALL round-trip through the Pretty_Printer (Requirement 26): a parsed DEFINE VOLUME re-printed and re-parsed SHALL yield an equivalent AST.
+
+---
+
+### Requirement 28: Repoint Private Service Traits at ff-dscatalog; Map DEFINE / REPRO / DELETE onto DatasetAccess (CR-CH-059)
+
+**User Story:** As a platform architect, I want `ff-idcams` to stop carrying its own copies of `CatalogService` / `VsamService` and instead depend on the reconciled traits in `ff-dscatalog`, and I want the operational commands (DEFINE / REPRO / DELETE) to perform their dataset work through the `DatasetAccess` contract, so that IDCAMS stays a thin orchestrator over the single catalog authority.
+
+**Source:** CR-CH-059; `.agents/tasks/dataset-vision-fit/report.md` sections A.3 (idcams carries its own trait copies), A.4, D, E item 2 ("do NOT extend idcams's private traits; repoint them first"); dataset-ownership-model Requirements 6, 8, 9, 21 (idcams delegates, owns parsing/orchestration only). Builds ON Requirement 21 (ownership-boundary enforcement) and Requirement 22 (atomic execution). Content was rephrased for compliance with licensing restrictions.
+
+> **Ownership note (framework-conformance):** `ff-idcams` remains a THIN orchestrator (Requirement 21). This Requirement does not add parsing or storage logic; it changes WHICH traits `ff-idcams` depends on (the reconciled `ff-dscatalog` traits instead of its private copies) and routes the actual dataset operations through `DatasetAccess`. Invocation within FFWB still flows through the single command-dispatch front door (Requirement 20 / command parity).
+
+#### Acceptance Criteria
+
+28.1 THE `ff-idcams` crate SHALL depend on the reconciled `CatalogService` and `VsamService` traits exposed by `ff-dscatalog` (dataset-catalog Requirement 33) and SHALL NOT define or carry its own private `CatalogService` / `VsamService` trait copies.
+
+28.2 WHEN `ff-idcams`'s private service traits are repointed, their consumers (`IdcamsServices`, the `MockCatalogService` / `MockVsamService` test doubles) SHALL be updated to the reconciled trait method shapes and types (`Dsorg {PS,PO,GDG}`, `Recfm {F,FB,V,VB,U}`, `Dsn`); divergent local types SHALL NOT be reintroduced.
+
+28.3 WHEN `ff-idcams` executes a DEFINE command that creates a dataset (CLUSTER / GDG / and the FFWB-extension DEFINE VOLUME binding of Requirement 27), THE operational dataset creation SHALL be performed via the reconciled `CatalogService` / `VsamService` and, where it allocates or initialises record storage, via the `DatasetAccess` contract (dataset-catalog Requirement 34) -- never by direct SQLite or physical-path access (unchanged from Requirement 21.2, 21.3).
+
+28.4 WHEN `ff-idcams` executes a REPRO command (record copy), THE record get/put SHALL flow through `DatasetAccess` (or the reconciled `VsamService` for VSAM record-level copy), honouring RECFM/LRECL via the record codecs -- `ff-idcams` SHALL NOT implement record-level copy logic itself (unchanged from Requirement 9.6, 10 orchestration role).
+
+28.5 WHEN `ff-idcams` executes a DELETE command, THE catalog entry removal SHALL flow through the reconciled `CatalogService::delete_dataset` and any VSAM teardown through the reconciled `VsamService` / `DatasetAccess::dispose`, preserving the atomic-execution guarantee of Requirement 22.
+
+28.6 THE repoint SHALL be sequenced AFTER the reconciled traits exist in `ff-dscatalog` (dataset-catalog Requirement 33) and BEFORE the `ff-dataset-catalog` / `ff-vsam-services` crates are deleted (dataset-catalog Requirement 35.1) -- `ff-idcams` SHALL never reference a removed crate.
+
+28.7 THE existing IDCAMS command syntax, output formatting, return-code semantics (LASTCC/MAXCC), and condition codes SHALL be unchanged by the repoint -- only the downstream trait dependency and the dataset-operation routing change.
+

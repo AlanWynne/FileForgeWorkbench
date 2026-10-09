@@ -69,30 +69,27 @@ Prior artifacts (context):
 - `.agents/tasks/volume-model-recommendation/authoring-plan.md` -- the id/number
   allocation plan.
 
-## OPEN QUESTIONS raised but NOT yet answered (this is where we stopped)
+## OPEN QUESTIONS -- ANSWERED by owner (2026-10-08)
 
-The last conversation was about the Volume/catalog UI. These are NOT yet decided
-and were deliberately left to a future gate (virtual-catalog-manager was marked
-out of scope in the volume-model gate):
+The Volume/catalog UI questions are now RESOLVED. Owner confirmed all three in
+line with Kiro's recommendations:
 
-A. Dedicated Volume dialog/context vs one shared dialog with catalog creation?
-   Kiro RECOMMENDED: a dedicated Volume management context (a WorkspaceContext
-   that lists volumes = the VTOC/volume report, and hosts DEFINE VOLUME / vary
-   online-offline / set RW-RO), with the catalog-creation dialog getting a VOLUME
-   PICKER (pick existing OR "Define new volume..." that returns), NOT an inline
-   volume editor. Single-user default can auto-select/create one volume so casual
-   users never see it. OWNER HAS NOT CONFIRMED.
+A. Volume UI shape -- CONFIRMED: a DEDICATED Volume management context (a
+   WorkspaceContext that lists volumes = the VTOC/volume report, and hosts
+   DEFINE VOLUME / vary online-offline / set RW-RO), PLUS a VOLUME PICKER in the
+   catalog-creation dialog (pick existing OR "Define new volume..." that
+   returns), NOT an inline volume editor. Single-user default MAY auto-select/
+   create one volume so casual users never see it.
 
-B. How volume allocation happens -- Kiro clarified there are TWO allocations:
+B. Allocation model -- CONFIRMED two-level:
    - Defining a VOLUME = `DEFINE VOLUME` admin act: name/VOLSER + host path
      (becomes storage_uri) + capacity (tracks/cyls) + status; creates the
      storage/ pds/ gdg/ temp/ layout; VOLSER must be unique. (volume-model Req 10)
    - Allocating SPACE ON a volume = automatic, driven by dataset SPACE= requests,
      charged against volume free capacity as extents. (volume-model Req 4-7)
 
-C. Volume capacity hard cap vs elastic? Kiro RECOMMENDED: hard cap, fixed at
-   DEFINE time, resizable later via an alter command, no over-commit (Volume_Full
-   is a real failure). OWNER HAS NOT CONFIRMED.
+C. Volume capacity -- CONFIRMED: HARD CAP, fixed at DEFINE time, resizable later
+   via an alter command, NO over-commit (Volume_Full is a real failure).
 
 ## NEXT ACTIONS (in order)
 

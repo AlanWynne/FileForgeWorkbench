@@ -1,0 +1,18 @@
+[package]
+name = "ff-volume"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Mainframe Volume model for FileForgeWorkbench -- VOLSER identity, status/access mode, emulated geometry, SPACE allocation units, extents, volume capacity, VTOC reporting, and the DatasetVolume association (pure in-memory model, no persistence)"
+
+[dependencies]
+ff-vfs = { path = "../ff-vfs" }
+thiserror = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

@@ -212,3 +212,19 @@ They are sequenced after the BS Wave 3-4 implementation stream.
   - [x] 16.4 Implement `workspace.reconcile` VFS command -- compare VFS state with provider state, report proposed corrections
   - [x] 16.5 Write unit and integration tests for backup/restore round-trip, diagnose output, reconcile report
   - Covers: Requirement 12.1-12.5
+
+---
+
+## Mainframe Dataset Stack Rationalisation (CR-CH-059)
+
+> Phase RC.A steps 3-4. Make `ff-vfs::StorageProvider` the single physical seam (the `ff-dscatalog` backend move is in dataset-catalog Task 39) and collapse the duplicate `posix` registrant. All tasks `[ ]`; TDD-first; SCOPED `-p ff-vfs -p ff-dscatalog` checks. The `ff-vfs` public trait surfaces are unchanged in shape.
+
+- [x] 17. Collapse the duplicate posix registrant to one provider
+  - [x] 17.1 Choose `ff-vfs::PosixNativeProvider` (dual-trait: `VfsProvider` + `ff-vfs::StorageProvider`) as the single `posix` registrant; `ff-posix-provider` reduced to pure path helpers + a re-export of `PosixNativeProvider` (no own `VfsProvider` impl, cannot register `posix`); ff-desktop nav call sites switched to the single provider.
+    - Validates: Requirement 14.1, 14.2
+  - [x] 17.2 Confirm the `local` provider (`ff-connector-local-fs`) is unaffected and that the registry still rejects a second provider for any of `local` / `posix` / `catalog` (Requirement 3.3).
+    - Validates: Requirement 14.3, 14.4
+  - [x] 17.3 Write/adjust tests: exactly one registrant per scheme; duplicate `posix` registration fails (`posix_native_provider_is_sole_posix_registrant`). `cargo test -p ff-vfs` green; `cargo clippy -p ff-vfs -- -D warnings` clean; `cargo fmt`.
+    - Validates: Requirement 14.1-14.4
+
+> Note: Requirement 13 (single physical StorageProvider seam -- deleting the duplicate `ff-dscatalog::storage::StorageProvider` and moving the five backends onto `ff-vfs::StorageProvider`) is implemented in dataset-catalog Task 39 (the change is contained to `ff-dscatalog` plus the already-present registry storage path). The TCR rows for Requirement 13 are recorded under `ff-dscatalog`.

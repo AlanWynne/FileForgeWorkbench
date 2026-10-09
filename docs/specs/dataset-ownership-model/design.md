@@ -309,3 +309,20 @@ When a new dataset-related crate is proposed:
 - The fitness function itself is tested by verifying it catches known-bad `Cargo.toml` configurations (using test fixture files)
 - Mock compilation tests prove trait-based coupling for each dependent crate
 - No property-based tests needed -- governance rules are deterministic checks
+
+---
+
+## Design Delta: ADR-001 Catalog-Authority Correction (CR-CH-059, Requirement 22)
+
+This delta corrects the governance NAMING, not the ownership boundaries. ADR-001 (Requirements 1-21) uses the legacy label `ff-dataset-catalog` for the catalog owner and treats `ff-vsam-services` as a future separate crate. The implementation authority has always been `ff-dscatalog`, and the two trait-only crates are governance fixtures slated for retirement (CR-CH-059). The delta:
+
+- Reads every "catalog owner = `ff-dataset-catalog`" in Requirements 1-21 as `ff-dscatalog` (Requirement 22.1).
+- Marks `ff-dataset-catalog` and `ff-vsam-services` DEPRECATED-FOR-MERGE: their reconciled `CatalogService`/`VsamService` roles move into `ff-dscatalog` using `ff-dscatalog`'s own types (`Dsorg {PS,PO,GDG}`, `Recfm {F,FB,V,VB,U}`, `Dsn`), VSAM as a cluster entity not a `Dsorg` variant (Requirement 22.2-22.4; dataset-catalog Requirement 33).
+- Preserves the object-safe `CatalogService` + `DynCatalogService` pattern (Requirement 15.7) and the acyclic dependency chain `ff-idcams -> ff-dsalloc -> ff-dscatalog -> ff-volume -> storage providers`, with `ff-vfs` as the universal infrastructure dependency (Requirement 22.5-22.6).
+- Leaves ADR-002 ("catalogs never own bytes") intact (Requirement 22.7).
+
+The architectural fitness function (Requirement 18) is updated to assert the corrected names and the retirement (no live `ff-dataset-catalog` / `ff-vsam-services` reference after consolidation). The full DatasetAccess trait shape, the Hercules-informed terminology map, the target DAG, and the "DO NOT build before consolidation" waste list live in [dataset-catalog](./../dataset-catalog/design.md) ("Mainframe Dataset Stack Rationalisation (CR-CH-059)") -- not duplicated here.
+
+### No further design changes required
+
+- The dependency-DAG, compliance-test, and enforcement-timing designs are unchanged in STRUCTURE; only the catalog-authority crate name and the retirement of the two trait crates change.

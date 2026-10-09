@@ -848,3 +848,77 @@ continue to pass after this change with no observable behaviour difference for l
 32.7 THE catalog SHALL support an Uncataloged_Dataset that physically exists on a Volume with no catalog entry, resolvable by explicit VOL=SER plus UNIT through a resolution path that does not require a catalog row. (Per volume-model Requirement 9.4, 9.5.)
 
 32.8 THE Volume entity used by the catalog SHALL be owned by the `ff-volume` crate on which `ff-dscatalog` depends; the catalog SHALL NOT redefine the Volume type. (Ownership per dataset-ownership-model Requirement 21.)
+
+---
+
+### Requirement 33: Reconciled CatalogService / VsamService Traits and a Single Dsorg / Recfm (CR-CH-059)
+
+**User Story:** As a platform architect, I want `ff-dscatalog` to host the single reconciled `CatalogService` and `VsamService` traits using its own types, and a single `Dsorg` / `Recfm` enum pair, so that the three drifted catalog-service definitions and the two divergent enum sets collapse into one authority.
+
+**Source:** CR-CH-059; `.agents/tasks/dataset-vision-fit/report.md` sections A.3, A.4, B (terminology map), C, E items 1-2; `.agents/tasks/dscatalog-duplicate/report.md` (removal procedure step 2); dataset-ownership-model Requirements 15, 16, 22. Content was rephrased for compliance with licensing restrictions.
+
+> **Framework note:** This is additive-first. The reconciled traits are ADDED to `ff-dscatalog` before any crate is deleted (Requirement 35), so FFWB keeps building. The traits use `ff-dscatalog`'s existing `Dsn`, `Dsorg {PS,PO,GDG}`, and `Recfm {F,FB,V,VB,U}` types.
+
+#### Acceptance Criteria
+
+33.1 THE `ff-dscatalog` crate SHALL expose a reconciled `CatalogService` trait (and an object-safe `DynCatalogService` wrapper, per dataset-ownership-model Requirement 15.7) that defines the catalog operations external consumers (`ff-dsalloc`, `ff-idcams`) depend on, using `ff-dscatalog`'s own `Dsn`, `Dsorg`, and `Recfm` types.
+
+33.2 THE reconciled `CatalogService` trait SHALL cover at least the dataset-ownership-model Requirement 15 operation set: dataset CRUD (`create_dataset`, `delete_dataset`, `update_dataset`, `rename_dataset`), resolution (`resolve_dsn`, `dataset_exists`, `get_dataset_attributes`), query (`list_datasets`, `validate_dsn`), GDG operations, and allocation defaults.
+
+33.3 THE `ff-dscatalog` crate SHALL expose a reconciled `VsamService` trait backed by its existing KSDS (`SqliteRecordProvider`), ESDS (`NativeEsdsProvider`), and RRDS (`SqliteRrdsProvider`) backends, covering at least the dataset-ownership-model Requirement 16 operation set (create per VSAM type, destroy/initialize, record get/put/delete, browse, alternate indexes); the trait SHALL be object-safe.
+
+33.4 THERE SHALL be exactly ONE `Dsorg` enum (`PS`, `PO`, `GDG`; `#[non_exhaustive]`) and ONE `Recfm` enum (`F`, `FB`, `V`, `VB`, `U`; `#[non_exhaustive]`) in the dataset stack, both owned by `ff-dscatalog`; the divergent `ff-dataset-catalog` definitions (`Dsorg {Ps,Po,Da,Vsam}`, `Recfm {F,Fb,V,Vb,U}`) SHALL NOT survive consolidation.
+
+33.5 VSAM SHALL be modelled as a cluster entity (a `VsamCluster` with KSDS/ESDS/RRDS/LDS type), NOT as a `Dsorg` variant -- the removal of the `Vsam` and `Da` `Dsorg` variants is deliberate.
+
+33.6 THE reconciled `CatalogService` / `VsamService` SHALL be the SINGLE catalog/VSAM service surface -- `ff-idcams`'s private `CatalogService` / `VsamService` copies (Requirement 34 of idcams-emulator) SHALL be repointed at these traits, and the `ff-dataset-catalog` / `ff-vsam-services` trait crates SHALL be retired (Requirement 35).
+
+33.7 WHEN `ff-governance-tests` (the only consumer of the old `ff-dataset-catalog` / `ff-vsam-services` traits) is repointed, its `tests/mock_compilation.rs` mock SHALL compile against the reconciled `ff-dscatalog` traits and reconciled types, proving the trait-based coupling without the retired crates.
+
+---
+
+### Requirement 34: DatasetAccess -- the Single Mainframe-Faithful Access Contract (CR-CH-059)
+
+**User Story:** As a mainframe tooling developer, I want ONE record-aware dataset-access contract (`DatasetAccess`) owned by `ff-dscatalog` -- allocate/open/get/put/point/close/dispose keyed by DD name + DISP + DSN, RECFM-aware, resolving physical location through `ff-volume` and backed by `ff-vfs::StorageProvider` + the record codecs -- so that the JCL executor, the editor's future MAINFRAME BackendEnvironment, and IDCAMS all perform dataset I/O through the same interface instead of three drifted service traits and a raw physical path.
+
+**Source:** CR-CH-059; `.agents/tasks/dataset-vision-fit/report.md` section D ("the single interface the JES/JCL work should target") and section E items 6-8; dataset-ownership-model Requirements 13, 14 (lifecycle), 21 (Volume ownership). Content was rephrased for compliance with licensing restrictions.
+
+> **Framework note:** `DatasetAccess` is a NEW public type in `ff-dscatalog`. It composes the existing seams: it resolves location through `ff-volume` (Requirement 32), performs physical I/O through the single `ff-vfs::StorageProvider` seam (virtual-file-system Requirement 13), and encodes/decodes with the record codecs (Requirement 17). It does NOT introduce a second dispatcher, navigation stack, or persistence format. The trait shape below is the gated contract; exact method signatures are finalised in design.md.
+
+#### Acceptance Criteria
+
+34.1 THE `ff-dscatalog` crate SHALL define a `DatasetAccess` trait exposing at minimum: `allocate(dd_request) -> Result<DatasetHandle, DatasetError>` (honouring DISP, SPACE, DCB, and VOL=SER/UNIT), `open(handle, intent) -> Result<OpenDataset, DatasetError>`, `get(open) -> Result<Option<Record>, DatasetError>`, `put(open, record) -> Result<(), DatasetError>`, `point(open, positioner) -> Result<(), DatasetError>` (keyed for KSDS, relative for RRDS), `close(open) -> Result<(), DatasetError>`, and `dispose(handle, step_outcome) -> Result<(), DatasetError>` (KEEP/CATLG/UNCATLG/DELETE/PASS).
+
+34.2 `DatasetAccess::get` and `DatasetAccess::put` SHALL be RECFM-aware: fixed records honour LRECL, variable records carry the 4-byte RDW, RECFM=U passes bytes through, keyed records address by key -- the record boundaries SHALL be those of the record codecs (Requirement 16), never host text lines (no CRLF/LF record delimiter).
+
+34.3 `DatasetAccess` SHALL resolve a dataset's physical location through `ff-volume` (Dataset -> DatasetVolume -> Volume -> locator, Requirement 32.3) and SHALL perform physical reads/writes through the single `ff-vfs::StorageProvider` seam (virtual-file-system Requirement 13) -- it SHALL NOT read or construct a raw `storage_path` and SHALL NOT embed SQLite access in its public surface.
+
+34.4 `DatasetAccess::allocate` SHALL honour Volume status and access mode (an Offline or ReadOnly Volume is rejected per volume-model Requirements 2.1, 2.2) and SHALL charge SPACE against the Volume per dataset-allocator Requirement 17, returning a `DatasetHandle` rather than a physical path.
+
+34.5 THE `DatasetHandle` returned by `allocate` SHALL be an opaque handle that identifies the allocated/resolved dataset for subsequent `open`/`dispose`; consumers SHALL NOT parse or depend on its internal representation (consistent with virtual-file-system Requirement 9.5 opaque locators).
+
+34.6 `DatasetAccess` SHALL be the ONE contract through which record-level dataset I/O flows for the JCL executor, the editor's future MAINFRAME BackendEnvironment SAVE path, and IDCAMS DEFINE/REPRO/DELETE -- these consumers SHALL call `DatasetAccess`, NOT the catalog's concrete SQLite type and NOT a per-consumer copy of a service trait.
+
+34.7 `DatasetError` SHALL map onto the catalog error taxonomy and, where it crosses the physical seam, onto `VfsError` (virtual-file-system Requirement 9.4) -- no provider-specific or SQLite-specific error type SHALL leak through `DatasetAccess`.
+
+34.8 THE `DatasetAccess` trait SHALL be object-safe (or provide an object-safe companion) so that the JCL executor and tests can hold `dyn DatasetAccess` and substitute a mock.
+
+---
+
+### Requirement 35: Retirement of the Duplicate Trait Crates and the Duplicate Physical Seam (CR-CH-059)
+
+**User Story:** As a platform architect, I want the gated, additive-first retirement of `ff-dataset-catalog`, `ff-vsam-services`, and the duplicate `ff-dscatalog::storage::StorageProvider` recorded as acceptance criteria, so that the consolidation reduces the crate sprawl without ever breaking the build.
+
+**Source:** CR-CH-059; `.agents/tasks/dscatalog-duplicate/report.md` (RECOMMENDED removal procedure, steps 1-4); `.agents/tasks/dataset-vision-fit/report.md` section C (KEEP/MERGE/RETIRE) and section E items 1-4. Content was rephrased for compliance with licensing restrictions.
+
+#### Acceptance Criteria
+
+35.1 THE retirement SHALL be additive-first and ordered: (a) add the reconciled `CatalogService`/`VsamService` to `ff-dscatalog` (Requirement 33); (b) unify the physical seam onto `ff-vfs::StorageProvider` and delete the duplicate `ff-dscatalog::storage::StorageProvider` (virtual-file-system Requirement 13); (c) repoint `ff-governance-tests` and `ff-idcams` at the reconciled traits; (d) only AFTER no consumer references them, delete the `ff-dataset-catalog` and `ff-vsam-services` crates and their root `Cargo.toml` member lines. FFWB SHALL build at every step.
+
+35.2 WHEN `ff-dataset-catalog` is deleted, its directory `crates/ff-dataset-catalog/` and its `[workspace].members` entry SHALL be removed, and a grep for `ff-dataset-catalog` / `ff_dataset_catalog` across specs, `Cargo.toml` files, and `.rs` sources SHALL return no live references.
+
+35.3 WHEN `ff-vsam-services` is retired, VSAM SHALL be wired under `DatasetAccess` (Requirement 34) on the single physical seam BEFORE the crate is removed, so that no VSAM capability is lost in the transition; the `ff-vsam-services` crate and its member line SHALL then be removed.
+
+35.4 THE duplicate `posix` registrant SHALL be collapsed to a single provider (virtual-file-system Requirement 14) as part of the same consolidation.
+
+35.5 THE consolidation SHALL NOT, before it completes, extend `ff-idcams`'s private `CatalogService`/`VsamService` further, nor wire VSAM against `ff-vsam-services`'s disconnected trait or against `ff-dscatalog::storage::StorageProvider`, nor build any consumer against the raw `storage_path` or `ff-dsalloc`'s current `physical_path` return -- these are the documented "do not build before consolidation" wastes (design.md "DO NOT build before consolidation" note).

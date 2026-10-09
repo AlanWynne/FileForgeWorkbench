@@ -102,7 +102,9 @@ impl CatalogRegistry {
         for catalog in &self.catalogs {
             if let Ok(entry) = catalog.lookup(dsn) {
                 if entry.scope == scope {
-                    let physical_path = catalog.repository_path().join(&entry.storage_path);
+                    // Resolve through the schema-v4 DatasetVolume indirection
+                    // with a dual-read storage_path fallback (Req 32.3).
+                    let physical_path = catalog.resolve_locator(&entry)?;
                     return Ok(ResolveResult {
                         entry,
                         catalog_name: catalog.name().to_string(),
@@ -159,7 +161,9 @@ impl CatalogRegistry {
     pub fn resolve(&self, dsn: &Dsn) -> Result<ResolveResult, CatalogError> {
         for catalog in &self.catalogs {
             if let Ok(entry) = catalog.lookup(dsn) {
-                let physical_path = catalog.repository_path().join(&entry.storage_path);
+                // Resolve through the schema-v4 DatasetVolume indirection with a
+                // dual-read storage_path fallback (Req 32.3).
+                let physical_path = catalog.resolve_locator(&entry)?;
                 return Ok(ResolveResult {
                     entry,
                     catalog_name: catalog.name().to_string(),
@@ -172,6 +176,39 @@ impl CatalogRegistry {
             dsn: dsn.as_str().to_string(),
             operation: "resolve".to_string(),
         })
+    }
+
+    /// Resolve an uncataloged dataset by explicit VOL=SER plus UNIT across all
+    /// mounted catalogs, with no `datasets` row (Requirement 32.7). Returns the
+    /// resolving catalog name and the physical path from the first mounted
+    /// catalog whose `volumes` table carries the VOLSER.
+    ///
+    /// An uncataloged dataset has no catalog entry, so this returns the physical
+    /// path directly rather than a `ResolveResult` (which requires a
+    /// `DatasetRecord`).
+    ///
+    /// # Errors
+    /// `CatalogError::VolumeUnavailable` when no mounted catalog knows the
+    /// VOLSER (or the matching Volume is Offline).
+    pub fn resolve_uncataloged(
+        &self,
+        volser: &str,
+        unit: &str,
+    ) -> Result<(String, PathBuf), CatalogError> {
+        let mut last_err: Option<CatalogError> = None;
+        for catalog in &self.catalogs {
+            match catalog.resolve_uncataloged(volser, unit) {
+                Ok(physical_path) => {
+                    return Ok((catalog.name().to_string(), physical_path));
+                }
+                Err(e) => last_err = Some(e),
+            }
+        }
+        Err(last_err.unwrap_or(CatalogError::VolumeUnavailable {
+            volser: volser.to_string(),
+            reason: "no mounted catalog knows this VOLSER".to_string(),
+            operation: "resolve_uncataloged".to_string(),
+        }))
     }
 
     /// Check if a DSN exists in any mounted catalog.

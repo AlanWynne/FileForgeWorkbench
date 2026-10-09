@@ -138,6 +138,78 @@ None -- all crates compile and pass.
 | `ff-dsalloc` | ✅ | lib unit tests, `property_tests.rs` | Property tests fixed: `prop::char::ranges` replaces bare `RangeInclusive<char>` literals; moved-value borrow fixed with `.clone()` |
 | `ff-idcams` | ✅ | `integration_tests.rs` | IDCAMS command emulation, DEFINE/DELETE/LISTCAT |
 
+### RC.B.5 -- ff-volume crate (volume-model Req 1-11)
+
+New narrow model crate `ff-volume` (CR-NR-105 / CR-CH-057). Pure in-memory
+model + behaviour; SQLite persistence of its rows is owned by `ff-dscatalog`
+(see Req 32 below). All tests are `cargo test -p ff-volume` lib unit tests.
+
+| Crate | Status | Requirement | Test name(s) |
+|-------|--------|-------------|--------------|
+| `ff-volume` | ✅ | Req 1.1 Volume entity fields | `volume::tests::volume_carries_required_fields`, `volser_is_stored_uppercase` |
+| `ff-volume` | ✅ | Req 1.2 VOLSER uniqueness | `volume::tests::duplicate_volser_is_rejected`, `distinct_volsers_are_accepted` |
+| `ff-volume` | ✅ | Req 2.1 Offline rejects allocation | `volume::tests::offline_volume_rejects_new_allocation` |
+| `ff-volume` | ✅ | Req 2.2 ReadOnly rejects write | `volume::tests::readonly_volume_rejects_write_delete_extend` |
+| `ff-volume` | ✅ | Req 2.3 status/mount transitions | `volume::tests::set_online_offline_mount_unmount_transition` |
+| `ff-volume` | ✅ | Req 2.4 first offline reported | `volume::tests::resolution_reports_first_offline_volume`, `resolution_reports_unknown_volume` |
+| `ff-volume` | ✅ | Req 3.1-3.4, 11.1 geometry | `geometry::tests::*` (defaults, ceil conversions, determinism) |
+| `ff-volume` | ✅ | Req 4.1-4.5 SPACE units | `space::tests::*` (TRK/CYL/AvgRec, secondary) |
+| `ff-volume` | ✅ | Req 5, 6 extent + x37 Space_Abend | `extent::tests::*` (fit/secondary/x37/distinct-from-full) |
+| `ff-volume` | ✅ | Req 7.1-7.4 capacity + Volume_Full | `volume::tests::volume_tracks_used_free_accounting`, `allocation_beyond_free_space_reports_volume_full` |
+| `ff-volume` | ✅ | Req 8, 11.2 reporting + VTOC | `reporting::tests::*` (derived, not byte-scanned) |
+| `ff-volume` | ✅ | Req 9.1-9.6 DatasetVolume/multivol/uncat | `dataset_volume::tests::*` (ordered, shared, uncataloged) |
+| `ff-volume` | ✅ | Req 10.1, 10.3 DEFINE VOLUME service | `service::tests::*` (define + dup-VOLSER reject) |
+| `ff-volume` | ✅ | Req 11.3 migration seam (no bytes) | `migration::tests::migration_builds_volume_and_datasetvolumes_without_bytes` |
+
+### RC.B.5 -- ff-dscatalog schema v4 Volume split (Req 32)
+
+Schema v4 adds the `volumes` + `dataset_volumes` tables, a dual-read v3->v4
+seed migration, and DatasetVolume-indirected resolution. Tests are
+`cargo test -p ff-dscatalog` (lib unit + the `schema_v4.rs` integration file).
+
+| Crate | Status | Requirement | Test name(s) |
+|-------|--------|-------------|--------------|
+| `ff-dscatalog` | ✅ | Req 32.1 volumes table at v4 | `schema::tests::schema_v4_creates_volumes_and_dataset_volumes`, `fresh_db_reports_version_4` |
+| `ff-dscatalog` | ✅ | Req 32.2 dataset_volumes table | `schema::tests::schema_v4_creates_volumes_and_dataset_volumes` |
+| `ff-dscatalog` | ✅ | Req 32.3 DatasetVolume resolution + online check | `schema_v4::dual_read_migration_resolves_via_dataset_volume`, `resolve_falls_back_to_storage_path_when_unmigrated` |
+| `ff-dscatalog` | ✅ | Req 32.4 catalog stores metadata + locators only | `schema_v4::migration_moves_no_bytes_and_preserves_storage_path` |
+| `ff-dscatalog` | ✅ | Req 32.5 dual-read seed, no bytes moved | `schema_v4::tests::migration_v3_to_v4_seeds_volume_per_repository`, `..._populates_dataset_volumes_from_storage_path`, `..._preserves_storage_path_column`, `..._is_idempotent` |
+| `ff-dscatalog` | ✅ | Req 32.6 shared/multivolume cardinality | `schema::tests::schema_v4_creates_volumes_and_dataset_volumes`, `schema_v4::shared_volume_two_catalogs_each_seed_their_own_volume` |
+| `ff-dscatalog` | ✅ | Req 32.7 uncataloged VOL=SER + UNIT | `schema_v4::uncataloged_resolves_by_volser_unit_no_catalog_row`, `uncataloged_unknown_volser_reports_unavailable` |
+| `ff-dscatalog` | ✅ | Req 32.8 depends on ff-volume; no redefine | `cargo check -p ff-dscatalog` (ff-volume dependency; `Volume` imported, not redefined) |
+
+### RC.B.6 -- DatasetAccess contract (dataset-catalog Req 34, volume-model Req 12, dataset-allocator Req 19)
+
+The single mainframe-faithful dataset-access interface a JES/JCL executor targets
+(CR-CH-059 Task 40). Owned by `ff-dscatalog`, resolving location through `ff-volume`
+and performing I/O over the single `ff-vfs::StorageProvider` seam. Tests are
+`cargo test -p ff-dscatalog` (`dataset_access::impl_access_tests` / `impl_io_tests`)
+and `cargo test -p ff-dsalloc` (`catalog_bridge::tests` / `allocation::tests`).
+The concrete VSAM keyed/relative record ops are deferred to RC.B.7 (the `point()`
+method is defined + object-safe, returning a typed NotYetWired today).
+
+| Crate | Status | Requirement | Test name(s) |
+|-------|--------|-------------|--------------|
+| `ff-dscatalog` | ✅ | Req 34.1 object-safe DatasetAccess (allocate/open/get/put/point/close/dispose) | `dataset_access::impl_io_tests::dataset_access_is_object_safe_as_dyn`, `impl_access_tests::allocate_returns_opaque_handle` |
+| `ff-dscatalog` | ✅ | Req 34.2 RECFM-aware get/put via codecs; no CRLF/text-line delimiter | `impl_access_tests::allocate_open_put_get_close_round_trips_fixed_fb`, `round_trips_variable_vb_with_rdw`, `round_trips_recfm_u_passthrough`, `get_put_use_codec_boundaries_not_crlf` |
+| `ff-dscatalog` | ✅ | Req 34.3 resolve via ff-volume; I/O via ff-vfs::StorageProvider seam | `impl_access_tests::resolves_via_volume_datasetvolume_locator`, `physical_io_through_storage_provider_seam` |
+| `ff-dscatalog` | ✅ | Req 34.4 honour Volume status/access + charge SPACE; return handle | `impl_access_tests::allocate_rejects_offline_volume`, `allocate_rejects_readonly_volume`, `allocate_charges_space_against_volume`, `put_growth_surfaces_x37_space_abend` |
+| `ff-dscatalog` | ✅ | Req 34.5 opaque DatasetHandle | `impl_access_tests::allocate_returns_opaque_handle` |
+| `ff-dscatalog` | ✅ | Req 34.6 dispose applies StepOutcome (KEEP/CATLG/UNCATLG/PASS/DELETE) | `impl_io_tests::dispose_delete_removes_physical_object`, `dispose_keep_catlg_uncatlg_pass_retain_bytes` |
+| `ff-dscatalog` | ✅ | Req 34.7 DatasetError <-> VfsError across the seam; no storage_path leak | `impl_io_tests::dataset_error_maps_to_vfs_error`, `dataset_error_maps_from_catalog_volume_codec_vfs` |
+| `ff-dscatalog` | ✅ | Req 34.8 dyn DatasetAccess mock substitution | `impl_io_tests::dataset_access_is_object_safe_as_dyn` |
+| `ff-dscatalog` | 🔴 | -- | Req 34 (VSAM keyed/relative point ops): DEFERRED to RC.B.7 -- `point()` returns typed NotYetWired (`impl_io_tests::point_on_ksds_returns_not_yet_wired`, `point_relative_rrds_returns_not_yet_wired`) |
+| `ff-volume` | ✅ | Req 12.1 DatasetAccess resolves via ff-volume seam | `ff-dscatalog dataset_access::impl_access_tests::resolves_via_volume_datasetvolume_locator` |
+| `ff-volume` | ✅ | Req 12.2 reads DatasetVolume locator, not storage_path | `impl_access_tests::physical_io_through_storage_provider_seam` |
+| `ff-volume` | ✅ | Req 12.3 acyclic DAG; ff-volume has no ff-dscatalog/-dsalloc/-idcams dep | `cargo check -p ff-volume` (builds without ff-dscatalog; deps ff-vfs + thiserror/serde/chrono only) |
+| `ff-volume` | ✅ | Req 12.4 SPACE charged via ff-volume extent API; no new failure mode | `impl_access_tests::allocate_charges_space_against_volume`, `put_growth_surfaces_x37_space_abend` |
+| `ff-dsalloc` | ✅ | Req 19.1 catalog_bridge targets ff-dscatalog reconciled CatalogService | `catalog_bridge::tests::mock_catalog_*` |
+| `ff-dsalloc` | ✅ | Req 19.2 allocation obtains a DatasetHandle via DatasetAccess | `catalog_bridge::tests::dataset_allocator_yields_opaque_handle_via_dataset_access`, `allocation::tests::live_new_allocation_returns_handle_not_path` |
+| `ff-dsalloc` | 🔴 | -- | Req 19.3 PARTIAL (Option A): `AllocationOutcome::Allocated` carries the handle (`allocation::tests::live_new_allocation_returns_handle_not_path`); `Verified`/`Passed` handle-isation DEFERRED to RC.B.7 (needs DatasetAccess resolve-by-DSN) |
+| `ff-dsalloc` | ✅ | Req 19.4 mockable catalog trait; no rusqlite import | `catalog_bridge::tests::dataset_allocator_is_object_safe_as_dyn` (allocator seam) |
+| `ff-dsalloc` | ✅ | Req 19.5 dry-run vs live: dry-run acquires no handle | `allocation::tests::dry_run_acquires_no_handle`, `new_dataset_dry_run_reports_would_allocate` |
+| `ff-dsalloc` | ✅ | Req 19.6 handle object-safe as dyn | `catalog_bridge::tests::dataset_allocator_is_object_safe_as_dyn`, `traits::tests::allocator_service_is_object_safe` |
+
 ### Wave 13.5 -- Job Entry Subsystem
 
 | Crate | Status | Test files | Notes |
@@ -1507,72 +1579,192 @@ New criteria for the volume-model spec (`ff-volume` crate) and the dataset-catal
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-volume` | 🔴 | -- | Req 1.1: Volume carries volume_id, VOLSER, display name, storage_uri, status, access_mode, capacity counters |
-| `ff-volume` | 🔴 | -- | Req 1.2: VOLSER unique within a storage system |
-| `ff-volume` | 🔴 | -- | Req 1.3: Volume owns the promoted Repository physical layout, not the Catalog |
-| `ff-volume` | 🔴 | -- | Req 1.4: Volume maps to a VFS StorageProvider via storage_uri (ADR-001) |
-| `ff-volume` | 🔴 | -- | Req 1.5: Volume entity owned by ff-volume; ff-dscatalog does not redefine it |
-| `ff-volume` | 🔴 | -- | Req 2.1: Offline Volume rejects new allocation with a reported error |
-| `ff-volume` | 🔴 | -- | Req 2.2: ReadOnly Volume rejects write/delete/extend with a reported error |
-| `ff-volume` | 🔴 | -- | Req 2.3: set-online/set-offline and mount/unmount transitions supported |
-| `ff-volume` | 🔴 | -- | Req 2.4: resolution verifies required Volumes are Online; reports first unavailable |
-| `ff-volume` | 🔴 | -- | Req 2.5: online/offline/mount/unmount invokable as commands via single dispatch |
-| `ff-volume` | 🔴 | -- | Req 3.1: Geometry_Profile with configurable bytes_per_track and tracks_per_cylinder (default 15) |
-| `ff-volume` | 🔴 | -- | Req 3.2: byte->track and track->cylinder conversions round up to whole units |
-| `ff-volume` | 🔴 | -- | Req 3.3: conversions deterministic and documented |
-| `ff-volume` | 🔴 | -- | Req 3.4: geometry conversions accounting only, not physical layout |
-| `ff-volume` | 🔴 | -- | Req 3.5: changed profile applies to subsequent conversions; prior counts reflect profile at allocation |
-| `ff-volume` | 🔴 | -- | Req 4.1: SPACE in tracks SPACE=(TRK,(primary,secondary)) supported |
-| `ff-volume` | 🔴 | -- | Req 4.2: SPACE in cylinders SPACE=(CYL,(primary,secondary)) supported |
-| `ff-volume` | 🔴 | -- | Req 4.3: SPACE in block/avg-record with AVGREC converted via geometry profile |
-| `ff-volume` | 🔴 | -- | Req 4.4: ff-volume exposes allocation-unit model consumed by ff-dsalloc SPACE parse |
-| `ff-volume` | 🔴 | -- | Req 4.5: secondary quantity recorded as per-extent secondary allocation size |
-| `ff-volume` | 🔴 | -- | Req 5.1: dataset allocated space = primary + acquired secondary extents |
-| `ff-volume` | 🔴 | -- | Req 5.2: write beyond allocation acquires a secondary extent when available |
-| `ff-volume` | 🔴 | -- | Req 5.3: write failing with no further extent reports x37-style space-abend, no crash |
-| `ff-volume` | 🔴 | -- | Req 5.4: x37-style error identifies dataset + reason; prior content intact |
-| `ff-volume` | 🔴 | -- | Req 5.5: x37 dataset-capacity failure distinct from Volume_Full |
-| `ff-volume` | 🔴 | -- | Req 6.1: primary + up to configurable max secondary extents (default 16) |
-| `ff-volume` | 🔴 | -- | Req 6.2: secondary extent added when below Max_Extents and Volume has free space |
-| `ff-volume` | 🔴 | -- | Req 6.3: reaching Max_Extents fails with the x37-style space-abend |
-| `ff-volume` | 🔴 | -- | Req 6.4: Max_Extents configurable; max-extent failure distinct from Volume_Full |
-| `ff-volume` | 🔴 | -- | Req 7.1: Volume total capacity in tracks/cylinders; used/free derived from extents |
-| `ff-volume` | 🔴 | -- | Req 7.2: allocation needing more free space than available fails Volume_Full |
-| `ff-volume` | 🔴 | -- | Req 7.3: Volume_Full distinct and separately reported from x37 dataset failure |
-| `ff-volume` | 🔴 | -- | Req 7.4: Volume_Full does not consume a dataset extent |
-| `ff-volume` | 🔴 | -- | Req 8.1: dataset reporting -- extents used/remaining, tracks/cylinders in use |
-| `ff-volume` | 🔴 | -- | Req 8.2: Volume reporting -- total/used/free tracks/cylinders, extents |
-| `ff-volume` | 🔴 | -- | Req 8.3: VTOC_View lists datasets + extents on a Volume with usage counters |
-| `ff-volume` | 🔴 | -- | Req 8.4: reporting counters derived metadata; no physical layout scan |
-| `ff-volume` | 🔴 | -- | Req 8.5: VTOC_View invokable as a command via single dispatch |
-| `ff-volume` | 🔴 | -- | Req 9.1: DatasetVolume records sequence_number, is_primary, opaque locator (replaces storage_path) |
-| `ff-volume` | 🔴 | -- | Req 9.2: dataset may reside on multiple Volumes (ordered sequence) |
-| `ff-volume` | 🔴 | -- | Req 9.3: datasets from different catalogs may share a Volume (1:1 binding broken) |
-| `ff-volume` | 🔴 | -- | Req 9.4: Uncataloged_Dataset may exist on a Volume with no catalog entry |
-| `ff-volume` | 🔴 | -- | Req 9.5: VOL=SER + UNIT resolves an Uncataloged_Dataset without a catalog row |
-| `ff-volume` | 🔴 | -- | Req 9.6: schema permits shared-Volume/multivolume/uncataloged even if UI defaults to one-per-catalog |
-| `ff-volume` | 🔴 | -- | Req 10.1: DEFINE VOLUME registers a host directory as a Volume (name/VOLSER, path, capacity, status) |
-| `ff-volume` | 🔴 | -- | Req 10.2: DEFINE VOLUME resolved through the single command-dispatch path |
-| `ff-volume` | 🔴 | -- | Req 10.3: duplicate VOLSER on DEFINE VOLUME reports an error |
-| `ff-volume` | 🔴 | -- | Req 10.4: Volume is visible-but-advanced (surfaced at catalog/dataset creation + VTOC listing) |
-| `ff-volume` | 🔴 | -- | Req 10.5: VTOC Context is a WorkspaceContext via render_workspace_context; no bespoke focus ring |
-| `ff-volume` | 🔴 | -- | Req 11.1: geometry conversions deterministic (same inputs/profile -> same results) |
-| `ff-volume` | 🔴 | -- | Req 11.2: reporting counters derived in O(n extents); no physical content scan |
-| `ff-volume` | 🔴 | -- | Req 11.3: defining a Volume over an existing Repository moves no dataset bytes (metadata only) |
-| `ff-dscatalog` | 🔴 | -- | Req 32.1: schema v4 volumes table (volume_id, volser UNIQUE, storage_uri, status, access_mode, capacity) |
-| `ff-dscatalog` | 🔴 | -- | Req 32.2: schema v4 dataset_volumes table (dataset_id, volume_id, sequence, is_primary, locator) replaces storage_path |
-| `ff-dscatalog` | 🔴 | -- | Req 32.3: resolution Dataset -> DatasetVolume -> Volume -> locator + Online check |
-| `ff-dscatalog` | 🔴 | -- | Req 32.4: catalog never contains dataset bytes; metadata + locators only (ADR-002) |
-| `ff-dscatalog` | 🔴 | -- | Req 32.5: v4 migration seeds a Volume per Repository + dataset_volumes from storage_path; dual-read; no bytes move |
-| `ff-dscatalog` | 🔴 | -- | Req 32.6: schema permits many catalogs per shared Volume and multivolume datasets |
-| `ff-dscatalog` | 🔴 | -- | Req 32.7: uncataloged VOL=SER + UNIT resolution without a catalog row |
-| `ff-dscatalog` | 🔴 | -- | Req 32.8: Volume entity owned by ff-volume; catalog depends on it, does not redefine it |
+> STATUS RECONCILED (RC.B.5, 2026-10-09): the engine-level volume-model Req 1-11
+> and dataset-catalog Req 32 criteria below were implemented and tested in RC.B.5;
+> their authoritative PASS rows (with test names) are in the "RC.B.5 -- ff-volume
+> crate" and "RC.B.5 -- ff-dscatalog schema v4 Volume split" sections above. The
+> rows below are updated in place to match (PASS where RC.B.5 covered them). The
+> few that remain NOT COVERED are the UI/command-dispatch criteria that need
+> ff-desktop wiring (the Volume management WorkspaceContext + command surface),
+> deferred to RC.C.10 -- they are marked with a "(RC.C.10 UI)" note.
+
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 1.1: Volume carries volume_id, VOLSER, display name, storage_uri, status, access_mode, capacity counters |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 1.2: VOLSER unique within a storage system |
+| `ff-volume` | ✅ | `volume::tests` / `migration::tests` (RC.B.5) | Req 1.3: Volume owns the promoted Repository physical layout, not the Catalog |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 1.4: Volume maps to a VFS StorageProvider via storage_uri (ADR-001) |
+| `ff-volume` | ✅ | `cargo check` (ff-dscatalog imports, not redefines) | Req 1.5: Volume entity owned by ff-volume; ff-dscatalog does not redefine it |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 2.1: Offline Volume rejects new allocation with a reported error |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 2.2: ReadOnly Volume rejects write/delete/extend with a reported error |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 2.3: set-online/set-offline and mount/unmount transitions supported |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 2.4: resolution verifies required Volumes are Online; reports first unavailable |
+| `ff-volume` | 🔴 | -- | Req 2.5: online/offline/mount/unmount invokable as commands via single dispatch (RC.C.10 UI -- needs ff-desktop command wiring) |
+| `ff-volume` | ✅ | `geometry::tests` (RC.B.5) | Req 3.1: Geometry_Profile with configurable bytes_per_track and tracks_per_cylinder (default 15) |
+| `ff-volume` | ✅ | `geometry::tests` (RC.B.5) | Req 3.2: byte->track and track->cylinder conversions round up to whole units |
+| `ff-volume` | ✅ | `geometry::tests` (RC.B.5) | Req 3.3: conversions deterministic and documented |
+| `ff-volume` | ✅ | `geometry::tests` (RC.B.5) | Req 3.4: geometry conversions accounting only, not physical layout |
+| `ff-volume` | ✅ | `geometry::tests` (RC.B.5) | Req 3.5: changed profile applies to subsequent conversions; prior counts reflect profile at allocation |
+| `ff-volume` | ✅ | `space::tests` (RC.B.5) | Req 4.1: SPACE in tracks SPACE=(TRK,(primary,secondary)) supported |
+| `ff-volume` | ✅ | `space::tests` (RC.B.5) | Req 4.2: SPACE in cylinders SPACE=(CYL,(primary,secondary)) supported |
+| `ff-volume` | ✅ | `space::tests` (RC.B.5) | Req 4.3: SPACE in block/avg-record with AVGREC converted via geometry profile |
+| `ff-volume` | ✅ | `space::tests` (RC.B.5) | Req 4.4: ff-volume exposes allocation-unit model consumed by ff-dsalloc SPACE parse |
+| `ff-volume` | ✅ | `space::tests` (RC.B.5) | Req 4.5: secondary quantity recorded as per-extent secondary allocation size |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 5.1: dataset allocated space = primary + acquired secondary extents |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 5.2: write beyond allocation acquires a secondary extent when available |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 5.3: write failing with no further extent reports x37-style space-abend, no crash |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 5.4: x37-style error identifies dataset + reason; prior content intact |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 5.5: x37 dataset-capacity failure distinct from Volume_Full |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 6.1: primary + up to configurable max secondary extents (default 16) |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 6.2: secondary extent added when below Max_Extents and Volume has free space |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 6.3: reaching Max_Extents fails with the x37-style space-abend |
+| `ff-volume` | ✅ | `extent::tests` (RC.B.5) | Req 6.4: Max_Extents configurable; max-extent failure distinct from Volume_Full |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 7.1: Volume total capacity in tracks/cylinders; used/free derived from extents |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 7.2: allocation needing more free space than available fails Volume_Full |
+| `ff-volume` | ✅ | `volume::tests` / `extent::tests` (RC.B.5) | Req 7.3: Volume_Full distinct and separately reported from x37 dataset failure |
+| `ff-volume` | ✅ | `volume::tests` (RC.B.5) | Req 7.4: Volume_Full does not consume a dataset extent |
+| `ff-volume` | ✅ | `reporting::tests` (RC.B.5) | Req 8.1: dataset reporting -- extents used/remaining, tracks/cylinders in use |
+| `ff-volume` | ✅ | `reporting::tests` (RC.B.5) | Req 8.2: Volume reporting -- total/used/free tracks/cylinders, extents |
+| `ff-volume` | ✅ | `reporting::tests` (RC.B.5) | Req 8.3: VTOC_View lists datasets + extents on a Volume with usage counters |
+| `ff-volume` | ✅ | `reporting::tests` (RC.B.5) | Req 8.4: reporting counters derived metadata; no physical layout scan |
+| `ff-volume` | 🔴 | -- | Req 8.5: VTOC_View invokable as a command via single dispatch (RC.C.10 UI -- needs ff-desktop command wiring) |
+| `ff-volume` | ✅ | `dataset_volume::tests` (RC.B.5) | Req 9.1: DatasetVolume records sequence_number, is_primary, opaque locator (replaces storage_path) |
+| `ff-volume` | ✅ | `dataset_volume::tests` (RC.B.5) | Req 9.2: dataset may reside on multiple Volumes (ordered sequence) |
+| `ff-volume` | ✅ | `dataset_volume::tests` (RC.B.5) | Req 9.3: datasets from different catalogs may share a Volume (1:1 binding broken) |
+| `ff-volume` | ✅ | `dataset_volume::tests` (RC.B.5) | Req 9.4: Uncataloged_Dataset may exist on a Volume with no catalog entry |
+| `ff-volume` | ✅ | `dataset_volume::tests` (RC.B.5) | Req 9.5: VOL=SER + UNIT resolves an Uncataloged_Dataset without a catalog row |
+| `ff-volume` | ✅ | `dataset_volume::tests` (RC.B.5) | Req 9.6: schema permits shared-Volume/multivolume/uncataloged even if UI defaults to one-per-catalog |
+| `ff-volume` | ✅ | `service::tests` (RC.B.5) | Req 10.1: DEFINE VOLUME registers a host directory as a Volume (name/VOLSER, path, capacity, status) |
+| `ff-volume` | 🔴 | -- | Req 10.2: DEFINE VOLUME resolved through the single command-dispatch path (RC.C.10 UI -- needs ff-desktop command wiring) |
+| `ff-volume` | ✅ | `service::tests` (RC.B.5) | Req 10.3: duplicate VOLSER on DEFINE VOLUME reports an error |
+| `ff-volume` | 🔴 | -- | Req 10.4: Volume is visible-but-advanced (surfaced at catalog/dataset creation + VTOC listing) (RC.C.10 UI) |
+| `ff-volume` | 🔴 | -- | Req 10.5: VTOC Context is a WorkspaceContext via render_workspace_context; no bespoke focus ring (RC.C.10 UI) |
+| `ff-volume` | ✅ | `geometry::tests` (RC.B.5) | Req 11.1: geometry conversions deterministic (same inputs/profile -> same results) |
+| `ff-volume` | ✅ | `reporting::tests` (RC.B.5) | Req 11.2: reporting counters derived in O(n extents); no physical content scan |
+| `ff-volume` | ✅ | `migration::tests` (RC.B.5) | Req 11.3: defining a Volume over an existing Repository moves no dataset bytes (metadata only) |
+| `ff-dscatalog` | ✅ | `schema::tests` / `schema_v4::tests` (RC.B.5) | Req 32.1: schema v4 volumes table (volume_id, volser UNIQUE, storage_uri, status, access_mode, capacity) |
+| `ff-dscatalog` | ✅ | `schema_v4::tests` (RC.B.5) | Req 32.2: schema v4 dataset_volumes table (dataset_id, volume_id, sequence, is_primary, locator) replaces storage_path |
+| `ff-dscatalog` | ✅ | `dataset_access::impl_access_tests::resolves_via_volume_datasetvolume_locator` (RC.B.6) | Req 32.3: resolution Dataset -> DatasetVolume -> Volume -> locator + Online check |
+| `ff-dscatalog` | ✅ | `schema_v4::tests` (RC.B.5) | Req 32.4: catalog never contains dataset bytes; metadata + locators only (ADR-002) |
+| `ff-dscatalog` | ✅ | `schema_v4::tests::migration_v3_to_v4_*` (RC.B.5) | Req 32.5: v4 migration seeds a Volume per Repository + dataset_volumes from storage_path; dual-read; no bytes move |
+| `ff-dscatalog` | ✅ | `schema_v4::tests` (RC.B.5) | Req 32.6: schema permits many catalogs per shared Volume and multivolume datasets |
+| `ff-dscatalog` | ✅ | `schema_v4::uncataloged_resolves_by_volser_unit_no_catalog_row` (RC.B.5) | Req 32.7: uncataloged VOL=SER + UNIT resolution without a catalog row |
+| `ff-dscatalog` | ✅ | `cargo check` (ff-volume dependency; Volume imported) | Req 32.8: Volume entity owned by ff-volume; catalog depends on it, does not redefine it |
 | `ff-governance-tests` | 🔴 | -- | ownership-model Req 7.7: permitted chain includes ff-volume; ff-volume depends on none of catalog/allocator/idcams |
 | `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.1: ff-volume owns Volume entity, VOLSER, status/access, geometry, extents, capacity, DatasetVolume |
 | `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.2: ff-dscatalog depends on ff-volume; does not redefine the Volume type |
 | `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.3: ff-volume depends on none of ff-dataset-catalog/-allocator/-idcams (acyclic DAG) |
 | `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.4: catalog never contains dataset bytes (ADR-002 at ownership layer) |
 | `ff-governance-tests` | 🔴 | -- | ownership-model Req 21.5: uncataloged (VOL=SER+UNIT) physical existence owned by Volume layer |
+
+### Phase (volume-model) UI / flow -- Volume management Context + picker + allocation + DEFINE VOLUME (CR-NR-105 / CR-CH-057 second gate)
+
+New criteria for the Volume/catalog UI and flow (second gate): virtual-catalog-manager Req 17-18 (ff-desktop WorkspaceContext + dialog), dataset-allocator Req 17-18 (ff-dsalloc SPACE-against-volume + VOL=SER/UNIT), idcams-emulator Req 27 (ff-idcams DEFINE VOLUME + VOLUMES() binding). All NOT COVERED (gate authored; no code yet).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.1: Volume management Context lists Volumes (VOLSER/name/status/access/capacity) = VTOC_View |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.2: Volume Context is a WorkspaceContext via render_workspace_context; InteriorFocus first = filter field (stable id); full-shell first-Tab test |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.3: New Volume opens Define_Volume_Dialog; confirm invokes DEFINE VOLUME command |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.4: duplicate VOLSER inline error on dialog without closing |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.5: Vary Online/Offline invokes set-online/offline command; report reflects status |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.6: Set RW/RO invokes access-mode command; report reflects access mode |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.7: Alter Capacity invokes ALTER VOLUME; hard cap, no over-commit (below-used rejected) |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.8: Volume Context persists as WorkspaceDescriptor (CustomWorkspace); transient data not persisted |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.9: END/F3 pops one level via per-tab Navigation_Stack (no second stack) |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 17.10: single-user default MAY auto-create one Volume; idempotent (no second) |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 18.1: catalog dialog shows Volume picker (defined VOLSERs + Define new volume...) for Mainframe |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 18.2: selecting a VOLSER records it as the catalog target Volume |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 18.3: Define new volume... opens shared Define_Volume_Dialog; returns pre-selected |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 18.4: cancel of Define new volume... leaves selection unchanged |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 18.5: default Volume pre-selected in picker when it exists |
+| `ff-desktop` | 🔴 | -- | virtual-catalog-manager Req 18.6: picker is the only Volume-choosing control; no inline Volume editor in catalog dialog |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.1: DISP=NEW SPACE= maps to ff-volume allocation-unit model; primary extent charged to Volume |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.2: dataset allocated space = primary extent; secondary quantity recorded for growth |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.3: growth acquires + charges a secondary extent when below Max_Extents and Volume has space |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.4: Max_Extents reached reports x37-style space-abend (not Volume_Full) |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.5: insufficient Volume free space reports Volume_Full, distinct, no extent consumed |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.6: Offline target Volume rejects DISP=NEW before charging |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.7: ReadOnly target Volume rejects NEW/extend |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.8: dry-run reports without charging; live charges via ff-volume |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 17.9: SPACE= omitted on DISP=NEW applies configured default before charging |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 18.1: VOL=SER + UNIT with no catalog hit resolves against the named Volume (no catalog row) |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 18.2: DISP=NEW VOL=SER + UNIT creates Uncataloged_Dataset + charges SPACE |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 18.3: OLD/SHR VOL=SER + UNIT not found on Volume -> ERROR (DSN + VOLSER) |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 18.4: VOL=SER naming an undefined Volume -> ERROR (unknown VOLSER) |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 18.5: neither catalog nor VOL=SER+UNIT -> existing unresolved-DSN diagnostic (additional path) |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 18.6: VOL=SER + UNIT path honours Volume status/access gating |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.1: parse DEFINE VOLUME (VOLSER, path, capacity CYL/TRK, optional status) |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.2: DEFINE VOLUME delegates to downstream Volume service; registers Volume + layout |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.3: duplicate VOLSER -> CC 12, no second Volume |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.4: DEFINE VOLUME success -> LASTCC 0 + IDC0001I-style confirmation |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.5: DEFINE CLUSTER VOLUMES() binds dataset to real Volume(s) via DatasetVolume |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.6: VOLUMES() unknown VOLSER -> reported error, no cluster created |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.7: Offline/ReadOnly target Volume rejected, surfaced as IDCAMS CC |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 27.8: DefineVolumeCommand round-trips through Pretty_Printer |
+
+### Phase (dataset-stack-rationalisation) -- CR-CH-059: single authority, one StorageProvider seam, DatasetAccess contract, retire duplicate crates
+
+New criteria for the mainframe dataset stack consolidation. dataset-ownership-model Req 22 (ADR-001 correction, fitness tests); virtual-file-system Req 13-14 (single physical seam + single posix registrant); dataset-catalog Req 33-35 (reconciled traits + DatasetAccess + retirement); dataset-allocator Req 19 (retarget + DatasetHandle); idcams-emulator Req 28 (repoint + DatasetAccess routing); jes-emulator Req 19 (contract/crate-name, JES deferred); volume-model Req 12 (DatasetAccess resolves via ff-volume). All NOT COVERED (gate authored; no code yet).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-governance-tests` | ✅ | `mock_compilation.rs` (reconciled traits imported from `ff_dscatalog`); `service::tests` | ownership-model Req 22.1: catalog authority is ff-dscatalog (RC.A.2: reconciled CatalogService/VsamService live in ff-dscatalog; governance mock repointed to ff_dscatalog) |
+| `ff-governance-tests` | ✅ | `mock_compilation.rs` compiles against `ff_dscatalog::{CatalogService,DynCatalogService}` (RC.A.2 repoint) | ownership-model Req 22.2: ff-dataset-catalog deprecated-for-merge; reconciled CatalogService merged into ff-dscatalog (crate deletion is RC.B) |
+| `ff-governance-tests` | ✅ | `mock_compilation.rs` compiles against `ff_dscatalog::VsamService`; `vsam_service::tests` | ownership-model Req 22.3: ff-vsam-services deprecated-for-merge; reconciled VsamService from ff-dscatalog (crate retirement is RC.B) |
+| `ff-dscatalog` | ✅ | `service::tests::get_allocation_defaults_round_trips_ff_dscatalog_dsorg`; `vsam_service::tests::vsam_cluster_carries_type_and_is_not_a_dsorg_variant` | ownership-model Req 22.4: reconciled traits use ff-dscatalog types (Dsorg {PS,PO,GDG}, Recfm, Dsn); VSAM a cluster entity not a Dsorg variant |
+| `ff-dscatalog` | ✅ | `service::tests::mock_catalog_service_is_object_safe_as_dyn` | ownership-model Req 22.5: object-safe CatalogService + DynCatalogService preserved in reconciled traits |
+| `ff-governance-tests` | ✅ | `architecture_compliance.rs` (`full_dependency_compliance_check`, `dataset_catalog_has_no_upstream_dependencies`) | ownership-model Req 22.6: acyclic chain ff-idcams -> ff-dsalloc -> ff-dscatalog -> storage providers (ff-volume layer still RC.B) |
+| `ff-governance-tests` | ✅ | `architecture_compliance.rs` (`vfs_has_no_domain_dependencies`); ADR-002 unchanged by RC.A | ownership-model Req 22.7: catalog authority holds metadata + locators only (ADR-002 preserved) |
+| `ff-vfs` | ✅ | `posix_provider::tests::posix_native_provider_is_sole_posix_registrant`; `storage_provider` trait is the single seam in ff-vfs | virtual-file-system Req 13.1: ff-vfs::StorageProvider is the single physical seam (one trait, in ff-vfs) |
+| `ff-dscatalog` | ✅ | `storage::native` seam tests; `storage::esds`/`isam` tests; duplicate `ff-dscatalog::storage::StorageProvider` trait deleted (RC.A.3) | virtual-file-system Req 13.2: five mainframe backends implement ff-vfs::StorageProvider; duplicate ff-dscatalog::storage::StorageProvider deleted |
+| `ff-dscatalog` | ✅ | `storage::native_tests::ff_vfs_allocate_open_write_round_trip` / `ff_vfs_errors_map_to_vfs_error` | virtual-file-system Req 13.3: backend UUID/workspace_root behind opaque StorageLocator; errors map to VfsError |
+| `ff-dscatalog` | ✅ | `codecs::*` tests unchanged (codecs untouched by RC.A.3; still no fs/SQLite/egui dep) | virtual-file-system Req 13.4: record codecs stay in ff-dscatalog with no fs/SQLite/egui dependency (unchanged) |
+| `ff-dscatalog` | ✅ | `ff-vfs` `registry.rs` `register_storage`/`get_storage` are the sole seam; no second mechanism added | virtual-file-system Req 13.5: backends register via register_storage/get_storage; no second registration mechanism |
+| `ff-vfs` | ✅ | `posix_provider::tests::posix_native_provider_is_sole_posix_registrant` | virtual-file-system Req 14.1: exactly one provider registered for scheme posix |
+| `ff-vfs` | ✅ | `ff-posix-provider` `reexported_posix_provider_is_the_vfs_native_provider` (PosixProvider is now a re-export of PosixNativeProvider) | virtual-file-system Req 14.2: single posix registrant is ff-vfs::PosixNativeProvider; ff-posix-provider reduced to a re-export |
+| `ff-vfs` | ✅ | `registry::tests::has_default_provider_returns_true_when_local_provider_registered` (local unaffected) | virtual-file-system Req 14.3: local provider (ff-connector-local-fs) unaffected |
+| `ff-vfs` | ✅ | `posix_provider::tests::posix_native_provider_is_sole_posix_registrant`; `registry::tests::register_duplicate_scheme_returns_error` | virtual-file-system Req 14.4: one registrant per scheme (local/posix/catalog); duplicate registration still fails (Req 3.3) |
+| `ff-dscatalog` | ✅ | `service::tests::mock_catalog_service_is_object_safe_as_dyn` | dataset-catalog Req 33.1: reconciled CatalogService + object-safe DynCatalogService in ff-dscatalog using own types |
+| `ff-dscatalog` | ✅ | `service::tests::reconciled_trait_covers_requirement_15_operation_set` | dataset-catalog Req 33.2: reconciled CatalogService covers ownership-model Req 15 op set (CRUD/resolution/query/GDG/defaults) |
+| `ff-dscatalog` | ✅ | `vsam_service::tests::mock_vsam_service_is_object_safe_as_dyn` / `vsam_service_covers_requirement_16_operation_set` | dataset-catalog Req 33.3: reconciled object-safe VsamService over KSDS/ESDS/RRDS backends (ownership-model Req 16 op set) |
+| `ff-dscatalog` | ✅ | `service.rs`/`vsam_service.rs` use `crate::dataset::{Dsorg,Recfm}` only; `vsam_service::tests::vsam_cluster_carries_type_and_is_not_a_dsorg_variant` (exhaustive Dsorg match) | dataset-catalog Req 33.4: exactly one Dsorg {PS,PO,GDG} and one Recfm {F,FB,V,VB,U}; divergent ff-dataset-catalog enums not carried forward |
+| `ff-dscatalog` | ✅ | `vsam_service::tests::vsam_cluster_carries_type_and_is_not_a_dsorg_variant` | dataset-catalog Req 33.5: VSAM modelled as a VsamCluster entity, not a Dsorg variant |
+| `ff-dscatalog` | ✅ | `mock_compilation.rs` repointed to the single reconciled surface (RC.A.2); ff-idcams repoint is RC.B | dataset-catalog Req 33.6: reconciled traits are the single surface; governance tests repointed (ff-idcams repoint RC.B) |
+| `ff-governance-tests` | ✅ | `mock_compilation.rs` (`allocator_compiles_with_mock_catalog_service`, `idcams_compiles_with_mock_vsam_and_catalog_services`, `dyn_catalog_service_can_be_boxed`, `vsam_service_can_be_boxed`) | dataset-catalog Req 33.7: mock_compilation.rs compiles against reconciled ff-dscatalog traits/types |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.1: DatasetAccess trait (allocate/open/get/put/point/close/dispose) with handle/record/positioner types |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.2: get/put RECFM-aware (fixed/variable-RDW/U/keyed); record boundaries from codecs, never host text lines |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.3: resolves location through ff-volume; physical I/O via single ff-vfs::StorageProvider seam; no raw storage_path/SQLite in surface |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.4: allocate honours Volume status/access + charges SPACE (dataset-allocator Req 17); returns a DatasetHandle |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.5: DatasetHandle opaque; consumers do not parse its internals |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.6: DatasetAccess is the one record-I/O contract for JCL executor, MAINFRAME CE SAVE, IDCAMS |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.7: DatasetError maps onto catalog taxonomy / VfsError across the seam; no provider/SQLite error leaks |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 34.8: DatasetAccess object-safe (or object-safe companion) for dyn + mock |
+| `ff-dscatalog` | ✅ | RC.A.2/A.3 landed additively in order (reconciled trait -> unify seam -> repoint governance); `cargo check -p ff-dscatalog -p ff-vfs -p ff-governance-tests -p ff-desktop` green at each step; the only deletion was the duplicate trait | dataset-catalog Req 35.1: additive-first ordered retirement (add reconciled trait -> unify seam -> repoint); FFWB builds at every step (crate deletions deferred to RC.B) |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 35.2: ff-dataset-catalog directory + member line removed; grep finds no live reference |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 35.3: VSAM wired under DatasetAccess before ff-vsam-services removed; no capability lost |
+| `ff-vfs` | ✅ | `posix_provider::tests::posix_native_provider_is_sole_posix_registrant` (RC.A.4) | dataset-catalog Req 35.4: duplicate posix registrant collapsed to one (virtual-file-system Req 14) |
+| `ff-dscatalog` | 🔴 | -- | dataset-catalog Req 35.5: do-not-build-before-consolidation guard honoured (no dead-trait VSAM wiring, no storage_path/physical_path consumers, no direct-SQLite MAINFRAME CE, no extending idcams private traits) |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 19.1: catalog_bridge names/depends on ff-dscatalog (reconciled CatalogService); legacy ff-dataset-catalog refs corrected |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 19.2: allocation obtains a DatasetHandle via DatasetAccess, not a raw physical_path |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 19.3: AllocationOutcome carries an opaque DatasetHandle; consumers use the handle |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 19.4: allocator still depends via a mockable trait; no rusqlite import |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 19.5: dry-run vs live ResolveMode + Volume charging/failure (Req 17) preserved |
+| `ff-dsalloc` | 🔴 | -- | dataset-allocator Req 19.6: retarget sequenced after reconciled trait + DatasetAccess, before ff-dataset-catalog deletion |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 28.1: ff-idcams depends on reconciled ff-dscatalog CatalogService/VsamService; no private copies |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 28.2: IdcamsServices + mocks updated to reconciled method shapes/types; no divergent local types |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 28.3: DEFINE dataset creation via reconciled traits + DatasetAccess; no direct SQLite/physical-path |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 28.4: REPRO record get/put via DatasetAccess / reconciled VsamService; no record-copy logic in ff-idcams |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 28.5: DELETE via CatalogService::delete_dataset + VsamService/DatasetAccess::dispose; atomicity preserved |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 28.6: repoint sequenced after reconciled traits, before trait-crate deletion; no removed-crate reference |
+| `ff-idcams` | 🔴 | -- | idcams-emulator Req 28.7: IDCAMS syntax/output/CC unchanged by the repoint |
+| `ff-jes` | 🔲 | -- (MANUAL: contract-only; JES is DEFERRED, no runtime executor exists to test. RC.A.1 recorded the contract.) | jes-emulator Req 19.1: future JCL executor depends only on ff-dsalloc + DatasetAccess; never SQLite/storage_path/physical_path (docs/contract; JES deferred) |
+| `ff-jes` | 🔲 | -- (MANUAL: contract-only; JES deferred, no runtime executor to test) | jes-emulator Req 19.2: executor binds each DD to a DatasetHandle from ff-dsalloc; open/get/put/point/close/dispose via DatasetAccess (contract) |
+| `ff-jes` | 🔲 | -- (MANUAL: spec-text correction verified by grep in RC.A.1; no runtime target) | jes-emulator Req 19.3: crate names ff-dscatalog/ff-dsalloc used; legacy names not live references |
+| `ff-jes` | 🔲 | -- (MANUAL: process/sequencing contract; JES deferred, nothing to run) | jes-emulator Req 19.4: executor not started before reconciled traits + DatasetAccess + ff-dsalloc handle return land (do-not-build waste) |
+| `ff-jes` | 🔲 | -- (MANUAL: deferral statement; no build obligation to test) | jes-emulator Req 19.5: JES stays deferred (PLUGIN phase 6); no new JES build obligation |
+| `ff-volume` | 🔴 | -- | volume-model Req 12.1: DatasetAccess resolves location via Dataset -> DatasetVolume -> Volume -> locator + Online check |
+| `ff-volume` | 🔴 | -- | volume-model Req 12.2: storage_path migrates to DatasetVolume locator (schema v4); DatasetAccess reads the locator, not storage_path |
+| `ff-volume` | 🔴 | -- | volume-model Req 12.3: ff-volume owns Volume, does not depend on catalog/allocator/idcams; DatasetAccess consumes it (acyclic) |
+| `ff-volume` | 🔴 | -- | volume-model Req 12.4: DatasetAccess::allocate charges SPACE per dataset-allocator Req 17; two distinct failures unchanged |
 
 ### Phase BU -- SQLite Catalog Integration for Options 1 and 2 (CR-CH-006)
 

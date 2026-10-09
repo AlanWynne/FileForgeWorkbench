@@ -1,4 +1,4 @@
-//! Mock Compilation Tests — Trait-Based Coupling Verification.
+//! Mock Compilation Tests -- Trait-Based Coupling Verification.
 //!
 //! These tests prove that dependent crates can compile against mock
 //! implementations of the service traits, verifying that no concrete-type
@@ -9,16 +9,16 @@
 
 use std::path::PathBuf;
 
-use ff_dataset_catalog::{
-    CatalogError, CatalogService, DatasetAttributes, DatasetEntry, DatasetFilter, DatasetId,
-    DsnValidationError, Dsorg, DynCatalogService, GenerationInfo, ResolutionResult,
-};
-use ff_vsam_services::{
-    AccessMode, BrowseDirection, BrowseHandle, KeyField, Record, StubVsamService, VsamError,
-    VsamHandle, VsamParams, VsamService, VsamType,
+// CR-CH-059 RC.A.2: repointed from ff_dataset_catalog / ff_vsam_services to the
+// reconciled ff-dscatalog traits + types (dataset-catalog Requirement 33.6, 33.7).
+use ff_dscatalog::{
+    AccessMode, BrowseDirection, BrowseHandle, CatalogError, CatalogService, DatasetAttributes,
+    DatasetEntry, DatasetFilter, DatasetId, DsnValidationError, Dsorg, DynCatalogService,
+    GenerationInfo, KeyField, Record, ResolutionResult, StubVsamService, VsamError, VsamHandle,
+    VsamParams, VsamService, VsamType,
 };
 
-// ─── Mock CatalogService ────────────────────────────────────────────────────
+// === Mock CatalogService ====================================================
 
 /// A mock implementation of CatalogService for testing trait-based coupling.
 ///
@@ -109,7 +109,7 @@ impl CatalogService for MockCatalogService {
     }
 }
 
-// ─── Mock VsamService ───────────────────────────────────────────────────────
+// === Mock VsamService =======================================================
 
 /// A mock implementation of VsamService for testing trait-based coupling.
 ///
@@ -206,7 +206,7 @@ impl VsamService for MockVsamService {
     }
 }
 
-// ─── Compilation Tests ──────────────────────────────────────────────────────
+// === Compilation Tests ======================================================
 
 // Validates: Requirement 4 AC 7; Requirement 18 AC 4
 #[test]
@@ -228,7 +228,7 @@ fn allocator_compiles_with_mock_catalog_service() {
     let result = CatalogService::validate_dsn(&mock, "VALID.DSN");
     assert!(result.is_ok());
 
-    let defaults = CatalogService::get_allocation_defaults(&mock, Dsorg::Ps);
+    let defaults = CatalogService::get_allocation_defaults(&mock, Dsorg::PS);
     assert_eq!(defaults.recfm, None); // Mock returns default
 }
 
@@ -240,7 +240,7 @@ fn idcams_compiles_with_mock_vsam_and_catalog_services() {
     let catalog = MockCatalogService;
     let vsam = MockVsamService;
 
-    // Simulate DEFINE CLUSTER workflow: parse → catalog → VSAM
+    // Simulate DEFINE CLUSTER workflow: parse -> catalog -> VSAM
     let create_result =
         CatalogService::create_dataset(&catalog, "MY.VSAM.KSDS", DatasetAttributes::default());
     assert!(create_result.is_ok());
@@ -248,7 +248,7 @@ fn idcams_compiles_with_mock_vsam_and_catalog_services() {
     let init_result = VsamService::create_ksds(&vsam, "MY.VSAM.KSDS", 8, 0, 256);
     assert!(init_result.is_ok());
 
-    // Simulate DELETE workflow: VSAM destroy → catalog delete
+    // Simulate DELETE workflow: VSAM destroy -> catalog delete
     let destroy_result = VsamService::destroy_dataset(&vsam, "MY.VSAM.KSDS");
     assert!(destroy_result.is_ok());
 
@@ -256,7 +256,7 @@ fn idcams_compiles_with_mock_vsam_and_catalog_services() {
     assert!(delete_result.is_ok());
 }
 
-// Validates: Requirement 15 AC 7 — DynCatalogService is object-safe
+// Validates: Requirement 15 AC 7 -- DynCatalogService is object-safe
 #[test]
 fn dyn_catalog_service_can_be_boxed() {
     let mock: Box<dyn DynCatalogService> = Box::new(MockCatalogService);
@@ -269,7 +269,7 @@ fn dyn_catalog_service_can_be_boxed() {
     assert!(result.unwrap());
 }
 
-// Validates: Requirement 16 AC 6 — VsamService is object-safe
+// Validates: Requirement 16 AC 6 -- VsamService is object-safe
 #[test]
 fn vsam_service_can_be_boxed() {
     let mock: Box<dyn VsamService> = Box::new(MockVsamService);
@@ -279,12 +279,12 @@ fn vsam_service_can_be_boxed() {
     assert!(result.is_ok());
 }
 
-// Validates: Requirement 16 AC 7 — StubVsamService enables compilation
+// Validates: Requirement 16 AC 7 -- StubVsamService enables compilation
 #[test]
 fn stub_vsam_service_enables_dependent_crate_compilation() {
     let stub: Box<dyn VsamService> = Box::new(StubVsamService);
 
-    // The stub returns NotImplemented for everything — but it compiles and runs
+    // The stub returns NotImplemented for everything -- but it compiles and runs
     let result = stub.create_ksds("TEST.KSDS", 8, 0, 256);
     assert!(result.is_err());
     match result.unwrap_err() {
@@ -313,7 +313,7 @@ fn dataset_allocator_source_has_no_rusqlite_imports() {
             let content = std::fs::read_to_string(&path).unwrap();
             assert!(
                 !content.contains("use rusqlite"),
-                "ff-dsalloc source file {} contains 'use rusqlite' — \
+                "ff-dsalloc source file {} contains 'use rusqlite' -- \
                  all catalog access must flow through CatalogService trait (Requirement 12 AC 3)",
                 path.display()
             );
@@ -343,7 +343,7 @@ fn idcams_source_has_no_storage_imports() {
             for import in prohibited_imports {
                 assert!(
                     !content.contains(import),
-                    "ff-idcams source file {} contains '{}' — \
+                    "ff-idcams source file {} contains '{}' -- \
                      IDCAMS must not directly access storage engines (Requirement 6 AC 3)",
                     path.display(),
                     import

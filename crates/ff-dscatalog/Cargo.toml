@@ -4,16 +4,17 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Mainframe dataset catalog emulation for FileForgeWorkbench — SQLite-backed catalog DB, DSN validation, PDS/PDSE/GDG types, catalog operations"
+description = "Mainframe dataset catalog emulation for FileForgeWorkbench -- SQLite-backed catalog DB, DSN validation, PDS/PDSE/GDG types, catalog operations"
 
 [dependencies]
 ff-vfs = { path = "../ff-vfs" }
+ff-volume = { path = "../ff-volume" }
 ff-command = { path = "../ff-command" }
 ff-config = { path = "../ff-config" }
 ff-logging = { path = "../ff-logging" }
 
 # Database
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { workspace = true }
 
 # Async runtime
 tokio = { version = "1", features = ["fs", "io-util", "sync", "rt"] }

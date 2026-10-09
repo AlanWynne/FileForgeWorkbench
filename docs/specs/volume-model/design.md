@@ -133,4 +133,16 @@ Aligned with the source phase split (`FFWB_Storage_and_Catalog_Data_Model.md` se
 ## No Design Change Needed
 
 - No change to the `ff-vfs` StorageProvider scheme model is required by this spec (confirm-only, future gate).
+
+---
+
+## Design Delta: DatasetAccess Resolves Location Through ff-volume (CR-CH-059, Requirement 12)
+
+This delta is a REFERENCE, not a new Volume model. The Volume entity, VOLSER, status/access mode, geometry, extents, capacity, VTOC_View, DatasetVolume association, and schema v4 migration are already designed in the sections above and in [dataset-catalog](./../dataset-catalog/design.md) (Volume Split, CR-CH-057). CR-CH-059 adds only the statement that the new `DatasetAccess` contract (dataset-catalog Requirement 34) resolves a dataset's physical location through the existing `ff-volume` structures:
+
+- `DatasetAccess::allocate`/`open` resolve location via Dataset -> DatasetVolume (by sequence) -> Volume -> locator (dataset-catalog Requirement 32.3; this spec Requirement 9), honouring the Volume Online check (Requirement 2.4) and charging SPACE against the Volume (dataset-allocator Requirement 17) with the two distinct failures (dataset x37-style per Requirements 5-6; Volume_Full per Requirement 7) unchanged.
+- The legacy `storage_path` migrates to the `DatasetVolume` locator at schema v4 (dataset-catalog Requirement 32.5); `DatasetAccess` reads the `DatasetVolume` locator, not `storage_path`.
+- `ff-volume` stays the Volume owner and does NOT depend on `ff-dscatalog`/`ff-dsalloc`/`ff-idcams` (dataset-ownership-model Requirement 21.3); `DatasetAccess` lives in `ff-dscatalog` and CONSUMES `ff-volume`, keeping the DAG acyclic.
+
+The DatasetAccess trait shape itself is in [dataset-catalog](./../dataset-catalog/design.md); this spec adds no new Volume behaviour or failure mode.
 - No change to the single command-dispatch mechanism, the per-tab navigation stack, the `WorkspaceContext`/`InteriorFocus` focus latch, or the `WorkspaceDescriptor` persistence model -- this spec builds ON them unchanged.
