@@ -36,11 +36,12 @@ would be overwritten". Cause = the owner's uncommitted main-workspace work edite
 those two shared files. The FF is clean at the commit level (main is a direct
 ancestor of 20af25e, 5 commits behind); only the dirty working tree blocks it.
 
-RESOLUTION (owner decision needed): either (a) owner commits/stashes the
-main-workspace dataset/volume work first, then F1 fast-forwards cleanly; or
-(b) leave main as-is and keep F1 on its branch (RECOMMENDED -- F1 is safe and
-loses nothing by waiting; avoids entangling it with the active dataset work).
-Agent will NOT touch the main-workspace changes without explicit instruction.
+RESOLUTION (owner decided 2026-10-09): HOLD the F1 merge. The main-workspace
+dataset/volume work "must be kept... it is in progress right now"; the owner
+will let it reach a committable level, commit it, THEN F1 fast-forwards cleanly
+on top. The agent must NOT stash/commit/overwrite that work. F1 stays safely on
+its branch (20af25e/7bae8e4), gate-clean, until the owner says the dataset work
+is committed and gives the go-ahead to merge F1.
 
 ## Also pending (not blocking)
 
