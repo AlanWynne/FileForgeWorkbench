@@ -161,7 +161,10 @@ sign-off); it begins only on an explicit owner "start RC.B".
   Uncommitted on `main`. NOTE: the RC.B.7 workflow wedged twice on infra (an agent
   restart, then a ~52-min silent stall); FEAT-001/002 were already complete+tested
   on disk when found, FEAT-003 finished via a focused coder run.
-- RC.B.8 (repoint ff-idcams + record-aware SAVE, delete ff-dataset-catalog) -- NEXT (last RC.B step).
+- RC.B.8 (repoint ff-idcams + record-aware SAVE, delete ff-dataset-catalog) -- DONE, CODE-COMPLETE PENDING the owner's full `cargo gate --build` (Part 2 deferred, owner-accepted).
+  - Part 1 (repoint ff-idcams -> ff-dscatalog, Req 28 / task 29): code-complete pending the owner's full gate.
+  - Part 2 (record-aware MAINFRAME SAVE): DEFERRED, owner-accepted -- out of RC.B.8's funded scope. Needs an owner-confirmed FRAMEWORK CHANGE (reshape `ff-vfs::BackendEnvironment::save` byte contract + open the closed `EnvironmentRegistry` enum + bind mainframe `owning_env` + register the mainframe VFS provider live, Req 17.4). NO .rs change; native/host SAVE byte-identical. Finding + five prerequisites: `.agents/tasks/rcb8-dataset-rationalisation/part2-mainframe-save-stop.md`.
+  - Part 3 (delete `ff-dataset-catalog` + re-express governance) -- DONE (FEAT-003, completed THIS run), code-complete pending the owner's full gate. Mirrored the RC.B.7 ff-vsam-services retirement EXACTLY. Grep PRE-CHECK PASSED (no shipping crate had ff-dataset-catalog as a Cargo dep after the Part 1 repoint). Deleted `crates/ff-dataset-catalog/` + its root `Cargo.toml` member line; re-expressed the governance rules (removed the `ff-vfs -> ff-dataset-catalog` and the two `ff-dataset-catalog -> ff-idcams`/`-> ff-dsalloc` DependencyRules in `compliance.rs`; removed the `!deps.contains_key("ff-dataset-catalog")` assertion, DELETED the whole `dataset_catalog_has_no_upstream_dependencies` test, and removed the ff-dataset-catalog entries from the `dataset_crates` array + `required_crates` list in `architecture_compliance.rs`). The acyclic/single-authority intent stays covered by the surviving ff-vfs -> ff-idcams, ff-vfs -> ff-dsalloc, and ff-dsalloc -> ff-idcams rules. `mock_compilation.rs` had no residual `ff_dataset_catalog` import (already on ff-dscatalog). No stale `.rs` authority prose remained (the only mentions are the historical narrative in `ff-dscatalog/src/service.rs` and the new retirement comment). Scoped checks clean: `cargo fmt`; `cargo check -p ff-governance-tests -p ff-dscatalog -p ff-dsalloc -p ff-idcams --all-targets`; `cargo test -p ff-governance-tests` GREEN (architecture_compliance 8 + mock_compilation 7); `cargo check -p ff-desktop --all-targets` clean; final grep finds NO live `ff-dataset-catalog`/`ff_dataset_catalog` in any `*.toml`/`*.rs`. TCR flipped: dataset-catalog Req 35.1 (step d) + 35.2, ownership Req 22.1/22.2 (and the 22.6 citation retargeted off the deleted test). Tasks marked: dataset-catalog Task 42.1/42.2 [x], master RC.B.8 [x] code-complete-pending-gate.
 
 ## NEXT ACTIONS (in order)
 
@@ -190,6 +193,12 @@ sign-off); it begins only on an explicit owner "start RC.B".
   (gated consolidation; procedure in dscatalog-duplicate/report.md).
 - Volume UI gate (virtual-catalog-manager Req 17-18) -- valid as spec, build
   deferred into RC.C.10 after ff-volume lands.
+- Record-aware MAINFRAME SAVE -- DEFERRED from RC.B.8 (CR-CH-059, Part 2,
+  owner-accepted). Needs an owner-confirmed `ff-vfs::BackendEnvironment` record
+  contract (or a record-aware addressing variant) + an open `EnvironmentRegistry`
+  + mainframe `owning_env` binding + the mainframe VFS provider registered live.
+  Prerequisites a-e in `.agents/tasks/rcb8-dataset-rationalisation/part2-mainframe-save-stop.md`;
+  a future owner-gated framework-change slice.
 
 ## GUARDRAILS REMINDER
 

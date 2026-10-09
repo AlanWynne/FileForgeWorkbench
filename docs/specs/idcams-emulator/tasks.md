@@ -535,22 +535,24 @@ This task plan implements the `ff-idcams` crate -- the IDCAMS (Access Method Ser
 
 > Phase RC.A/RC.B step 2 + the repoint. Repoint `ff-idcams`'s private service traits at the reconciled `ff-dscatalog` traits, and route DEFINE/REPRO/DELETE dataset operations through the `DatasetAccess` contract. `ff-idcams` stays a thin orchestrator (Requirement 21). All tasks `[ ]`; TDD-first; SCOPED `-p ff-idcams` checks. Sequenced AFTER dataset-catalog Tasks 38 (reconciled traits) + 40 (DatasetAccess) and BEFORE dataset-catalog Tasks 41/42 (crate deletion).
 
-- [ ] 29. Repoint private service traits at ff-dscatalog; map DEFINE/REPRO/DELETE onto DatasetAccess
-  - [ ] 29.1 Remove `ff-idcams`'s private `CatalogService` / `VsamService` trait definitions; depend on the reconciled traits from `ff-dscatalog` (dataset-catalog Requirement 33).
+- [x] 29. Repoint private service traits at ff-dscatalog; map DEFINE/REPRO/DELETE onto DatasetAccess
+  - [x] 29.1 Remove `ff-idcams`'s private `CatalogService` / `VsamService` trait definitions; depend on the reconciled traits from `ff-dscatalog` (dataset-catalog Requirement 33).
     - Validates: Requirement 28.1
-  - [ ] 29.2 Update `IdcamsServices`, `MockCatalogService`, and `MockVsamService` to the reconciled trait method shapes and types (`Dsorg {PS,PO,GDG}`, `Recfm {F,FB,V,VB,U}`, `Dsn`).
+  - [x] 29.2 Update `IdcamsServices`, `MockCatalogService`, and `MockVsamService` to the reconciled trait method shapes and types (`Dsorg {PS,PO,GDG}`, `Recfm {F,FB,V,VB,U}`, `Dsn`).
     - Validates: Requirement 28.2
-  - [ ] 29.3 Route DEFINE (CLUSTER/GDG + DEFINE VOLUME binding) dataset creation through the reconciled traits and, where record storage is allocated/initialised, through `DatasetAccess` (dataset-catalog Requirement 34).
+  - [x] 29.3 Route DEFINE (CLUSTER/GDG + DEFINE VOLUME binding) dataset creation through the reconciled traits and, where record storage is allocated/initialised, through `DatasetAccess` (dataset-catalog Requirement 34).
     - Validates: Requirement 28.3
-  - [ ] 29.4 Route REPRO record get/put through `DatasetAccess` / the reconciled `VsamService`, honouring RECFM/LRECL via the codecs; no record-copy logic in `ff-idcams`.
+  - [x] 29.4 Route REPRO record get/put through `DatasetAccess` / the reconciled `VsamService`, honouring RECFM/LRECL via the codecs; no record-copy logic in `ff-idcams`.
     - Validates: Requirement 28.4
-  - [ ] 29.5 Route DELETE through `CatalogService::delete_dataset` + `VsamService` / `DatasetAccess::dispose`, preserving the atomic-execution guarantee (Requirement 22).
+  - [x] 29.5 Route DELETE through `CatalogService::delete_dataset` + `VsamService` / `DatasetAccess::dispose`, preserving the atomic-execution guarantee (Requirement 22).
     - Validates: Requirement 28.5
-  - [ ] 29.6 Verify no live `ff-dataset-catalog` / `ff-vsam-services` reference remains in `ff-idcams`; confirm syntax/output/CC behaviour is unchanged by the repoint.
+  - [x] 29.6 Verify no live `ff-dataset-catalog` / `ff-vsam-services` reference remains in `ff-idcams`; confirm syntax/output/CC behaviour is unchanged by the repoint.
     - Validates: Requirement 28.6, 28.7
-  - [ ] 29.7 Write failing unit tests (reconciled mocks): DEFINE/REPRO/DELETE route through the reconciled traits + DatasetAccess; CC/output unchanged. Run `cargo test -p ff-idcams` red then green; `cargo clippy -p ff-idcams -- -D warnings`; `cargo fmt`.
+  - [x] 29.7 Write failing unit tests (reconciled mocks): DEFINE/REPRO/DELETE route through the reconciled traits + DatasetAccess; CC/output unchanged. Run `cargo test -p ff-idcams` red then green; `cargo clippy -p ff-idcams -- -D warnings`; `cargo fmt`.
     - Validates: Requirement 28.1-28.7
-  - [ ] 29.8 Update `docs/quality/TCR.md` Req 28.1-28.7 rows; hand off the full gate.
+  - [x] 29.8 Update `docs/quality/TCR.md` Req 28.1-28.7 rows; hand off the full gate.
+
+> DEFERRED FOLLOW-UP (RC.B.8 Part 2, CR-CH-059): the record-aware MAINFRAME editor SAVE (housing the mainframe FS Command Environment in `ff-idcams` over `DatasetAccess`, command-environments Req 16.1) is NOT achievable at the existing seam without an owner-confirmed FRAMEWORK CHANGE (reshape the `ff-vfs::BackendEnvironment::save` byte contract OR add a record-aware addressing variant carrying DSN + attributes + records; plus open the closed `EnvironmentRegistry` enum, bind the mainframe tab's `owning_env`, and register the mainframe VFS provider live -- Req 17.4). Req 28 is satisfied by Task 29 (the repoint); the MAINFRAME SAVE is a composing concern deferred to a FUTURE OWNER-GATED framework-change slice, NOT built in RC.B.8. Finding + the five prerequisites (a-e): `.agents/tasks/rcb8-dataset-rationalisation/part2-mainframe-save-stop.md`.
 
 ---
 

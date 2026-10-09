@@ -1,7 +1,8 @@
 //! Integration tests for ff-idcams.
 //!
-//! Tests the full pipeline: parse → execute → result.
+//! Tests the full pipeline: parse -> execute -> result.
 
+use ff_dscatalog::{CatalogError, VsamError};
 use ff_idcams::messages::{ConditionCode, MessageCode};
 use ff_idcams::parser::ast::*;
 use ff_idcams::parser::IdcamsParser;
@@ -13,7 +14,7 @@ fn default_services() -> ff_idcams::IdcamsServices {
     TestServicesBuilder::new().build()
 }
 
-// ─── Parser Tests ───────────────────────────────────────────────────────────
+// === Parser Tests ===========================================================
 
 #[test]
 fn parse_define_cluster_indexed() {
@@ -126,7 +127,7 @@ fn parse_unrecognized_verb_produces_error_node() {
     }
 }
 
-// ─── Executor Tests ─────────────────────────────────────────────────────────
+// === Executor Tests =========================================================
 
 #[test]
 fn execute_define_cluster_success() {
@@ -157,12 +158,13 @@ fn execute_define_cluster_missing_keys_for_indexed() {
 
 #[test]
 fn execute_define_cluster_duplicate_name() {
-    // Validates: Requirement 2 AC 19
-    use ff_idcams::error::CatalogError;
-
+    // Validates: Requirement 2 AC 19; Requirement 28.2 (reconciled CatalogError)
     let catalog = MockCatalogService::new_success();
-    *catalog.create_responses.lock().unwrap() =
-        vec![Err(CatalogError::DuplicateName("MY.KSDS".to_string()))];
+    *catalog.create_responses.lock().unwrap() = vec![Err(CatalogError::DuplicateDataset {
+        dsn: "MY.KSDS".to_string(),
+        catalog: "MASTER".to_string(),
+        operation: "create_dataset".to_string(),
+    })];
 
     let services = TestServicesBuilder::new().with_catalog(catalog).build();
 
@@ -179,9 +181,7 @@ fn execute_define_cluster_duplicate_name() {
 
 #[test]
 fn execute_define_cluster_rollback_on_vsam_failure() {
-    // Validates: Requirement 2 AC 20
-    use ff_idcams::error::VsamError;
-
+    // Validates: Requirement 2 AC 20; Requirement 28.2 (reconciled VsamError)
     let vsam = MockVsamService::new_success();
     *vsam.init_responses.lock().unwrap() =
         vec![Err(VsamError::Internal("init failed".to_string()))];
@@ -210,11 +210,11 @@ fn execute_define_gdg_missing_limit() {
 
 #[test]
 fn execute_delete_entry_not_found() {
-    // Validates: Requirement 6 AC 13
-    use ff_idcams::error::VsamError;
-
+    // Validates: Requirement 6 AC 13; Requirement 28.2 (reconciled VsamError)
     let vsam = MockVsamService::new_success();
-    *vsam.destroy_responses.lock().unwrap() = vec![Err(VsamError::NotFound("MY.DATA".to_string()))];
+    *vsam.destroy_responses.lock().unwrap() = vec![Err(VsamError::DatasetNotFound {
+        dsn: "MY.DATA".to_string(),
+    })];
 
     let services = TestServicesBuilder::new().with_vsam(vsam).build();
 
@@ -243,7 +243,7 @@ fn execute_if_then_branch_taken() {
         "SET LASTCC(0); IF LASTCC EQ 0 THEN SET LASTCC(4)",
         &services,
     );
-    // IF condition true → SET LASTCC(4)
+    // IF condition true -> SET LASTCC(4)
     assert_eq!(result.maxcc, ConditionCode::Warning);
 }
 
@@ -255,7 +255,7 @@ fn execute_if_else_branch_taken() {
         "SET LASTCC(4); IF LASTCC EQ 0 THEN SET LASTCC(8) ELSE SET LASTCC(0)",
         &services,
     );
-    // LASTCC is 4, condition false → ELSE → SET LASTCC(0)
+    // LASTCC is 4, condition false -> ELSE -> SET LASTCC(0)
     // MAXCC = 4 from the first SET
     assert_eq!(result.maxcc, ConditionCode::Warning);
 }
@@ -265,7 +265,7 @@ fn execute_cc16_terminates_processing() {
     // Validates: Requirement 15 AC 7
     let services = default_services();
     let result = execute_idcams("SET LASTCC(16); SET LASTCC(0)", &services);
-    // CC=16 should terminate — second SET never executes
+    // CC=16 should terminate -- second SET never executes
     assert_eq!(result.maxcc, ConditionCode::Catastrophic);
 }
 
@@ -281,7 +281,7 @@ fn execute_final_summary_message() {
     assert!(summary.is_some());
 }
 
-// ─── Pretty Printer Tests ───────────────────────────────────────────────────
+// === Pretty Printer Tests ===================================================
 
 #[test]
 fn pretty_print_define_cluster_compact() {
@@ -326,7 +326,7 @@ fn pretty_print_output_is_reparseable() {
     }
 }
 
-// ─── Thread Safety Tests ────────────────────────────────────────────────────
+// === Thread Safety Tests ====================================================
 
 #[test]
 fn concurrent_invocations_have_independent_state() {

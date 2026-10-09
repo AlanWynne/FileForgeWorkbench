@@ -1751,15 +1751,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ff-dataset-catalog"
-version = "0.1.0"
-dependencies = [
- "pretty_assertions",
- "proptest",
- "thiserror 2.0.20",
-]
-
-[[package]]
 name = "ff-desktop"
 version = "0.1.0"
 dependencies = [
@@ -2152,6 +2143,7 @@ dependencies = [
 name = "ff-idcams"
 version = "0.1.0"
 dependencies = [
+ "ff-dscatalog",
  "pretty_assertions",
  "proptest",
  "thiserror 2.0.20",

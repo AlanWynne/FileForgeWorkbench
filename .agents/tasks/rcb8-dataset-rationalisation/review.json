@@ -1,0 +1,24 @@
+{
+  "verdict": "APPROVED",
+  "summary": "RC.B.8 (CR-CH-059) integration review of the whole uncommitted diff on main. All three FEATs meet their acceptance criteria and the scoped verification I re-ran is green.",
+  "verified": [
+    "FEAT-001 repoint: crates/ff-idcams/Cargo.toml now depends on ff-dscatalog; grep for 'trait CatalogService'/'trait VsamService' across crates/ff-idcams/**/*.rs returns ZERO private declarations; services.rs IdcamsServices holds Arc<dyn DynCatalogService> + Arc<dyn VsamService> + Arc<dyn DatasetAccess> + local AllocatorService; lib.rs re-exports ff_dscatalog::{CatalogService,DynCatalogService,VsamService}.",
+    "DEFINE/REPRO/DELETE route through the reconciled traits + DatasetAccess: handlers/define.rs uses CatalogService::create_dataset + VsamService::initialize_dataset with delete_dataset rollback; handlers/io.rs REPRO/PRINT drive the VsamService open/start_browse/next_record/put/close seam (no local record loop); handlers/mutate.rs DELETE drives VsamService::destroy_dataset + DatasetAccess::dispose + CatalogService::delete_dataset.",
+    "No dependency cycle: cargo check -p ff-idcams --all-targets finished clean (Cargo would reject a cycle) -- the acyclicity proof.",
+    "Governance green: cargo test -p ff-governance-tests passed (architecture_compliance 8/8 incl. idcams_has_no_storage_engine_dependencies + vfs_has_no_domain_dependencies; mock_compilation 7/7 incl. idcams_compiles_with_mock_vsam_and_catalog_services + idcams_source_has_no_storage_imports).",
+    "IDCAMS syntax/output/CC unchanged: cargo test -p ff-idcams passed (34 unit incl. 8 services_tests + 22 integration CC/output suite).",
+    "All 8 reconciliation tests in services_tests.rs carry // Validates: Requirement 28.x.",
+    "FEAT-002 STOP-and-report: part2-mainframe-save-stop.md records the five code-grounded evidence points + five prerequisites (a-e); git status shows NO ff-vfs/environment_registry/commands_environment/render_body/.rs behaviour edits attributable to Part 2; native SAVE left byte-identical; TCR command-environments Req 16.1 kept NOT COVERED with a deferral note (no record-aware-SAVE criterion falsely marked PASS); owner deferral recorded in TCR, idcams-emulator tasks.md, master tasks.md, and RESUME doc.",
+    "FEAT-003 delete + governance: Cargo.toml member line removed; three ff-dataset-catalog DependencyRules re-expressed in compliance.rs with a retirement comment; dataset_catalog_has_no_upstream_dependencies test deleted and dataset_crates/required_crates arrays trimmed in architecture_compliance.rs; grep for ff-dataset-catalog/ff_dataset_catalog across *.toml/*.rs finds only historical narrative (service.rs doc comment + compliance.rs retirement comment), no live reference; crate tree deleted from the main worktree.",
+    "Acyclic/single-authority intent still encoded by the surviving ff-vfs -> ff-idcams, ff-vfs -> ff-dsalloc, and ff-dsalloc -> ff-idcams rules (governance tests green).",
+    "ASCII-only: the .rs files touched by this task (services.rs, services/mocks.rs, services_tests.rs, lib.rs, executor/mod.rs, executor/handlers/*) contain no non-ASCII; the ff-idcams Cargo.toml em dash was fixed to --.",
+    "400-non-test-line rule: handlers split into handlers/{mod,define,mutate,query,io}.rs and services split (services.rs + services/mocks.rs); all touched files are comfortably under 400 non-test lines.",
+    "TCR Req 28.1-28.7 flipped to PASS with the new test names; dataset-catalog Req 35.2 flipped; idcams tasks 29.1-29.8 and dataset-catalog tasks 42.1/42.2 marked [x].",
+    "Nothing committed: git log HEAD is still 02ce339 (RC.B.7); all RC.B.8 changes are uncommitted working-tree edits."
+  ],
+  "non_blocking_observations": [
+    "An untracked helper script tools/powershell/feat002-test.ps1 remains in the tree (FEAT-002 findings mentioned a leftover named feat002-isolate.ps1). It is ephemeral and untracked so it will not be committed, but per tooling.md one-off experiments should be removed from the repo tree.",
+    "crates/ff-governance-tests/tests/architecture_compliance.rs retains pre-existing em dashes and box-drawing separators on lines NOT edited by this task (lines ~14/52/74/95). The task scoped its ASCII fix to services.rs/lib.rs per its own plan; documentation.md's 'fix non-ASCII whenever a file is touched' is a soft nit here, not a FEAT acceptance-criterion failure."
+  ],
+  "findings": []
+}

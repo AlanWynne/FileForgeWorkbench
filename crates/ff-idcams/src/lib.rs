@@ -1,11 +1,15 @@
-//! # ff-idcams — IDCAMS Emulator for FileForgeWorkbench
+//! # ff-idcams -- IDCAMS Emulator for FileForgeWorkbench
 //!
 //! This crate is a thin command interpreter and orchestration layer for IBM IDCAMS
 //! (Access Method Services). It owns **only** command parsing and execution
-//! orchestration — all actual catalog, VSAM, allocation, and filesystem operations
+//! orchestration -- all actual catalog, VSAM, allocation, and filesystem operations
 //! are delegated to downstream services through trait interfaces.
+//!
+//! CR-CH-059 (Requirement 28): the catalog / VSAM traits are the reconciled
+//! `ff-dscatalog` traits (re-exported below); `ff-idcams` no longer defines its
+//! own `CatalogService` / `VsamService`.
 
-// ─── Public Modules ─────────────────────────────────────────────────────────
+// === Public Modules =========================================================
 
 /// Error types for the IDCAMS emulator.
 pub mod error;
@@ -28,7 +32,10 @@ pub mod pretty_printer;
 /// SYSIN input processing and reading modes.
 pub mod sysin;
 
-// ─── Public API Re-exports ──────────────────────────────────────────────────
+#[cfg(test)]
+mod services_tests;
+
+// === Public API Re-exports ==================================================
 
 pub use error::IdcamsError;
 pub use executor::{CommandExecutor, ExecutionState, IdcamsResult};
@@ -36,8 +43,11 @@ pub use messages::{ConditionCode, IdcamsMessage, MessageCode, Severity};
 pub use parser::ast::Command;
 pub use parser::IdcamsParser;
 pub use pretty_printer::{pretty_print, PrintMode};
-pub use services::{AllocatorService, CatalogService, IdcamsServices, VsamService};
+pub use services::{AllocatorService, IdcamsServices};
 pub use sysin::InputSource;
+
+// Reconciled catalog / VSAM traits now live in ff-dscatalog (Requirement 28.1).
+pub use ff_dscatalog::{CatalogService, DynCatalogService, VsamService};
 
 /// Execute IDCAMS control statements from a string input.
 pub fn execute_idcams(input: &str, services: &IdcamsServices) -> IdcamsResult {

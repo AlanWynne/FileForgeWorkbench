@@ -4,7 +4,7 @@
 //! to downstream services through trait interfaces. Maintains per-invocation
 //! execution state (LASTCC, MAXCC, messages).
 
-mod context;
+pub(crate) mod context;
 mod handlers;
 
 pub use context::ExecutionState;

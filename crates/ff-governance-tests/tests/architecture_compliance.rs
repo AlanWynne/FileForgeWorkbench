@@ -30,37 +30,8 @@ fn vfs_has_no_domain_dependencies() {
         "ff-vfs must not depend on ff-idcams (Requirement 2 AC 3)"
     );
     assert!(
-        !deps.contains_key("ff-dataset-catalog"),
-        "ff-vfs must not depend on ff-dataset-catalog (Requirement 2 AC 3)"
-    );
-    assert!(
         !deps.contains_key("ff-dsalloc"),
         "ff-vfs must not depend on ff-dsalloc (Requirement 2 AC 3)"
-    );
-}
-
-// Validates: Requirement 3 AC 3; Requirement 7 AC 3
-#[test]
-fn dataset_catalog_has_no_upstream_dependencies() {
-    let cargo_toml_path = crate_cargo_toml("ff-dataset-catalog");
-    if !cargo_toml_path.exists() {
-        // Crate not yet created — test will pass once it exists
-        eprintln!(
-            "SKIPPED: ff-dataset-catalog does not exist yet at {}",
-            cargo_toml_path.display()
-        );
-        return;
-    }
-
-    let deps = parse_cargo_toml_dependencies(&cargo_toml_path);
-
-    assert!(
-        !deps.contains_key("ff-idcams"),
-        "ff-dataset-catalog must not depend on ff-idcams (Requirement 3 AC 3)"
-    );
-    assert!(
-        !deps.contains_key("ff-dsalloc"),
-        "ff-dataset-catalog must not depend on ff-dsalloc (Requirement 3 AC 3)"
     );
 }
 
@@ -162,7 +133,7 @@ fn full_dependency_compliance_check() {
 #[test]
 fn prohibited_rules_cover_all_dataset_crates() {
     // Verify that all dataset-related crates have at least one prohibition rule
-    let dataset_crates = &["ff-vfs", "ff-dataset-catalog", "ff-dsalloc", "ff-idcams"];
+    let dataset_crates = &["ff-vfs", "ff-dsalloc", "ff-idcams"];
 
     for crate_name in dataset_crates {
         // Each crate should either have a rule as the source (it's prohibited from
@@ -225,12 +196,7 @@ fn violation_reports_include_fix_instructions() {
 fn all_governed_crates_exist() {
     // Verify that the fundamental dataset-related crates exist.
     // This test ensures that governance rules can be checked.
-    let required_crates = &[
-        ("ff-vfs", true),
-        ("ff-dataset-catalog", true),
-        ("ff-dsalloc", true),
-        ("ff-idcams", true),
-    ];
+    let required_crates = &[("ff-vfs", true), ("ff-dsalloc", true), ("ff-idcams", true)];
 
     for (crate_name, required) in required_crates {
         if *required {

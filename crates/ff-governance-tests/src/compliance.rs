@@ -78,31 +78,15 @@ pub const PROHIBITED_DEPENDENCIES: &[DependencyRule] = &[
     },
     DependencyRule {
         crate_name: "ff-vfs",
-        prohibited_dependency: "ff-dataset-catalog",
-        reason:
-            "VFS is domain-agnostic infrastructure; domain crates depend on VFS, not vice versa",
-        requirement_ref: "Requirement 2 AC 3; Requirement 7 AC 3",
-    },
-    DependencyRule {
-        crate_name: "ff-vfs",
         prohibited_dependency: "ff-dsalloc",
         reason:
             "VFS is domain-agnostic infrastructure; domain crates depend on VFS, not vice versa",
         requirement_ref: "Requirement 2 AC 3; Requirement 7 AC 3",
     },
-    // ff-dataset-catalog shall not depend on upstream orchestrators
-    DependencyRule {
-        crate_name: "ff-dataset-catalog",
-        prohibited_dependency: "ff-idcams",
-        reason: "Catalog is a lower-level service; IDCAMS orchestrates, catalog provides",
-        requirement_ref: "Requirement 3 AC 3; Requirement 7 AC 3",
-    },
-    DependencyRule {
-        crate_name: "ff-dataset-catalog",
-        prohibited_dependency: "ff-dsalloc",
-        reason: "Catalog is a lower-level service; allocator depends on catalog, not vice versa",
-        requirement_ref: "Requirement 3 AC 3; Requirement 7 AC 3",
-    },
+    // CR-CH-059 RC.B.8: the ff-dataset-catalog rules were retired with the crate
+    // (ff-dscatalog is the single catalog authority). The acyclic-DAG / single-
+    // authority intent stays covered by the surviving ff-vfs -> ff-idcams,
+    // ff-vfs -> ff-dsalloc, and ff-dsalloc -> ff-idcams rules.
     // ff-dsalloc shall not depend on ff-idcams
     DependencyRule {
         crate_name: "ff-dsalloc",

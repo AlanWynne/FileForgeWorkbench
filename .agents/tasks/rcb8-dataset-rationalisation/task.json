@@ -1,0 +1,11 @@
+{
+  "task_id": "task-rcb8-dataset-rationalisation",
+  "task_description": "RC.B.8 (final RC.B step of CR-CH-059): repoint ff-idcams's private CatalogService/VsamService traits at the reconciled ff-dscatalog traits and route DEFINE/REPRO/DELETE through DatasetAccess (idcams-emulator Req 28, Task 29); assess the record-aware MAINFRAME editor SAVE (STOP-and-report finding); delete the orphan ff-dataset-catalog crate and re-express governance (dataset-catalog Task 42, ownership Req 22.1/22.2). Edits DIRECTLY on main, uncommitted, for the owner's full gate. Scoped checks only.",
+  "status": "completed",
+  "feature_order": [
+    "FEAT-001",
+    "FEAT-002",
+    "FEAT-003"
+  ],
+  "blocked_reason": null
+}

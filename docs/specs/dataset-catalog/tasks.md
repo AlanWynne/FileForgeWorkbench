@@ -700,9 +700,11 @@ These tasks consolidate the drifted dataset stack onto `ff-dscatalog` as the sin
   - [x] 41.2 Remove the `ff-vsam-services` crate and its root `Cargo.toml` member line once no consumer references it; grep-verify no `ff-vsam-services` / `ff_vsam_services` live references.
     - Validates: Requirement 35.3; dataset-ownership-model Requirement 22.3
 
-- [ ] 42. Delete ff-dataset-catalog once no consumer references it (RC.A tail step 9)
-  - [ ] 42.1 After Tasks 38 (repoint) land, remove the `crates/ff-dataset-catalog/` directory and its `[workspace].members` entry.
-  - [ ] 42.2 Grep-verify no `ff-dataset-catalog` / `ff_dataset_catalog` live references remain across specs, `Cargo.toml`, and `.rs`.
+- [x] 42. Delete ff-dataset-catalog once no consumer references it (RC.A tail step 9)
+  - [x] 42.1 After Tasks 38 (repoint) land, remove the `crates/ff-dataset-catalog/` directory and its `[workspace].members` entry.
+    - DONE RC.B.8 FEAT-003: crate tree + root `Cargo.toml` member line removed; three ff-dataset-catalog governance DependencyRules re-expressed in `ff-governance-tests/src/compliance.rs`, and the `dataset_catalog_has_no_upstream_dependencies` test + array/required-crate entries removed from `architecture_compliance.rs`. `cargo test -p ff-governance-tests` green (8 + 7).
+  - [x] 42.2 Grep-verify no `ff-dataset-catalog` / `ff_dataset_catalog` live references remain across specs, `Cargo.toml`, and `.rs`.
+    - DONE RC.B.8 FEAT-003: grep across `*.toml`/`*.rs` returns no live reference; the only remaining mentions are historical narrative (`ff-dscatalog/src/service.rs`) and the governance retirement comment.
     - Validates: Requirement 35.1a/c/d, 35.2; dataset-ownership-model Requirement 22.1, 22.2
 
 ### Acceptance Criteria Coverage (CR-CH-059)
