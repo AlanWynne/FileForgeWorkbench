@@ -69,9 +69,9 @@ impl WorkbenchShell {
                     // owned-panel swap through the WorkspaceContext trait, which
                     // reports the Help_Search field as the first interior and
                     // honours the latch on the single path.
-                    let mut panel = std::mem::take(&mut self.help_context_panel);
+                    let mut panel = std::mem::take(&mut self.help.context_panel);
                     self.render_workspace_context(ctx, ui, &mut panel);
-                    self.help_context_panel = panel;
+                    self.help.context_panel = panel;
                 }
                 TabKind::ConfigPanel => {
                     // Validates: Requirement 15.1-15.3; CR-NR-078 (framework).

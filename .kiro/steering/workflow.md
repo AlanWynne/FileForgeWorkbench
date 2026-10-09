@@ -66,6 +66,35 @@ To keep the guard accurate and to help the owner's own discipline, maintain an
 up-to-date SESSION TITLE describing the current focus (via the session-info
 mechanism) so each window is self-identifying in the window list.
 
+### 0b. Work-stream id prefix -- determine BEFORE logging any id
+
+When more than one work stream is active at once (mainline plus one or more
+feature worktrees), their bug / change-request numbering would collide: two
+different items could take the same `B###` / `CR-NR-###` / `CR-CH-###` id on
+different branches, and every new id would conflict when the branches merge
+`bugs.md` / `change-log.md`. To prevent this, each stream owns a UNIQUE id
+PREFIX recorded in `docs/status/stream-prefixes.md` (the single source of truth).
+
+BEFORE logging any BUG / NEW REQUIREMENT / CHANGE REQUEST id:
+
+1. Determine the current work stream from the active git branch / worktree
+   (e.g. `main` -> mainline; `.worktrees/vsam-wiring` on
+   `feature/vsam-service-wiring` -> the VSAM stream).
+2. Read `docs/status/stream-prefixes.md` and find that stream's prefix. Mainline
+   (`main`) uses NO prefix; a feature stream uses its registered prefix (e.g.
+   `V`).
+3. Number within that prefix only: read the log, filter to ids carrying this
+   stream's prefix, take the highest, add 1. A prefixed id is formed by inserting
+   the prefix after the category token -- `BV001`, `CR-NR-V001`, `CR-CH-V001`.
+4. If the current stream is a NEW parallel worktree with no row yet in the
+   registry, add a row there first (pick a short unused uppercase prefix), then
+   number from `001` within it.
+
+Use the SAME prefixed id everywhere the item is referenced (test plan Req /
+Backing column, TCR backing column, Regression Traceability map, spec
+cross-references) -- the prefixed id is globally unique, so traceability stays
+clean and nothing needs renumbering at merge.
+
 ### Logging formats
 
 BUG -- append to the `docs/status/bugs.md` Bug Table (next `B###` id):
@@ -97,7 +126,8 @@ CHANGE REQUEST -- append under `## Change Requests`:
 ```
 
 Next id: read the relevant file, find the highest `B###` / `CR-NR-###` /
-`CR-CH-###`, increment by 1.
+`CR-CH-###` WITHIN THE CURRENT STREAM'S PREFIX (see section 0b), increment by 1.
+Mainline uses the unprefixed form; feature streams use their registered prefix.
 
 ### Triage edge cases
 

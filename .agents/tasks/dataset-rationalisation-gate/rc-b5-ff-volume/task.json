@@ -1,0 +1,10 @@
+{
+  "task_id": "task-rc-b5-ff-volume",
+  "task_description": "RC.B.5 of the Mainframe Dataset Stack Rationalisation (CR-CH-059): scaffold the narrow ff-volume model crate (volume-model Req 1-11, tasks 1-10) and wire the ff-dscatalog schema-v4 side (dataset-catalog Req 32, tasks 33-37) with a dual-read storage_path -> DatasetVolume migration that moves no bytes. Edits go DIRECTLY on branch main in the main workspace -- NO worktree, NO branch, NO commit; leave uncommitted for owner review. SCOPE is RC.B.5 ONLY: do NOT build DatasetAccess (RC.B.6), VSAM wiring (RC.B.7), idcams repoint / record-aware SAVE (RC.B.8), or the Volume UI / DEFINE VOLUME dispatch (RC.C.10); do NOT delete ff-dataset-catalog or ff-vsam-services; do NOT touch .worktrees/vsam-wiring.",
+  "status": "completed",
+  "feature_order": [
+    "FEAT-001",
+    "FEAT-002"
+  ],
+  "blocked_reason": null
+}

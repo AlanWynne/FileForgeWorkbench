@@ -15,7 +15,7 @@ impl WorkbenchShell {
     ///
     /// Validates: Requirement 24.2 (file-tree-panel Req 16 New File / New Folder)
     pub(super) fn render_nav_new_dialog(&mut self, ctx: &egui::Context) {
-        let Some((parent, is_dir, mut buffer)) = self.nav_new.take() else {
+        let Some((parent, is_dir, mut buffer)) = self.nav_ui.nav_new.take() else {
             return;
         };
         let title = if is_dir { "New Folder" } else { "New File" };
@@ -48,7 +48,7 @@ impl WorkbenchShell {
             return;
         }
         if still_open {
-            self.nav_new = Some((parent, is_dir, buffer));
+            self.nav_ui.nav_new = Some((parent, is_dir, buffer));
         }
     }
 
@@ -101,7 +101,7 @@ impl WorkbenchShell {
         use crate::explorer_view::paste_target;
         use crate::nav_model::child_uri;
         use ff_vfs::{CreateOptions, VfsProvider};
-        if self.nav_file_clipboard.is_empty() {
+        if self.nav_ui.nav_file_clipboard.is_empty() {
             return;
         }
         let Some(target) = paste_target(&self.nav_model, anchor) else {
@@ -119,7 +119,7 @@ impl WorkbenchShell {
                 return;
             }
         };
-        let sources = self.nav_file_clipboard.clone();
+        let sources = self.nav_ui.nav_file_clipboard.clone();
         let mut errors = 0;
         for src in &sources {
             // Derive the destination file name from the source path's last segment.
@@ -179,7 +179,7 @@ impl WorkbenchShell {
     ///
     /// Validates: Requirement 24.2 (file-tree-panel Req 16 Delete)
     pub(super) fn render_nav_delete_dialog(&mut self, ctx: &egui::Context) {
-        let Some((id, label)) = self.nav_delete.take() else {
+        let Some((id, label)) = self.nav_ui.nav_delete.take() else {
             return;
         };
         let mut decision: Option<bool> = None; // Some(true)=delete, Some(false)=cancel
@@ -205,7 +205,7 @@ impl WorkbenchShell {
         match decision {
             Some(true) => self.apply_nav_delete(id),
             Some(false) => {} // cancelled -- dialog already taken (closed)
-            None => self.nav_delete = Some((id, label)), // keep open
+            None => self.nav_ui.nav_delete = Some((id, label)), // keep open
         }
     }
 
@@ -252,7 +252,7 @@ impl WorkbenchShell {
     ///
     /// Validates: Requirement 24.2 (file-tree-panel Req 16 Rename)
     pub(super) fn render_nav_rename_dialog(&mut self, ctx: &egui::Context) {
-        let Some((id, mut buffer)) = self.nav_rename.take() else {
+        let Some((id, mut buffer)) = self.nav_ui.nav_rename.take() else {
             return;
         };
         let mut still_open = true;
@@ -284,7 +284,7 @@ impl WorkbenchShell {
             return; // dialog closed
         }
         if still_open {
-            self.nav_rename = Some((id, buffer));
+            self.nav_ui.nav_rename = Some((id, buffer));
         }
     }
 

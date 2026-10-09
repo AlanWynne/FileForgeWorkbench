@@ -125,19 +125,19 @@ impl eframe::App for WorkbenchShell {
         }
 
         // Process deferred tab-bar context menu actions (set previous frame).
-        if self.pending_new_pom {
-            self.pending_new_pom = false;
+        if self.pending_tab_actions.new_pom {
+            self.pending_tab_actions.new_pom = false;
             self.tabs.insert_pom_tab(&self.runtime);
         }
-        if self.pending_new_file {
-            self.pending_new_file = false;
+        if self.pending_tab_actions.new_file {
+            self.pending_tab_actions.new_file = false;
             self.shell_new_untitled();
         }
         // F3/END from the Files Panel (or another panel deferring an END) pops
         // one level of the tab's Navigation_Stack (menu-workspace Req 14.4,
         // CR-CH-022) -- the same uniform END path as the command.
-        if self.pending_return_to_pom {
-            self.pending_return_to_pom = false;
+        if self.pending_tab_actions.return_to_pom {
+            self.pending_tab_actions.return_to_pom = false;
             self.nav_end();
         }
 

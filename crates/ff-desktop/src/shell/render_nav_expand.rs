@@ -53,14 +53,9 @@ impl WorkbenchShell {
             }
             other => return Err(format!("Editing is not supported for '{other}' resources.")),
         };
-        // Writable provider; enter the runtime so the watcher can spawn (B040).
-        let provider = {
-            let _rt_guard = self.runtime.enter();
-            crate::posix_provider::PosixProvider::new(root_dir, false)
-        };
-        provider
-            .map(|p| (p, rel_path))
-            .map_err(|_| "cannot open provider".to_string())
+        // CR-CH-059 RC.A.4: single infallible `ff_vfs::PosixNativeProvider`.
+        let provider = crate::posix_provider::PosixProvider::new(root_dir, false);
+        Ok((provider, rel_path))
     }
 
     /// Resolve a navigator node URI to a real absolute host filesystem path so
@@ -141,17 +136,11 @@ impl WorkbenchShell {
         let root_dir = dirs::home_dir()
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| std::path::PathBuf::from("."));
-        // Enter the runtime context so the provider's watcher can spawn
-        // (constructing outside a runtime panics -- B040).
-        let provider = {
-            let _rt_guard = self.runtime.enter();
-            crate::posix_provider::PosixProvider::new(root_dir, true)
-        };
-        if let Ok(provider) = provider {
-            match list_via_provider(&self.runtime, &provider, uri.path()) {
-                Ok(entries) => self.nav_model.apply_listing(id, "posix", &entries),
-                Err(e) => self.nav_model.apply_load_error(id, e),
-            }
+        // CR-CH-059 RC.A.4: single infallible `ff_vfs::PosixNativeProvider`.
+        let provider = crate::posix_provider::PosixProvider::new(root_dir, true);
+        match list_via_provider(&self.runtime, &provider, uri.path()) {
+            Ok(entries) => self.nav_model.apply_listing(id, "posix", &entries),
+            Err(e) => self.nav_model.apply_load_error(id, e),
         }
     }
 
@@ -239,17 +228,11 @@ impl WorkbenchShell {
         sub_path: &str,
     ) {
         use crate::nav_model::list_via_provider;
-        // Enter the runtime context so the provider's watcher can spawn (B040).
-        let provider = {
-            let _rt_guard = self.runtime.enter();
-            crate::posix_provider::PosixProvider::new(root_dir, read_only)
-        };
-        match provider {
-            Ok(provider) => match list_via_provider(&self.runtime, &provider, sub_path) {
-                Ok(entries) => self.nav_model.apply_listing(id, "posix", &entries),
-                Err(e) => self.nav_model.apply_load_error(id, e),
-            },
-            Err(e) => self.nav_model.apply_load_error(id, e.to_string()),
+        // CR-CH-059 RC.A.4: single infallible `ff_vfs::PosixNativeProvider`.
+        let provider = crate::posix_provider::PosixProvider::new(root_dir, read_only);
+        match list_via_provider(&self.runtime, &provider, sub_path) {
+            Ok(entries) => self.nav_model.apply_listing(id, "posix", &entries),
+            Err(e) => self.nav_model.apply_load_error(id, e),
         }
     }
 }

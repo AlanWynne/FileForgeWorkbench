@@ -1,0 +1,18 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "nit",
+      "blocking": false,
+      "label": "catalog_bridge doc comment half-fixed",
+      "detail": "crates/ff-dsalloc/src/catalog_bridge.rs:83 still reads 'Production implementation delegates to `ff-dataset-catalog`'. RC.A.1 step 3 required both doc-comment mentions corrected to ff-dscatalog, and rca-verification.md claims both were fixed. Documentation-only; no build or behaviour impact. Fix in a follow-up along with the pre-existing lib.rs:26 mention."
+    },
+    {
+      "severity": "info",
+      "blocking": false,
+      "label": "Two record backends over the 400-line rule (pre-existing)",
+      "detail": "crates/ff-dscatalog/src/storage/esds.rs (652 lines total at HEAD) and sqlite_record.rs (968 lines total at HEAD) exceed the 400 non-test line rule, but both were already over before RC.A. RC.A added only a root field and the behaviour-preserving trait reshape; the violation is pre-existing and correctly disclosed. Schedule a split as a follow-up refactor outside RC.A's additive scope."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\VSC\\FileForgeWorkbench/.agents/tasks/dataset-rationalisation-gate/rca-review.md"
+}

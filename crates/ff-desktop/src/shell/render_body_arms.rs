@@ -26,7 +26,7 @@ impl WorkbenchShell {
         let action = files_panel::render(ui, &mut self.files_panel);
         match action {
             files_panel::FilesPanelAction::ReturnToPom => {
-                self.pending_return_to_pom = true;
+                self.pending_tab_actions.return_to_pom = true;
             }
             files_panel::FilesPanelAction::NewCatalog => {
                 if matches!(self.files_panel.dialog, files_panel::FilesDialogState::None) {

@@ -144,7 +144,7 @@ impl WorkbenchShell {
     fn display_help_topic(&mut self, key: &TopicKey) {
         // Dynamic topics (Req 18.3): generated, not file-based.
         if key == &TopicKey::index() {
-            let topic = DynamicContentGenerator::generate_index(&self.help_registry, app_version());
+            let topic = DynamicContentGenerator::generate_index(&self.help.registry, app_version());
             self.open_help_context_with(topic);
             return;
         }
@@ -155,9 +155,9 @@ impl WorkbenchShell {
         }
 
         // File-based / runtime topic (Req 18.2).
-        if self.help_registry.contains(key) {
+        if self.help.registry.contains(key) {
             self.open_help_context();
-            self.help_context_panel.show(key);
+            self.help.context_panel.show(key);
             return;
         }
 
@@ -182,7 +182,8 @@ impl WorkbenchShell {
             label
         );
         *self
-            .help_missing_tally
+            .help
+            .missing_tally
             .entry(key.as_str().to_string())
             .or_insert(0) += 1;
     }
@@ -192,7 +193,8 @@ impl WorkbenchShell {
     /// UNEXPECTED (a coverage gap for triage).
     fn show_help_missing_report(&mut self) {
         let mut rows: Vec<(String, u32)> = self
-            .help_missing_tally
+            .help
+            .missing_tally
             .iter()
             .map(|(k, n)| (k.clone(), *n))
             .collect();
@@ -234,7 +236,7 @@ impl WorkbenchShell {
 
     /// Show the Help Index with a leading message (Req 18.4, 13.7).
     fn show_help_index_with_message(&mut self, message: &str) {
-        let index = DynamicContentGenerator::generate_index(&self.help_registry, app_version());
+        let index = DynamicContentGenerator::generate_index(&self.help.registry, app_version());
         let body = format!("> {message}\n\n{}", index.body());
         let topic = HelpTopic::new(
             TopicKey::index(),
@@ -284,7 +286,7 @@ impl WorkbenchShell {
     /// Open the Help Context displaying an already-built (dynamic) topic.
     fn open_help_context_with(&mut self, topic: HelpTopic) {
         self.enter_help_context();
-        self.help_context_panel.model_mut().show_generated(topic);
+        self.help.context_panel.model_mut().show_generated(topic);
     }
 
     /// Close the Help Context (HELP OFF): pop back to the Context Help was opened
@@ -316,21 +318,21 @@ impl WorkbenchShell {
         let registry = ff_help::HelpTopicRegistry::new();
         registry.load_file_topics(topics);
         let registry = std::sync::Arc::new(registry);
-        self.help_context_panel = crate::help_context::HelpContextPanel::new(
+        self.help.context_panel = crate::help_context::HelpContextPanel::new(
             registry.clone(),
             ff_help::HelpConfig::default(),
         );
-        self.help_registry = registry;
+        self.help.registry = registry;
     }
 
     /// Test-only: read the current missing-topic tally count for a key.
     pub(crate) fn help_missing_count(&self, key: &str) -> u32 {
-        self.help_missing_tally.get(key).copied().unwrap_or(0)
+        self.help.missing_tally.get(key).copied().unwrap_or(0)
     }
 
     /// Test-only: the active Help Context panel (to assert the displayed topic).
     pub(crate) fn help_panel_for_test(&self) -> &crate::help_context::HelpContextPanel {
-        &self.help_context_panel
+        &self.help.context_panel
     }
 }
 

@@ -276,11 +276,11 @@ impl WorkbenchShell {
                     );
                     bar_resp.context_menu(|ui| {
                         if ui.button("New").clicked() {
-                            self.pending_new_pom = true;
+                            self.pending_tab_actions.new_pom = true;
                             ui.close();
                         }
                         if ui.button("New File").clicked() {
-                            self.pending_new_file = true;
+                            self.pending_tab_actions.new_file = true;
                             ui.close();
                         }
                     });

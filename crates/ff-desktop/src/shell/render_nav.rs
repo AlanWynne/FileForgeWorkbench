@@ -54,20 +54,16 @@ impl WorkbenchShell {
             let root_dir = dirs::home_dir()
                 .or_else(|| std::env::current_dir().ok())
                 .unwrap_or_else(|| std::path::PathBuf::from("."));
-            // Enter the Tokio runtime context so the provider's file-watcher
-            // (which calls `tokio::spawn`) can start; constructing the provider
-            // outside a runtime context panics ("no reactor running") -- B040.
-            let provider = {
-                let _rt_guard = self.runtime.enter();
-                crate::posix_provider::PosixProvider::new(root_dir, true)
-            };
-            if let Ok(provider) = provider {
-                let root_uri = ff_vfs::ResourceUri::new("posix", "/");
-                self.nav_model.set_uri(local_root, root_uri.clone());
-                match list_via_provider(&self.runtime, &provider, root_uri.path()) {
-                    Ok(entries) => self.nav_model.apply_listing(local_root, "posix", &entries),
-                    Err(e) => self.nav_model.apply_load_error(local_root, e),
-                }
+            // CR-CH-059 RC.A.4: the single `posix` provider is the infallible
+            // `ff_vfs::PosixNativeProvider` (re-exported as PosixProvider). It
+            // does not spawn a watcher at construction, so no runtime guard is
+            // needed here.
+            let provider = crate::posix_provider::PosixProvider::new(root_dir, true);
+            let root_uri = ff_vfs::ResourceUri::new("posix", "/");
+            self.nav_model.set_uri(local_root, root_uri.clone());
+            match list_via_provider(&self.runtime, &provider, root_uri.path()) {
+                Ok(entries) => self.nav_model.apply_listing(local_root, "posix", &entries),
+                Err(e) => self.nav_model.apply_load_error(local_root, e),
             }
 
             // Seed the Catalogs root generically: one CatalogRoot node per
@@ -106,13 +102,13 @@ impl WorkbenchShell {
             effects.extend(keyboard_effects(
                 ui,
                 &self.nav_model,
-                &mut self.nav_selection,
+                &mut self.nav_ui.nav_selection,
             ));
         }
         effects.extend(render_tree(
             ui,
             &self.nav_model,
-            &mut self.nav_selection,
+            &mut self.nav_ui.nav_selection,
             &self.palette,
         ));
         effects
@@ -200,12 +196,13 @@ impl WorkbenchShell {
                 ExplorerEffect::MarkCopy(id) => {
                     // Req 21.1: mark the selection (or this node) for a file copy.
                     // Record the source URIs of the selected local/POSIX files.
-                    let ids: Vec<ff_file_tree::NodeId> = if self.nav_selection.selected.is_empty() {
-                        vec![id]
-                    } else {
-                        self.nav_selection.selected.iter().copied().collect()
-                    };
-                    self.nav_file_clipboard = ids
+                    let ids: Vec<ff_file_tree::NodeId> =
+                        if self.nav_ui.nav_selection.selected.is_empty() {
+                            vec![id]
+                        } else {
+                            self.nav_ui.nav_selection.selected.iter().copied().collect()
+                        };
+                    self.nav_ui.nav_file_clipboard = ids
                         .into_iter()
                         .filter_map(|n| self.nav_model.uri_of(n).cloned())
                         .filter(|u| u.scheme() == "posix" || u.scheme() == "local")
@@ -218,14 +215,14 @@ impl WorkbenchShell {
                     // Open the rename dialog seeded with the node's current label
                     // (Req 16 Rename). The rename is applied on dialog confirm.
                     if let Some(label) = self.nav_model.tree.get_node(id).map(|n| n.label.clone()) {
-                        self.nav_rename = Some((id, label));
+                        self.nav_ui.nav_rename = Some((id, label));
                     }
                 }
                 ExplorerEffect::Delete(id) => {
                     // Open the delete-confirmation dialog (Req 16 Delete). The
                     // delete is applied only on explicit confirm.
                     if let Some(label) = self.nav_model.tree.get_node(id).map(|n| n.label.clone()) {
-                        self.nav_delete = Some((id, label));
+                        self.nav_ui.nav_delete = Some((id, label));
                     }
                 }
                 ExplorerEffect::NewChild { anchor, is_dir } => {
@@ -237,7 +234,7 @@ impl WorkbenchShell {
                         } else {
                             node.parent
                         };
-                        self.nav_new = Some((parent_dir, is_dir, String::new()));
+                        self.nav_ui.nav_new = Some((parent_dir, is_dir, String::new()));
                     }
                 }
                 ExplorerEffect::Reveal(id) => {

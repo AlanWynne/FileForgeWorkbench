@@ -148,7 +148,8 @@ impl WorkbenchShell {
                 /// Re-arm command-field focus.
                 CommandField,
             }
-            let is_explorer_transfer = is_file_explorer && (cmd_has_focus || self.nav_focused);
+            let is_explorer_transfer =
+                is_file_explorer && (cmd_has_focus || self.nav_ui.nav_focused);
 
             // Detect Tab/Shift+Tab AND, in the SAME input pass, decide the
             // boundary and consume the event ONLY when the shell will handle it.
@@ -239,11 +240,11 @@ impl WorkbenchShell {
             // explorer tree back to the command field.
             if !self.modal_open
                 && is_file_explorer
-                && self.nav_focused
+                && self.nav_ui.nav_focused
                 && ctx.input(|i| i.key_pressed(egui::Key::Escape))
             {
-                self.nav_focused = false;
-                self.nav_selection.cursor = None;
+                self.nav_ui.nav_focused = false;
+                self.nav_ui.nav_selection.cursor = None;
                 self.focus.command_field_focus_requested = true;
             } else if is_explorer_transfer
                 && ctx.input_mut(|i| {
@@ -266,19 +267,20 @@ impl WorkbenchShell {
                 })
             {
                 use crate::explorer_view::{first_row_id, next_row_id};
-                let next = if !self.nav_focused {
-                    self.nav_focused = true;
+                let next = if !self.nav_ui.nav_focused {
+                    self.nav_ui.nav_focused = true;
                     first_row_id(&self.nav_model)
                 } else {
-                    self.nav_selection
+                    self.nav_ui
+                        .nav_selection
                         .cursor
                         .and_then(|c| next_row_id(&self.nav_model, c))
                 };
                 match next {
-                    Some(id) => self.nav_selection.move_cursor(id),
+                    Some(id) => self.nav_ui.nav_selection.move_cursor(id),
                     None => {
-                        self.nav_focused = false;
-                        self.nav_selection.cursor = None;
+                        self.nav_ui.nav_focused = false;
+                        self.nav_ui.nav_selection.cursor = None;
                         self.focus.command_field_focus_requested = true;
                     }
                 }
