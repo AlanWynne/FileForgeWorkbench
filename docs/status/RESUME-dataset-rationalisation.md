@@ -186,16 +186,26 @@ build-ordering dependency, not a missing requirement.
 1. **Land CR-CH-058 F1 on `main`** (THE blocker for all SAVE-walk code). F1 (the
    editor record model + piece-table + byte-identical native SAVE) is built and
    gate-clean but UNMERGED in `.worktrees/wrf-foundation` (branch
-   `feature/windowed-record-foundation`, 9 ahead / 2 behind `main`; the 2 behind
-   are RC.B.7+RC.B.8; merge-base is RC.A). Its merge hold is LIFTED (the dataset
-   work it waited on is now on `main`). OWNER DECISION NEEDED: who performs the
-   rebase+merge -- the CR-CH-058 session that owns the branch (recommended), or
-   this session once the owner confirms that session is paused. Coordination note:
-   `.agents/tasks/wrf-foundation/F2-doc-model-slice-note.md` (MERGE-HOLD LIFTED).
+   `feature/windowed-record-foundation`). **DONE (2026-10-10): the owner assigned F1
+   to THIS session; it was safety-tagged (`wrf-foundation-pre-rebase`), rebased
+   onto current `main` TWICE (clean, no conflicts -- the second rebase because the
+   CR-CH-060 docs commit advanced main under it), scoped-verified (ff-document-model
+   201 tests pass incl. byte-identical SAVE; ff-desktop closure compiles), and
+   FAST-FORWARDED onto `main` (`6471b3a`). Full `cargo gate --build` CLEAN
+   (run bc55ddf5, 9839/9839) and PUSHED to origin/main. F1 is landed.**
 2. **BRC.2** -- the additive record-aware `BackendEnvironment` store entry in
-   `ff-vfs` (Shape 2: byte `save` retained + record entry + `record_capable()`;
-   object-safe; host CEs inherit the declining default). Can start once F1 is on
-   `main`. command-environments Req 18.1-18.4.
+   `ff-vfs` (Shape 2: byte `save` retained + `save_records` + `record_capable()`;
+   object-safe; host CEs inherit the declining default). command-environments
+   Req 18.1-18.4. **DONE (2026-10-10): code-complete pending the owner's full gate.**
+   Added `save_records`/`record_capable` with declining defaults + ff-vfs-local
+   types `StoreTarget`/`RecordAttrs`/`RecordFormatKind`/`RecordSource`/
+   `RecordStoreOutcome` (NO ff-dscatalog/ff-document-model dep -- acyclic DAG held);
+   byte `save` untouched. Scoped checks clean: ff-vfs 169+PBT+doc tests pass incl.
+   6 new Req-18 tests; the three host CEs compile UNCHANGED (Req 18.3 proven);
+   clippy -D warnings clean; ff-desktop --all-targets compiles (dyn object-safety
+   holds). TCR Req 18.1-18.4 PASS, 18.8 outcome-type PARTIAL. Completed inline
+   after the BRC.2 workflow wedged (impl on disk; orchestrator verified+finished).
+   NEXT GATE: owner runs `cargo gate --build` to confirm BRC.2 on the full workspace.
 3. **RC.B.8 Part 2 (b)-(d)** -- open the closed `RegisteredEnv` registry to a
    named-backend map + dispatch arm; `open_mainframe_dsn` passes
    `owning_env="MAINFRAME"`; register the mainframe VFS provider live
