@@ -109,6 +109,31 @@ direct edits over long multi-step loops while the connection is unstable.
 
 ---
 
+## FOLLOW-UP SPLIT PASS -- construct.rs / commands.rs / state.rs (DONE this session)
+
+Behaviour-preserving file-size split (pure code movement, NO gate). Three shell
+files had crept back over the 400 non-test-line rule and were split under 400:
+- `shell/construct.rs` 453 -> 348. Moved the free fn `build_live_provider_registry`
+  verbatim to new `shell/construct_provider.rs` (57 lines), and extracted the four
+  built-in command registrations into a new `register_builtin_commands` free fn in
+  `shell/construct_commands.rs` (83 lines).
+- `shell/commands.rs` 446 -> 330. Moved `dispatch_to_environment` verbatim to new
+  `shell/commands_environment.rs` (67 lines) and the command-line field lifecycle
+  trio `run_command_line` / `begin_command_line` / `finish_command_line` to new
+  `shell/commands_line.rs` (71 lines).
+- `shell/state.rs` 432 -> 399. Grouped three cohesive flat-field clusters into
+  Default-derived sub-structs in `shell/state_groups.rs` (now 171 lines),
+  mirroring the existing FocusState/DetachSplitState/DirOverrides pattern:
+  `NavUiState` (the six modern-explorer nav_* UI fields), `HelpState` (help
+  registry / context panel / missing tally), and `PendingTabActions` (the three
+  pending tab-bar bools). Call sites rewritten to the grouped access path
+  (`self.nav_ui.*`, `self.help.*`, `self.pending_tab_actions.*`) across
+  construct.rs, render_nav.rs, render_nav_ops.rs, update_input.rs, help.rs,
+  render_body.rs, render_body_arms.rs, render_tab_bar.rs, update.rs.
+All five new/renamed modules declared in `shell/mod.rs`. No public item renamed,
+no signature changed, no behaviour changed. Scoped verification clean (see the
+split verification note in `.agents/tasks/simplify-splits/verification.md`).
+
 ## PHASE 2 (historical) -- original tracking, superseded by the DONE block above
 
 Workflow wf_2ca9220e6805b6c4 (label phase2-shell-structure). Two coordinated
@@ -315,8 +340,11 @@ yet). Remaining work:
 - The semantic review's two nits: (a) a pre-existing non-ASCII comment sweep
   across shell .rs files (77 lines carried verbatim; HEAD had 121+), and (b) a
   few pub(crate) fields that could tighten to pub(super). Low priority.
-- The 4 pre-existing >400 files (main.rs 632, config_panel/render.rs 590,
-  tab_state.rs 404, menu_workspace/loader.rs 404) -- decide whether to split.
+- The former "4 pre-existing >400 files" note (main.rs 632, config_panel/render.rs
+  590, tab_state.rs 404, menu_workspace/loader.rs 404) is now STALE: those files
+  are all back UNDER 400 non-test lines (confirmed by
+  `tools/python/check_line_limits.py` this session -- the checker reports none of
+  them). No split pending for them.
 - ff-mdx-app / ff-mdx-installer declare [profile.*] in their own Cargo.toml,
   which Cargo ignores for non-root packages (the 10 benign warnings in every
   build/gate log). Move/remove those profile sections to silence them. Orphan-

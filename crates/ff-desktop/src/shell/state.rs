@@ -243,38 +243,18 @@ pub struct WorkbenchShell {
     /// Canonical ff-file-tree-backed navigation model for the File Explorer
     /// (CR-NR-060 Slice A). Identity is NodeId + ResourceUri (Req 24.1, 24.2).
     pub(super) nav_model: crate::nav_model::NavModel,
-    /// Selection/cursor state for the NavModel-backed explorer (Requirement 24.2).
-    pub(super) nav_selection: crate::explorer_view::ExplorerSelection,
-
-    /// Active rename dialog for the modern explorer: (target node, edit buffer).
-    /// `None` when no rename is in progress. (CR-NR-060 Slice A, Req 16 Rename.)
-    pub(super) nav_rename: Option<(ff_file_tree::NodeId, String)>,
-
-    /// Active delete-confirmation dialog for the modern explorer: (target node,
-    /// display label). `None` when no delete is pending. (Req 16 Delete.)
-    pub(super) nav_delete: Option<(ff_file_tree::NodeId, String)>,
-
-    /// Active new-child dialog for the modern explorer: (parent directory node,
-    /// is_directory, name buffer). `None` when none pending. (Req 16 New.)
-    pub(super) nav_new: Option<(ff_file_tree::NodeId, bool, String)>,
-
-    /// When true, the modern explorer node list holds keyboard focus (Tab moved
-    /// focus from the shell Command ===> into the tree). (Req 24.9 / 20.1.)
-    pub(super) nav_focused: bool,
-
-    /// File clipboard for the modern explorer: source resource URIs marked for a
-    /// copy, pasted into a target directory on Paste. (Req 21.1 / 21.3.)
-    pub(super) nav_file_clipboard: Vec<ff_vfs::ResourceUri>,
+    /// Modern-explorer UI interaction state (grouped sub-struct, see
+    /// [`state_groups::NavUiState`]): selection, the rename/delete/new dialogs,
+    /// the keyboard-focus flag, and the file clipboard.
+    pub(super) nav_ui: state_groups::NavUiState,
     /// Toolchain panel state -- GCC and Rust plugin entries.
     pub(super) toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
     pub(super) show_toolchain_panel: bool,
-    /// Deferred: open a new POM tab on the next frame (set by tab-bar context menu).
-    pub(super) pending_new_pom: bool,
-    /// Deferred: open a new untitled tab on the next frame (set by tab-bar context menu).
-    pub(super) pending_new_file: bool,
-    /// Deferred: return the active FilesPanel tab to POM view (set by F3/END in Files Panel).
-    pub(super) pending_return_to_pom: bool,
+    /// Deferred tab-bar context-menu actions (grouped sub-struct, see
+    /// [`state_groups::PendingTabActions`]): new POM / new file / return to POM,
+    /// set in one frame and applied on the next.
+    pub(super) pending_tab_actions: state_groups::PendingTabActions,
     /// Deferred: option to execute from a Menu_Workspace option click (set by
     /// render, processed in update). Carries the full option so an inline
     /// `[options.target]` is honoured on click as well as by typing.
@@ -353,23 +333,10 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 15.1, 15.2
     pub(super) config_panel: ConfigPanelState,
-    /// The single shell-owned Help Topic Registry, loaded ONCE at startup from
-    /// the shipped `help/` directory (plus command-metadata topics). Reused by
-    /// every F1 press / HELP invocation -- the shell never news an empty registry
-    /// per call.
-    ///
-    /// Validates: context-help Requirement 18.1 (CR-NR-097)
-    pub(super) help_registry: std::sync::Arc<ff_help::HelpTopicRegistry>,
-    /// The Help Context panel (renders the resolved topic; a `WorkspaceContext`).
-    ///
-    /// Validates: context-help Requirement 18.2, 18.5 (CR-NR-097)
-    pub(super) help_context_panel: crate::help_context::HelpContextPanel,
-    /// Session-scoped, in-memory tally of help topics that were requested but not
-    /// found (distinct Topic_Key -> request count). Not persisted; never written
-    /// to any project document.
-    ///
-    /// Validates: context-help Requirement 19.2, 19.6 (CR-NR-097)
-    pub(super) help_missing_tally: std::collections::HashMap<String, u32>,
+    /// Help subsystem state (grouped sub-struct, see [`state_groups::HelpState`]):
+    /// the Help Topic Registry, the Help Context panel, and the missing-topic
+    /// tally (CR-NR-097).
+    pub(super) help: state_groups::HelpState,
     /// Plugin Manager panel state.
     ///
     /// Validates: plugin-manager-ui Requirement 1.1

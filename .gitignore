@@ -70,3 +70,6 @@ docs/source-documents/IBM-Manuals/
 # ── Python bytecode cache (tools/python helper scripts) ──────────────────────
 __pycache__/
 *.pyc
+
+# ── Git worktrees (parallel feature streams; never committed) ────────────────
+.worktrees/

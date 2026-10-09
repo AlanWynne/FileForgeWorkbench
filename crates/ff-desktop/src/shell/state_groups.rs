@@ -61,6 +61,88 @@ pub(crate) struct DetachSplitState {
     pub focused_region_menu_first: Option<egui::Id>,
 }
 
+// === NavUiState ======================================================
+// Modern-explorer (NavModel-backed) UI interaction state: selection, the
+// rename / delete / new-child dialogs, keyboard-focus flag, and file clipboard.
+// Grouped from the former flat `nav_*` fields (behaviour-preserving: only the
+// access path changes, e.g. `self.nav_selection` -> `self.nav_ui.nav_selection`).
+
+/// Modern-explorer UI interaction state grouped from the former flat `nav_*`
+/// `WorkbenchShell` fields. A plain data container: every field keeps the same
+/// type and semantics it had as a flat field; only the access path changes.
+#[derive(Debug, Default)]
+pub(crate) struct NavUiState {
+    /// Selection/cursor state for the NavModel-backed explorer (Requirement 24.2).
+    pub nav_selection: crate::explorer_view::ExplorerSelection,
+
+    /// Active rename dialog for the modern explorer: (target node, edit buffer).
+    /// `None` when no rename is in progress. (CR-NR-060 Slice A, Req 16 Rename.)
+    pub nav_rename: Option<(ff_file_tree::NodeId, String)>,
+
+    /// Active delete-confirmation dialog for the modern explorer: (target node,
+    /// display label). `None` when no delete is pending. (Req 16 Delete.)
+    pub nav_delete: Option<(ff_file_tree::NodeId, String)>,
+
+    /// Active new-child dialog for the modern explorer: (parent directory node,
+    /// is_directory, name buffer). `None` when none pending. (Req 16 New.)
+    pub nav_new: Option<(ff_file_tree::NodeId, bool, String)>,
+
+    /// When true, the modern explorer node list holds keyboard focus (Tab moved
+    /// focus from the shell Command ===> into the tree). (Req 24.9 / 20.1.)
+    pub nav_focused: bool,
+
+    /// File clipboard for the modern explorer: source resource URIs marked for a
+    /// copy, pasted into a target directory on Paste. (Req 21.1 / 21.3.)
+    pub nav_file_clipboard: Vec<ff_vfs::ResourceUri>,
+}
+
+// === HelpState =======================================================
+// The shell-owned Help Topic Registry, the Help Context panel, and the
+// session-scoped missing-topic tally (CR-NR-097). Grouped from the former flat
+// `help_*` fields (behaviour-preserving: only the access path changes).
+
+/// Help subsystem state grouped from the former flat `help_*` `WorkbenchShell`
+/// fields. A plain data container: every field keeps the same type and
+/// semantics it had as a flat field; only the access path changes.
+pub(crate) struct HelpState {
+    /// The single shell-owned Help Topic Registry, loaded ONCE at startup from
+    /// the shipped `help/` directory (plus command-metadata topics). Reused by
+    /// every F1 press / HELP invocation -- the shell never news an empty registry
+    /// per call.
+    ///
+    /// Validates: context-help Requirement 18.1 (CR-NR-097)
+    pub registry: std::sync::Arc<ff_help::HelpTopicRegistry>,
+    /// The Help Context panel (renders the resolved topic; a `WorkspaceContext`).
+    ///
+    /// Validates: context-help Requirement 18.2, 18.5 (CR-NR-097)
+    pub context_panel: crate::help_context::HelpContextPanel,
+    /// Session-scoped, in-memory tally of help topics that were requested but not
+    /// found (distinct Topic_Key -> request count). Not persisted; never written
+    /// to any project document.
+    ///
+    /// Validates: context-help Requirement 19.2, 19.6 (CR-NR-097)
+    pub missing_tally: std::collections::HashMap<String, u32>,
+}
+
+// === PendingTabActions ===============================================
+// Deferred tab-bar context-menu actions, set in one frame and applied on the
+// next. Grouped from the former flat `pending_new_pom` / `pending_new_file` /
+// `pending_return_to_pom` fields (behaviour-preserving: only the access path
+// changes).
+
+/// Deferred tab-bar/context actions grouped from the former flat `pending_*`
+/// `WorkbenchShell` bool fields. A plain data container: every field keeps the
+/// same type and semantics it had as a flat field; only the access path changes.
+#[derive(Debug, Default)]
+pub(crate) struct PendingTabActions {
+    /// Deferred: open a new POM tab on the next frame (set by tab-bar context menu).
+    pub new_pom: bool,
+    /// Deferred: open a new untitled tab on the next frame (set by tab-bar context menu).
+    pub new_file: bool,
+    /// Deferred: return the active FilesPanel tab to POM view (set by F3/END in Files Panel).
+    pub return_to_pom: bool,
+}
+
 // === FocusState ======================================================
 // Interior/menu focus anchors and the one-shot focus latches (CR-CH-023).
 

@@ -12,9 +12,7 @@
 use std::sync::{Arc, Mutex};
 
 use ff_command::CommandHistory as DispatchHistory;
-use ff_command::{
-    CommandDispatch, CommandId, CommandLineHistory, CommandMetadata, CommandRegistry,
-};
+use ff_command::{CommandDispatch, CommandLineHistory, CommandRegistry};
 use ff_command_semantics::CommandEngine;
 use ff_config::ConfigHandle;
 use ff_core::WorkbenchApp;
@@ -38,9 +36,9 @@ use crate::session_manager::SessionManager;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
 
-use super::handlers::{
-    ConfigOpenHandler, FileExitHandler, FileOpenHandler, MenuOpenHandler, ShellContextProvider,
-};
+use super::construct_commands::register_builtin_commands;
+use super::construct_provider::build_live_provider_registry;
+use super::handlers::ShellContextProvider;
 use super::mod_helpers::{
     ensure_keymaps_dir, load_context_maps_from_config, load_context_maps_from_keymaps_dir,
     resolve_history_path,
@@ -103,63 +101,10 @@ impl WorkbenchShell {
         let registry = Arc::new(CommandRegistry::new());
         let history = Arc::new(DispatchHistory::new(500));
 
-        // Register file.open
-        let open_id = CommandId::new("file.open").expect("valid id");
-        let open_meta = CommandMetadata::builder("Open File", "Open a file from disk")
-            .category("file")
-            .build();
-        registry
-            .register(
-                open_id,
-                open_meta,
-                Box::new(FileOpenHandler {
-                    pending: pending_open.clone(),
-                }),
-            )
-            .expect("file.open registration");
-
-        // Register file.exit
-        let exit_id = CommandId::new("file.exit").expect("valid id");
-        let exit_meta = CommandMetadata::builder("Exit", "Exit the application")
-            .category("file")
-            .build();
-        registry
-            .register(
-                exit_id,
-                exit_meta,
-                Box::new(FileExitHandler {
-                    should_close: should_close.clone(),
-                }),
-            )
-            .expect("file.exit registration");
-
-        // Register menu.open (menu-workspace Requirement 11.6) -- marker handler;
-        // the shell intercepts MENU / menu.open in handle_command.
-        let menu_open_id = CommandId::new("menu.open").expect("valid id");
-        let menu_open_meta = CommandMetadata::builder("Open Menu", "Open or return to a menu")
-            .category("menu")
-            .build();
-        registry
-            .register(menu_open_id, menu_open_meta, Box::new(MenuOpenHandler))
-            .expect("menu.open registration");
-
-        // Register config.open (CR-CH-025, configuration-system Requirement 20)
-        // -- marker handler; the shell intercepts CONFIG in handle_command. Being
-        // registered lets a bare `CONFIG` resolve as a built-in (chain stage 2),
-        // shadowing any same-named menu/macro.
-        let config_open_id = CommandId::new("config.open").expect("valid id");
-        let config_open_meta = CommandMetadata::builder(
-            "Configuration",
-            "Browse all configuration keys (optionally filtered by namespace)",
-        )
-        .build();
-        registry
-            .register(
-                config_open_id,
-                config_open_meta,
-                Box::new(ConfigOpenHandler),
-            )
-            .expect("config.open registration");
+        // Register the built-in registry commands (file.open, file.exit,
+        // menu.open, config.open). Extracted verbatim to `construct_commands.rs`
+        // (behaviour-preserving file-size split).
+        register_builtin_commands(&registry, &pending_open, &should_close);
 
         let cmd_registry = registry.clone();
         let dispatch = CommandDispatch::new(registry, history);
@@ -351,17 +296,10 @@ impl WorkbenchShell {
             files_panel: FilesPanelState::new(),
             file_explorer_panel_width: 260.0,
             nav_model: crate::nav_model::NavModel::new(),
-            nav_selection: crate::explorer_view::ExplorerSelection::default(),
-            nav_rename: None,
-            nav_delete: None,
-            nav_new: None,
-            nav_focused: false,
-            nav_file_clipboard: Vec::new(),
+            nav_ui: state_groups::NavUiState::default(),
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
-            pending_new_pom: false,
-            pending_new_file: false,
-            pending_return_to_pom: false,
+            pending_tab_actions: state_groups::PendingTabActions::default(),
             pending_menu_option: None,
             zoom: ZoomState::new(&ZoomConfig::default()),
             pom_calendar_offset: 0,
@@ -381,12 +319,14 @@ impl WorkbenchShell {
             modal_open: false,
             reset_bare_confirm: None,
             reset_bare_focus_requested: false,
-            help_context_panel: crate::help_context::HelpContextPanel::new(
-                help_registry.clone(),
-                ff_help::HelpConfig::default(),
-            ),
-            help_registry,
-            help_missing_tally: std::collections::HashMap::new(),
+            help: state_groups::HelpState {
+                context_panel: crate::help_context::HelpContextPanel::new(
+                    help_registry.clone(),
+                    ff_help::HelpConfig::default(),
+                ),
+                registry: help_registry,
+                missing_tally: std::collections::HashMap::new(),
+            },
             config_panel: ConfigPanelState::new(),
             plugin_manager_panel: PluginManagerPanelState::new(),
             macro_library_panel: crate::macro_library_panel::MacroLibraryPanelState::new(),
@@ -405,49 +345,4 @@ impl WorkbenchShell {
             session_start: chrono::Local::now(),
         }
     }
-}
-
-/// Build the live `ff-vfs` Provider_Registry registered at shell startup
-/// (CR-CH-053 Task 22, Req 17.1). The registry is seeded with the host-FS
-/// `local` provider so a provider is resolvable by scheme at runtime and a
-/// plugin-provided `VfsProvider` has a seam to register into (Req 17.2).
-///
-/// This is ADDITIVE wiring: the host-path open/save path reads through
-/// `LocalFsProvider` / `BackendEnvironment` DIRECTLY and never consults this
-/// registry, so native file access is unchanged whether or not a non-host
-/// provider is later registered (Req 17.3, 17.4). A failure to construct the
-/// host provider leaves an empty-but-live registry (startup is best-effort and
-/// never aborts on this): native access still works via the direct path, and a
-/// plugin can still register a provider later.
-///
-/// The host provider construction spawns a filesystem watcher that requires a
-/// running Tokio reactor, so this is called with the shell's `runtime` and
-/// constructs the provider inside `runtime.enter()` (the same reason
-/// `tab_manager::open_file` builds its provider inside `runtime.block_on`).
-///
-/// Validates: command-environments Requirement 17.1, 17.2, 17.3
-fn build_live_provider_registry(runtime: &Runtime) -> Arc<ff_vfs::ProviderRegistry> {
-    use ff_connector_local_fs::LocalFsProvider;
-    use ff_vfs::VfsProvider;
-
-    let registry = ff_vfs::ProviderRegistry::new();
-    // Enter the runtime so the host provider's watcher can register with the
-    // reactor during construction.
-    let _guard = runtime.enter();
-    match LocalFsProvider::with_defaults() {
-        Ok(provider) => {
-            let provider: Arc<dyn VfsProvider> = Arc::new(provider);
-            if let Err(e) = registry.register(provider) {
-                ff_logging::log_warn!(
-                    "[vfs] live provider registry: host-FS 'local' provider registration failed: {e}"
-                );
-            }
-        }
-        Err(e) => {
-            ff_logging::log_warn!(
-                "[vfs] live provider registry: host-FS 'local' provider unavailable ({e}); registry live but empty"
-            );
-        }
-    }
-    Arc::new(registry)
 }
