@@ -483,3 +483,49 @@ one command seam, never a new dispatcher (`wiring-standard.md`). `[ ]` only.
       provider registered) and by the field/accessor doc comments and design.md
       Req 17 section (the non-host parts of Req 14-16 DEPEND on live registration;
       the host-FS default path does NOT).
+
+## Record-aware BackendEnvironment store contract (CR-CH-060) -- Requirement 18
+
+Owner-directed FRAMEWORK CHANGE to `ff-vfs::BackendEnvironment`, authored ONCE to
+serve BOTH CR-CH-058 (editor SAVE walk) and CR-CH-059 RC.B.8 Part 2 (mainframe
+editor SAVE). This maps to the overlap report Step 1 (the contract); its Steps 3
+(RC.B.8 (b)-(d) registry/binding/provider wiring) and 4 (the mainframe CE in
+`ff-idcams`), plus CR-CH-058's F-phase SAVE-walk consumption, are DOWNSTREAM and
+NOT built by these tasks. The contract SHAPE pauses for explicit owner approval
+before any code. `[ ]` only.
+
+- [ ] 23. Add the record-aware store entry to ff-vfs::BackendEnvironment (the contract reshape)
+  - [ ] 23.1 Add the additive record-aware store method alongside the retained
+        byte `save(path, bytes)`, carrying a `StoreTarget` (dataset identity, not a
+        host path), an object-safe `&dyn` record stream, and record attributes
+        (RECFM/LRECL/encoding), with a PROVIDED default that declines
+        (not-record-capable) and a `record_capable()` advertisement. Keep the trait
+        object-safe (`dyn BackendEnvironment`). Test FIRST: `dyn BackendEnvironment`
+        is still object-safe; an existing host CE compiles unchanged and its byte
+        `save` is byte-identical; a record-capable stub routes through the new
+        method. Validates: Requirement 18.1, 18.2, 18.3, 18.4.
+  - [ ] 23.2 Confirm the existing host CEs (`ff-ce-host-fs` decider, `ff-ce-ntfs`,
+        `ff-ce-posix`) require NO change (inherit the default) and native/host SAVE
+        stays byte-identical. Validates: Requirement 18.1, 18.3.
+
+- [ ] 24. Editor SAVE-walk store-call selection (byte vs record by advertised RecordFormat)
+  - [ ] 24.1 In the FFEDIT SAVE path (the CR-CH-053 Task 20/21 owning-CE
+        SAVE-addressing seam), select the byte `save` when the owning CE advertises
+        `Delimited`/host and the record-aware method when it advertises
+        `Fixed`/`Variable`, using the RecordFormat the CE supplied at OPEN (no
+        independent re-derivation). Ride the SINGLE existing
+        `dispatch_to_environment` seam; add no parallel save path. (Consumes
+        CR-CH-058's re-framed records; depends on the CR-CH-058 F-phase SAVE walk.)
+        Validates: Requirement 18.5, 18.6.
+
+- [ ] 25. Mainframe CE record-aware store over DatasetAccess (downstream; needs RC.B.8 (b)-(d))
+  - [ ] 25.1 Implement the record-aware store method in the mainframe Command
+        Environment housed in `ff-idcams` over `ff_dscatalog::DatasetAccess`
+        (open -> put each record -> close so the RECFM codec frames bytes),
+        resolving location via `ff-volume` and I/O via the single
+        `ff-vfs::StorageProvider` seam; surface the store RC (incl. x37 space-full).
+        Keep the DAG acyclic (`ff-idcams -> ff-dscatalog -> ff-volume -> ff-vfs`).
+        PREREQUISITES (RC.B.8 Part 2 (b)-(d), NOT part of this task): open the
+        closed `RegisteredEnv` enum into a named-backend map, bind a mainframe
+        tab's `owning_env`, register the mainframe VFS provider live (Req 17.4).
+        Validates: Requirement 18.7, 18.8.

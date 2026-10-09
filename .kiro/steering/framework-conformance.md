@@ -97,7 +97,17 @@ During the requirements gate (see `workflow.md`), BEFORE writing criteria:
 - A per-Context focus mechanism outside the `InteriorFocus` single latch path.
 - A new session-persistence format outside the `WorkspaceDescriptor` model.
 - Removing or reshaping a public framework type (`CommandTarget`,
-  `WorkspaceContext`, `InteriorFocus`, `WorkspaceDescriptor`, `KindConfig`).
+  `WorkspaceContext`, `InteriorFocus`, `WorkspaceDescriptor`, `KindConfig`,
+  `ff-vfs::BackendEnvironment`).
+- Reshaping the `ff-vfs::BackendEnvironment` STORE CONTRACT (the editor SAVE seam
+  the owning Command Environment implements). This is a load-bearing core type.
+  OWNER-CONFIRMED under CR-CH-060: the contract is now RECORD-AWARE -- the byte
+  `save(path, bytes)` is RETAINED for host CEs (native SAVE byte-identical) and an
+  ADDITIVE record-aware store entry (Shape 2: carries dataset identity + an
+  object-safe record stream + RECFM/LRECL/encoding, with a provided default so
+  host CEs are unchanged, kept object-safe for `dyn BackendEnvironment`) serves
+  the mainframe CE over `ff_dscatalog::DatasetAccess`. Any FURTHER reshape of this
+  contract still needs express owner confirmation.
 
 ## What is NOT a framework change (proceed normally)
 

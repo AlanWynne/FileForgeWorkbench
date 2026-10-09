@@ -83,6 +83,8 @@ database tool or any other future environment.
 | **FFNAV** | The file-navigator environment (FilesPanel / FileExplorerPanel / catalog Contexts); owns navigator verbs incl. its OWN FIND (locate a file, not search a buffer). Named/modeled only in phase 1; its command handling is not migrated. | [CR-CH-053] |
 | **Address** | Directing a command to a named environment regardless of the active one (REXX ADDRESS). Phase 1: macros only. | [lua-macro-engine Req 11.12] |
 | **Alias_Map** | The mapping of mainframe environment names onto FF* names for addressing: TSO -> FFCMD, ISREDIT -> FFEDIT (future IDCAMS -> FFAMS, SDSF -> FFJES, ...). | [CR-CH-053] |
+| **Record_Store_Contract** | The record-aware store entry on `BackendEnvironment` added alongside the byte `save`: it carries a Store_Target (dataset identity), a record stream, and record attributes (RECFM/LRECL/encoding), so a backend CE can store framed records rather than an opaque byte buffer. Host CEs do NOT implement it (they keep the byte `save`). | [CR-CH-060] |
+| **Store_Target** | The dataset-identity object the Record_Store_Contract carries: DSN / catalog identity / owning-environment name -- NOT a host path. It is what lets the mainframe CE resolve the dataset through `ff-volume` and store via `ff_dscatalog::DatasetAccess`. | [CR-CH-060] |
 
 ---
 
@@ -870,3 +872,76 @@ per the DESIGN-BRIEF section 5 "NON-NEGOTIABLE PREREQUISITE".
    other non-host Owning_Environment that must reach a provider) SHALL DEPEND ON
    this criterion; the host-FS default path (Req 14.6, 15.3) SHALL NOT depend on
    it (native editing works whether or not a non-host provider is registered).
+
+### Requirement 18: Record-aware BackendEnvironment store contract (CR-CH-060)
+
+**User Story:** As the editor saving a Fixed/Variable (mainframe) document, I want
+the owning Command Environment's store call to carry the editor's framed RECORDS
+plus the dataset identity and RECFM/LRECL/encoding, rather than an opaque byte
+buffer, so a mainframe CE can store records through `ff_dscatalog::DatasetAccess`
+while native byte saves stay exactly as they are.
+
+**Marking:** OWNER-DIRECTED FRAMEWORK CHANGE (framework-conformance.md).
+`ff-vfs::BackendEnvironment` is a load-bearing core framework type, so reshaping
+its store contract requires express owner confirmation; the owner confirmed the
+DIRECTION ("move forward with both CR-CH-058 and RC.B.8 Part 2", "design the
+contract once", "A and B"). This is a SINGLE contract authored ONCE to serve
+BOTH CR-CH-058 (the editor SAVE walk) and CR-CH-059 RC.B.8 Part 2 prerequisite
+(a) (the mainframe editor SAVE). The drafted contract SHAPE is still subject to
+explicit owner approval before any code (a later step). ADDITIVE: the byte
+`save` is retained unchanged; native/host SAVE stays byte-identical.
+
+#### Acceptance Criteria
+
+18.1 THE `ff-vfs::BackendEnvironment` trait SHALL RETAIN its existing byte store
+   entry `save(&self, path: &Path, bytes: &[u8]) -> io::Result<()>` unchanged, so
+   that a light host-FS Command Environment (the `ff-ce-host-fs` decider's
+   resolved `ff-ce-ntfs` / `ff-ce-posix`) performs the SAME OS-backed byte write
+   as today and native SAVE is byte-identical (Req 16.5; document-model Req 12.12).
+   [CR-CH-060]
+
+18.2 THE `ff-vfs::BackendEnvironment` trait SHALL ADD a record-aware store entry
+   (the Record_Store_Contract) that carries (a) a Store_Target identifying the
+   dataset by DSN / catalog identity / owning-environment -- NOT a host path, (b)
+   the editor's framed RECORDS as an object-safe record stream, and (c) record
+   attributes (RECFM, LRECL, encoding). The record-aware entry SHALL be ADDITIVE
+   (alongside, not replacing, the byte `save`). [CR-CH-060]
+
+18.3 THE record-aware store entry SHALL have a PROVIDED default such that an
+   existing host-FS Command Environment compiles and behaves UNCHANGED without
+   implementing it (the default declines / reports not-record-capable); only a
+   record-aware Command Environment (the mainframe CE) SHALL override it. A
+   backend SHALL be able to advertise whether it is record-capable. [CR-CH-060]
+
+18.4 THE `BackendEnvironment` trait SHALL REMAIN object-safe (used as
+   `dyn BackendEnvironment` in the Environment_Registry): the record-aware entry
+   SHALL take `&self` and non-generic, non-`Self`-returning parameters (an
+   object-safe `&dyn` record stream), so `Box<dyn BackendEnvironment>` stays
+   valid. [CR-CH-060]
+
+18.5 WHEN the editor saves a document whose owning Command Environment advertises
+   a `Delimited` RecordFormat (native/host), THE SAVE SHALL call the BYTE
+   `save(path, bytes)` entry (18.1); WHEN the owning CE advertises a `Fixed` or
+   `Variable` RecordFormat, THE SAVE SHALL call the record-aware entry (18.2) with
+   the re-framed records. The selection SHALL be driven by the owning CE's
+   advertised RecordFormat, which the CE supplied at OPEN (document-model Req 11.2)
+   -- the save SHALL NOT re-derive record framing independently. [CR-CH-060]
+
+18.6 THE record-aware store call SHALL ride the SINGLE existing SAVE-addressing
+   seam (CR-CH-053 Task 20/21: FFEDIT addresses SAVE to the owning Command
+   Environment via `dispatch_to_environment`); it SHALL NOT introduce a parallel
+   save path or a second dispatcher. [CR-CH-060, framework-conformance.md]
+
+18.7 THE mainframe Command Environment (housed in `ff-idcams`, Req 16.1 / 16.4)
+   SHALL implement the record-aware store entry over
+   `ff_dscatalog::DatasetAccess` (open -> put each record -> close), so the RECFM
+   codec frames the record bytes on close; it SHALL resolve the dataset location
+   through `ff-volume` and perform I/O over the single `ff-vfs::StorageProvider`
+   seam, keeping the dependency DAG acyclic (`ff-idcams` -> `ff-dscatalog` ->
+   `ff-volume` -> `ff-vfs`). [CR-CH-060, CR-CH-059]
+
+18.8 THE record-aware store outcome SHALL carry a return code (mirroring
+   `BackendOutcome`) that the addressing caller maps to a status / macro `RC`
+   (consistent with Req 14 / lua-macro-engine Req 11.15), including the mainframe
+   failure semantics `DatasetAccess` already surfaces (e.g. x37 space-full
+   abends). [CR-CH-060]

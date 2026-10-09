@@ -316,10 +316,65 @@ persistence mechanisms.
 
 ---
 
+### Requirement 13: SAVE-walk store-call selection over the record-aware store contract (CR-CH-060)
+
+**User Story:** As a developer wiring the editor SAVE walk, I want the walk to
+hand the owning Command Environment either a byte buffer (native/Delimited) or the
+re-framed RECORDS (Fixed/Variable) through the owning CE's store contract, so that
+native SAVE stays byte-identical while a mainframe document's records reach the
+owning CE for RECFM/LRECL-correct storage.
+
+**Source:** CR-CH-060 (the record-aware `ff-vfs::BackendEnvironment` store
+contract, command-environments Requirement 18); FOUNDATION-DESIGN section 6 (SAVE
+walk); CR-CH-058 Req 11-12.
+
+**Marking:** This requirement is the document-model/editor SIDE of the
+owner-directed CR-CH-060 framework change. It does NOT itself reshape the
+`BackendEnvironment` trait (that is command-environments Req 18); it specifies how
+the SAVE walk SELECTS and CALLS the contract. ADDITIVE: Delimited/native SAVE is
+unchanged (Req 12.12).
+
+#### Acceptance Criteria
+
+13.1 WHEN the editor saves a document, THE SAVE walk SHALL re-frame the Piece_List
+   per the owning Command Environment's RecordFormat (Req 12 / FOUNDATION-DESIGN
+   section 6) and SHALL deliver the result to the owning CE through the CR-CH-060
+   record-aware store contract (command-environments Req 18), NOT by writing a
+   flat byte buffer for every document. [CR-CH-060]
+
+13.2 WHEN the owning CE advertises a `Delimited` RecordFormat (native/host), THE
+   SAVE walk SHALL call the owning CE's BYTE store entry (`save(path, bytes)`), and
+   the emitted bytes SHALL be byte-identical to the pre-CR-CH-058 behaviour
+   (Req 12.12). [CR-CH-060]
+
+13.3 WHEN the owning CE advertises a `Fixed` or `Variable` RecordFormat, THE SAVE
+   walk SHALL call the owning CE's RECORD-aware store entry with the re-framed
+   records plus the dataset identity and record attributes (RECFM/LRECL/encoding).
+   [CR-CH-060]
+
+13.4 THE SAVE walk SHALL obtain the RecordFormat used for the byte-vs-record
+   selection from the SAME value the owning CE supplied at OPEN (Req 11.2); it
+   SHALL NOT re-derive record framing independently of the editor's RecordFormat.
+   [CR-CH-060]
+
+13.5 THE SAVE walk SHALL ride the SINGLE existing SAVE-addressing seam (CR-CH-053
+   Task 20/21: FFEDIT addresses SAVE to the owning CE); it SHALL NOT add a parallel
+   save path or a second dispatcher, and SHALL NOT change the shell command
+   -dispatch, navigation-stack, focus-latch, or WorkspaceDescriptor-persistence
+   framework seams. [CR-CH-060, framework-conformance.md]
+
+13.6 THE record attributes delivered on a Fixed/Variable save SHALL be GUI
+   -independent plain data (RECFM/LRECL/encoding), carrying no editor/shell type,
+   so the owning CE (the mainframe CE in `ff-idcams`) can store the records over
+   `ff_dscatalog::DatasetAccess` without a dependency back into the editor or the
+   shell. [CR-CH-060]
+
+---
+
 ## Cross-References
 
 - **`virtual-file-system`**: The document-model uses VFS for all file access (ranged/windowed reads, saves). [WB]
-- **`command-environments`**: The owning Command Environment SUPPLIES the RecordFormat (Delimited for native, Fixed/Variable for mainframe) and is the SAVE-addressing seam (CR-CH-053 Task 20/21). [CR-CH-058]
+- **`command-environments`**: The owning Command Environment SUPPLIES the RecordFormat (Delimited for native, Fixed/Variable for mainframe) and is the SAVE-addressing seam (CR-CH-053 Task 20/21). The record-aware `BackendEnvironment` store contract the SAVE walk calls (Req 13 here) is owned by command-environments Req 18 (CR-CH-060). [CR-CH-058, CR-CH-060]
 - **`large-file-performance`**: Consumes the windowed record/line access (its Req 7 range access becomes mandatory under CR-CH-058); supplies the render/measurement cache over the Window_Band. [CR-CH-058]
 - **`idle-processing`**: Schedules the background record-boundary scan and the Window_Band prefetch. [CR-CH-058]
 - **`undo-redo-transactions`**: The document-model integrates with the undo system -- insert/delete operations record undo actions. The undo-redo-transactions spec is authoritative for transaction semantics. [SCI-DOC-2]

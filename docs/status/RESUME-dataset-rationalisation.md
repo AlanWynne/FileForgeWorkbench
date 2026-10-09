@@ -163,25 +163,69 @@ sign-off); it begins only on an explicit owner "start RC.B".
   on disk when found, FEAT-003 finished via a focused coder run.
 - RC.B.8 (repoint ff-idcams + record-aware SAVE, delete ff-dataset-catalog) -- DONE, CODE-COMPLETE PENDING the owner's full `cargo gate --build` (Part 2 deferred, owner-accepted).
   - Part 1 (repoint ff-idcams -> ff-dscatalog, Req 28 / task 29): code-complete pending the owner's full gate.
-  - Part 2 (record-aware MAINFRAME SAVE): DEFERRED, owner-accepted -- out of RC.B.8's funded scope. Needs an owner-confirmed FRAMEWORK CHANGE (reshape `ff-vfs::BackendEnvironment::save` byte contract + open the closed `EnvironmentRegistry` enum + bind mainframe `owning_env` + register the mainframe VFS provider live, Req 17.4). NO .rs change; native/host SAVE byte-identical. Finding + five prerequisites: `.agents/tasks/rcb8-dataset-rationalisation/part2-mainframe-save-stop.md`.
+  - Part 2 (record-aware MAINFRAME SAVE): NO LONGER A LOOSE DEFERRAL -- it has been ABSORBED into three CRs and is now an active, sequenced work stream (owner-directed 2026-10-09 "continue working RC.B.8 Part 2 into CR-CH-058 / CR-CH-059 / CR-CH-060"):
+    - prerequisite (a) the record-aware `ff-vfs::BackendEnvironment` store contract -> **CR-CH-060**, APPROVED (Shape 2), PENDING IMPLEMENTATION.
+    - the editor SAVE-walk that produces re-framed records -> **CR-CH-058** (document-model Req 13; its F-phase SAVE walk).
+    - prerequisites (b)-(e) the open named-backend registry, `owning_env="MAINFRAME"` tab binding, live mainframe VFS provider, and the mainframe CE over `DatasetAccess` -> **CR-CH-059** RC.B stream (idcams-emulator Req 28 composing; master phase BRC.4).
+    The five prerequisites remain documented in `.agents/tasks/rcb8-dataset-rationalisation/part2-mainframe-save-stop.md` (now headed RESOLVED/ABSORBED). NO .rs change has regressed native/host SAVE (byte-identical). The HARD build-order dependency: CR-CH-058 F1 (the editor record model) must land on `main` before the SAVE-walk/mainframe-CE code (BRC.3/BRC.4) can be written -- today SAVE flattens to one byte buffer, so there are no records to pack. See the SEQUENCED PLAN below.
   - Part 3 (delete `ff-dataset-catalog` + re-express governance) -- DONE (FEAT-003, completed THIS run), code-complete pending the owner's full gate. Mirrored the RC.B.7 ff-vsam-services retirement EXACTLY. Grep PRE-CHECK PASSED (no shipping crate had ff-dataset-catalog as a Cargo dep after the Part 1 repoint). Deleted `crates/ff-dataset-catalog/` + its root `Cargo.toml` member line; re-expressed the governance rules (removed the `ff-vfs -> ff-dataset-catalog` and the two `ff-dataset-catalog -> ff-idcams`/`-> ff-dsalloc` DependencyRules in `compliance.rs`; removed the `!deps.contains_key("ff-dataset-catalog")` assertion, DELETED the whole `dataset_catalog_has_no_upstream_dependencies` test, and removed the ff-dataset-catalog entries from the `dataset_crates` array + `required_crates` list in `architecture_compliance.rs`). The acyclic/single-authority intent stays covered by the surviving ff-vfs -> ff-idcams, ff-vfs -> ff-dsalloc, and ff-dsalloc -> ff-idcams rules. `mock_compilation.rs` had no residual `ff_dataset_catalog` import (already on ff-dscatalog). No stale `.rs` authority prose remained (the only mentions are the historical narrative in `ff-dscatalog/src/service.rs` and the new retirement comment). Scoped checks clean: `cargo fmt`; `cargo check -p ff-governance-tests -p ff-dscatalog -p ff-dsalloc -p ff-idcams --all-targets`; `cargo test -p ff-governance-tests` GREEN (architecture_compliance 8 + mock_compilation 7); `cargo check -p ff-desktop --all-targets` clean; final grep finds NO live `ff-dataset-catalog`/`ff_dataset_catalog` in any `*.toml`/`*.rs`. TCR flipped: dataset-catalog Req 35.1 (step d) + 35.2, ownership Req 22.1/22.2 (and the 22.6 citation retargeted off the deleted test). Tasks marked: dataset-catalog Task 42.1/42.2 [x], master RC.B.8 [x] code-complete-pending-gate.
 
-## NEXT ACTIONS (in order)
+## STATUS (2026-10-09): RC.A through RC.B.8 COMMITTED + PUSHED + full-gate CLEAN
 
-1. OWNER (manual, outside Kiro): re-run `cargo gate --build` from the workspace
-   root. Confirm a NEW `started` timestamp (later than 22:01). Clean =
-   `.gate/gate.review.log` is EMPTY.
-   - If the full test run surfaces MORE out-of-scope crates that referenced the
-     old `PosixProvider::new -> Result` API, they are the SAME trivial fix (drop
-     `.expect(...)`; the constructor is now infallible). Kiro can clear each with
-     scoped checks and hand off again.
-2. If clean: the shell file split AND RC.A are both DONE. Mark the shell-split
-   hand-off closed (RESUME-ffdesktop-simplification.md) and RC.A done in
-   project-master.
-3. THEN STOP -- do not auto-start RC.B. RC.B (land ff-volume, define DatasetAccess,
-   wire VSAM, mainframe record-aware SAVE) is PLUGIN phase 2 per ROADMAP, gated on
-   CORE sign-off, and the editor work (CR-CH-058) is live in another worktree.
-   RC.B begins only on an explicit owner "start RC.B".
+RC.A, RC.B.5, RC.B.6, RC.B.7, RC.B.8 (Parts 1+3) are all on `origin/main`, each
+full-gate clean. The dataset stack rationalisation (CR-CH-059) is COMPLETE except
+record-aware MAINFRAME SAVE, which is now the CR-CH-060/058/059 joint work stream
+below.
+
+## SEQUENCED PLAN -- record-aware MAINFRAME SAVE (RC.B.8 Part 2, absorbed into CR-CH-060 + CR-CH-058 + CR-CH-059)
+
+Requirements are COMPLETE and APPROVED (CR-CH-060 Shape 2; command-environments
+Req 18; document-model Req 13; idcams-emulator Req 28). The only gate to CODE is a
+build-ordering dependency, not a missing requirement.
+
+1. **Land CR-CH-058 F1 on `main`** (THE blocker for all SAVE-walk code). F1 (the
+   editor record model + piece-table + byte-identical native SAVE) is built and
+   gate-clean but UNMERGED in `.worktrees/wrf-foundation` (branch
+   `feature/windowed-record-foundation`, 9 ahead / 2 behind `main`; the 2 behind
+   are RC.B.7+RC.B.8; merge-base is RC.A). Its merge hold is LIFTED (the dataset
+   work it waited on is now on `main`). OWNER DECISION NEEDED: who performs the
+   rebase+merge -- the CR-CH-058 session that owns the branch (recommended), or
+   this session once the owner confirms that session is paused. Coordination note:
+   `.agents/tasks/wrf-foundation/F2-doc-model-slice-note.md` (MERGE-HOLD LIFTED).
+2. **BRC.2** -- the additive record-aware `BackendEnvironment` store entry in
+   `ff-vfs` (Shape 2: byte `save` retained + record entry + `record_capable()`;
+   object-safe; host CEs inherit the declining default). Can start once F1 is on
+   `main`. command-environments Req 18.1-18.4.
+3. **RC.B.8 Part 2 (b)-(d)** -- open the closed `RegisteredEnv` registry to a
+   named-backend map + dispatch arm; `open_mainframe_dsn` passes
+   `owning_env="MAINFRAME"`; register the mainframe VFS provider live
+   (`build_live_provider_registry`, Req 17.4). Shell/registry/provider wiring,
+   parallelisable with step 2 and CR-CH-058 F2-F5.
+4. **BRC.3** -- the editor SAVE-walk byte-vs-record store-call selection on the
+   CR-CH-053 Task 20/21 owning-CE seam (document-model Req 13); the walk re-frames
+   the Piece_List per the OPEN-supplied RecordFormat, never re-derived. Needs F1
+   (step 1) + the contract (step 2).
+5. **BRC.4** -- the mainframe CE in `ff-idcams` implements the record-aware entry
+   over `ff_dscatalog::DatasetAccess` (open->put->close; RECFM codec frames bytes
+   on close; x37 surfaced). Needs steps 2+3+4. idcams-emulator Req 28 composing;
+   lift the editor-nav gate that currently refuses mainframe editing. Now a
+   MAINFRAME-owned editable tab exists and the first-fail SAVE test is writable.
+
+What is PARALLEL: steps 2 and 3 (and CR-CH-058 F2-F5) once the step-1 contract
+shape is settled (it is -- Shape 2 approved). The one serialisation point is the
+shell SAVE path (`save_active_tab_via_backend` / `host_fs_save`): CR-CH-058
+reshapes HOW records are produced, RC.B.8 reshapes WHERE they are addressed -- land
+CR-CH-058's SAVE-walk refactor first, then RC.B.8 adds the mainframe record form.
+
+The ONLY owner input needed to proceed: confirm who merges CR-CH-058 F1 (step 1).
+Everything after is specified and can be driven as scoped-and-gated code work.
+
+## SUPERSEDED NEXT ACTIONS (historical -- all DONE)
+
+1. (DONE) Owner re-ran `cargo gate --build` after the ff-nav-model fix -- clean.
+2. (DONE) Shell file split + RC.A both landed and were committed/pushed.
+3. (DONE) RC.B ran to completion (RC.B.5-RC.B.8) and is committed/pushed. The old
+   "do not auto-start RC.B" note is obsolete; RC.B is finished.
 
 ## OTHER OPEN ITEMS (unchanged, lower priority)
 

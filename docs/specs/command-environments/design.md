@@ -728,3 +728,140 @@ later gate steps): `virtual-file-system` (live provider registration + the
 owning-CE store seam), `multi-tab-editor` / `edit-operations` (the TabState
 owning-environment field + FFEDIT SAVE routing), `dataset-catalog` (the mainframe
 CE SAVE semantics). None adds a parallel mechanism.
+
+## Record-aware BackendEnvironment store contract (CR-CH-060)
+
+This section designs the record-aware `ff-vfs::BackendEnvironment` store contract
+(Requirement 18). It is an OWNER-DIRECTED FRAMEWORK CHANGE to a load-bearing core
+type, authored ONCE to serve BOTH consumers that need the same reshape:
+
+- **CR-CH-058** (universal windowed record-oriented document model): its SAVE
+  walk re-frames the Piece_List per the owning CE's `RecordFormat` and must hand
+  the owning CE RECORDS (not a flat byte buffer) for Fixed/Variable documents.
+- **CR-CH-059 RC.B.8 Part 2** (record-aware MAINFRAME editor SAVE): its
+  prerequisite (a) is exactly this contract reshape so the mainframe CE can store
+  through `ff_dscatalog::DatasetAccess::put` instead of a `(path, bytes)` write.
+
+Designing it once avoids reshaping the SAVE seam twice and avoids a separate
+mainframe "records -> store" packer duplicating CR-CH-058's piece-list re-framing.
+
+### Today
+
+```rust
+trait BackendEnvironment: Send + Sync {
+    fn name(&self) -> &str;
+    fn is_case_sensitive(&self) -> bool;
+    fn save(&self, path: &Path, bytes: &[u8]) -> std::io::Result<()>;
+}
+```
+
+`(path, bytes)` carries no DSN, no RECFM/LRECL/catalog identity, and no record
+boundaries, so a mainframe backend cannot pack records per RECFM/LRECL through it
+(the trait's own doc comment already acknowledges this limitation).
+
+### The two shapes (OWNER DECISION: SHAPE 2 APPROVED)
+
+> OWNER DECISION (gate review): **SHAPE 2 is APPROVED** as the owner-directed
+> framework change -- add a record-aware store method ALONGSIDE the byte `save`,
+> with a provided default that declines (not-record-capable); only record-aware
+> CEs override. Shape 1 is REJECTED for this contract but retained below as the
+> considered alternative. Illustrative names may be finalised at design discretion
+> during implementation, keeping the approved semantics.
+
+**Shape 1 -- change `save` to a single record-aware form.** One store method
+whose parameter object expresses EITHER bytes (host) OR records (mainframe) plus
+the target and attributes.
+- Object-safety: achievable (still `&self` + concrete params), but the one method
+  must branch internally for the bytes-only host case.
+- Native byte-identical: AT RISK -- every host write now travels through the
+  record-aware parameter shape, so the "nothing changed for native" guarantee is
+  a re-proof rather than a construction fact, and the regression surface widens.
+- Migration cost: HIGH -- all three existing impls (`ff-ce-host-fs`, `ff-ce-ntfs`,
+  `ff-ce-posix`) and the single call site (`host_fs_save` ->
+  `save_active_tab_via_backend`) change together.
+- Consumption: CR-CH-058's Delimited path and the mainframe path share one method
+  but branch inside it.
+
+**Shape 2 -- add a record-aware method ALONGSIDE the byte `save` (OWNER-APPROVED).**
+```rust
+trait BackendEnvironment: Send + Sync {
+    fn name(&self) -> &str;
+    fn is_case_sensitive(&self) -> bool;
+    fn save(&self, path: &Path, bytes: &[u8]) -> std::io::Result<()>;      // UNCHANGED
+    fn save_records(&self, target: &StoreTarget, records: &dyn RecordSource,
+                    attrs: &RecordStoreAttrs) -> BackendStoreResult {        // NEW
+        BackendStoreResult::NotRecordCapable                                  // provided default
+    }
+    fn record_capable(&self) -> bool { false }                               // mainframe CE overrides true
+}
+```
+(Names ILLUSTRATIVE; finalised at owner approval.)
+- `StoreTarget` carries dataset identity (DSN / catalog identity / owning-env),
+  NOT a host path.
+- `RecordSource` is an object-safe (`&dyn`) record stream the editor SAVE walk
+  fills from the re-framed Piece_List.
+- `RecordStoreAttrs` carries RECFM / LRECL / encoding -- sourced from the catalog
+  attributes, the SAME values the CE used to build the `RecordFormat` at open.
+- `BackendStoreResult` mirrors `BackendOutcome` (rc-carrying) so the addressing
+  caller maps it to a status / macro RC.
+
+Shape 2 is the OWNER-APPROVED choice because:
+- **Object-safety is trivially preserved** (Req 18.4): both methods take `&self`
+  and non-generic, non-`Self`-returning parameters, so `Box<dyn BackendEnvironment>`
+  stays valid. The `provided` default keeps `dyn` dispatch and lets host impls
+  compile untouched.
+- **Native byte-identical is a construction guarantee** (Req 18.1): `save(path,
+  bytes)` is literally unchanged, so native/Delimited SAVE is the SAME code path
+  and the SAME bytes (Req 16.5, document-model Req 12.12). No re-proof needed.
+- **Migration cost is low** (Req 18.3): host CEs inherit the default and need NO
+  change; only the mainframe CE (ff-idcams) and the editor SAVE walk opt in.
+- **Each consumer opts in cleanly** (Req 18.5): the SAVE walk picks the method by
+  the owning CE's advertised `RecordFormat`.
+
+The overlap report (`.agents/tasks/crch058-rcb8-overlap/report.md` section E)
+also leans to "add a record-aware store entry alongside the byte save"; this
+design validates that lean. The owner APPROVED Shape 2 at gate review; Shape 1 is
+REJECTED for this contract but remains documented above as the considered
+alternative with its tradeoffs.
+
+### The records -> store dataflow (one seam, both consumers)
+
+```
+editor SAVE (FFEDIT verb) -- CR-CH-053 Task 20/21 owning-CE SAVE-addressing seam
+  -> CR-CH-058 SAVE walk: walk the Piece_List, re-frame each piece per the owning
+     CE's RecordFormat (Delimited -> bytes; Fixed/Variable -> records)
+  -> owning CE advertises Delimited/host : BackendEnvironment::save(path, bytes)   [byte-identical]
+     owning CE advertises Fixed/Variable : BackendEnvironment::save_records(target, records, attrs)
+  -> mainframe CE (ff-idcams) implements save_records over
+       ff_dscatalog::DatasetAccess::open -> put(record)* -> close
+     (FixedCodec / VariableCodec / BinaryCodec frames the bytes on close;
+      DatasetAccess surfaces x37 space-full abends as the store RC)
+```
+
+Single source of truth (Req 18.5 / document-model Req 11.2): the owning CE
+supplies the `RecordFormat` at OPEN; the SAVE path never re-derives framing. The
+mainframe CE converts the editor's framed records into `ff_dscatalog::Record`s
+and drives `DatasetAccess::put`; it does not re-invent CR-CH-058's piece-list
+re-framing.
+
+### Registry opening is prereq wiring, not a new mechanism
+
+Reaching the mainframe CE's `save_records` requires the closed
+`EnvironmentRegistry` `enum RegisteredEnv { FfCmdBase, FfEdit, HostFsPlaceholder }`
++ single `host_fs` backend to open into a named-backend map, plus binding a
+mainframe tab's `owning_env` and registering the mainframe VFS provider live
+(Req 17.4). Those are RC.B.8 Part 2 prerequisites (b), (c), (d) -- shell/registry/
+provider WIRING on the EXISTING `dispatch_to_environment` seam, NOT a new
+framework mechanism and NOT part of CR-CH-060's contract criteria. CR-CH-060
+owns ONLY the trait reshape (Req 18); the registry/binding/provider wiring and
+the mainframe CE implementation are downstream tasks (see tasks.md).
+
+### Designed ONCE; DAG unchanged
+
+The record-aware trait stays in `ff-vfs` (where `BackendEnvironment` already
+lives); the mainframe CE in `ff-idcams` implements it over `DatasetAccess`. The
+dependency DAG is UNCHANGED and acyclic: `ff-idcams -> ff-dscatalog -> ff-volume
+-> ff-vfs`. No new hub crate, no second dispatcher, no second navigation stack;
+`CommandTarget` / `WorkspaceContext` / `InteriorFocus` / `WorkspaceDescriptor`
+are untouched. This is the SINGLE owner-approved framework reshape serving
+CR-CH-058 and CR-CH-059 RC.B.8 Part 2 together.

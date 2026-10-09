@@ -608,3 +608,12 @@ This specification defines the **IDCAMS Emulator** (`ff-idcams`) -- the command 
 
 28.7 THE existing IDCAMS command syntax, output formatting, return-code semantics (LASTCC/MAXCC), and condition codes SHALL be unchanged by the repoint -- only the downstream trait dependency and the dataset-operation routing change.
 
+> **Cross-reference (CR-CH-060, no new criterion here):** `ff-idcams` is also the
+> HOME of the mainframe Command Environment (command-environments Req 16.1 /
+> 16.4). Under CR-CH-060 that CE implements the record-aware
+> `ff-vfs::BackendEnvironment` store contract (command-environments Req 18) over
+> the SAME `DatasetAccess` these criteria already route through (open -> put ->
+> close). This adds no new IDCAMS command and no new criterion here; it REUSES the
+> `DatasetAccess` path Req 28 establishes, for the editor's record-aware MAINFRAME
+> SAVE (CR-CH-059 RC.B.8 Part 2). Authoritative home: command-environments Req 18.
+

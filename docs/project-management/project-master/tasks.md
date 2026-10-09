@@ -3459,6 +3459,44 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 - [ ] RC.C.10 Volume UI after ff-volume + multivolume/extents/master-catalog -- Volume management WorkspaceContext + picker (virtual-catalog-manager Req 17-18, already gated under CR-CH-057 VM.6); multivolume/extents/master-catalog + alias routing remain owner-blocked (volume-model-recommendation open decisions). Deferred.
 - [ ] RC.C.11 DO NOT build before consolidation (standing guard) -- do not wire VSAM against `ff-vsam-services`'s dead trait or `ff-dscatalog::storage::StorageProvider`; do not build JES/Volume UI against `storage_path` or `physical_path`; do not add a MAINFRAME CE that calls the catalog's SQLite path directly; do not extend `ff-idcams`'s private traits. Recorded in dataset-catalog design.md + Req 35.5.
 
+## Phase (backendenv-record-contract) -- CR-CH-060: record-aware ff-vfs::BackendEnvironment store contract
+
+> Owner-directed FRAMEWORK CHANGE to the load-bearing core type
+> `ff-vfs::BackendEnvironment`, authored ONCE to serve BOTH CR-CH-058 (the editor
+> SAVE walk) and CR-CH-059 RC.B.8 Part 2 (the record-aware MAINFRAME editor SAVE).
+> KEEP the existing byte `save(path, bytes)` for the light host-FS CEs (native
+> SAVE stays byte-identical -- command-environments Req 16.5, document-model Req
+> 12.12); ADD a record-aware store entry carrying a Store_Target (DSN / catalog
+> identity / owning-env, NOT a host path), an object-safe record stream, and
+> record attributes (RECFM/LRECL/encoding). The mainframe CE (housed in `ff-idcams`,
+> Req 16.1/16.4) implements it over `ff_dscatalog::DatasetAccess` (open -> put ->
+> close so the RECFM codec frames bytes), resolving location via `ff-volume` and
+> I/O over the single `ff-vfs::StorageProvider` seam. The editor SAVE walk selects
+> byte-vs-record by the owning CE's advertised RecordFormat (supplied at OPEN,
+> document-model Req 11.2); no re-derivation. Single CR-CH-053 Task 20/21
+> SAVE-addressing seam preserved; no parallel save path, no second dispatcher.
+> Object-safe (`dyn BackendEnvironment`). Two shapes (Shape 1 = change the save
+> signature; Shape 2 = add a record-aware method alongside the byte save, with a
+> provided default) are presented; the gate RECOMMENDS Shape 2 and the owner picks
+> at approval. DAG unchanged: `ff-idcams -> ff-dscatalog -> ff-volume -> ff-vfs`.
+> Spec: command-environments Req 18 (18.1-18.8); document-model Req 13 (13.1-13.6);
+> cross-ref virtual-file-system Req 13, dataset-catalog Req 34.6, idcams-emulator
+> Req 28. Overlap analysis `.agents/tasks/crch058-rcb8-overlap/report.md` (E/F);
+> RC.B.8 Part 2 finding `.agents/tasks/rcb8-dataset-rationalisation/part2-mainframe-save-stop.md`.
+> Mainline/unprefixed. Pending explicit owner approval of the contract SHAPE
+> before any code.
+
+- [ ] BRC.1 Requirements gate -- requirements.md (command-environments Req 18, document-model Req 13), design deltas in both design.md files (both shapes + Shape 2 recommended + dataflow + object-safety + native byte-identical + registry-opening note + designed-once statement), tasks (command-environments tasks 23-25, document-model consumption noted), TCR NOT COVERED rows (Req 18.1-18.8, Req 13.1-13.6), change-log CR-CH-060, framework-conformance.md steering note. (Authored docs-only; awaiting explicit owner approval of the contract SHAPE before any code.)
+- [ ] BRC.2 The contract reshape in ff-vfs -- add the additive record-aware store entry alongside the retained byte `save`, with a provided default + `record_capable()` advertisement; keep `dyn BackendEnvironment` object-safe; host CEs (`ff-ce-host-fs`/`ff-ce-ntfs`/`ff-ce-posix`) inherit the default unchanged and stay byte-identical. command-environments tasks 23.1-23.2. Validates: command-environments Req 18.1-18.4.
+- [ ] BRC.3 Editor SAVE-walk store-call selection -- the FFEDIT SAVE path picks the byte entry for Delimited/host and the record entry for Fixed/Variable by the owning CE's advertised RecordFormat (supplied at open), riding the single Task 20/21 seam. command-environments task 24.1; document-model Req 13. Validates: command-environments Req 18.5-18.6; document-model Req 13.1-13.6. (Consumes the CR-CH-058 F-phase SAVE walk.)
+- [ ] BRC.4 Mainframe CE record-aware store (DOWNSTREAM; needs RC.B.8 Part 2 (b)-(d)) -- the mainframe CE in `ff-idcams` implements the record entry over `DatasetAccess` (open -> put -> close), resolving via `ff-volume` + I/O over `ff-vfs::StorageProvider`, surfacing the store RC (incl. x37); prerequisites (open the closed `RegisteredEnv` enum, bind mainframe `owning_env`, register the mainframe VFS provider live Req 17.4) are RC.B.8 Part 2 (b)-(d), NOT this task's contract. command-environments task 25.1. Validates: command-environments Req 18.7-18.8.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (backendenv-record-contract) | CR-CH-060 APPROVED-as-the-plan / PENDING IMPLEMENTATION: owner-directed FRAMEWORK CHANGE reshaping the `ff-vfs::BackendEnvironment` store contract to be record-aware, designed ONCE to serve CR-CH-058 (editor SAVE walk) + CR-CH-059 RC.B.8 Part 2 (mainframe editor SAVE). KEEP the byte `save(path, bytes)` (native byte-identical); ADD a record-aware store entry (Store_Target + object-safe record stream + RECFM/LRECL/encoding attrs) implemented by the mainframe CE in `ff-idcams` over `ff_dscatalog::DatasetAccess`; the editor SAVE walk picks byte-vs-record by the owning CE's advertised RecordFormat (supplied at open); single CR-CH-053 Task 20/21 SAVE-addressing seam preserved; object-safe (`dyn BackendEnvironment`). OWNER DECISION: SHAPE 2 (additive record-aware method alongside the byte `save`, declining provided default) APPROVED; Shape 1 rejected (documented alternative). command-environments Req 18 (18.1-18.8); document-model Req 13 (13.1-13.6). BRC.1-BRC.4 (BRC.1 docs authored + approved; BRC.2-BRC.4 pending a separate explicit TASK instruction). SEQUENCING: CR-CH-058 F1 lands on main first, then BRC.2 (ff-vfs additive entry), BRC.4 gated on RC.B.8 Part 2 (b)-(d). Mainline/unprefixed. Code NOT authorised yet. |
+
+## Phase (dataset-stack-rationalisation) -- CR-CH-059 Summary (unchanged)
+
 | Status | Count |
 |--------|-------|
 | `[ ]` Phase (dataset-stack-rationalisation) | CR-CH-059 GATE APPROVED (plan final). RC.A DONE -- owner-confirmed: full `cargo gate --build` CLEAN on 2026-10-08 22:41 (fmt/clippy/build/test/app-build all ok; 9648 tests pass, 0 fail; empty gate.review.log). RC.A.1-RC.A.4 complete and gated. RC.B/RC.C NOT yet authorised -- RC.B begins on a separate explicit TASK instruction, sequenced at PLUGIN phase 2 after CORE sign-off; vsam-wiring `V` stream REDIRECTED, its current output accepted as throwaway, VSAM wired under DatasetAccess at RC.B.7. Delivered in RC.A: ff-dscatalog the single catalog authority (ADR-001 corrected); ONE ff-vfs::StorageProvider physical seam (duplicate deleted); ONE Dsorg/Recfm (VSAM a cluster entity); reconciled CatalogService/VsamService in ff-dscatalog; NEW DatasetAccess JES/JCL contract (allocate/open/get/put/point/close/dispose via ff-volume + the record codecs); ff-dsalloc returns a DatasetHandle; ff-idcams repointed; VSAM wired under DatasetAccess then ff-vsam-services retired; ff-dataset-catalog retired; duplicate posix registrant collapsed; jes crate names fixed. dataset-ownership-model Req 22; virtual-file-system Req 13-14; dataset-catalog Req 33-35; dataset-allocator Req 19; idcams-emulator Req 28; jes-emulator Req 19; volume-model Req 12. RC.A.1-RC.A.4 / RC.B.5-RC.B.8 / RC.C.9-RC.C.11. Owner-directed FRAMEWORK change (additive-first; builds ON the framework). vsam-wiring (`V`) worktree conflict flagged for owner decision. Mainline/unprefixed. Pending owner approval before any code. RC.B.5 (ff-volume crate + ff-dscatalog schema v4 dual-read) is now CODE-COMPLETE pending the owner's full `cargo gate --build` -- scoped checks clean: `ff-volume` 45 tests, `ff-dscatalog` 268 lib + 6 schema_v4 integration tests, clippy + fmt clean. RC.B.6/RC.B.7/RC.B.8 code-complete pending the owner's full `cargo gate --build` (RC.B.8 Part 2 MAINFRAME SAVE deferred, owner-accepted); RC.C.9-RC.C.11 not yet started. |

@@ -899,6 +899,14 @@ continue to pass after this change with no observable behaviour difference for l
 
 34.6 `DatasetAccess` SHALL be the ONE contract through which record-level dataset I/O flows for the JCL executor, the editor's future MAINFRAME BackendEnvironment SAVE path, and IDCAMS DEFINE/REPRO/DELETE -- these consumers SHALL call `DatasetAccess`, NOT the catalog's concrete SQLite type and NOT a per-consumer copy of a service trait.
 
+> **Cross-reference (CR-CH-060, no new criterion here):** the "editor's future
+> MAINFRAME BackendEnvironment SAVE path" named above is the record-aware
+> `ff-vfs::BackendEnvironment` store contract designed under CR-CH-060
+> (command-environments Req 18). The mainframe CE (housed in `ff-idcams`)
+> implements that contract over THIS `DatasetAccess` (open -> put each record ->
+> close so the RECFM codec frames bytes). No change to Req 34 is required -- it
+> already names this consumer and already provides put/open/close.
+
 34.7 `DatasetError` SHALL map onto the catalog error taxonomy and, where it crosses the physical seam, onto `VfsError` (virtual-file-system Requirement 9.4) -- no provider-specific or SQLite-specific error type SHALL leak through `DatasetAccess`.
 
 34.8 THE `DatasetAccess` trait SHALL be object-safe (or provide an object-safe companion) so that the JCL executor and tests can hold `dyn DatasetAccess` and substitute a mock.

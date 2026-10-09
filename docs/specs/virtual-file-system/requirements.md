@@ -311,6 +311,15 @@ The VFS defines **async method signatures** for all I/O operations (Tokio-based)
 
 13.5 THE mainframe backends SHALL register through the registry's physical-storage path (`register_storage(scheme, ...)` / `get_storage`), the same path `PosixNativeProvider` already uses -- there SHALL be no second storage-registration mechanism.
 
+> **Cross-reference (CR-CH-060, no new criterion here):** the record-aware
+> `BackendEnvironment` store contract (command-environments Req 18) lives in
+> `ff-vfs` alongside the existing `BackendEnvironment::save(path, bytes)`. It is
+> ADDITIVE (byte `save` retained -> native byte-identical) and object-safe
+> (`dyn BackendEnvironment` preserved). The mainframe CE implements it over
+> `ff_dscatalog::DatasetAccess` resolving location via `ff-volume` and I/O over
+> THIS single `ff-vfs::StorageProvider` seam -- no second physical seam and no
+> change to Req 13. Authoritative home: command-environments Req 18.
+
 ---
 
 ### Requirement 14: Single posix Provider Registrant

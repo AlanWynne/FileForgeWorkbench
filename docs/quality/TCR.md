@@ -3937,3 +3937,30 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-find-and-replace` | 🔴 | -- | Req 21.5: single -Y with consequence in prompt (not dual --force --confirm) |
 | `ff-find-and-replace` | 🔴 | -- | Req 21.6: native (Delimited) CHANGE byte-identical; match positions as document record/line numbers |
 | `ff-find-and-replace` | 🔴 | -- | Req 21.7: windowed indexer slots into existing engine; no dispatch/nav/focus/persistence change |
+
+### Phase (backendenv-record-contract) -- CR-CH-060 Record-aware ff-vfs::BackendEnvironment store contract
+
+> Owner-directed FRAMEWORK CHANGE authored ONCE for CR-CH-058 (editor SAVE walk) +
+> CR-CH-059 RC.B.8 Part 2 (mainframe editor SAVE). Keep the byte `save`
+> (native byte-identical); add a record-aware store entry (Store_Target + object-safe
+> record stream + RECFM/LRECL/encoding) implemented by the mainframe CE over
+> `ff_dscatalog::DatasetAccess`. OWNER DECISION: SHAPE 2 (additive method)
+> APPROVED. NOT COVERED until implementation; code begins only on a separate
+> explicit TASK instruction (sequenced after CR-CH-058 F1 lands on main).
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-vfs` | 🔴 | -- | command-environments Req 18.1: byte `save(path, bytes)` RETAINED unchanged for host CEs; native SAVE byte-identical |
+| `ff-vfs` | 🔴 | -- | command-environments Req 18.2: ADD a record-aware store entry carrying Store_Target (DSN/catalog/owning-env, not a host path) + object-safe record stream + RECFM/LRECL/encoding attrs; additive |
+| `ff-vfs` | 🔴 | -- | command-environments Req 18.3: record-aware entry has a provided default (declines/not-record-capable); host CEs compile unchanged; CE advertises record-capability |
+| `ff-vfs` | 🔴 | -- | command-environments Req 18.4: BackendEnvironment stays object-safe (`dyn`); record-aware entry takes `&self` + non-generic non-Self params (object-safe `&dyn` record stream) |
+| `ff-document-model` | 🔴 | -- | command-environments Req 18.5: SAVE calls byte entry for Delimited/host, record entry for Fixed/Variable, selected by the owning CE's advertised RecordFormat (supplied at open); no re-derivation |
+| `ff-document-model` | 🔴 | -- | command-environments Req 18.6: record-aware store rides the single CR-CH-053 Task 20/21 SAVE-addressing seam; no parallel save path, no second dispatcher |
+| `ff-idcams` | 🔴 | -- | command-environments Req 18.7: mainframe CE implements the record-aware entry over `ff_dscatalog::DatasetAccess` (open->put->close), resolving via ff-volume + I/O over ff-vfs::StorageProvider; DAG acyclic (ff-idcams->ff-dscatalog->ff-volume->ff-vfs) |
+| `ff-idcams` | 🔴 | -- | command-environments Req 18.8: record-aware store outcome carries an RC (mirrors BackendOutcome) mapped to status/macro RC, incl. x37 space-full abends from DatasetAccess |
+| `ff-document-model` | 🔴 | -- | document-model Req 13.1: SAVE walk re-frames the Piece_List per the owning CE RecordFormat and delivers via the CR-CH-060 store contract, not a flat byte buffer for every document |
+| `ff-document-model` | 🔴 | -- | document-model Req 13.2: Delimited/host -> byte entry; emitted bytes byte-identical to pre-CR-CH-058 (Req 12.12) |
+| `ff-document-model` | 🔴 | -- | document-model Req 13.3: Fixed/Variable -> record entry with re-framed records + dataset identity + RECFM/LRECL/encoding |
+| `ff-document-model` | 🔴 | -- | document-model Req 13.4: byte-vs-record selection uses the RecordFormat the CE supplied at open; no independent re-derivation |
+| `ff-document-model` | 🔴 | -- | document-model Req 13.5: rides the single Task 20/21 SAVE-addressing seam; no parallel path/dispatcher; no dispatch/nav/focus/persistence change |
+| `ff-document-model` | 🔴 | -- | document-model Req 13.6: record attributes are GUI-independent plain data; owning CE stores over DatasetAccess with no dependency back into editor/shell |

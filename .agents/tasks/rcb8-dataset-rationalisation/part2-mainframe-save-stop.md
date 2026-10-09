@@ -1,13 +1,44 @@
-# RC.B.8 Part 2 -- Record-aware MAINFRAME editor SAVE: STOP-AND-REPORT
+# RC.B.8 Part 2 -- Record-aware MAINFRAME editor SAVE: RESOLVED / ABSORBED
+
+**STATUS UPDATE (2026-10-09):** This is no longer a loose "deferred, undecided"
+finding. The owner directed that RC.B.8 Part 2 be CONTINUED as a joint work stream
+across three CRs, and the framework decision it was blocked on is now MADE:
+
+- **Prerequisite (a)** -- the record-aware `ff-vfs::BackendEnvironment` store
+  contract (the framework change) -- is now **CR-CH-060**, owner-APPROVED with
+  **Shape 2** (additive record-aware store entry alongside the retained byte
+  `save`; native byte-identical by construction; object-safe; host CEs inherit a
+  declining default). APPROVED-as-the-plan / PENDING IMPLEMENTATION.
+- **The editor SAVE walk** that produces re-framed records is **CR-CH-058**
+  (document-model Req 13; its F-phase SAVE walk) -- F1 record model built, pending
+  merge from `.worktrees/wrf-foundation`.
+- **Prerequisites (b)-(e)** -- open the named-backend registry, bind
+  `owning_env="MAINFRAME"`, register the mainframe VFS provider live, and the
+  mainframe CE over `DatasetAccess` -- are **CR-CH-059** RC.B stream work
+  (idcams-emulator Req 28 composing; master phase BRC.3/BRC.4).
+
+So the five prerequisites below are no longer "a future undecided slice" -- they
+are the specified, approved, sequenced tasks of CR-CH-060 + CR-CH-058 + CR-CH-059.
+The sequenced build plan lives in `docs/status/RESUME-dataset-rationalisation.md`
+("SEQUENCED PLAN -- record-aware MAINFRAME SAVE"). The ONLY remaining gate to code
+is the build-order dependency: CR-CH-058 F1 must land on `main` first (the editor
+needs records to pack). No requirement is unclear.
+
+The original STOP-AND-REPORT finding is retained below as the evidence record.
+
+---
+
+## Original finding (retained as the evidence record)
 
 **Feature:** FEAT-002 (CR-CH-059, RC.B.8).
 **Type:** docs-only finding. NO `.rs` behaviour change. Native/host SAVE stays
 byte-identical.
-**Determination:** The record-aware MAINFRAME editor SAVE is NOT achievable by
-wiring a `BackendEnvironment` sibling at the existing seam. It requires a
-FRAMEWORK CHANGE this CR does not fund, plus a larger
-editor/registry/provider build. Part 2 therefore RECORDS the finding and the
-exact prerequisites, DEFERS the build, and leaves native SAVE untouched.
+**Determination (at the time):** The record-aware MAINFRAME editor SAVE is NOT
+achievable by wiring a `BackendEnvironment` sibling at the existing seam. It
+requires a FRAMEWORK CHANGE this CR does not fund, plus a larger
+editor/registry/provider build. Part 2 therefore RECORDED the finding and the
+exact prerequisites, DEFERRED the build, and left native SAVE untouched. (That
+framework change is now CR-CH-060, approved -- see the status update above.)
 
 This note was authored from the live code (re-confirmed by reading the files
 below), not in the abstract.

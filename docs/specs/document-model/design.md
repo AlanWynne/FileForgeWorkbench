@@ -1444,3 +1444,52 @@ than replaced.
 - F4: windowed FIND/CHANGE via the existing `CharacterIndexer` trait.
 - F5: scalability guard (`max_resident_records` + reserved sparse/mmap
   above-budget mode).
+
+## Design Delta: SAVE-walk store-call selection (CR-CH-060)
+
+This section records how the SAVE walk (above, "SAVE = re-baseline") selects and
+calls the owning Command Environment's store contract. It is grounded in the
+owner-directed CR-CH-060 framework change (the record-aware
+`ff-vfs::BackendEnvironment` store contract, authoritatively designed in
+`command-environments/design.md` and `requirements.md` Req 18); this delta is the
+editor SIDE (document-model Req 13) and MUST NOT contradict it.
+
+### The selection
+
+The SAVE walk already re-frames the Piece_List per the owning CE's `RecordFormat`
+(section "SAVE = re-baseline"). CR-CH-060 makes the STORE CALL that result rides:
+
+- **Delimited (native/host):** emit bytes exactly as today and call the owning
+  CE's unchanged byte entry `BackendEnvironment::save(path, bytes)`. The bytes are
+  byte-identical to the pre-CR-CH-058 behaviour (Req 12.12 / Req 13.2) because
+  that store entry is literally unchanged by CR-CH-060.
+- **Fixed / Variable (mainframe):** hand the owning CE the re-framed RECORDS plus
+  the dataset identity (Store_Target) and record attributes (RECFM/LRECL/encoding)
+  through the record-aware store entry (Req 13.3). The attributes are the SAME the
+  CE used to build the RecordFormat at open (Req 11.2 / Req 13.4) -- the save does
+  NOT re-derive framing.
+
+The byte-vs-record branch is driven ENTIRELY by the owning CE's advertised
+RecordFormat; the walk never second-guesses it. This keeps the single source of
+truth (the CE supplies the format at open) and avoids a separate mainframe packer
+duplicating the piece-list re-framing.
+
+### Why this is additive and framework-faithful
+
+Both store entries ride the ONE existing SAVE-addressing seam (CR-CH-053 Task
+20/21: FFEDIT addresses SAVE to the owning CE via `dispatch_to_environment`); the
+walk adds no parallel save path and no second dispatcher, and touches none of the
+shell dispatch / navigation / focus / persistence seams (Req 13.5). The record
+attributes handed over are plain GUI-independent data (Req 13.6), so the owning CE
+(the mainframe CE in `ff-idcams`) stores over `ff_dscatalog::DatasetAccess` with
+no dependency back into the editor or shell -- the DAG stays `ff-idcams ->
+ff-dscatalog -> ff-volume -> ff-vfs`.
+
+### Phasing fit
+
+The store-call selection is wired in the CR-CH-058 F-series SAVE-walk work (F1
+onwards, where native byte-identical SAVE is proven; the Fixed/Variable branch
+exercises the record-aware entry once the mainframe CE exists under CR-CH-060
+Task 25 / RC.B.8). The Delimited branch is testable immediately against the
+unchanged byte `save` (the Req 12.12 safety fixtures); the Fixed/Variable branch
+is testable once a record-capable owning CE is available.
