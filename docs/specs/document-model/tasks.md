@@ -203,10 +203,12 @@ This is a **Wave 4 (Core Editor)** sub-project that depends on Wave 3 (`ff-vfs`)
     - DONE (F1): `save_image()` + `rebaseline()` on TextBuffer/Document; the atomic write stays on the CR-CH-053 Task 20/21 seam (shell/CE); byte-identical round-trip proven.
   - [x] 20.4 (F1) Write failing tests first: splice correctness vs a naive String model; running-count invariant; byte-identical native round-trip on Delimited fixtures
     - // Validates: Requirement 12.1, 12.2, 12.12
-  - [ ] 20.5 (F2) Implement the Window_Band (3 pages), load/evict at band edges with hysteresis + overscan, pin dirty pieces, and `down N`/`up N` index-resolved window jump with no intermediate reads
+  - [x] 20.5 (F2) Implement the Window_Band (3 pages), load/evict at band edges with hysteresis + overscan, pin dirty pieces, and `down N`/`up N` index-resolved window jump with no intermediate reads
     - // Validates: Requirement 12.4, 12.7, 12.8
+    - DONE (F2 document-model slice): `window_band.rs` -- `WindowBand` primitive with 3-page `compute_band`, `scroll_to_record` hysteresis (no shift when the target page is already resident), `jump_to_record` single-shift index-resolved jump (no intermediate reads), and `evictable` with dirty-record pinning. 15 unit tests in `window_band_tests.rs`. Overscan tuning beyond the 3-page band is an F5 budget concern (see 20.7). The actual byte read/evict and egui wiring are the F2 SHELL slice (deferred until F1 merges to main and the other chat's render work settles).
   - [ ] 20.6 (F2) Expose `Total_Records` from the index as the scrollbar/navigation authority, strictly distinct from resident window size; zoom renders only, never loads
     - // Validates: Requirement 12.5, 12.6
+    - PARTIAL (F2 document-model slice): `Total_Records` as the authority, strictly distinct from the resident window size, is DONE -- `WindowBand::total_records()` vs `resident_len()` are separate values, never fused (Req 12.5, the scrollbar-collapse bug fix); 4 tests in `window_band_tests.rs`. The "zoom renders only, never loads" half (Req 12.6) is the F2 SHELL slice (egui scrollbar + zoom wiring over the resident records) and is still `[ ]` -- deferred until F1 merges to main and the shell render work settles.
   - [ ] 20.7 (F2/F5) Linear piece search for "record N -> piece"; add configurable budgets (window records, overscan, checkpoint interval, `max_resident_records` default ~150M, spill threshold) matching the config pattern
     - // Validates: Requirement 12.3, 12.9, 12.10
     - PARTIAL (F1): linear piece search landed (`piece_at_record`); u64 record numbers landed. Configurable budgets + spill remain F2/F5.

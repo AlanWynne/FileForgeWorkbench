@@ -42,6 +42,7 @@ pub mod streaming;
 pub mod text_buffer;
 pub mod text_buffer_records;
 pub mod types;
+pub mod window_band;
 
 #[cfg(test)]
 mod piece_table_proptests;
@@ -66,3 +67,4 @@ pub use types::{
 };
 pub use viewport::Viewport;
 pub use watcher::{DocumentWatcher, WatcherHandle};
+pub use window_band::{RecordRange, WindowBand};
