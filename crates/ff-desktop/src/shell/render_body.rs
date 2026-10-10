@@ -272,3 +272,37 @@ pub(super) fn open_mainframe_dsn(
     }
     Ok(path.to_string_lossy().into_owned())
 }
+
+/// Look up a Mainframe dataset's record format (RC.B.8 (c)) in `catalog_name`
+/// and map it to the `file.open` `recfm` + `lrecl` params (so the opened
+/// Document's RecordFormat can be set and the BRC.3 record-save selection
+/// fires). Returns `None` when the dataset has no RECFM/LRECL catalogued or the
+/// catalog cannot be read -- the open then falls back to the host/Delimited
+/// default (a conservative, byte-identical save).
+///
+/// The `recfm` string is the ff-vfs record-format kind name
+/// (`Fixed`/`Variable`/`Undefined`) that `FileOpenHandler` understands: catalog
+/// `F`/`FB` -> `Fixed`, `V`/`VB` -> `Variable`, `U` -> `Undefined`.
+///
+/// Validates: command-environments Requirement 18.2; document-model Req 11.2
+pub(super) fn mainframe_dataset_recfm(
+    registry: &crate::catalog_registry::CatalogRegistry,
+    catalog_name: &str,
+    dsn: &str,
+) -> Option<(String, i64)> {
+    use ff_dscatalog::dataset::Recfm;
+    let records = registry.list_datasets(catalog_name).ok()?;
+    let want = dsn.trim().to_uppercase();
+    let record = records.into_iter().find(|r| r.dsn.as_str() == want)?;
+    let recfm = record.recfm?;
+    let lrecl = record.lrecl? as i64;
+    let kind = match recfm {
+        Recfm::F | Recfm::FB => "Fixed",
+        Recfm::V | Recfm::VB => "Variable",
+        Recfm::U => "Undefined",
+        // `Recfm` is #[non_exhaustive]; any future variant falls back to the
+        // host/Delimited default (no record params emitted) by returning None.
+        _ => return None,
+    };
+    Some((kind.to_string(), lrecl))
+}

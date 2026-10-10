@@ -1281,11 +1281,12 @@ impl TabManager {
     /// non-record-capable backend -> the retained BYTE entry `save` (Req 13.2),
     /// byte-identical to the pre-CR-CH-058 native save (document-model Req 12.12).
     ///
-    /// PLACEHOLDER identity (RC.B.8 (c) is OUT OF SCOPE here): the record path's
-    /// [`ff_vfs::StoreTarget`] is built from today's tab plumbing -- `dsn` from the
-    /// tab path and `owning_env` from `TabState.owning_environment` (today always
-    /// "HOSTFS"). Real DSN/catalog identity arrives when RC.B.8 (c) binds
-    /// `owning_env = MAINFRAME` and registers the mainframe provider.
+    /// Store identity (RC.B.8 (c)): the record path's [`ff_vfs::StoreTarget`] is
+    /// built from the tab's `store_identity` when present (a MAINFRAME tab: the
+    /// real DSN + catalog bound at open, with `catalog_id = Some(catalog)`), else
+    /// the host-path placeholder (`dsn` from the tab path, `catalog_id = None`)
+    /// for a host tab. `owning_env` comes from `TabState.owning_environment`
+    /// either way.
     ///
     /// NotRecordCapable fallback: the selection already gates on
     /// `record_capable()`, so `RecordStoreOutcome::NotRecordCapable` means a
@@ -1305,6 +1306,9 @@ impl TabManager {
             .ok_or_else(|| "Cannot save: no file path (untitled document)".to_string())?;
         let path = std::path::PathBuf::from(path);
         let owning_env = tab.owning_environment.clone();
+        // RC.B.8 (c): the real dataset identity bound at open for a MAINFRAME
+        // tab; `None` for a host-path tab (which keeps the host-path placeholder).
+        let store_identity = tab.store_identity.clone();
 
         // Read the OPEN-supplied record format (Req 13.4): the owning CE set it at
         // open; the save does NOT re-derive framing.
@@ -1323,12 +1327,21 @@ impl TabManager {
                 let doc = tab.document.read().await;
                 RecordImageSource::from_document(&doc)
             });
-            // StoreTarget: PLACEHOLDER identity from today's tab plumbing (see the
-            // method doc; RC.B.8 (c) supplies real DSN/catalog later).
-            let target = ff_vfs::StoreTarget {
-                dsn: path.to_string_lossy().into_owned(),
-                owning_env,
-                catalog_id: None,
+            // StoreTarget: RC.B.8 (c) -- build from the tab's real dataset
+            // identity when present (a MAINFRAME tab: real DSN + catalog), else
+            // the host-path placeholder (a host tab, unchanged). `owning_env` is
+            // the tab's Owning_Environment either way.
+            let target = match &store_identity {
+                Some(id) => ff_vfs::StoreTarget {
+                    dsn: id.dsn.clone(),
+                    owning_env,
+                    catalog_id: Some(id.catalog.clone()),
+                },
+                None => ff_vfs::StoreTarget {
+                    dsn: path.to_string_lossy().into_owned(),
+                    owning_env,
+                    catalog_id: None,
+                },
             };
             // RecordAttrs: GUI-independent plain data (Req 13.6) -- no shell /
             // document-model type crosses the contract.
@@ -1907,6 +1920,99 @@ mod tests {
             .expect("save");
         let written = std::fs::read(&path).expect("read back");
         assert_eq!(written, b"AAAABBBB", "byte path writes the raw image");
+    }
+
+    #[test]
+    fn save_routes_mainframe_tab_to_record_capable_backend() {
+        // Validates: command-environments Requirement 18.2; document-model Req 13.4
+        // A MAINFRAME-owned tab with a Fixed RecordFormat and a store_identity,
+        // saved through the record-capable backend, drives save_records (NOT the
+        // byte save) and builds a StoreTarget whose dsn is the REAL DSN (from
+        // store_identity, not the host path), owning_env is "MAINFRAME", and
+        // catalog_id is Some(catalog).
+        use tempfile::NamedTempFile;
+        let runtime = Runtime::new().expect("runtime");
+        let tmp = NamedTempFile::new().expect("tempfile");
+        let path = tmp.path().to_string_lossy().into_owned();
+
+        let mut tab = file_tab_with_format(
+            &runtime,
+            &path,
+            b"AAAABBBB",
+            ff_document_model::RecordFormat::Fixed { lrecl: 4 },
+        );
+        tab.owning_environment = "MAINFRAME".to_string();
+        tab.store_identity = Some(crate::tab_state::StoreIdentity {
+            dsn: "USER.PAYROLL.DATA".to_string(),
+            catalog: "PAYROLL".to_string(),
+        });
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.tabs[0] = tab;
+        let backend = CapturingRecordBackend::with_rc(0);
+        mgr.save_active_tab_via_backend(&backend, &runtime)
+            .expect("save");
+
+        assert!(
+            !*backend.byte_save_called.lock().expect("byte flag"),
+            "a MAINFRAME record tab must NOT take the byte path"
+        );
+        let target = backend
+            .last_target
+            .lock()
+            .expect("target")
+            .clone()
+            .expect("save_records must have been called with a StoreTarget");
+        assert_eq!(
+            target.dsn, "USER.PAYROLL.DATA",
+            "the StoreTarget dsn must be the real DSN from store_identity, not the host path"
+        );
+        assert_eq!(target.owning_env, "MAINFRAME");
+        assert_eq!(target.catalog_id.as_deref(), Some("PAYROLL"));
+    }
+
+    #[test]
+    fn save_hostfs_tab_is_byte_identical() {
+        // Validates: document-model Requirement 12.12 -- a HOSTFS tab (Delimited,
+        // no store_identity) still takes the BYTE path and writes byte-identical
+        // content; the host-path placeholder StoreTarget is irrelevant because the
+        // byte path is taken (native SAVE unchanged by RC.B.8).
+        use tempfile::NamedTempFile;
+        let runtime = Runtime::new().expect("runtime");
+        let tmp = NamedTempFile::new().expect("tempfile");
+        let path = tmp.path().to_string_lossy().into_owned();
+
+        let tab = file_tab_with_format(
+            &runtime,
+            &path,
+            b"line one\nline two\n",
+            ff_document_model::RecordFormat::Delimited {
+                terminator: ff_document_model::DelimiterTerminator::Lf,
+            },
+        );
+        // Host tab: default owning_environment (HOSTFS) and no store_identity.
+        assert_eq!(tab.owning_environment, "HOSTFS");
+        assert!(tab.store_identity.is_none());
+        let expected = runtime.block_on(async { tab.document.read().await.save_image() });
+
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.tabs[0] = tab;
+        let backend = CapturingRecordBackend::with_rc(0);
+        mgr.save_active_tab_via_backend(&backend, &runtime)
+            .expect("save");
+
+        assert!(
+            *backend.byte_save_called.lock().expect("byte flag"),
+            "a HOSTFS Delimited tab must take the byte save path"
+        );
+        assert!(
+            backend.records.lock().expect("records").is_empty(),
+            "a HOSTFS Delimited tab must NOT call save_records"
+        );
+        let written = std::fs::read(&path).expect("read back");
+        assert_eq!(
+            written, expected,
+            "the byte path must be byte-identical to the save image"
+        );
     }
 
     /// Validates: file-operations Requirement 1.4 — save on untitled tab returns error.

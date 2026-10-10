@@ -101,8 +101,26 @@ impl WorkbenchShell {
                     match open_mainframe_dsn(&self.files_panel.registry, &catalog_name, &dsn) {
                         Err(e) => self.open_error = Some(e),
                         Ok(path_str) => {
+                            // RC.B.8 (c): bind owning_env=MAINFRAME + the real DSN
+                            // + catalog + the dataset RECFM/LRECL so the opened tab
+                            // reaches the record-capable backend with the real
+                            // dataset identity (Req 18.2) and record framing
+                            // (document-model Req 11.2).
                             let mut p = ff_command::CommandParams::new();
                             p.insert("path", path_str.as_str());
+                            p.insert("owning_env", super::environment_registry::MAINFRAME_NAME);
+                            p.insert("dsn", dsn.as_str());
+                            p.insert("catalog", catalog_name.as_str());
+                            if let Some((recfm, lrecl)) =
+                                super::render_body::mainframe_dataset_recfm(
+                                    &self.files_panel.registry,
+                                    &catalog_name,
+                                    &dsn,
+                                )
+                            {
+                                p.insert("recfm", recfm.as_str());
+                                p.insert("lrecl", lrecl);
+                            }
                             let _ = self.dispatch.execute_command("file.open", p);
                         }
                     }

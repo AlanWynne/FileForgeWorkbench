@@ -12,8 +12,9 @@ impl WorkbenchShell {
     /// for an edit operation (delete/rename/new/paste). Supports the Local Files
     /// subtree (`posix`/`local`, rooted at home) and POSIX/Native catalog
     /// subtrees (`catalog`, rooted at the catalog's backing path). Mainframe
-    /// dataset nodes (`dataset`) and read-only catalogs are rejected with a
-    /// message. (B042.)
+    /// dataset nodes (`dataset`) resolve through their catalog's backing path too
+    /// (RC.B.8 (c) lifted the former edit-gate); read-only catalogs are still
+    /// rejected with a message. (B042.)
     ///
     /// Validates: Requirement 24.6 (file-tree-panel Req 16.10-16.13)
     pub(super) fn nav_edit_provider(
@@ -36,12 +37,12 @@ impl WorkbenchShell {
                     .registry
                     .get_by_name(name)
                     .ok_or_else(|| format!("Catalog '{name}' not found"))?;
+                // RC.B.8 (c): Mainframe dataset editing is now wired (routes to
+                // the MAINFRAME backend via the record-store seam); the former
+                // "available in a later update" edit-gate is lifted. PO member
+                // browsing stays gated below (a separate slice).
                 match cat.catalog_type {
-                    CatalogType::Posix | CatalogType::Native => {}
-                    CatalogType::Mainframe => {
-                        return Err("Editing Mainframe datasets is available in a later update."
-                            .to_string());
-                    }
+                    CatalogType::Posix | CatalogType::Native | CatalogType::Mainframe => {}
                 }
                 if cat.read_only {
                     return Err(format!("Catalog '{name}' is read-only."));
@@ -49,7 +50,22 @@ impl WorkbenchShell {
                 (std::path::PathBuf::from(&cat.path), sub_path)
             }
             "dataset" => {
-                return Err("Editing Mainframe datasets is available in a later update.".to_string())
+                // RC.B.8 (c): dataset editing is wired; the edit-gate is lifted.
+                // A `dataset`-scheme node resolves through its catalog like the
+                // `catalog`-scheme Mainframe branch above. The owning open flow
+                // (render_body_arms / render_nav) binds the MAINFRAME backend; the
+                // editable surface here resolves the host-path provider for the
+                // read. Member browsing (PO) stays a separate slice.
+                let (name, sub_path) = split_catalog_uri_path(uri.path());
+                let cat = self
+                    .files_panel
+                    .registry
+                    .get_by_name(name)
+                    .ok_or_else(|| format!("Catalog '{name}' not found"))?;
+                if cat.read_only {
+                    return Err(format!("Catalog '{name}' is read-only."));
+                }
+                (std::path::PathBuf::from(&cat.path), sub_path)
             }
             other => return Err(format!("Editing is not supported for '{other}' resources.")),
         };

@@ -32,6 +32,10 @@ pub mod pretty_printer;
 /// SYSIN input processing and reading modes.
 pub mod sysin;
 
+/// The mainframe backend Command Environment (BRC.4) -- a record-capable
+/// `ff_vfs::BackendEnvironment` storing over a `ff_dscatalog::DatasetAccess`.
+pub mod mainframe_env;
+
 #[cfg(test)]
 mod services_tests;
 
@@ -39,6 +43,7 @@ mod services_tests;
 
 pub use error::IdcamsError;
 pub use executor::{CommandExecutor, ExecutionState, IdcamsResult};
+pub use mainframe_env::MainframeEnvironment;
 pub use messages::{ConditionCode, IdcamsMessage, MessageCode, Severity};
 pub use parser::ast::Command;
 pub use parser::IdcamsParser;

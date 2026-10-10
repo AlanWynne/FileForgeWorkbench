@@ -42,6 +42,12 @@ impl WorkbenchShell {
     ///
     /// Task 21 moves this body into the dedicated `ff-ce-*` host FS crate; the
     /// routing (FFEDIT -> owning env) is already in place here.
+    ///
+    /// RC.B.8 (b): the backend is now resolved by the active tab's
+    /// Owning_Environment via `EnvironmentRegistry::backend_for` (MAINFRAME tabs
+    /// reach the record-capable mainframe CE; HOSTFS/unknown fall back to the
+    /// host backend, byte-identical). This stays the SINGLE SAVE-addressing seam
+    /// -- only the backend SELECTION became owning-env-aware.
     pub(super) fn host_fs_save(&mut self) {
         if !self.tabs.active_tab().is_modified {
             // Clean: nothing changed since the last save -> no-op.
@@ -54,6 +60,11 @@ impl WorkbenchShell {
         // Borrow `environments`, `tabs`, `runtime` as disjoint fields so the
         // immutable backend ref and the mutable tab-manager call do not conflict;
         // the borrows end before `self.open_error` is written.
+        // RC.B.8 (b): resolve the backend by the ACTIVE TAB's Owning_Environment
+        // (Req 14.4) through the single `backend_for` seam -- MAINFRAME tabs reach
+        // the record-capable mainframe CE, HOSTFS/unknown fall back to the host
+        // backend (byte-identical native SAVE). This is still the SINGLE save
+        // seam; only the backend selection became owning-env-aware.
         let result = {
             let Self {
                 environments,
@@ -61,7 +72,8 @@ impl WorkbenchShell {
                 runtime,
                 ..
             } = self;
-            let backend = environments.host_fs_backend();
+            let owning = tabs.active_tab().owning_environment.clone();
+            let backend = environments.backend_for(&owning);
             tabs.save_active_tab_via_backend(backend, runtime)
         };
         self.open_error = result.err();

@@ -1918,13 +1918,14 @@ fn edit_path_sets_pending_open_via_file_open_command() {
 
     shell.run_command_line("EDIT /tmp/step3.txt");
 
-    assert_eq!(
-        shell.pending_open.lock().expect("pending_open").clone(),
-        // CR-CH-053 Task 19: pending_open now carries (path, owning_env); EDIT is
-        // a host-path open with no origin, so owning_env is None (host FS default).
-        Some(("/tmp/step3.txt".to_string(), None)),
-        "EDIT <path> opens the file via file.open with the path param (preserved)"
-    );
+    // RC.B.8 (c): pending_open now carries a PendingOpenReq. EDIT is a host-path
+    // open with no origin, so owning_env/identity/recfm_lrecl are all None.
+    let pending = shell.pending_open.lock().expect("pending_open").clone();
+    let pending = pending.expect("EDIT <path> must set a pending open");
+    assert_eq!(pending.path, "/tmp/step3.txt");
+    assert_eq!(pending.owning_env, None);
+    assert_eq!(pending.identity, None);
+    assert_eq!(pending.recfm_lrecl, None);
     assert!(
         shell.open_error.is_none(),
         "a successful EDIT clears any open_error"
@@ -2120,6 +2121,112 @@ fn host_bound_save_is_behaviour_preserving() {
     assert!(
         shell.open_error.is_none(),
         "SAVE on a clean host-bound buffer stays a no-op (behaviour-preserving)"
+    );
+}
+
+/// Validates: command-environments Requirement 18.2; document-model Req 11.2
+/// (RC.B.8 (c)) -- applying a pending open carrying a MAINFRAME identity +
+/// record format binds the real DSN/catalog onto the tab and sets the Document's
+/// RecordFormat, so a later SAVE addresses the dataset by DSN and takes the
+/// record path. End-to-end threading of the single file.open payload.
+#[test]
+fn mainframe_open_binds_store_identity_and_record_format() {
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("payroll.data");
+    std::fs::write(&file, "AAAABBBB").expect("write");
+
+    let mut shell = make_shell();
+    shell
+        .shell_open_file_with_env(file.to_str().expect("path"), Some("MAINFRAME"))
+        .expect("open");
+    // Apply the identity + record format the open payload carried (the step
+    // update.rs performs on the pending open).
+    shell.apply_pending_open_identity(
+        Some(("USER.PAYROLL.DATA".to_string(), "PAYROLL".to_string())),
+        Some((ff_vfs::RecordFormatKind::Fixed, 4)),
+    );
+
+    assert_eq!(shell.active_owning_environment(), "MAINFRAME");
+    let id = shell
+        .tabs
+        .active_tab()
+        .store_identity
+        .clone()
+        .expect("store_identity must be bound for a MAINFRAME open");
+    assert_eq!(id.dsn, "USER.PAYROLL.DATA");
+    assert_eq!(id.catalog, "PAYROLL");
+    let format = {
+        let doc = shell.tabs.active_tab().document.clone();
+        shell
+            .runtime
+            .block_on(async { doc.read().await.record_format() })
+    };
+    assert_eq!(format, ff_document_model::RecordFormat::Fixed { lrecl: 4 });
+}
+
+/// Validates: command-environments Requirement 14.4, 14.5, 16.4 (RC.B.8 (b)) --
+/// the single SAVE seam resolves the backend by the active tab's
+/// Owning_Environment: a MAINFRAME tab reaches the record-capable mainframe CE
+/// (which, with no dataset catalogued in the freshly-built access, surfaces a
+/// non-zero rc as an open_error -- proving the RECORD path was taken, not the
+/// byte path which would silently succeed), while a HOSTFS tab's SAVE takes the
+/// byte path and succeeds.
+#[test]
+fn save_seam_resolves_backend_by_owning_environment() {
+    use ff_document_model::{BytePosition, RecordFormat};
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("mf.data");
+    std::fs::write(&file, "AAAABBBB").expect("write");
+
+    let mut shell = make_shell();
+    shell
+        .shell_open_file_with_env(file.to_str().expect("path"), Some("MAINFRAME"))
+        .expect("open");
+    shell.apply_pending_open_identity(
+        Some(("USER.NO.SUCH.DATA".to_string(), "PAYROLL".to_string())),
+        Some((ff_vfs::RecordFormatKind::Fixed, 4)),
+    );
+    // Dirty the buffer so SAVE actually attempts a store.
+    {
+        let doc = shell.tabs.active_tab().document.clone();
+        shell.runtime.block_on(async {
+            let _ = doc.write().await.insert(BytePosition(0), b"X");
+        });
+        shell.tabs.active_tab_mut().is_modified = true;
+    }
+    shell.run_command_line("SAVE");
+    assert!(
+        shell.open_error.is_some(),
+        "a MAINFRAME SAVE took the record path and the mainframe CE reported a \
+         non-zero rc for an un-catalogued dataset (record path proven)"
+    );
+
+    // A HOSTFS tab's SAVE takes the byte path and succeeds (host backend).
+    let host_file = dir.path().join("host.txt");
+    std::fs::write(&host_file, "hello\n").expect("write host");
+    shell
+        .shell_open_file(host_file.to_str().expect("path"))
+        .expect("open host");
+    {
+        let doc = shell.tabs.active_tab().document.clone();
+        shell.runtime.block_on(async {
+            doc.write()
+                .await
+                .set_record_format(RecordFormat::Delimited {
+                    terminator: ff_document_model::DelimiterTerminator::Lf,
+                });
+            let _ = doc.write().await.insert(BytePosition(0), b"Z");
+        });
+        shell.tabs.active_tab_mut().is_modified = true;
+    }
+    shell.run_command_line("SAVE");
+    assert!(
+        shell.open_error.is_none(),
+        "a HOSTFS SAVE takes the byte path and succeeds (host backend)"
     );
 }
 

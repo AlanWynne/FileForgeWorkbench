@@ -219,6 +219,43 @@ impl WorkbenchShell {
         result
     }
 
+    /// Bind the real dataset identity + dataset record format onto the just-
+    /// opened (now active) tab (RC.B.8 (c)). `identity` is `(dsn, catalog)` from
+    /// the open payload; `recfm_lrecl` is `(RecordFormatKind, lrecl)`. Both are
+    /// `None` for a host-path open, which keeps `store_identity = None` and the
+    /// document's Delimited default, so native SAVE stays byte-identical.
+    ///
+    /// Binding the record format makes the editor SAVE walk take the record path
+    /// for a MAINFRAME tab (document-model Req 11.2); the `store_identity` makes
+    /// the record-store `StoreTarget` carry the real DSN (Req 18.2).
+    pub(crate) fn apply_pending_open_identity(
+        &mut self,
+        identity: Option<(String, String)>,
+        recfm_lrecl: Option<(ff_vfs::RecordFormatKind, u32)>,
+    ) {
+        if let Some((dsn, catalog)) = identity {
+            self.tabs.active_tab_mut().store_identity =
+                Some(crate::tab_state::StoreIdentity { dsn, catalog });
+        }
+        if let Some((kind, lrecl)) = recfm_lrecl {
+            let format = match kind {
+                ff_vfs::RecordFormatKind::Fixed => ff_document_model::RecordFormat::Fixed { lrecl },
+                ff_vfs::RecordFormatKind::Variable => ff_document_model::RecordFormat::Variable {
+                    max_lrecl: lrecl,
+                    rdw: true,
+                },
+                // Undefined has no editor RecordFormat variant; leave the
+                // document's format untouched (the save walk then keeps the byte
+                // path, which is the correct conservative behaviour for U).
+                _ => return,
+            };
+            let document = self.tabs.active_tab().document.clone();
+            self.runtime.block_on(async {
+                document.write().await.set_record_format(format);
+            });
+        }
+    }
+
     /// Create a new untitled buffer AND apply the resulting Kind's profile
     /// (CR-NR-090 B.3). The single shell new-untitled seam.
     pub(crate) fn shell_new_untitled(&mut self) {

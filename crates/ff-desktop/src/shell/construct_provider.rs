@@ -53,5 +53,16 @@ pub(super) fn build_live_provider_registry(runtime: &Runtime) -> Arc<ff_vfs::Pro
             );
         }
     }
+    // RC.B.8 (d): additively register the catalog-scheme VFS provider so a
+    // MAINFRAME owning-environment has a provider resolvable by scheme (Req
+    // 17.4). Best-effort: a failure logs a warning like the host provider.
+    // Additive -- the host open/save path never consults the registry, so native
+    // access is unchanged whether or not this registers (Req 17.3).
+    let catalog_provider = super::mainframe_backend::build_catalog_provider();
+    if let Err(e) = registry.register(catalog_provider) {
+        ff_logging::log_warn!(
+            "[vfs] live provider registry: catalog-scheme provider registration failed: {e}"
+        );
+    }
     Arc::new(registry)
 }

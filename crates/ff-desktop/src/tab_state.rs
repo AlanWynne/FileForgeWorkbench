@@ -199,6 +199,23 @@ pub enum UndoEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TabId(pub u64);
 
+/// The real dataset identity a mainframe-owned tab carries so a store-affecting
+/// verb (SAVE) can address the dataset by its DSN within its catalog, NOT by the
+/// host path the editor read from (RC.B.8 (c), command-environments Req 18.2).
+///
+/// Bound at open for a MAINFRAME tab from the catalog that resolved the DSN;
+/// `None` for a plain host-path tab (which addresses its store by host path, so
+/// native SAVE is unchanged). Consumed by
+/// `TabManager::save_active_tab_via_backend` to build the record-store
+/// `ff_vfs::StoreTarget` (`dsn` + `catalog_id`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoreIdentity {
+    /// The real dataset name (DSN) the records are stored under.
+    pub dsn: String,
+    /// The owning catalog name (the catalog that resolved the DSN).
+    pub catalog: String,
+}
+
 /// The default Owning_Environment NAME for a tab whose content comes from the
 /// host file system (CR-CH-053 Task 19, Req 15.3). Every tab opened without an
 /// explicit originating environment binds here, so store-affecting verbs (SAVE)
@@ -278,6 +295,12 @@ pub struct TabState {
     /// [`DEFAULT_OWNING_ENVIRONMENT`] (the host FS environment) for a plain
     /// host-path open, so existing opens are behaviour-preserving (Req 15.3).
     pub owning_environment: String,
+    /// The real dataset identity (DSN + catalog) for a mainframe-owned tab
+    /// (RC.B.8 (c), command-environments Req 18.2). `Some` only when the open
+    /// flow bound a real DSN (a MAINFRAME dataset open); `None` for every
+    /// host-path tab, which keeps the host-path placeholder `StoreTarget` and so
+    /// native SAVE is unchanged.
+    pub store_identity: Option<StoreIdentity>,
 }
 
 // The `base_tab!` macro and all `TabState` constructor fns live in the sibling

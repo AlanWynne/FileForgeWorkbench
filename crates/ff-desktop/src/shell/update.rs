@@ -87,15 +87,23 @@ impl eframe::App for WorkbenchShell {
         }
 
         let pending = self.pending_open.lock().expect("pending lock").take();
-        if let Some((p, owning_env)) = pending {
-            if !p.is_empty() {
+        if let Some(req) = pending {
+            if !req.path.is_empty() {
                 // CR-CH-053 Task 19: bind the opened tab's Owning_Environment from
                 // the captured origin (Req 15.2); `None` -> host FS default
                 // (Req 15.3).
-                if let Err(e) = self.shell_open_file_with_env(&p, owning_env.as_deref()) {
+                if let Err(e) = self.shell_open_file_with_env(&req.path, req.owning_env.as_deref())
+                {
                     self.open_error = Some(e);
                 } else {
                     self.open_error = None;
+                    // RC.B.8 (c): bind the real dataset identity + the dataset
+                    // record format onto the just-opened (now active) tab, so the
+                    // record-store StoreTarget carries the real DSN (Req 18.2) and
+                    // the BRC.3 save selection takes the record path (document-model
+                    // Req 11.2). Host-path opens carry neither, so this is a no-op
+                    // for them and native SAVE stays byte-identical.
+                    self.apply_pending_open_identity(req.identity, req.recfm_lrecl);
                 }
             }
         }

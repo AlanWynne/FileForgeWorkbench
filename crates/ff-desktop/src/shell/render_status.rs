@@ -239,8 +239,14 @@ impl WorkbenchShell {
             if let Some(handle) = rfd::FileDialog::new().pick_file() {
                 let path = handle.to_string_lossy().into_owned();
                 // The native file dialog opens a host-filesystem file -> host FS
-                // Owning_Environment (None -> default, CR-CH-053 Task 19 Req 15.3).
-                *pending.lock().expect("pending lock") = Some((path, None));
+                // Owning_Environment (None -> default, CR-CH-053 Task 19 Req 15.3);
+                // no dataset identity / record format (RC.B.8 (c)).
+                *pending.lock().expect("pending lock") = Some(super::state::PendingOpenReq {
+                    path,
+                    owning_env: None,
+                    identity: None,
+                    recfm_lrecl: None,
+                });
             }
         });
     }

@@ -274,8 +274,15 @@ impl WorkbenchShell {
             kind_registry,
             // Built Environment_Registry (CR-CH-053 Task 17): register the
             // phase-1 built-in environments (FFCMD base, FFEDIT, host-FS
-            // placeholder) in code at startup (Req 13.2).
-            environments: super::environment_registry::EnvironmentRegistry::with_builtins(),
+            // placeholder) in code at startup (Req 13.2). RC.B.8 (c) also builds
+            // and registers the record-capable MAINFRAME backend Command
+            // Environment (a `ff_idcams::MainframeEnvironment` over a co-located
+            // `CatalogDatasetAccess`) so a MAINFRAME-owned editor tab's SAVE
+            // routes to the record path (see shell/mainframe_backend.rs).
+            environments:
+                super::environment_registry::EnvironmentRegistry::with_builtins_and_mainframe(
+                    super::mainframe_backend::build_mainframe_backend(&mainframe_root()),
+                ),
             // Live Provider_Registry (CR-CH-053 Task 22, Req 17.1): register an
             // `ff-vfs` ProviderRegistry LIVE at startup, seeded with the host-FS
             // `local` provider so a provider is resolvable by scheme at runtime
@@ -345,4 +352,15 @@ impl WorkbenchShell {
             session_start: chrono::Local::now(),
         }
     }
+}
+
+/// The host root the MAINFRAME backend's native storage provider is rooted at
+/// (RC.B.8 (c)). The home directory (fallback: current dir, then `.`), matching
+/// how the navigator resolves host-rooted catalog/local paths. The dataset
+/// access resolves/stores BY DSN within this root; the root only anchors the
+/// native provider's physical I/O.
+fn mainframe_root() -> std::path::PathBuf {
+    dirs::home_dir()
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
 }

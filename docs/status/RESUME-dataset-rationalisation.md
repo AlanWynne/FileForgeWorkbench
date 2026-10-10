@@ -170,7 +170,69 @@ sign-off); it begins only on an explicit owner "start RC.B".
     The five prerequisites remain documented in `.agents/tasks/rcb8-dataset-rationalisation/part2-mainframe-save-stop.md` (now headed RESOLVED/ABSORBED). NO .rs change has regressed native/host SAVE (byte-identical). The HARD build-order dependency: CR-CH-058 F1 (the editor record model) must land on `main` before the SAVE-walk/mainframe-CE code (BRC.3/BRC.4) can be written -- today SAVE flattens to one byte buffer, so there are no records to pack. See the SEQUENCED PLAN below.
   - Part 3 (delete `ff-dataset-catalog` + re-express governance) -- DONE (FEAT-003, completed THIS run), code-complete pending the owner's full gate. Mirrored the RC.B.7 ff-vsam-services retirement EXACTLY. Grep PRE-CHECK PASSED (no shipping crate had ff-dataset-catalog as a Cargo dep after the Part 1 repoint). Deleted `crates/ff-dataset-catalog/` + its root `Cargo.toml` member line; re-expressed the governance rules (removed the `ff-vfs -> ff-dataset-catalog` and the two `ff-dataset-catalog -> ff-idcams`/`-> ff-dsalloc` DependencyRules in `compliance.rs`; removed the `!deps.contains_key("ff-dataset-catalog")` assertion, DELETED the whole `dataset_catalog_has_no_upstream_dependencies` test, and removed the ff-dataset-catalog entries from the `dataset_crates` array + `required_crates` list in `architecture_compliance.rs`). The acyclic/single-authority intent stays covered by the surviving ff-vfs -> ff-idcams, ff-vfs -> ff-dsalloc, and ff-dsalloc -> ff-idcams rules. `mock_compilation.rs` had no residual `ff_dataset_catalog` import (already on ff-dscatalog). No stale `.rs` authority prose remained (the only mentions are the historical narrative in `ff-dscatalog/src/service.rs` and the new retirement comment). Scoped checks clean: `cargo fmt`; `cargo check -p ff-governance-tests -p ff-dscatalog -p ff-dsalloc -p ff-idcams --all-targets`; `cargo test -p ff-governance-tests` GREEN (architecture_compliance 8 + mock_compilation 7); `cargo check -p ff-desktop --all-targets` clean; final grep finds NO live `ff-dataset-catalog`/`ff_dataset_catalog` in any `*.toml`/`*.rs`. TCR flipped: dataset-catalog Req 35.1 (step d) + 35.2, ownership Req 22.1/22.2 (and the 22.6 citation retargeted off the deleted test). Tasks marked: dataset-catalog Task 42.1/42.2 [x], master RC.B.8 [x] code-complete-pending-gate.
 
-## STATUS (2026-10-09): RC.A through RC.B.8 COMMITTED + PUSHED + full-gate CLEAN
+## RESUME POINT (2026-10-10 ~13:30) -- RC.B.8 Part 2 (b)-(d) + BRC.4: compiling, tests pending
+
+Record-aware MAINFRAME SAVE is WIRED END-TO-END and COMPILES CLEAN, but NOT yet
+test-verified or gated, and it carries one documented live-session limitation.
+Everything below is UNCOMMITTED on `main`.
+
+WHAT LANDED (on disk, read + confirmed; `cargo check` exit 0 across ff-idcams /
+ff-desktop / ff-dscatalog / ff-vfs / ff-volume via tools/logs/ff-check.txt):
+- BRC.4 (FEAT-001): `crates/ff-idcams/src/mainframe_env.rs` -- `MainframeEnvironment`,
+  a record-capable `ff_vfs::BackendEnvironment` storing over an owned
+  `Arc<dyn ff_dscatalog::DatasetAccess>` (resolve -> open(Write) -> put -> close);
+  `name()="MAINFRAME"`, `record_capable()=true`, byte `save()`=error; rc map
+  Ok=0 / SpaceAbend=VolumeFull=37 / ReadOnly=8 / other=12. ff-idcams 37+22 tests
+  passed in the FEAT-001 run; new acyclic edge ff-idcams -> ff-vfs.
+- RC.B.8 (b): `shell/environment_registry.rs` -- `MAINFRAME_NAME`,
+  `MainframePlaceholder`, a `mainframe: Option<Box<dyn BackendEnvironment>>` field,
+  `with_builtins_and_mainframe(..)` ctor, and `backend_for(name)` (MAINFRAME ->
+  mainframe CE when built; HOSTFS/unknown -> host_fs fallback). `shell/dispatch_ffedit.rs`
+  `host_fs_save` now resolves the backend by the active tab's `owning_environment`
+  via `backend_for` (the single SAVE seam -- only the SELECTION became owning-env
+  aware; HOSTFS stays byte-identical).
+- RC.B.8 (c)/(d) construction: `shell/mainframe_backend.rs` (NEW) --
+  `build_mainframe_backend(root)` composes a `PosixNativeProvider` + a single-Volume
+  `VolumeRegistry` into a `CatalogDatasetAccess`, wraps it as the mainframe CE;
+  `build_catalog_provider()` builds the `catalog`-scheme `CatalogVfsProvider`.
+  `shell/construct_provider.rs` additively registers the catalog provider (Req 17.4).
+
+KNOWN LIMITATION (documented in mainframe_backend.rs header; NOT hidden; owner
+decision needed): the mainframe CE builds a FRESH `CatalogDatasetAccess` that does
+NOT share the Files Panel's LIVE SQLite catalog + volume handles. So a same-session
+SAVE of a dataset the Files Panel created resolves `NotFound` (rc 12). The wiring /
+routing / identity threading / record-store contract are ALL in place and
+unit-testable; only live same-session store-visibility is bounded. Closing it needs
+the shell to share the exact live catalog/volume handles (a cross-crate handle the
+shell does not currently own). This is the gap between "wired + gate-clean" and
+"a user edits a mainframe dataset and SAVE persists in-session".
+
+NEXT ACTIONS (in order) when the terminal is healthy again:
+1. Run the reusable helper `tools/powershell/ff-check.ps1` (NEW this session --
+   tasks: status | check | test | clippy | fmt; writes tools/logs/ff-*.txt):
+   `C:\tools\powershell7\pwsh.exe -NoProfile -File C:\workspace\VSC\FileForgeWorkbench\tools\powershell\ff-check.ps1 test`
+   then `... clippy`. Read tools/logs/ff-test.txt + ff-clippy.txt. (`check` already
+   PASSED, exit 0.)
+2. If tests + clippy clean: flip TCR to PASS for command-environments Req 16 (mainframe
+   CE) / 17.4 (provider) / 18.7 / 18.8, idcams Req 28, and mark project-master
+   Phase (backendenv-record-contract) BRC.4 [x] + the RC.B.8 Part 2 (b)-(e) deferral
+   RESOLVED -- BUT record the live-handle limitation as an explicit OPEN FOLLOW-UP,
+   do not claim full live functionality.
+3. Hand off the full `cargo gate --build` to the owner.
+4. OWNER DECISION: fix the live catalog-handle sharing now (a follow-up slice: thread
+   the Files Panel's live ff-catalog-registry catalog + ff-volume handles into the
+   mainframe CE's DatasetAccess instead of building a fresh one), or accept it as a
+   documented known limitation for this phase.
+5. The BRC.4 workflow (wf_37f8655592cf4e3b) was ABORTED after its deliverables landed
+   + compiled (step stayed 'running' amid infra/terminal flakiness). Finish inline.
+
+TERMINAL NOTE: this session hit intermittent PSReadLine wedging (dangling `>`,
+commands not executing). The reusable `ff-check.ps1` + short clean invocations are
+the mitigation; a Kiro restart (owner doing it now) + pointing the terminal at
+pwsh 7 (not Windows PowerShell 5.1, whose OneDrive profile prints the Postgres
+banner + a Start-Service error) should clear it.
+
+## STATUS (2026-10-09): RC.A through RC.B.8 (Part 1) COMMITTED + PUSHED + full-gate CLEAN
 
 RC.A, RC.B.5, RC.B.6, RC.B.7, RC.B.8 (Parts 1+3) are all on `origin/main`, each
 full-gate clean. The dataset stack rationalisation (CR-CH-059) is COMPLETE except

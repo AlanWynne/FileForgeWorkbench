@@ -63,6 +63,7 @@ mod help;
 mod helpers;
 mod keys_editor;
 mod kinds_editor;
+mod mainframe_backend;
 mod menus_editor;
 mod mod_helpers;
 mod nav_reconstruct;

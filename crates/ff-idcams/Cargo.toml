@@ -11,8 +11,11 @@ test-helpers = []
 
 [dependencies]
 ff-dscatalog = { path = "../ff-dscatalog" }
+ff-vfs = { path = "../ff-vfs" }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+ff-volume = { path = "../ff-volume" }
 proptest = { workspace = true }
 pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

@@ -10,15 +10,34 @@ use std::sync::{Arc, Mutex};
 use ff_command::{CommandHandler, ContextProvider};
 use ff_command::{CommandParams, CommandResult, ExecutionContext};
 
+/// Map a `recfm` param name (case-insensitive `Fixed`/`Variable`/`Undefined`) to
+/// the ff-vfs record-format kind carried in a [`super::state::PendingOpenReq`]
+/// (RC.B.8 (c)). An unknown name yields `None` (the open falls back to the
+/// host/Delimited default).
+fn recfm_kind_from_name(name: &str) -> Option<ff_vfs::RecordFormatKind> {
+    match name.to_ascii_uppercase().as_str() {
+        "FIXED" => Some(ff_vfs::RecordFormatKind::Fixed),
+        "VARIABLE" => Some(ff_vfs::RecordFormatKind::Variable),
+        "UNDEFINED" => Some(ff_vfs::RecordFormatKind::Undefined),
+        _ => None,
+    }
+}
+
 /// Handler for `file.open` -- sets `pending_open` via a shared channel.
 /// The shell reads `pending_open` at the top of each frame.
 ///
-/// The pending payload is `(path, owning_env)` (CR-CH-053 Task 19, Req 15.2):
-/// the OPTIONAL `owning_env` param carries the Owning_Environment NAME captured
-/// from the originating catalog/provider (the file system that owns the resource
-/// being opened). When absent -- every host-path open today -- the opened tab
-/// defaults to the host FS environment (`DEFAULT_OWNING_ENVIRONMENT`), so
-/// existing opens are behaviour-preserving (Req 15.3).
+/// The pending payload is a [`super::state::PendingOpenReq`] (RC.B.8 (c) widened
+/// it from the former `(path, owning_env)` tuple). The OPTIONAL `owning_env`
+/// param carries the Owning_Environment NAME captured from the originating
+/// catalog/provider (CR-CH-053 Task 19, Req 15.2); when absent -- every host-path
+/// open -- the opened tab defaults to the host FS environment
+/// (`DEFAULT_OWNING_ENVIRONMENT`), so existing opens are behaviour-preserving
+/// (Req 15.3). The OPTIONAL `dsn` + `catalog` params carry the real dataset
+/// identity for a MAINFRAME open (Req 18.2); the OPTIONAL `recfm` (one of
+/// `Fixed`/`Variable`/`Undefined`) + `lrecl` params carry the dataset record
+/// format so the opened Document's RecordFormat is set at open (document-model
+/// Req 11.2) and the BRC.3 record-save selection fires. All four are absent for a
+/// host-path open, which stays byte-identical.
 pub(super) struct FileOpenHandler {
     pub(super) pending: super::state::PendingOpen,
 }
@@ -35,7 +54,32 @@ impl CommandHandler for FileOpenHandler {
                     .get_string("owning_env")
                     .filter(|e| !e.is_empty())
                     .map(|e| e.to_string());
-                *self.pending.lock().expect("pending lock") = Some((path.to_string(), owning_env));
+                // Optional real dataset identity (both must be present to bind).
+                let dsn = params
+                    .get_string("dsn")
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string());
+                let catalog = params
+                    .get_string("catalog")
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string());
+                let identity = match (dsn, catalog) {
+                    (Some(d), Some(c)) => Some((d, c)),
+                    _ => None,
+                };
+                // Optional dataset record format (recfm name + lrecl).
+                let recfm_lrecl = match (params.get_string("recfm"), params.get_integer("lrecl")) {
+                    (Some(recfm), Some(lrecl)) if lrecl >= 0 => {
+                        recfm_kind_from_name(recfm).map(|k| (k, lrecl as u32))
+                    }
+                    _ => None,
+                };
+                *self.pending.lock().expect("pending lock") = Some(super::state::PendingOpenReq {
+                    path: path.to_string(),
+                    owning_env,
+                    identity,
+                    recfm_lrecl,
+                });
                 CommandResult::Ok
             }
             _ => CommandResult::Err(ff_command::CommandError::ExecutionFailed {

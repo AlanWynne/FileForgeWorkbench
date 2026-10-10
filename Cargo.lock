@@ -1788,6 +1788,7 @@ dependencies = [
  "ff-gcc-toolchain",
  "ff-global-search",
  "ff-help",
+ "ff-idcams",
  "ff-keys",
  "ff-layout",
  "ff-logging",
@@ -1807,6 +1808,7 @@ dependencies = [
  "ff-toolchain-panel",
  "ff-vfs",
  "ff-viewport-scrolling",
+ "ff-volume",
  "ff-zoom",
  "pretty_assertions",
  "regex",
@@ -2144,8 +2146,11 @@ name = "ff-idcams"
 version = "0.1.0"
 dependencies = [
  "ff-dscatalog",
+ "ff-vfs",
+ "ff-volume",
  "pretty_assertions",
  "proptest",
+ "tempfile",
  "thiserror 2.0.20",
 ]
 

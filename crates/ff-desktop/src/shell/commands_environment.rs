@@ -62,6 +62,21 @@ impl WorkbenchShell {
             // The FFCMD base is reached through the ordinary ladder, not claimed
             // at the active-env step, so addressing it here declines.
             RegisteredEnv::FfCmdBase => EnvDispatchOutcome::NotClaimed,
+            // The MAINFRAME backend OWNS the store write for a mainframe-dataset
+            // tab (RC.B.8 (b), Req 14.4). FFEDIT addresses SAVE here exactly as
+            // it does for a host-path tab; the write goes through the SAME single
+            // seam `host_fs_save`, which resolves the record-capable mainframe CE
+            // via `backend_for("MAINFRAME")` and takes the record store path. Like
+            // the host arm it claims ONLY SAVE; any other verb falls through.
+            RegisteredEnv::MainframePlaceholder => {
+                let canonical = raw.split_whitespace().next().unwrap_or("");
+                if canonical.eq_ignore_ascii_case("SAVE") {
+                    self.host_fs_save();
+                    EnvDispatchOutcome::Claimed { rc: 0 }
+                } else {
+                    EnvDispatchOutcome::NotClaimed
+                }
+            }
         }
     }
 }

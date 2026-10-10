@@ -40,11 +40,34 @@ use crate::toolchain_panel::ToolchainPanelState;
 
 use super::{command_line_outcome, reset_bare, state_groups, KeyBarScope};
 
-/// The deferred-open channel payload: `(path, owning_env)` where `owning_env` is
-/// the optional Owning_Environment NAME captured at open (CR-CH-053 Task 19,
-/// Req 15.2); `None` -> host FS default (Req 15.3). A `type` alias to keep the
-/// nested `Arc<Mutex<Option<..>>>` readable (and satisfy clippy::type_complexity).
-pub(super) type PendingOpen = Arc<Mutex<Option<(String, Option<String>)>>>;
+/// The deferred-open channel payload (RC.B.8 (c) widens it from the former
+/// `(path, owning_env)` tuple): the resource `path`, the optional
+/// Owning_Environment NAME (`owning_env`, CR-CH-053 Task 19, Req 15.2; `None` ->
+/// host FS default, Req 15.3), the optional real dataset identity (`identity`,
+/// `(dsn, catalog)`, bound for a MAINFRAME open so the record-store `StoreTarget`
+/// carries the real DSN -- RC.B.8 (c), Req 18.2), and the optional dataset record
+/// format (`recfm_lrecl`, `(RecordFormatKind, lrecl)`) so the opened Document's
+/// RecordFormat can be set at open (document-model Req 11.2) and the BRC.3 save
+/// selection fires. A small struct (not a 4-tuple) for clarity.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct PendingOpenReq {
+    /// The resource path the editor reads from (host path, even for a dataset).
+    pub(super) path: String,
+    /// The Owning_Environment NAME; `None` -> host FS default.
+    pub(super) owning_env: Option<String>,
+    /// The real dataset identity `(dsn, catalog)` for a MAINFRAME open; `None`
+    /// for a host-path open (which keeps the host-path placeholder `StoreTarget`).
+    pub(super) identity: Option<(String, String)>,
+    /// The dataset record format `(kind, lrecl)` to set on the opened Document;
+    /// `None` for a host-path open (which keeps the Delimited default so native
+    /// SAVE is byte-identical).
+    pub(super) recfm_lrecl: Option<(ff_vfs::RecordFormatKind, u32)>,
+}
+
+/// The deferred-open channel: when `Some`, open the [`PendingOpenReq`] at the
+/// start of the next frame. A `type` alias to keep the nested
+/// `Arc<Mutex<Option<..>>>` readable (and satisfy clippy::type_complexity).
+pub(super) type PendingOpen = Arc<Mutex<Option<PendingOpenReq>>>;
 
 /// The egui/eframe application shell.
 pub struct WorkbenchShell {

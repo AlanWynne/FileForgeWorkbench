@@ -38,6 +38,7 @@ macro_rules! base_tab {
             is_home: false,
             nav_stack: Vec::new(),
             owning_environment: DEFAULT_OWNING_ENVIRONMENT.to_string(),
+            store_identity: None,
         }
     }};
 }
@@ -67,6 +68,7 @@ impl TabState {
             is_home: false,
             nav_stack: Vec::new(),
             owning_environment: DEFAULT_OWNING_ENVIRONMENT.to_string(),
+            store_identity: None,
         }
     }
 
@@ -104,6 +106,7 @@ impl TabState {
             is_home: false,
             nav_stack: Vec::new(),
             owning_environment: DEFAULT_OWNING_ENVIRONMENT.to_string(),
+            store_identity: None,
         }
     }
 

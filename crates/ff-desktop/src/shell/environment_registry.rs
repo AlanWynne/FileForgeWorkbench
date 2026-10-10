@@ -7,7 +7,7 @@
 //! environments exist (command-environments Requirement 13.1).
 //!
 //! Built-in environments register in code at startup via
-//! [`EnvironmentRegistry::with_builtins`] (Req 13.2): the FFCMD base (which IS
+//! `EnvironmentRegistry::with_builtins_and_mainframe` (Req 13.2): the FFCMD base (which IS
 //! `resolve_target` and does not claim at the active-env step), FFEDIT (a real
 //! [`CommandEnvironment`] object -- [`super::environment_ffedit::FfEditEnvironment`]),
 //! and the host FS environment placeholder (Req 16, registered-but-non-claiming
@@ -59,6 +59,15 @@ pub(super) const FFNAV_NAME: &str = "FFNAV";
 /// constant lives on `TabState` so the tab default and the registry name cannot
 /// drift.
 pub(super) const HOST_FS_NAME: &str = crate::tab_state::DEFAULT_OWNING_ENVIRONMENT;
+/// The stable NAME of the MAINFRAME backend Command Environment (RC.B.8 (b),
+/// Req 16.4). It is an ADDRESSING/backend target only -- never an active
+/// interactive environment -- so it is registered for membership + `backend_for`
+/// resolution but does NOT change the active-env derivation (a mainframe-owned
+/// editor tab still derives FFEDIT as its active env). The real record-capable
+/// backend object (`ff_idcams::MainframeEnvironment`) is held behind
+/// [`EnvironmentRegistry::mainframe`] when built; absent, a MAINFRAME lookup
+/// falls back to the host backend so the save seam is always safe.
+pub(super) const MAINFRAME_NAME: &str = "MAINFRAME";
 
 /// A tag identifying WHICH registered environment a name resolves to.
 ///
@@ -77,6 +86,11 @@ pub(super) enum RegisteredEnv {
     FfEdit,
     /// The host-FS environment placeholder (Req 16); non-claiming in phase 1.
     HostFsPlaceholder,
+    /// The MAINFRAME backend environment placeholder (RC.B.8 (b), Req 16.4):
+    /// registered for membership + `backend_for` resolution, non-claiming (never
+    /// an active interactive env). The real backend object is held in
+    /// [`EnvironmentRegistry::mainframe`].
+    MainframePlaceholder,
 }
 
 /// One registered environment: its stable NAME and the tag identifying it.
@@ -107,6 +121,15 @@ pub(super) struct EnvironmentRegistry {
     /// future backend CEs (mainframe, sqlite) register the same way without the
     /// registry knowing their concrete types.
     host_fs: Box<dyn ff_vfs::BackendEnvironment>,
+    /// The resolved MAINFRAME backend Command Environment (RC.B.8 (b), Req
+    /// 16.4): `ff_idcams::MainframeEnvironment` wrapping an owned
+    /// `Arc<dyn ff_dscatalog::DatasetAccess>`, built by the shell at
+    /// registry-build time and passed to [`Self::with_builtins_and_mainframe`].
+    /// `None` for the test-only mainframe-less constructor (`with_builtins`); a
+    /// `backend_for(MAINFRAME)` lookup then falls back to
+    /// `host_fs`, so the save seam never panics. Held as a boxed trait object so
+    /// the registry does not know the concrete type.
+    mainframe: Option<Box<dyn ff_vfs::BackendEnvironment>>,
 }
 
 impl EnvironmentRegistry {
@@ -116,34 +139,83 @@ impl EnvironmentRegistry {
     /// the single registration point.
     ///
     /// Validates: command-environments Requirement 13.1, 13.2, 16.2, 16.4
+    ///
+    /// Test-only: the production shell always builds the MAINFRAME backend via
+    /// [`Self::with_builtins_and_mainframe`] (RC.B.8 (c)); this mainframe-less
+    /// constructor remains for the registry unit tests that do not need it (a
+    /// MAINFRAME lookup then safely falls back to the host backend).
+    #[cfg(test)]
     pub(super) fn with_builtins() -> Self {
         Self {
-            entries: vec![
-                EnvironmentEntry {
-                    name: FFCMD_NAME,
-                    env: RegisteredEnv::FfCmdBase,
-                },
-                EnvironmentEntry {
-                    name: FFEDIT_NAME,
-                    env: RegisteredEnv::FfEdit,
-                },
-                EnvironmentEntry {
-                    name: HOST_FS_NAME,
-                    env: RegisteredEnv::HostFsPlaceholder,
-                },
-            ],
+            entries: Self::builtin_entries(),
             // The decider resolves the native-role backend for this host (Req
             // 16.2/16.3): Windows -> ff-ce-ntfs, Linux/macOS -> ff-ce-posix.
             host_fs: ff_ce_host_fs::native_backend_environment(),
+            // No mainframe CE in the mainframe-less constructor; a MAINFRAME
+            // lookup falls back to host_fs (Req 16.4).
+            mainframe: None,
         }
     }
 
-    /// The resolved host-FS backend Command Environment (Task 21). FFEDIT's
-    /// addressed SAVE for a host-path tab delegates its physical write to this
-    /// backend's `save`, keeping the dirty-aware orchestration shell-side.
+    /// Build the registry with the phase-1 built-ins PLUS the MAINFRAME backend
+    /// Command Environment (RC.B.8 (b), Req 16.4). The shell constructs the
+    /// mainframe CE (a `ff_idcams::MainframeEnvironment` owning an
+    /// `Arc<dyn ff_dscatalog::DatasetAccess>`) and passes it here so the registry
+    /// does not know its concrete type. `backend_for(MAINFRAME)` then resolves to
+    /// this record-capable backend; HOSTFS and unknown names still resolve to the
+    /// host backend.
     ///
-    /// Validates: command-environments Requirement 16.4, 16.5
-    pub(super) fn host_fs_backend(&self) -> &dyn ff_vfs::BackendEnvironment {
+    /// Validates: command-environments Requirement 13.1, 13.2, 16.2, 16.4
+    pub(super) fn with_builtins_and_mainframe(
+        mainframe: Box<dyn ff_vfs::BackendEnvironment>,
+    ) -> Self {
+        Self {
+            entries: Self::builtin_entries(),
+            host_fs: ff_ce_host_fs::native_backend_environment(),
+            mainframe: Some(mainframe),
+        }
+    }
+
+    /// The built-in environment entries (RC.B.8 (b) adds the MAINFRAME addressing
+    /// entry). Shared by both constructors so membership is identical whether or
+    /// not the mainframe backend object is built.
+    fn builtin_entries() -> Vec<EnvironmentEntry> {
+        vec![
+            EnvironmentEntry {
+                name: FFCMD_NAME,
+                env: RegisteredEnv::FfCmdBase,
+            },
+            EnvironmentEntry {
+                name: FFEDIT_NAME,
+                env: RegisteredEnv::FfEdit,
+            },
+            EnvironmentEntry {
+                name: HOST_FS_NAME,
+                env: RegisteredEnv::HostFsPlaceholder,
+            },
+            EnvironmentEntry {
+                name: MAINFRAME_NAME,
+                env: RegisteredEnv::MainframePlaceholder,
+            },
+        ]
+    }
+
+    /// Resolve the BACKEND Command Environment that owns a tab's store, by its
+    /// Owning_Environment NAME (RC.B.8 (b), Req 16.4). Case-INSENSITIVE on the
+    /// name. `MAINFRAME` resolves to the record-capable mainframe CE when built;
+    /// `HOSTFS` and ANY unknown name resolve to the host backend (the fallback
+    /// preserves host SAVE behaviour, and keeps the save seam safe when no
+    /// mainframe CE is built). This feeds the single SAVE-addressing seam
+    /// (`host_fs_save` -> `save_active_tab_via_backend`); it is NOT a second
+    /// dispatcher.
+    ///
+    /// Validates: command-environments Requirement 14.4, 14.5, 16.4
+    pub(super) fn backend_for(&self, name: &str) -> &dyn ff_vfs::BackendEnvironment {
+        if name.eq_ignore_ascii_case(MAINFRAME_NAME) {
+            if let Some(mainframe) = self.mainframe.as_deref() {
+                return mainframe;
+            }
+        }
         self.host_fs.as_ref()
     }
 
@@ -269,6 +341,63 @@ mod tests {
             reg.lookup(HOST_FS_NAME),
             Some(RegisteredEnv::HostFsPlaceholder)
         );
+    }
+
+    /// A record-capable test backend (mirrors the mainframe CE's advertised
+    /// capability) so the `backend_for` mapping test does not depend on
+    /// `ff-idcams`.
+    struct RecordCapableTestBackend;
+    impl ff_vfs::BackendEnvironment for RecordCapableTestBackend {
+        fn name(&self) -> &str {
+            MAINFRAME_NAME
+        }
+        fn is_case_sensitive(&self) -> bool {
+            false
+        }
+        fn save(&self, _path: &std::path::Path, _bytes: &[u8]) -> std::io::Result<()> {
+            Err(std::io::Error::other("record-only"))
+        }
+        fn record_capable(&self) -> bool {
+            true
+        }
+    }
+
+    /// Validates: command-environments Requirement 14.1, 16.4 -- a registry built
+    /// with a mainframe (record-capable) backend resolves `backend_for` by name
+    /// case-insensitively: `MAINFRAME` -> the record-capable backend; `HOSTFS`
+    /// and any unknown name -> the host_fs (non-record-capable) backend.
+    #[test]
+    fn backend_for_resolves_mainframe_to_record_capable_backend() {
+        let reg =
+            EnvironmentRegistry::with_builtins_and_mainframe(Box::new(RecordCapableTestBackend));
+        assert!(
+            reg.backend_for(MAINFRAME_NAME).record_capable(),
+            "MAINFRAME must resolve to a record-capable backend"
+        );
+        assert!(
+            reg.backend_for("mainframe").record_capable(),
+            "backend_for must be case-insensitive"
+        );
+        assert!(
+            !reg.backend_for(HOST_FS_NAME).record_capable(),
+            "HOSTFS must resolve to the non-record-capable host backend"
+        );
+        assert!(
+            !reg.backend_for("NOTANENV").record_capable(),
+            "an unknown name must fall back to the host backend"
+        );
+    }
+
+    /// Validates: command-environments Requirement 16.4 -- `with_builtins`
+    /// (the mainframe-less constructor used by most tests) still answers
+    /// `backend_for('MAINFRAME')` safely: it falls back to the host backend so
+    /// the save seam never panics on a MAINFRAME lookup.
+    #[test]
+    fn with_builtins_mainframe_lookup_falls_back_to_host() {
+        let reg = EnvironmentRegistry::with_builtins();
+        // Fallback to host_fs (non-record-capable) when no mainframe CE is built.
+        assert!(!reg.backend_for(MAINFRAME_NAME).record_capable());
+        assert!(!reg.backend_for(HOST_FS_NAME).record_capable());
     }
 
     /// Validates: command-environments Requirement 13.3, 5.1 -- the active-wins
