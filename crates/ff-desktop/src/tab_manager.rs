@@ -1265,7 +1265,34 @@ impl TabManager {
     /// the on-disk result is byte-identical to `save_active_tab` (both are a plain
     /// byte write), so native SAVE is unchanged -- only the executor moved.
     ///
-    /// Validates: command-environments Requirement 14.5, 14.6, 16.5
+    /// Validates: command-environments Requirement 14.5, 14.6, 16.5, 18.5, 18.6;
+    /// document-model Requirement 13.1, 13.2, 13.3, 13.4, 13.5, 13.6
+    ///
+    /// CR-CH-060 BRC.3 -- SAVE-walk byte-vs-record SELECTION. The SAVE walk re-frames
+    /// the document for the owning Command Environment and delivers it through the
+    /// CR-CH-060 store contract on the SINGLE existing SAVE-addressing seam
+    /// (CR-CH-053 Task 20/21). It is NOT a flat byte buffer for every document.
+    ///
+    /// SELECTION RULE (Req 13.4 / 18.5): the record path is chosen by the
+    /// document's OPEN-supplied `RecordFormat` (`Document::record_format()`, the
+    /// value the owning CE set at open per Req 11.2 -- the save does NOT re-derive
+    /// framing) AND `backend.record_capable()`. Fixed/Variable on a record-capable
+    /// backend -> the RECORD entry `save_records`; Delimited (native/host) OR a
+    /// non-record-capable backend -> the retained BYTE entry `save` (Req 13.2),
+    /// byte-identical to the pre-CR-CH-058 native save (document-model Req 12.12).
+    ///
+    /// PLACEHOLDER identity (RC.B.8 (c) is OUT OF SCOPE here): the record path's
+    /// [`ff_vfs::StoreTarget`] is built from today's tab plumbing -- `dsn` from the
+    /// tab path and `owning_env` from `TabState.owning_environment` (today always
+    /// "HOSTFS"). Real DSN/catalog identity arrives when RC.B.8 (c) binds
+    /// `owning_env = MAINFRAME` and registers the mainframe provider.
+    ///
+    /// NotRecordCapable fallback: the selection already gates on
+    /// `record_capable()`, so `RecordStoreOutcome::NotRecordCapable` means a
+    /// backend declined despite advertising capability. Rather than fail a save
+    /// the byte path could complete, we FALL BACK to the byte path (keeps SAVE
+    /// functional and byte-identical for host resources; a mis-advertising backend
+    /// degrades gracefully).
     pub fn save_active_tab_via_backend(
         &mut self,
         backend: &dyn ff_vfs::BackendEnvironment,
@@ -1277,7 +1304,57 @@ impl TabManager {
             .as_deref()
             .ok_or_else(|| "Cannot save: no file path (untitled document)".to_string())?;
         let path = std::path::PathBuf::from(path);
+        let owning_env = tab.owning_environment.clone();
 
+        // Read the OPEN-supplied record format (Req 13.4): the owning CE set it at
+        // open; the save does NOT re-derive framing.
+        let format = runtime.block_on(async { tab.document.read().await.record_format() });
+
+        // SELECTION (Req 13.4 / 18.5): record path only for a non-Delimited format
+        // on a record-capable backend; every other case keeps the BYTE path.
+        let record_mapping = record_attrs_for(format);
+        let use_record_path = record_mapping.is_some() && backend.record_capable();
+
+        if use_record_path {
+            let (recfm, lrecl) = record_mapping.expect("record mapping present for record path");
+            // Build the re-framed record source from the F1 record iteration over
+            // the canonical SAVE image (Req 13.1 / 13.3).
+            let mut source = runtime.block_on(async {
+                let doc = tab.document.read().await;
+                RecordImageSource::from_document(&doc)
+            });
+            // StoreTarget: PLACEHOLDER identity from today's tab plumbing (see the
+            // method doc; RC.B.8 (c) supplies real DSN/catalog later).
+            let target = ff_vfs::StoreTarget {
+                dsn: path.to_string_lossy().into_owned(),
+                owning_env,
+                catalog_id: None,
+            };
+            // RecordAttrs: GUI-independent plain data (Req 13.6) -- no shell /
+            // document-model type crosses the contract.
+            let attrs = ff_vfs::RecordAttrs {
+                recfm,
+                lrecl,
+                encoding: "utf-8".to_string(),
+            };
+            match backend.save_records(&target, &mut source, &attrs) {
+                ff_vfs::RecordStoreOutcome::Stored { rc: 0 } => {
+                    self.clear_dirty_after_save(runtime);
+                    return Ok(());
+                }
+                ff_vfs::RecordStoreOutcome::Stored { rc } => {
+                    return Err(format!("Save failed: backend returned rc {rc}"));
+                }
+                // Defensive: backend declined despite advertising capability.
+                // Fall through to the byte path below (keeps SAVE byte-identical).
+                ff_vfs::RecordStoreOutcome::NotRecordCapable => {}
+            }
+        }
+
+        // BYTE path (Req 13.2) -- Delimited/host, a non-record-capable backend, or
+        // the NotRecordCapable fallback. Kept VERBATIM so native SAVE is
+        // byte-identical (document-model Req 12.12).
+        let tab = &mut self.tabs[self.active];
         let bytes = runtime.block_on(async {
             let mut doc = tab.document.write().await;
             doc.contiguous_view().to_vec()
@@ -1287,12 +1364,19 @@ impl TabManager {
             .save(&path, &bytes)
             .map_err(|e| format!("Save failed: {e}"))?;
 
-        // Clear dirty flag and mark save point (orchestration, shell-side).
+        self.clear_dirty_after_save(runtime);
+        Ok(())
+    }
+
+    /// Clear the active tab's dirty flag and set the document save point after a
+    /// successful store, on BOTH the byte and record paths (orchestration,
+    /// shell-side; unchanged by CR-CH-060).
+    fn clear_dirty_after_save(&mut self, runtime: &Runtime) {
+        let tab = &mut self.tabs[self.active];
         tab.is_modified = false;
         runtime.block_on(async {
             tab.document.write().await.set_save_point();
         });
-        Ok(())
     }
 
     /// Close the tab at `index`. If it is the active tab, activates the
@@ -1391,6 +1475,68 @@ impl TabManager {
         }
         self.sync_layout(); // CR-NR-091 (after the final active assignment)
         target
+    }
+}
+
+/// An object-safe [`ff_vfs::RecordSource`] over a document's F1 framed records
+/// for the CR-CH-060 record-aware SAVE path (document-model Req 13.1 / 13.3).
+///
+/// It OWNS the document's canonical SAVE image (`save_image()`, F1 byte-identical)
+/// plus the per-record `(start, len)` spans precomputed from the F1 record query
+/// API (`total_records` / `record_start` / `record_byte_length`). Owning the
+/// bytes keeps the source free of the async document lock while remaining
+/// object-safe (`&mut self`, no generics), so the backend pulls one raw record's
+/// bytes at a time without holding the lock across the store call.
+struct RecordImageSource {
+    image: Vec<u8>,
+    spans: Vec<(usize, usize)>,
+    cursor: usize,
+}
+
+impl RecordImageSource {
+    /// Build the source by framing the document under its current (open-supplied)
+    /// record format via the F1 record query API. Called under the document read
+    /// lock; the resulting source owns its data and no longer borrows the lock.
+    fn from_document(doc: &ff_document_model::Document) -> Self {
+        let image = doc.save_image();
+        let total = doc.total_records();
+        let mut spans = Vec::with_capacity(total as usize);
+        for k in 0..total {
+            let start = doc.record_start(ff_document_model::RecordNumber(k)).value() as usize;
+            let len = doc.record_byte_length(ff_document_model::RecordNumber(k)) as usize;
+            spans.push((start, len));
+        }
+        Self {
+            image,
+            spans,
+            cursor: 0,
+        }
+    }
+}
+
+impl ff_vfs::RecordSource for RecordImageSource {
+    fn next_record(&mut self) -> Option<&[u8]> {
+        let (start, len) = *self.spans.get(self.cursor)?;
+        self.cursor += 1;
+        self.image.get(start..start + len)
+    }
+}
+
+/// Map a document [`ff_document_model::RecordFormat`] to the record-aware store's
+/// GUI-independent `(RECFM, LRECL)` (document-model Req 13.6). Returns `None` for
+/// `Delimited` -- the signal to take the retained BYTE path (Req 13.2). No
+/// editor/shell/document-model type crosses the contract boundary.
+fn record_attrs_for(
+    format: ff_document_model::RecordFormat,
+) -> Option<(ff_vfs::RecordFormatKind, u32)> {
+    match format {
+        ff_document_model::RecordFormat::Delimited { .. } => None,
+        ff_document_model::RecordFormat::Fixed { lrecl } => {
+            Some((ff_vfs::RecordFormatKind::Fixed, lrecl))
+        }
+        ff_document_model::RecordFormat::Variable { max_lrecl, .. } => {
+            Some((ff_vfs::RecordFormatKind::Variable, max_lrecl))
+        }
     }
 }
 
@@ -1552,6 +1698,215 @@ mod tests {
         mgr.save_active_tab_via_backend(&TestBackend, &runtime)
             .expect("save");
         assert!(!mgr.active_tab().is_modified);
+    }
+
+    // === CR-CH-060 BRC.3: SAVE-walk byte-vs-record selection tests ============
+
+    /// A record-capable backend that CAPTURES what `save_records` received, so a
+    /// test can assert the SAVE walk selected the record path and threaded the
+    /// records + StoreTarget + RecordAttrs through correctly. Also implements the
+    /// byte `save` (never called on the record path) so it is a complete CE.
+    struct CapturingRecordBackend {
+        records: std::sync::Mutex<Vec<Vec<u8>>>,
+        last_target: std::sync::Mutex<Option<ff_vfs::StoreTarget>>,
+        last_attrs: std::sync::Mutex<Option<ff_vfs::RecordAttrs>>,
+        byte_save_called: std::sync::Mutex<bool>,
+        rc: i32,
+    }
+
+    impl CapturingRecordBackend {
+        fn with_rc(rc: i32) -> Self {
+            Self {
+                records: std::sync::Mutex::new(Vec::new()),
+                last_target: std::sync::Mutex::new(None),
+                last_attrs: std::sync::Mutex::new(None),
+                byte_save_called: std::sync::Mutex::new(false),
+                rc,
+            }
+        }
+    }
+
+    impl ff_vfs::BackendEnvironment for CapturingRecordBackend {
+        fn name(&self) -> &str {
+            "CAPTURING_RECORD"
+        }
+        fn is_case_sensitive(&self) -> bool {
+            false
+        }
+        fn save(&self, path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+            *self.byte_save_called.lock().expect("byte flag") = true;
+            std::fs::write(path, bytes)
+        }
+        fn save_records(
+            &self,
+            target: &ff_vfs::StoreTarget,
+            records: &mut dyn ff_vfs::RecordSource,
+            attrs: &ff_vfs::RecordAttrs,
+        ) -> ff_vfs::RecordStoreOutcome {
+            *self.last_target.lock().expect("target") = Some(target.clone());
+            *self.last_attrs.lock().expect("attrs") = Some(attrs.clone());
+            let mut sink = self.records.lock().expect("records");
+            while let Some(rec) = records.next_record() {
+                sink.push(rec.to_vec());
+            }
+            ff_vfs::RecordStoreOutcome::Stored { rc: self.rc }
+        }
+        fn record_capable(&self) -> bool {
+            true
+        }
+    }
+
+    /// Build a file-backed tab whose document contains `content`, with the given
+    /// record format applied (the owning-CE-at-open value the save walk reads).
+    fn file_tab_with_format(
+        runtime: &Runtime,
+        path: &str,
+        content: &[u8],
+        format: ff_document_model::RecordFormat,
+    ) -> TabState {
+        let document = new_document();
+        runtime.block_on(async {
+            let mut doc = document.write().await;
+            let _ = doc.insert(BytePosition(0), content);
+            doc.set_record_format(format);
+        });
+        let line_count = runtime.block_on(async { document.read().await.line_count() });
+        TabState::for_file(
+            TabId(1),
+            path.to_string(),
+            document,
+            line_count,
+            ff_document_model::LineEndMode::Default,
+        )
+    }
+
+    #[test]
+    fn delimited_document_takes_byte_path_byte_identical() {
+        // Validates: document-model Requirement 13.2, 13.4; command-environments Req 18.5
+        // A Delimited document on a record-capable backend STILL takes the byte
+        // path (selection is by format, not backend capability alone), and the
+        // bytes written equal the document's canonical save image (byte-identical).
+        use tempfile::NamedTempFile;
+        let runtime = Runtime::new().expect("runtime");
+        let tmp = NamedTempFile::new().expect("tempfile");
+        let path = tmp.path().to_string_lossy().into_owned();
+
+        let tab = file_tab_with_format(
+            &runtime,
+            &path,
+            b"line one\nline two\n",
+            ff_document_model::RecordFormat::Delimited {
+                terminator: ff_document_model::DelimiterTerminator::Lf,
+            },
+        );
+        let expected = runtime.block_on(async { tab.document.read().await.save_image() });
+
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.tabs[0] = tab;
+        let backend = CapturingRecordBackend::with_rc(0);
+        mgr.save_active_tab_via_backend(&backend, &runtime)
+            .expect("save");
+
+        // Byte path taken: save_records NOT called (no captured records), byte
+        // save WAS called, and the on-disk bytes are byte-identical to the image.
+        assert!(
+            *backend.byte_save_called.lock().expect("byte flag"),
+            "Delimited must take the byte save path"
+        );
+        assert!(
+            backend.records.lock().expect("records").is_empty(),
+            "Delimited must NOT call save_records"
+        );
+        let written = std::fs::read(&path).expect("read back");
+        assert_eq!(
+            written, expected,
+            "byte path must be byte-identical to the save image"
+        );
+    }
+
+    #[test]
+    fn fixed_document_on_record_backend_takes_record_path() {
+        // Validates: document-model Requirement 13.1, 13.3, 13.4, 13.6; command-environments Req 18.5
+        use tempfile::NamedTempFile;
+        let runtime = Runtime::new().expect("runtime");
+        let tmp = NamedTempFile::new().expect("tempfile");
+        let path = tmp.path().to_string_lossy().into_owned();
+
+        // Two 4-byte fixed records tiling an 8-byte image.
+        let tab = file_tab_with_format(
+            &runtime,
+            &path,
+            b"AAAABBBB",
+            ff_document_model::RecordFormat::Fixed { lrecl: 4 },
+        );
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.tabs[0] = tab;
+        let backend = CapturingRecordBackend::with_rc(0);
+        mgr.save_active_tab_via_backend(&backend, &runtime)
+            .expect("save");
+
+        // Record path taken: save_records received the framed records + attrs, and
+        // the byte save was NOT called.
+        assert!(
+            !*backend.byte_save_called.lock().expect("byte flag"),
+            "Fixed on a record-capable backend must NOT take the byte path"
+        );
+        let attrs = backend.last_attrs.lock().expect("attrs").clone();
+        let attrs = attrs.expect("save_records must have been called with attrs");
+        assert_eq!(attrs.recfm, ff_vfs::RecordFormatKind::Fixed);
+        assert_eq!(attrs.lrecl, 4);
+        let target = backend.last_target.lock().expect("target").clone();
+        assert!(target.is_some(), "a StoreTarget must be threaded through");
+    }
+
+    #[test]
+    fn record_store_nonzero_rc_is_reported_as_error() {
+        // Validates: command-environments Requirement 18.8 (outcome -> Result mapping)
+        use tempfile::NamedTempFile;
+        let runtime = Runtime::new().expect("runtime");
+        let tmp = NamedTempFile::new().expect("tempfile");
+        let path = tmp.path().to_string_lossy().into_owned();
+
+        let tab = file_tab_with_format(
+            &runtime,
+            &path,
+            b"AAAABBBB",
+            ff_document_model::RecordFormat::Fixed { lrecl: 4 },
+        );
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.tabs[0] = tab;
+        let backend = CapturingRecordBackend::with_rc(8);
+        let result = mgr.save_active_tab_via_backend(&backend, &runtime);
+        assert!(result.is_err(), "non-zero store rc must surface as Err");
+        assert!(
+            result.unwrap_err().contains('8'),
+            "the error should carry the backend rc"
+        );
+    }
+
+    #[test]
+    fn fixed_document_on_non_record_backend_falls_back_to_byte_path() {
+        // Validates: document-model Requirement 13.4 -- selection also gates on
+        // backend.record_capable(); a non-record-capable backend takes the byte
+        // path even for a Fixed document (keeps SAVE functional on host resources).
+        use tempfile::NamedTempFile;
+        let runtime = Runtime::new().expect("runtime");
+        let tmp = NamedTempFile::new().expect("tempfile");
+        let path = tmp.path().to_string_lossy().into_owned();
+
+        let tab = file_tab_with_format(
+            &runtime,
+            &path,
+            b"AAAABBBB",
+            ff_document_model::RecordFormat::Fixed { lrecl: 4 },
+        );
+        let mut mgr = TabManager::new(&runtime, "");
+        mgr.tabs[0] = tab;
+        // TestBackend is NOT record-capable (inherits the declining default).
+        mgr.save_active_tab_via_backend(&TestBackend, &runtime)
+            .expect("save");
+        let written = std::fs::read(&path).expect("read back");
+        assert_eq!(written, b"AAAABBBB", "byte path writes the raw image");
     }
 
     /// Validates: file-operations Requirement 1.4 — save on untitled tab returns error.

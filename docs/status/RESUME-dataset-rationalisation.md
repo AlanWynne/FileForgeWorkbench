@@ -206,6 +206,24 @@ build-ordering dependency, not a missing requirement.
    holds). TCR Req 18.1-18.4 PASS, 18.8 outcome-type PARTIAL. Completed inline
    after the BRC.2 workflow wedged (impl on disk; orchestrator verified+finished).
    NEXT GATE: owner runs `cargo gate --build` to confirm BRC.2 on the full workspace.
+   (BRC.2 gate CONFIRMED CLEAN: run ea8c99d1, 9845/9845. Committed `0a7da61`, pushed.)
+3b. **BRC.3** -- the editor SAVE-walk byte-vs-record selection (ff-desktop
+   `save_active_tab_via_backend`). command-environments Req 18.5-18.6; document-model
+   Req 13.1-13.6. **DONE 2026-10-10: code-complete, scoped-verified, UNCOMMITTED on
+   main, pending the owner's full gate.** Selection by `Document::record_format()` +
+   `backend.record_capable()`; byte path verbatim (byte-identical, proven); record
+   path via `RecordImageSource` + `StoreTarget`(placeholder) + `RecordAttrs` ->
+   `save_records`, outcome mapped (rc0->Ok / rc!=0->Err / NotRecordCapable->byte
+   fallback). Scoped checks: `tab_manager::tests` 55/55 (4 new BRC.3 tests);
+   `cargo clippy -p ff-desktop --bins -- -D warnings` clean; `cargo fmt` done. TCR
+   document-model Req 13.1-13.6 + command-environments 18.5/18.6 -> PASS. Completed
+   INLINE after the BRC.3 workflow hung (~21 min, impl on disk + compiling; the
+   orchestrator added the 4 tests, fixed one `DelimiterTerminator` type error in a
+   test, ran the scoped checks, flipped docs). The record path is unit-tested against
+   a record-capable TEST backend; it is NOT live end-to-end yet (needs RC.B.8 (b)-(d)
+   + BRC.4). **NEXT GATE: owner runs `cargo gate --build` to confirm BRC.3 (test
+   count should rise above 9845); if clean, commit + push BRC.3, then proceed to
+   RC.B.8 (b)-(d) and BRC.4.**
 3. **RC.B.8 Part 2 (b)-(d)** -- open the closed `RegisteredEnv` registry to a
    named-backend map + dispatch arm; `open_mainframe_dsn` passes
    `owning_env="MAINFRAME"`; register the mainframe VFS provider live
