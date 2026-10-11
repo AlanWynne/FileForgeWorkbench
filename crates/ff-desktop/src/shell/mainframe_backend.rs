@@ -5,69 +5,62 @@
 //! `construct.rs` / `construct_provider.rs` so those files stay under the
 //! 400-line rule (`rust-standards.md`).
 //!
-//! ## Co-located-by-DSN construction (plan Risk 2)
+//! ## Catalog-backed construction (CR-CH-061)
 //!
 //! The mainframe CE (`ff_idcams::MainframeEnvironment`) OWNS an
 //! `Arc<dyn ff_dscatalog::DatasetAccess>`. We build that from a
-//! `ff_dscatalog::CatalogDatasetAccess::new(provider, volume_registry)` composed
-//! of existing, already-unit-tested types: a native `ff_vfs::PosixNativeProvider`
-//! over the host root and a single-Volume `ff_volume::VolumeRegistry`. This is
-//! the bounded "co-located-by-DSN" default: the CE resolves/stores a dataset BY
-//! DSN through its own access layer.
+//! `ff_dscatalog::CatalogRepositoryAccess` (dataset-catalog Req 36): its
+//! `resolve`/`open`/`close` consult the ON-DISK SQLite catalog + physical files
+//! the Files Panel's allocate writes, opening a short-lived catalog connection
+//! per `resolve` (so the shared `Arc<dyn DatasetAccess>` stays `Send + Sync`).
+//! This closes the former FALSE NotFound / rc 12 gap: a dataset the Files Panel
+//! created in the same session now resolves and stores with rc 0.
 //!
-//! KNOWN LIMITATION (recorded for the owner's gate, NOT a parallel store): a
-//! `CatalogDatasetAccess` resolves a DSN only against the datasets IT itself
-//! allocated/resolved (its in-memory `AccessState`). It does NOT share the live
-//! SQLite catalog + volume handles the Files Panel's `ff-catalog-registry`
-//! opened, so a SAVE through this freshly-built access resolves `NotFound`
-//! (rc = 12) for a dataset the Files Panel created in the same session. Making a
-//! SAVE visible to a later open in the same session needs the shell to share the
-//! EXACT live catalog/volume handles -- a cross-crate handle the shell does not
-//! currently own. The wiring, routing, identity threading, and record-store
-//! contract are all in place and fully exercised by the scoped routing tests
-//! (ff-desktop) + the real-DatasetAccess round-trip (ff-idcams, FEAT-001); only
-//! the same-session store-visibility fidelity is bounded by this.
+//! The catalog repository path reaches the CE from the active tab's EXISTING
+//! `(dsn, catalog)` store identity. SAVE resolution is PER-SAVE
+//! (`build_mainframe_backend_for_repo`): the shell resolves the active
+//! MAINFRAME tab's catalog name to its repository path and builds a backend
+//! pointed at that catalog, so multiple mainframe catalogs are each served. The
+//! build-time registry entry (`build_mainframe_backend`) is the fallback used
+//! when no per-save catalog path is resolvable.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use ff_volume::{AccessMode, Volser, Volume, VolumeId, VolumeRegistry};
-
-/// Build the record-capable MAINFRAME backend Command Environment (RC.B.8 (c)).
+/// Build the record-capable MAINFRAME backend Command Environment (RC.B.8 (c),
+/// CR-CH-061 Req 19.1).
 ///
-/// Composes a native storage provider over `root` with a single read-write
-/// Volume registry into a `CatalogDatasetAccess`, wraps it as the object-safe
-/// `Arc<dyn ff_dscatalog::DatasetAccess>`, and hands it to
-/// `ff_idcams::MainframeEnvironment::new`. Returned boxed so the
-/// `EnvironmentRegistry` holds it without knowing the concrete type.
+/// The CE's `Arc<dyn ff_dscatalog::DatasetAccess>` is the catalog-backed
+/// `CatalogRepositoryAccess` (dataset-catalog Req 36): its `resolve`/`open`/
+/// `close` consult the ON-DISK SQLite catalog + physical files the Files Panel
+/// writes, NOT an isolated in-memory dataset map (closing the former FALSE
+/// NotFound / rc 12). `repository_paths` are the active mainframe catalog
+/// repository roots; an empty set resolves NotFound until a save threads a
+/// catalog path (per-save resolution builds a fresh backend for the active
+/// tab's catalog -- see `build_mainframe_backend_for_repo`).
 ///
-/// Validates: command-environments Requirement 16.1, 16.4
+/// Returned boxed so the `EnvironmentRegistry` holds it without knowing the
+/// concrete type.
+///
+/// Validates: command-environments Requirement 16.1, 16.4, 19.1
 pub(super) fn build_mainframe_backend(
-    root: &std::path::Path,
+    repository_paths: Vec<PathBuf>,
 ) -> Box<dyn ff_vfs::BackendEnvironment> {
-    let provider: Arc<dyn ff_vfs::StorageProvider> =
-        Arc::new(ff_vfs::PosixNativeProvider::new(root, false));
-    let registry = single_volume_registry();
     let access: Arc<dyn ff_dscatalog::DatasetAccess> =
-        Arc::new(ff_dscatalog::CatalogDatasetAccess::new(provider, registry));
+        Arc::new(ff_dscatalog::CatalogRepositoryAccess::new(repository_paths));
     Box::new(ff_idcams::MainframeEnvironment::new(access))
 }
 
-/// A minimal single-Volume read-write `VolumeRegistry` for the mainframe CE's
-/// dataset access (mirrors the `CatalogDatasetAccess` fixture). The Volume is
-/// large enough that a normal editor SAVE does not hit a space abend; a genuine
-/// x37/volume-full is still surfaced by the dataset access and mapped to a
-/// non-zero rc by the CE (FEAT-001).
-fn single_volume_registry() -> VolumeRegistry {
-    let mut reg = VolumeRegistry::new();
-    let volser = Volser::try_new("FFWB01").unwrap_or_else(|_| {
-        // VOLSER is a fixed valid literal; this fallback never runs.
-        Volser::try_new("VOL001").expect("valid volser literal")
-    });
-    let mut vol = Volume::new(VolumeId(1), volser, "ffwb-mainframe-store", 1_000_000);
-    vol.set_access_mode(AccessMode::ReadWrite);
-    // A fresh registry define cannot collide; ignore the never-taken Err arm.
-    let _ = reg.define(vol);
-    reg
+/// Build a mainframe backend CE pointed at a SINGLE catalog repository path
+/// (CR-CH-061 Req 19.3, per-save resolution). Used at SAVE time to resolve a
+/// MAINFRAME-owned tab's dataset against the catalog that owns it, so multiple
+/// mainframe catalogs are each served.
+///
+/// Validates: command-environments Requirement 19.1, 19.3
+pub(super) fn build_mainframe_backend_for_repo(
+    repository_path: PathBuf,
+) -> Box<dyn ff_vfs::BackendEnvironment> {
+    build_mainframe_backend(vec![repository_path])
 }
 
 /// Build the catalog-scheme `ff_dscatalog::CatalogVfsProvider` for additive

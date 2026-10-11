@@ -127,6 +127,8 @@ mod tests_command;
 #[cfg(test)]
 mod tests_common;
 #[cfg(test)]
+mod tests_crch061;
+#[cfg(test)]
 mod tests_focus;
 #[cfg(test)]
 mod tests_menu_workspace;

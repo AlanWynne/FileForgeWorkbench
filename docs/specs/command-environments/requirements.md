@@ -945,3 +945,54 @@ explicit owner approval before any code (a later step). ADDITIVE: the byte
    (consistent with Req 14 / lua-macro-engine Req 11.15), including the mainframe
    failure semantics `DatasetAccess` already surfaces (e.g. x37 space-full
    abends). [CR-CH-060]
+
+### Requirement 19: MAINFRAME CE resolves and stores a same-session Files-Panel dataset (CR-CH-061)
+
+**User Story:** As a mainframe developer, I want a record-aware MAINFRAME SAVE to
+succeed (rc 0) for a dataset I allocated in the Files Panel earlier in the SAME
+session, so that the record-aware store path (Req 18) actually persists against
+the dataset I can see, not against an empty isolated store that returns NotFound.
+
+**Marking:** CHANGE REQUEST (CR-CH-061). Builds ON the framework: no new
+dispatcher, no second navigation stack, no new persistence format. It changes
+only WHICH concrete `ff_dscatalog::DatasetAccess` the shell constructs for the
+mainframe Command Environment -- from a fresh in-memory fixture to the
+catalog-backed `DatasetAccess` added under dataset-catalog Requirement 36 -- so
+the CE's `resolve` consults the on-disk SQLite catalog of record. Native/host
+byte SAVE is untouched and byte-identical. Closes the OPEN follow-up left by
+RC.B.8 Part 2 (b)-(d) + BRC.4 (commit cb4720e); grounded in
+`.agents/tasks/crch061-live-handles/findings.md` (Option c).
+
+#### Acceptance Criteria
+
+19.1 THE mainframe Command Environment (housed in `ff-idcams`, Req 16.1 / 18.7)
+   SHALL be constructed by the shell with the catalog-backed `DatasetAccess`
+   (dataset-catalog Req 36), so its `resolve`/`open`/`close` consult the on-disk
+   SQLite catalog + physical files the Files Panel's allocate writes, NOT an
+   isolated in-memory dataset map. [CR-CH-061]
+
+19.2 WHEN a dataset has been allocated through the Files Panel earlier in the
+   session AND the editor performs a record-aware MAINFRAME SAVE of that dataset,
+   THE mainframe CE's `resolve` SHALL succeed and the SAVE SHALL store the framed
+   records to that dataset's catalog physical file with store outcome rc 0 (Req
+   18.8), replacing the former FALSE NotFound / rc 12. [CR-CH-061]
+
+19.3 THE shell SHALL supply the mainframe CE with the active mainframe catalog's
+   repository location using the tab's EXISTING `(dsn, catalog)` store identity
+   (Req 15 owning-environment binding; the catalog name resolves to its
+   repository path via the existing catalog-registry lookup) -- it SHALL NOT add
+   a new persistence field or a second identity channel. [CR-CH-061,
+   framework-conformance.md]
+
+19.4 THE SAVE SHALL continue to ride the SINGLE CR-CH-053 Task 20/21 seam
+   (FFEDIT -> owning CE -> record-aware store -> `DatasetAccess`, Req 18.6); no
+   parallel save path and no second dispatcher SHALL be introduced. [CR-CH-061]
+
+19.5 WHEN the SAVE targets a native/host (Delimited) tab THE behaviour SHALL be
+   unchanged and byte-identical (Req 18.1, 18.5); only a MAINFRAME-owned tab
+   reaches the catalog-backed access. [CR-CH-061]
+
+19.6 WHEN the DSN genuinely does not exist in the active catalog(s) THE mainframe
+   CE SHALL still surface NotFound with the existing non-zero rc (dataset-catalog
+   Req 36.6) -- this requirement turns a FALSE miss into a resolve, it SHALL NOT
+   mask a true miss. [CR-CH-061]

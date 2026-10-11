@@ -32,6 +32,8 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 | `fileforge-integration` | **Integration** | FileForge-mode datasets (EBCDIC, COMP-3) are stored in and resolved from the catalog. |
 | `command-framework` | **Dependency** | All catalog/dataset operations are registered as commands dispatched through the framework. |
 | `configuration-system` | **Dependency** | Mounted catalogs, default HLQ, and repository paths stored in `[catalog]` config namespace. |
+| `jes-emulator` | **Future consumer** (CR-NR-108) | At execution time `//STEP EXEC PGM=program` resolves the program by Program_Search over STEPLIB/JOBLIB/default Load_Libraries. The dataset-catalog spec owns the MODEL (Load_Library content model + Program_Search primitive, Requirements 38-39); jes-emulator owns the JCL execution/concatenation that supplies the ordered library list. |
+| `compiler-toolchain-integration` | **Future consumer** (CR-NR-108) | A future COMPILE step writes object modules into a PDS/PDSE object library; a LINK/bind step writes the resulting Load_Module/Program_Object into a Load_Library (Requirements 37-38). compiler-toolchain-integration owns the compile/link tooling; dataset-catalog owns the dataset/member content model those steps write into. |
 
 > **Crate name:** The actual workspace crate is `ff-dscatalog`. Any reference to `ff-dataset-catalog` in older documents is incorrect and should be read as `ff-dscatalog`.
 
@@ -66,6 +68,16 @@ The Dataset Catalog provides catalog lifecycle management (mount, unmount, add, 
 - **Dataset_Resolution**: Looking up a Dataset_Name in mounted catalogs and following Dataset -> DatasetVolume (by sequence) -> Volume -> locator, after verifying each required Volume is Online. [DSC] (Amended by CR-CH-057 -- Volume split; was: looking up a Dataset_Name and returning the physical path to the underlying file content.)
 - **Properties_Panel**: A UI panel displaying dataset attributes (DSN, type, RECFM, LRECL, BLKSIZE, DSORG, creation date, modification date, physical path). [DSC]
 - **Context_Menu**: A right-click menu on catalog tree nodes offering operations appropriate to the node type (catalog, dataset, PDS member). [DSC]
+- **Load_Library**: A Partitioned_Dataset (PO) whose members are executable binaries -- Load_Modules (classic, in a PDS) or Program_Objects (modern, in a PDSE) -- rather than record-oriented data. A Load_Library is the target of a link/bind step and the thing a STEPLIB/JOBLIB search looks in. Modelled by a Library_Kind on a PO dataset. [DSC] (Added by CR-NR-108.)
+- **Load_Module**: An opaque executable binary member of a classic (PDS) Load_Library, produced by the binder/link-editor from one or more object modules. Classic load modules are stored RECFM=U, LRECL=0. A Load_Module is NOT record-oriented text and is not editable as text lines. [DSC] (Added by CR-NR-108.)
+- **Program_Object**: The modern form of an executable binary member, requiring (or preferring) a PDSE Load_Library. Functionally an executable member like a Load_Module for the purposes of this model; distinguished from a classic Load_Module only by residing in a PDSE. [DSC] (Added by CR-NR-108.)
+- **Object_Module**: The intermediate binary produced by a compiler from source, stored as a member of a PDS/PDSE object library, consumed by the link/bind step to produce a Load_Module/Program_Object. Modelled as an executable-adjacent member content-type (binary, not record-oriented text). [DSC] (Added by CR-NR-108.)
+- **Library_Kind**: An additive classification of a PO (Partitioned) dataset identifying it as ordinary record-data library, an object library, or a Load_Library (load modules / program objects). It does NOT replace the PDS/PDSE subtype; it describes the intended member content. [DSC] (Added by CR-NR-108.)
+- **Member_Content_Type**: An additive per-member (and per-dataset default) classification distinguishing record-oriented data members from opaque executable binary members (object modules, load modules, program objects). Executable binary members are not editable as text lines. [DSC] (Added by CR-NR-108.)
+- **Program_Search**: The model-level capability to resolve a program name to a Load_Library member by searching an ordered list of Load_Libraries. [DSC] (Added by CR-NR-108.)
+- **STEPLIB**: A step-level ordered list (concatenation) of Load_Libraries searched FIRST when resolving an `EXEC PGM=program` program name, before JOBLIB and the system default. Expressed in JCL as `//STEPLIB DD DSN=...,DISP=SHR`. In this spec it is the first segment of the Program_Search order; the JCL that supplies it is future jes-emulator work. [DSC] (Added by CR-NR-108.)
+- **JOBLIB**: A job-level ordered list of Load_Libraries searched AFTER a step's STEPLIB (when the step has no STEPLIB) and before the system default. [DSC] (Added by CR-NR-108.)
+- **Program_Search_Order**: The ordered sequence of Load_Library groups consulted by Program_Search: STEPLIB (if present) -> JOBLIB (if present) -> system default library group. The FIRST Load_Library in order containing a member whose name matches the program name wins. [DSC] (Added by CR-NR-108.)
 
 ## Requirements
 
@@ -930,3 +942,113 @@ continue to pass after this change with no observable behaviour difference for l
 35.4 THE duplicate `posix` registrant SHALL be collapsed to a single provider (virtual-file-system Requirement 14) as part of the same consolidation.
 
 35.5 THE consolidation SHALL NOT, before it completes, extend `ff-idcams`'s private `CatalogService`/`VsamService` further, nor wire VSAM against `ff-vsam-services`'s disconnected trait or against `ff-dscatalog::storage::StorageProvider`, nor build any consumer against the raw `storage_path` or `ff-dsalloc`'s current `physical_path` return -- these are the documented "do not build before consolidation" wastes (design.md "DO NOT build before consolidation" note).
+
+---
+
+### Requirement 36: Catalog-Backed DatasetAccess -- Resolve/Store Against the On-Disk Catalog of Record (CR-CH-061)
+
+**User Story:** As a mainframe developer, I want a record-aware MAINFRAME editor SAVE to resolve and store against the SAME dataset I just allocated in the Files Panel in the same session, so that saving a Fixed/Variable dataset writes to the catalog of record (rc 0) instead of failing NotFound (rc 12) because the editor's access layer looked in a different, empty store.
+
+**Source:** CR-CH-061; read-only investigation `.agents/tasks/crch061-live-handles/findings.md` (Option c). Closes the OPEN follow-up left by CR-CH-059 RC.B.8 Part 2 (b)-(d) + CR-CH-060 BRC.4 (commit cb4720e). Content was rephrased for compliance with licensing restrictions.
+
+> **Framework note:** This adds a NEW public `DatasetAccess` implementation to `ff-dscatalog` that resolves a DSN through the on-disk SQLite catalog + physical files the Files Panel's allocate already writes (Requirement 1, Requirement 18, Requirement 32), performing I/O through the single `ff-vfs::StorageProvider` seam (virtual-file-system Requirement 13). It builds ON the existing `DatasetAccess` contract (Requirement 34) -- it is a new implementor of that trait, NOT a new trait, dispatcher, navigation stack, or persistence format. The mainframe CE (housed in `ff-idcams`) consumes it unchanged through its existing `Arc<dyn DatasetAccess>`. No new crate dependency edge is introduced (`ff-dscatalog` already owns the catalog, volume, vfs, and SQLite layers). The exact type name and constructor signature are finalised in design.md.
+
+**Root cause (recorded for traceability):** the MAINFRAME CE was built with a fresh in-memory `CatalogDatasetAccess` whose `datasets` map is populated only by in-process `allocate` calls and never reads SQLite; the Files Panel's allocate writes to an on-disk SQLite `ff-dscatalog` repository. The two stores are disjoint, so a same-session resolve misses and maps to rc 12.
+
+#### Acceptance Criteria
+
+36.1 THE `ff-dscatalog` crate SHALL provide a catalog-backed `DatasetAccess` implementation whose `resolve`/`open`/`close` consult the on-disk SQLite catalog + physical files of a given catalog repository (the store the Files Panel's allocate writes, Requirement 1, Requirement 18), rather than an isolated in-memory dataset map.
+
+36.2 WHEN a dataset has been allocated through the Files Panel (an on-disk SQLite `datasets` row + physical file exist in the catalog repository) THE catalog-backed `DatasetAccess` SHALL resolve that dataset's DSN in the SAME session and return its physical locator, so that a subsequent record-aware store succeeds.
+
+36.3 THE catalog-backed `DatasetAccess` SHALL remain `Send + Sync` (as required by the `DatasetAccess` trait, Requirement 34.8) by opening a short-lived catalog connection per operation (mirroring the Files Panel's existing per-call catalog open) and SHALL NOT hold a live `rusqlite::Connection` or other non-`Send`/`Sync` handle inside the shared `Arc<dyn DatasetAccess>`.
+
+36.4 THE catalog-backed `DatasetAccess` SHALL perform all physical reads and writes through the single `ff-vfs::StorageProvider` seam (virtual-file-system Requirement 13) and SHALL resolve physical location via the catalog + `ff-volume` (Requirement 32), NOT by constructing a raw `storage_path`.
+
+36.5 WHEN a record-aware MAINFRAME SAVE stores records through the catalog-backed `DatasetAccess` for a resolved dataset THE stored bytes SHALL be the RECFM-framed record image (Requirement 16, command-environments Requirement 18) written to the dataset's catalog physical file, and the store outcome SHALL carry rc 0 on success (command-environments Requirement 18.8 rc convention).
+
+36.6 WHEN the DSN cannot be resolved in the active catalog(s) THE catalog-backed `DatasetAccess` SHALL return `DatasetError::NotFound` (mapping to the existing non-zero rc), preserving today's deterministic failure for a genuinely absent dataset -- the fix changes a FALSE NotFound (dataset exists in SQLite but the access looked elsewhere) into a successful resolve, not the handling of a true miss.
+
+36.7 THE catalog-backed `DatasetAccess` SHALL NOT change native/host-path SAVE: the byte `save(path, bytes)` path and the host backends (`ff-ce-ntfs`/`ff-ce-posix`) are untouched, and only a MAINFRAME-owned tab reaches this access (command-environments Requirement 15, Requirement 16). Native SAVE SHALL remain byte-identical.
+
+36.8 THE catalog-backed `DatasetAccess` SHALL ride the single CR-CH-053 Task 20/21 SAVE-addressing seam (FFEDIT -> owning CE -> `save_records` -> `DatasetAccess`) with no parallel save path and no second dispatcher (command-environments Requirement 14, Requirement 18.6).
+
+---
+
+### Requirement 37: RECFM=U with LRECL=0 (Undefined-Length Records)
+
+**User Story:** As a mainframe developer, I want to allocate and catalog a RECFM=U dataset with LRECL=0 (the classic load-library record format) without the allocation being rejected, so that FFWB can represent load libraries and other undefined-format datasets faithfully.
+
+**Source:** CR-NR-108 (owner prompt: "Does our model support Load Libraries or RECFM=U LRECL=0?"). Builds on `ff-dscatalog` `Recfm {F,FB,V,VB,U}` (U already exists), `AllocParams::validate`, and `with_defaults`. Governed by dataset-ownership-model ADR-001 (types owned by ff-dscatalog).
+
+> **Framework note:** This is additive and non-breaking. It relaxes a validation branch and a defaults branch for the EXISTING `Recfm::U` variant; it does NOT add, remove, or rename any `Recfm` variant and does NOT reshape any public type. The existing "LRECL must be between 1 and 32760" rule (Requirement 7, exercised by `AllocParams::validate`) is AMENDED in place to apply only when RECFM is not U; it is not deleted.
+
+#### Acceptance Criteria
+
+37.1 WHEN a dataset's RECFM is U THE system SHALL treat LRECL as not-applicable: LRECL=0 (or an omitted LRECL) SHALL be permitted and SHALL be recorded as "LRECL not applicable" rather than as a meaningful record length.
+
+37.2 WHEN `AllocParams::validate` is called for a RECFM=U dataset with `lrecl == 0` or `lrecl == None` THE validation SHALL succeed (it SHALL NOT return `InvalidAllocationParams` for LRECL), overriding the general "LRECL must be between 1 and 32760" rule which SHALL continue to apply for RECFM F/FB/V/VB.
+
+37.3 WHEN RECFM is F, FB, V, or VB and LRECL is 0 THE validation SHALL continue to reject it (the existing Requirement 7 LRECL rule is unchanged for non-U formats) -- the LRECL=0 relaxation is specific to RECFM=U.
+
+37.4 WHEN a RECFM=U dataset specifies a BLKSIZE THE BLKSIZE SHALL remain meaningful and SHALL be retained; BLKSIZE SHALL be permitted without an accompanying positive LRECL, and the existing "BLKSIZE must be >= LRECL" constraint SHALL be treated as satisfied (not evaluated against a zero/absent LRECL) when RECFM is U.
+
+37.5 WHEN `AllocParams::with_defaults` is applied to a RECFM=U dataset THE defaults SHALL NOT inject LRECL=80 and SHALL NOT inject RECFM=FB; a RECFM=U dataset SHALL keep RECFM=U and LRECL not-applicable, while BLKSIZE MAY receive a default.
+
+37.6 WHEN RECFM is not specified for a dataset being allocated as a Load_Library (Requirement 38) THE defaults SHALL yield RECFM=U with LRECL not-applicable rather than RECFM=FB/LRECL=80, so that a load library created without explicit DCB attributes is correctly undefined-format.
+
+37.7 THE Properties_Panel and any LISTCAT/LISTDS-style display (Requirement 11, Requirement 13) SHALL render a RECFM=U dataset's LRECL as "not applicable" (for example, blank or `0` with a not-applicable marker) rather than as a misleading record length.
+
+---
+
+### Requirement 38: Load Library and Program Object Content Model
+
+**User Story:** As a mainframe developer, I want FFWB to distinguish a load library (whose members are opaque executable load modules / program objects) from an ordinary record-oriented PDS/PDSE, so that executable members are not treated or edited as text records and so that classic load modules (PDS) and modern program objects (PDSE) are modelled correctly.
+
+**Source:** CR-NR-108 (owner: "I wouldn't model a load module as merely an FB/VB record-oriented file. It deserves its own member/content type ... because its internal organization and intended operations are quite different from ordinary record data"). Builds on `ff-dscatalog` `Dsorg::PO` and `PartitionedSubtype {PDS, PDSE}`. Governed by dataset-ownership-model ADR-001.
+
+> **Framework note:** This is the MINIMAL additive change: a new `#[non_exhaustive]` `Library_Kind` enum describing the intended content of a PO dataset, and a new `#[non_exhaustive]` `Member_Content_Type` enum distinguishing record-data members from executable binary members. It adds optional fields to `AllocParams` and `DatasetRecord`; it does NOT reshape `Dsorg`, `Recfm`, or `PartitionedSubtype`, and the existing PDS/PDSE subtype remains unchanged and orthogonal.
+
+#### Acceptance Criteria
+
+38.1 THE `ff-dscatalog` crate SHALL define a `#[non_exhaustive]` Library_Kind enum with at least the values: record-data library (ordinary members, the default and today's behaviour), object library (object modules), and load library (load modules / program objects). THE Library_Kind SHALL apply only to PO (Partitioned) datasets.
+
+38.2 THE `AllocParams` and `DatasetRecord` types SHALL carry an OPTIONAL Library_Kind field for PO datasets; when absent THE dataset SHALL default to the record-data library kind, preserving the current behaviour for every existing PO dataset.
+
+38.3 THE `ff-dscatalog` crate SHALL define a `#[non_exhaustive]` Member_Content_Type enum distinguishing at least: record-oriented data, object module (binary), and executable (load module / program object, binary). THE model SHALL be able to carry a Member_Content_Type as a per-dataset default (for a Load_Library, executable) and SHALL permit a per-member content type where member-level metadata exists (Requirement 8 member operations).
+
+38.4 WHEN a PO dataset's Library_Kind is load library THE default Member_Content_Type for its members SHALL be executable (load module / program object), and such members SHALL be marked as opaque binary -- NOT record-oriented text.
+
+38.5 WHEN a member's Member_Content_Type is object module or executable THE system SHALL treat the member as opaque binary content and SHALL NOT present it for text-line editing (consistent with Requirement 16 record-oriented storage never inserting CRLF/LF record delimiters); any viewer SHALL treat it as binary.
+
+38.6 WHEN a Load_Library is allocated as a classic load library THE expected pairing SHALL be subtype PDS with RECFM=U, LRECL not-applicable (Requirement 37); WHEN allocated as a program-object library THE expected pairing SHALL be subtype PDSE. The model SHALL permit recording either pairing; it SHALL NOT forbid a PDSE load library (program objects require/prefer PDSE) and SHALL NOT require RECFM=U for a program-object (PDSE) library.
+
+38.7 THE Properties_Panel and context menus (Requirement 11, Requirement 12) SHALL be able to reflect a dataset's Library_Kind and a member's Member_Content_Type so that a load library and its executable members are visually distinguishable from record-data libraries and members. (UI realisation of these affordances is a dataset-catalog UI task; the MODEL carrying the attributes is this requirement.)
+
+38.8 THE Library_Kind and Member_Content_Type additions SHALL be purely additive and SHALL NOT change the meaning, display, or validation of any existing record-data PDS/PDSE dataset or member that does not set them.
+
+---
+
+### Requirement 39: Searchable Load Library -- Program Resolution by Search Order
+
+**User Story:** As a mainframe developer, I want to resolve a program name to a load-library member by searching an ordered list of load libraries (STEPLIB, then JOBLIB, then a system default), so that `//STEP EXEC PGM=program` can later find the executable produced by a compile-and-link pipeline, matching z/OS program-search semantics.
+
+**Source:** CR-NR-108 (owner: "The PDS will have to be searchable so that a program can be searched for within a steplib: //step exec pgm=program //steplib dd dsn=my.program-lib,disp=SHR"). Motivating pipeline: source -> compile -> object module (PDS/PDSE) -> link/bind -> load module / program object (Load_Library) -> `EXEC PGM=` STEPLIB search. Builds on Requirement 8 (PDS member operations) and the Dataset_Resolution primitive (Requirement 10 / Glossary). Governed by dataset-ownership-model ADR-001.
+
+> **Framework note:** This specifies the MODEL/metadata foundation ONLY -- a resolution primitive over an ordered list of Load_Libraries, owned by `ff-dscatalog`. The JCL that supplies the ordered list (STEPLIB/JOBLIB concatenation parsing, `EXEC PGM=` dispatch, the compile/link steps that populate the libraries) is FUTURE work in jes-emulator and compiler-toolchain-integration and is explicitly OUT OF SCOPE here (see those sub-projects' Cross-References). Today `EXEC PGM=` is only PARSED (ff-jes `ffjcl.rs`, ff-dsalloc `job_model.rs` `ExecTarget::Program`); there is no resolution concept, and this requirement is that model foundation.
+
+#### Acceptance Criteria
+
+39.1 THE `ff-dscatalog` crate SHALL expose a Program_Search resolution capability that, given a program name and an ordered list of Load_Library DSNs, SHALL return the FIRST Load_Library whose member set contains a member whose name matches the program name (case-insensitive, 1-8 character member-name rules per Requirement 8), together with the resolved member identity.
+
+39.2 WHEN the program name is not found in any Load_Library in the ordered list THE resolution SHALL report a deterministic not-found result (a program-not-found outcome, not a panic), distinct from an error caused by an unresolvable or offline library.
+
+39.3 WHEN a Load_Library DSN in the search list cannot be resolved (not cataloged, or its required Volume is offline per Requirement 32) THE resolution SHALL surface that condition for that library and SHALL continue searching the remaining libraries in order, so that one unavailable library does not mask a program present in a later library. (Whether an unresolvable earlier library is a hard failure or a skip-with-diagnostic is a design-level decision recorded in design.md; the model SHALL make both the match and the per-library condition expressible.)
+
+39.4 THE Program_Search SHALL honour the Program_Search_Order defined in the Glossary: a STEPLIB group (if present) is searched before a JOBLIB group (if present), which is searched before a system-default library group. THE ordered list passed to the resolution primitive SHALL be the concatenation of these groups in that order; dataset-catalog owns the lookup, and the CALLER (future jes-emulator) owns assembling the ordered list from JCL.
+
+39.5 THE Program_Search SHALL only resolve against datasets whose Library_Kind is load library (Requirement 38); a record-data PDS/PDSE SHALL NOT satisfy a program search (a program is an executable member, not a record-data member).
+
+39.6 THE Program_Search resolution SHALL be a read-only metadata/member lookup -- it SHALL NOT load, execute, or interpret the member's bytes; executing the resolved program is FUTURE jes-emulator work and is OUT OF SCOPE for this requirement.
+
+39.7 THE Program_Search capability SHALL be expressible against one or more Load_Libraries so that a single-library search (one STEPLIB DD) and a multi-library concatenation (STEPLIB with multiple DD lines, plus JOBLIB, plus default) are both supported by the same primitive.

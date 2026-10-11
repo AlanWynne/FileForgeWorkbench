@@ -3495,6 +3495,60 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 |--------|-------|
 | `[x]` Phase (backendenv-record-contract) | CR-CH-060 CODE-COMPLETE (pending the owner's full `cargo gate --build`): owner-directed FRAMEWORK CHANGE reshaping the `ff-vfs::BackendEnvironment` store contract to be record-aware, designed ONCE to serve CR-CH-058 (editor SAVE walk) + CR-CH-059 RC.B.8 Part 2 (mainframe editor SAVE). KEEP the byte `save(path, bytes)` (native byte-identical); ADDED a record-aware store entry (Store_Target + object-safe record stream + RECFM/LRECL/encoding attrs) implemented by the mainframe CE in `ff-idcams` over `ff_dscatalog::DatasetAccess`; the editor SAVE walk picks byte-vs-record by the owning CE's advertised RecordFormat (supplied at open); single CR-CH-053 Task 20/21 SAVE-addressing seam preserved; object-safe (`dyn BackendEnvironment`). OWNER DECISION: SHAPE 2 (additive record-aware method alongside the byte `save`, declining provided default) APPROVED; Shape 1 rejected (documented alternative). command-environments Req 18 (18.1-18.8); document-model Req 13 (13.1-13.6). BRC.1 docs + BRC.2 (ff-vfs entry) + BRC.3 (SAVE-walk selection) + BRC.4 (mainframe CE) + RC.B.8 Part 2 (b)-(d) (shell wiring) ALL DONE. BRC.1-BRC.3 already committed/pushed/full-gate-clean on main; BRC.4 + Part 2 (b)-(d) code-complete, scoped checks clean, awaiting the owner's full gate before commit. OPEN FOLLOW-UP: same-session store-visibility of a Files-Panel-created dataset (live-catalog-handle sharing) -- owner decision pending. Mainline/unprefixed. |
 
+## Phase (mainframe-live-catalog-handle) -- CR-CH-061: MAINFRAME CE resolves/stores against the on-disk catalog of record
+
+> CHANGE REQUEST closing the OPEN FOLLOW-UP left by CR-CH-060 BRC.4 + CR-CH-059
+> RC.B.8 Part 2 (commit cb4720e). A same-session record-aware MAINFRAME SAVE of a
+> Files-Panel-allocated dataset returned a FALSE NotFound (rc 12) because the CE
+> was built with an in-memory `CatalogDatasetAccess` that never reads the on-disk
+> SQLite catalog the Files Panel writes. FIX (read-only investigation
+> `.agents/tasks/crch061-live-handles/findings.md`, Option c): add a catalog-backed
+> `DatasetAccess` in `ff-dscatalog` that resolves against the on-disk catalog
+> (short-lived connection per call to stay `Send + Sync`), and have the shell build
+> the mainframe CE with it, threading the active catalog's repository path via the
+> tab's existing `(dsn, catalog)` identity. GATE-SCOPE WIDENER: adds PUBLIC API to
+> `ff-dscatalog` (a new catalog-backed access) -- a deliberate gated library
+> addition. No new DAG edge; native/host byte SAVE untouched and byte-identical;
+> single CR-CH-053 Task 20/21 SAVE seam preserved. Mainline/unprefixed.
+>
+> Requirements: dataset-catalog Req 36 (36.1-36.8); command-environments Req 19
+> (19.1-19.6). Design deltas in both design.md files. Tasks: dataset-catalog Task
+> 43 (43.1-43.5), command-environments Task 26 (26.1-26.5). PENDING GATE APPROVAL
+> -- code NOT authorised until the owner approves this package.
+
+- [x] LCH.1 Catalog-backed `DatasetAccess` in `ff-dscatalog` (dataset-catalog Task 43) -- new public implementor of the existing `DatasetAccess` trait in its own file `dataset_access/impl_catalog.rs` (400-line rule); `resolve`/`open`/`get`/`put`/`close` consult the on-disk SQLite catalog + physical files via a short-lived `Catalog` per call (Send + Sync), I/O through the single `ff-vfs::StorageProvider` seam. Round-trip + genuine-miss tests. Validates: dataset-catalog Req 36.1-36.8. DONE (code-complete pending the owner's full gate): `CatalogRepositoryAccess`; `cargo test -p ff-dscatalog` 313+6 pass incl. 4 new `impl_catalog_tests`; clippy/fmt clean.
+- [x] LCH.2 Shell builds the mainframe CE with the catalog-backed access + threads the catalog path (command-environments Task 26) -- `build_mainframe_backend` constructs the catalog-backed access; catalog repository path threaded via the tab's existing `(dsn, catalog)` identity; `MainframeEnvironment` unchanged. ff-idcams round-trip test (rc 0, not rc 12) + scoped ff-desktop routing test (MAINFRAME tab resolves; native tab unchanged/byte-identical). Validates: command-environments Req 19.1-19.6; dataset-catalog Req 36. DONE (code-complete pending the owner's full gate): ff-idcams round-trip passes; `ff-desktop::shell::tests_crch061::{mainframe_save_resolves_same_session_catalog_dataset_rc0, host_tab_save_is_unchanged_and_does_not_reach_catalog_access}` pass (ff-desktop under nextest).
+
+| Status | Count |
+|--------|-------|
+| `[x]` Phase (mainframe-live-catalog-handle) | CR-CH-061 CODE-COMPLETE (pending the owner's full `cargo gate --build`): catalog-backed `DatasetAccess` (ff-dscatalog public addition) + shell wiring so a same-session MAINFRAME SAVE of a Files-Panel dataset resolves (rc 0) instead of a FALSE NotFound (rc 12). 2 deliverables (LCH.1-LCH.2) DONE. No DAG edge; native/host SAVE byte-identical; single SAVE seam preserved. Scoped checks clean (ff-dscatalog 313+6 tests, ff-idcams round-trip, ff-desktop crch061 routing tests under nextest, clippy -D warnings, fmt). NOT yet committed -- awaiting the owner's full gate. Mainline/unprefixed. |
+
+## Phase (loadlib-model) -- CR-NR-108: load libraries, RECFM=U/LRECL=0, searchable STEPLIB program resolution
+
+> NEW REQUIREMENT adding first-class dataset-model support for z/OS load libraries
+> and program objects, plus the record format (RECFM=U/LRECL=0) that underpins
+> them, and the MODEL foundation for `//STEP EXEC PGM=program` STEPLIB/JOBLIB
+> program resolution. All ADDITIVE to `ff-dscatalog` types (new `#[non_exhaustive]`
+> `LibraryKind` + `MemberContentType` enums, optional `AllocParams`/`DatasetRecord`
+> fields, a RECFM-aware validation branch, a read-only `resolve_program`
+> primitive). No existing enum variant/public type is reshaped; no new crate DAG
+> edge. The JCL compile/link/EXEC execution engine is FUTURE work in jes-emulator
+> and compiler-toolchain-integration and is OUT OF SCOPE (cross-referenced only).
+> Governed by ADR-001 (dataset types owned by ff-dscatalog). Mainline/unprefixed.
+>
+> Requirements: dataset-catalog Req 37 (37.1-37.7), Req 38 (38.1-38.8), Req 39
+> (39.1-39.7). Design delta in dataset-catalog/design.md. Tasks: dataset-catalog
+> Tasks 44 (44.1-44.3), 45 (45.1-45.5), 46 (46.1-46.5). PENDING GATE APPROVAL --
+> code NOT authorised until the owner approves this package.
+
+- [ ] LLM.1 RECFM=U / LRECL=0 model (dataset-catalog Task 44) -- RECFM-aware `AllocParams::validate` (RECFM=U permits LRECL 0/None; non-U unchanged) and `with_defaults` (no FB/80 injection for U); LRECL rendered "not applicable" for U in Properties/LISTCAT display. Validates: dataset-catalog Req 37.1-37.7.
+- [ ] LLM.2 Load-library / program-object content model (dataset-catalog Task 45) -- additive `#[non_exhaustive]` `LibraryKind` + `MemberContentType` enums, optional `AllocParams`/`DatasetRecord` fields (default = record-data), opaque-binary handling for executable members, PDS/PDSE pairing permitted. Validates: dataset-catalog Req 38.1-38.8.
+- [ ] LLM.3 Searchable load library -- program-resolution primitive (dataset-catalog Task 46) -- read-only `resolve_program` over an ordered Load_Library list (STEPLIB ++ JOBLIB ++ default), first-match wins, skip-with-diagnostic for unavailable libraries, only `LoadLibrary` datasets match. Validates: dataset-catalog Req 39.1-39.7.
+
+| Status | Count |
+|--------|-------|
+| `[ ]` Phase (loadlib-model) | CR-NR-108 PENDING GATE APPROVAL: additive ff-dscatalog model support for load libraries + program objects (RECFM=U/LRECL=0 relaxation; `LibraryKind`/`MemberContentType` enums; `resolve_program` STEPLIB-search primitive). 3 deliverables (LLM.1-LLM.3). No enum/public-type reshape; no DAG edge; JCL compile/link/EXEC engine deferred to jes-emulator + compiler-toolchain-integration. Code NOT authorised until owner approves. Mainline/unprefixed. |
+
 ## Phase (dataset-stack-rationalisation) -- CR-CH-059 Summary (unchanged)
 
 | Status | Count |

@@ -65,6 +65,16 @@ impl WorkbenchShell {
         // the record-capable mainframe CE, HOSTFS/unknown fall back to the host
         // backend (byte-identical native SAVE). This is still the SINGLE save
         // seam; only the backend selection became owning-env-aware.
+        // CR-CH-061 Req 19.3: for a MAINFRAME-owned tab, resolve the active
+        // tab's catalog (from its EXISTING `(dsn, catalog)` store identity) to
+        // its on-disk repository path and build a per-save mainframe backend
+        // pointed at that catalog, so the catalog-backed `DatasetAccess`
+        // resolves the SAME dataset the Files Panel allocated this session. A
+        // host-path tab (or a MAINFRAME tab whose catalog path cannot be
+        // resolved) falls back to the registry's `backend_for`, byte-identical.
+        // This stays the SINGLE save seam -- only the backend INSTANCE is
+        // chosen per-save; `save_active_tab_via_backend` is unchanged.
+        let per_save_backend = self.mainframe_backend_for_active_tab();
         let result = {
             let Self {
                 environments,
@@ -73,10 +83,44 @@ impl WorkbenchShell {
                 ..
             } = self;
             let owning = tabs.active_tab().owning_environment.clone();
-            let backend = environments.backend_for(&owning);
-            tabs.save_active_tab_via_backend(backend, runtime)
+            match per_save_backend.as_deref() {
+                Some(backend) => tabs.save_active_tab_via_backend(backend, runtime),
+                None => {
+                    let backend = environments.backend_for(&owning);
+                    tabs.save_active_tab_via_backend(backend, runtime)
+                }
+            }
         };
         self.open_error = result.err();
+    }
+
+    /// Build a PER-SAVE MAINFRAME backend for the active tab, pointed at the
+    /// catalog that owns the tab's dataset (CR-CH-061 Req 19.1, 19.3).
+    ///
+    /// Returns `Some(backend)` only when the active tab carries a mainframe
+    /// `store_identity` (a real `(dsn, catalog)` bound at open) AND that catalog
+    /// name resolves to a repository path via the Files Panel's existing catalog
+    /// registry (`get_by_name(catalog).path`). The returned backend's
+    /// catalog-backed `DatasetAccess` resolves the DSN against the ON-DISK
+    /// catalog of record, so a same-session Files-Panel dataset stores with
+    /// rc 0. `None` for a host-path tab or an unresolvable catalog, where the
+    /// caller falls back to the registry backend (byte-identical native SAVE).
+    ///
+    /// This threads the catalog path from the tab's EXISTING store identity --
+    /// no new persistence field and no second identity channel (Req 19.3) -- and
+    /// rides the single CR-CH-053 Task 20/21 save seam (Req 19.4): only the
+    /// backend INSTANCE is chosen per-save.
+    ///
+    /// Validates: command-environments Requirement 19.1, 19.3
+    pub(super) fn mainframe_backend_for_active_tab(
+        &self,
+    ) -> Option<Box<dyn ff_vfs::BackendEnvironment>> {
+        let identity = self.tabs.active_tab().store_identity.as_ref()?;
+        let catalog = self.files_panel.registry.get_by_name(&identity.catalog)?;
+        let repo_path = std::path::PathBuf::from(&catalog.path);
+        Some(super::mainframe_backend::build_mainframe_backend_for_repo(
+            repo_path,
+        ))
     }
 
     /// EXCLUDE / X [text] [ALL] (E2). Delegates to `exclude_manager` with the

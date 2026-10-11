@@ -70,8 +70,8 @@ pub use catalog::{Catalog, CatalogLocation, CatalogMount};
 pub use catalog_registry::CatalogRegistry;
 pub use dataset::{AllocParams, DatasetRecord, Dsorg, PartitionedSubtype, Recfm};
 pub use dataset_access::{
-    AccessIntent, CatalogDatasetAccess, DatasetAccess, DatasetError, DatasetHandle, DdRequest,
-    OpenDataset, Positioner, StepOutcome,
+    AccessIntent, CatalogDatasetAccess, CatalogRepositoryAccess, DatasetAccess, DatasetError,
+    DatasetHandle, DdRequest, OpenDataset, Positioner, StepOutcome,
 };
 pub use dsn::{Dsn, MemberName};
 pub use error::CatalogError;

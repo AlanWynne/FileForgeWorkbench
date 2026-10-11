@@ -529,3 +529,31 @@ before any code. `[ ]` only.
         closed `RegisteredEnv` enum into a named-backend map, bind a mainframe
         tab's `owning_env`, register the mainframe VFS provider live (Req 17.4).
         Validates: Requirement 18.7, 18.8.
+
+---
+
+### Phase (mainframe-live-catalog-handle) -- CR-CH-061 (same-session SAVE store visibility)
+
+> Builds ON the framework: changes only WHICH concrete `DatasetAccess` the shell
+> constructs for the mainframe CE (to the catalog-backed access from
+> dataset-catalog Task 43 / Req 36). No new dispatcher, no second navigation
+> stack, no new persistence format. Native/host byte SAVE untouched. `[ ]` only.
+
+- [x] 26. Build the mainframe CE with the catalog-backed DatasetAccess + thread the catalog path (CR-CH-061, Requirement 19)
+  - DONE (code-complete pending the owner's full gate): `mainframe_backend.rs` builds `CatalogRepositoryAccess`; shell threads the catalog path via the existing `(dsn, catalog)` identity + `get_by_name`; `MainframeEnvironment` unchanged. Tests: ff-idcams round-trip (rc 0) + `ff-desktop::shell::tests_crch061::{mainframe_save_resolves_same_session_catalog_dataset_rc0, host_tab_save_is_unchanged_and_does_not_reach_catalog_access}` pass (ff-desktop under nextest; the 4 plain-`cargo test` session/menu failures are the known B048 parallel-isolation artefact). Scoped clippy/fmt clean.
+  - [x] 26.1 In `crates/ff-desktop/src/shell/mainframe_backend.rs::build_mainframe_backend`, construct the mainframe CE's `Arc<dyn ff_dscatalog::DatasetAccess>` as the catalog-backed access (dataset-catalog Req 36 / Task 43) instead of the fresh in-memory `CatalogDatasetAccess` fixture, so `resolve` consults the on-disk SQLite catalog + physical files the Files Panel writes.
+    - Validates: Requirement 19.1
+  - [x] 26.2 Thread the active mainframe catalog's repository path to the CE using the tab's EXISTING `(dsn, catalog)` store identity (`PendingOpenReq.identity` / tab `StoreTarget`), resolving catalog name -> repository path via the existing `ff_catalog_registry::CatalogRegistry::get_by_name(catalog).path`. Prefer per-save resolution so multiple mainframe catalogs are each served; add NO new persistence field or second identity channel. Touch `shell/construct.rs` env init and, if per-save, `shell/dispatch_ffedit.rs::host_fs_save` / `tab_manager.rs::save_active_tab_via_backend`.
+    - Validates: Requirement 19.3, 19.4
+  - [x] 26.3 Keep `MainframeEnvironment` unchanged (it already holds `Arc<dyn DatasetAccess>` and does resolve -> open(Write) -> put -> close); confirm the single CR-CH-053 Task 20/21 seam is preserved and no parallel save path is added.
+    - Validates: Requirement 19.4; Requirement 18.6
+  - [x] 26.4 ff-idcams round-trip test (TDD, red first): allocate a dataset through a real on-disk catalog, build a `MainframeEnvironment` over the catalog-backed access pointed at that catalog, and assert a record-aware store resolves and succeeds with rc 0 (not NotFound/rc 12); plus a genuine-miss case still returns the non-zero rc.
+    - Validates: Requirement 19.2, 19.6
+  - [x] 26.5 Scoped ff-desktop routing test: a MAINFRAME-owned tab's SAVE routes through the catalog-backed access (resolve succeeds for a same-session Files-Panel dataset); a native/host (Delimited) tab's SAVE is unchanged and byte-identical (does not reach the catalog-backed access).
+    - Validates: Requirement 19.5; Requirement 18.1
+
+### Acceptance Criteria Coverage (CR-CH-061)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 19: MAINFRAME CE same-session resolve | 19.1-19.6 | 26.1-26.5 (+ dataset-catalog Task 43 for the catalog-backed access) |

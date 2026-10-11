@@ -161,6 +161,92 @@ fn mainframe_env_maps_space_abend_to_nonzero_rc() {
     }
 }
 
+// === T26: catalog-backed access resolves a same-session dataset (CR-CH-061) ==
+
+/// Allocate a PS FB/5 dataset through a REAL on-disk `ff-dscatalog` repository
+/// (the same path the Files Panel uses) and return the repository root.
+fn on_disk_repo_with_dataset(tmp: &tempfile::TempDir, dsn: &str) -> std::path::PathBuf {
+    use ff_dscatalog::catalog::Catalog;
+    use ff_dscatalog::dataset::{AllocParams, Dsorg};
+    use ff_dscatalog::dsn::Dsn;
+    use ff_dscatalog::hierarchy::CatalogScope;
+    use ff_dscatalog::repository::Repository;
+
+    let path = tmp.path().join("mf-catalog");
+    let repo = Repository::new(&path);
+    repo.initialize("MF").expect("init repo");
+    let catalog = Catalog::mount(&path, 1).expect("mount");
+    catalog
+        .allocate(AllocParams {
+            dsn: Dsn::parse(dsn).expect("dsn"),
+            dsorg: Dsorg::PS,
+            recfm: Some(Recfm::FB),
+            lrecl: Some(5),
+            blksize: Some(5),
+            dir_blocks: None,
+            gdg_limit: None,
+            gdg_scratch: None,
+            subtype: None,
+            description: None,
+            scope: CatalogScope::User,
+        })
+        .expect("allocate");
+    path
+}
+
+#[test]
+fn mainframe_env_stores_catalog_allocated_dataset_rc0() {
+    // Validates: command-environments Requirement 19.2
+    // A dataset catalogued on disk (as the Files Panel allocate does) resolves
+    // and stores through the catalog-backed access with rc 0 -- NOT the former
+    // FALSE NotFound / rc 12.
+    use ff_dscatalog::CatalogRepositoryAccess;
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let repo = on_disk_repo_with_dataset(&dir, "USR.LIVE.FB");
+
+    let access: Arc<dyn DatasetAccess> = Arc::new(CatalogRepositoryAccess::single(&repo));
+    let env = MainframeEnvironment::new(access);
+    let attrs = RecordAttrs {
+        recfm: RecordFormatKind::Fixed,
+        lrecl: 5,
+        encoding: "cp037".to_string(),
+    };
+    let mut source = VecRecordSource::new(vec![b"AB".to_vec(), b"CDE".to_vec()]);
+    let outcome = env.save_records(&store_target("USR.LIVE.FB"), &mut source, &attrs);
+    assert_eq!(
+        outcome,
+        RecordStoreOutcome::Stored { rc: 0 },
+        "a same-session catalogued dataset must store with rc 0"
+    );
+}
+
+#[test]
+fn mainframe_env_catalog_access_genuine_miss_returns_nonzero_rc() {
+    // Validates: command-environments Requirement 19.6
+    // A DSN that is NOT catalogued still surfaces the existing non-zero rc.
+    use ff_dscatalog::CatalogRepositoryAccess;
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let repo = on_disk_repo_with_dataset(&dir, "USR.PRESENT");
+
+    let access: Arc<dyn DatasetAccess> = Arc::new(CatalogRepositoryAccess::single(&repo));
+    let env = MainframeEnvironment::new(access);
+    let attrs = RecordAttrs {
+        recfm: RecordFormatKind::Fixed,
+        lrecl: 80,
+        encoding: "cp037".to_string(),
+    };
+    let mut source = VecRecordSource::new(vec![b"X".to_vec()]);
+    let outcome = env.save_records(&store_target("USR.ABSENT.DSN"), &mut source, &attrs);
+    match outcome {
+        RecordStoreOutcome::Stored { rc } => {
+            assert_ne!(rc, 0, "a genuine miss must still surface a non-zero rc");
+        }
+        other => panic!("expected Stored with non-zero rc, got {other:?}"),
+    }
+}
+
 // === T1c: record-capable + object-safe ===================================
 
 #[test]

@@ -2193,3 +2193,273 @@ The active `.worktrees/vsam-wiring` stream (prefix `V`, branch `feature/vsam-ser
 
 - The DSN parsing, naming validation, PDS member, GDG, codec, transaction, audit, and integrity designs are unchanged by this consolidation.
 - The schema v4 Volume tables and migration are owned by the CR-CH-057 delta above; CR-CH-059 only names `DatasetAccess` as the reader of the `DatasetVolume` locator.
+
+---
+
+## Catalog-Backed DatasetAccess (CR-CH-061) -- Requirement 36
+
+Design delta for CR-CH-061. Closes the same-session SAVE store-visibility gap
+left after CR-CH-059 RC.B.8 Part 2 + CR-CH-060 BRC.4 (commit cb4720e). Grounded
+in the read-only investigation `.agents/tasks/crch061-live-handles/findings.md`
+(recommended Option c). It never contradicts the CR-CH-059 `DatasetAccess`
+design above; it ADDS a second implementor of that same trait.
+
+### Problem (root cause)
+
+The MAINFRAME Command Environment was wired with the in-memory
+`CatalogDatasetAccess` (its `AccessState.datasets` HashMap is populated only by
+in-process `allocate` calls and never reads SQLite). The Files Panel's allocate
+writes a `datasets` row + physical file into an on-disk SQLite `ff-dscatalog`
+repository. The two stores are disjoint, so a same-session `resolve(dsn, Write)`
+misses and maps to rc 12 (false NotFound). See findings Q3.
+
+### Decision: a new catalog-backed `DatasetAccess` implementor in `ff-dscatalog`
+
+Add a new public type (working name `CatalogRepositoryAccess`; final name at
+implementation) in `ff-dscatalog` that implements the EXISTING `DatasetAccess`
+trait (Req 34) but resolves against the on-disk catalog of record:
+
+- `resolve(dsn, intent)`: open a SHORT-LIVED `ff_dscatalog::Catalog` (or use
+  `catalog_registry::CatalogRegistry::resolve`) against the catalog repository
+  path(s) it was constructed with, look the DSN up, and return the dataset's
+  physical locator (via `Catalog::physical_path` / the `DatasetVolume` locator,
+  Req 32). Drop the catalog/connection at the end of the call.
+- `open`/`close`/`get`/`put`: perform physical I/O through the single
+  `ff-vfs::StorageProvider` seam (virtual-file-system Req 13) against that
+  resolved physical file, framing records with the record codecs (Req 16/17) --
+  identical record semantics to the in-memory access, only the resolve source
+  differs.
+
+Why a short-lived catalog per call (not a held handle): `rusqlite::Connection`
+is `!Sync`, and `DatasetAccess` must be `Send + Sync` (Req 34.8) because the
+mainframe CE holds `Arc<dyn DatasetAccess>`. Opening per call is exactly the
+pattern `ff_catalog_registry::open_dscatalog` and the Files Panel's
+`resolve_and_open_dataset` already use, so it is proven and keeps the shared
+`Arc` `Send + Sync`. The type holds only `Send + Sync` state (the catalog
+repository path(s) + the `Arc<dyn StorageProvider>` + volume accounting).
+
+### Construction and the catalog path source
+
+The shell (ff-desktop, top of the DAG) constructs this access for the mainframe
+CE instead of the fresh fixture. The catalog repository path is obtained from the
+EXISTING catalog registry lookup
+(`ff_catalog_registry::CatalogRegistry::get_by_name(catalog).path`), keyed by the
+catalog identity the tab already carries in its `(dsn, catalog)` store identity
+(`PendingOpenReq.identity` / the tab `StoreTarget`). No new persistence field and
+no second identity channel are introduced (command-environments Req 19.3).
+
+Two viable construction timings (final choice at implementation, both satisfy the
+criteria):
+- Build-time: construct the access against the currently active mainframe
+  catalog's repository path when the environment registry is initialised. Simple,
+  but a single fixed path cannot serve multiple mainframe catalogs.
+- Per-save resolution (preferred): the access is constructed knowing how to
+  resolve a DSN across the active catalog(s), so a SAVE resolves against whichever
+  catalog owns the dataset. This matches the multi-catalog reality the Files Panel
+  already supports and avoids a stale fixed root (findings Option d note).
+
+### DAG, object-safety, and the 400-line rule
+
+- No new crate edge: `ff-dscatalog` already owns the catalog, volume, vfs, and
+  rusqlite layers; the new type lives inside it. `ff-idcams` consumes it through
+  the unchanged `Arc<dyn DatasetAccess>`. A design that made `ff-dscatalog` depend
+  on `ff-catalog-registry`/`ff-files-panel` would invert the DAG and is REJECTED
+  -- the type uses the `ff_dscatalog::Catalog` / `catalog_registry` types directly.
+- Object-safety and `Send + Sync` of `DatasetAccess` are preserved (new
+  implementor, no trait change).
+- The new implementor is authored in its OWN file
+  (`crates/ff-dscatalog/src/dataset_access/impl_catalog.rs`) so `impl_access.rs`
+  (already ~330 lines) stays under the 400-non-test-line rule.
+
+### What is unchanged
+
+- The `DatasetAccess` trait (Req 34) is unchanged -- no new methods, no signature
+  change. The in-memory `CatalogDatasetAccess` is retained (still used by tests
+  and any in-process consumer).
+- Native/host byte SAVE is untouched and byte-identical: only a MAINFRAME-owned
+  tab reaches this access (command-environments Req 15/16/19.5); the byte `save`
+  path and host backends are not modified.
+- The single CR-CH-053 Task 20/21 SAVE seam is preserved (command-environments
+  Req 18.6 / 19.4): FFEDIT -> owning CE -> `save_records` -> `DatasetAccess`.
+
+## Design Delta -- CR-NR-108: Load Libraries, RECFM=U/LRECL=0, and Program Search (Requirements 37-39)
+
+This delta is ADDITIVE to `ff-dscatalog`'s existing `dataset.rs` types. It
+introduces no new crate dependency edge, reshapes no existing public type, and
+removes/renames no enum variant. It is governed by ADR-001 (new dataset types
+live in `ff-dscatalog`). The JCL execution/compile/link engine is NOT designed
+here -- only the model and a resolution primitive.
+
+### 1. RECFM=U with LRECL=0 (Requirement 37)
+
+The `Recfm` enum already has the `U` variant, so NO enum change is needed. Two
+behaviours change, both for the `Recfm::U` case only:
+
+- `AllocParams::validate` -- the current unconditional "LRECL must be between 1
+  and 32760" branch is made RECFM-aware. The chosen rule: evaluate the LRECL
+  range check ONLY when the effective RECFM is one of F/FB/V/VB. When RECFM is U,
+  `lrecl == 0` and `lrecl == None` are both accepted, and the "BLKSIZE must be
+  >= LRECL" check is skipped (a RECFM=U dataset's BLKSIZE stands alone). The
+  existing non-U tests (`alloc_params_validate_lrecl_range`, `..._blksize_ge_lrecl`)
+  stay green because they use RECFM=FB. This AMENDS Requirement 7's LRECL rule in
+  place (narrowing its scope to non-U) rather than deleting it.
+- `AllocParams::with_defaults` -- the `Dsorg::PS | Dsorg::PO` arm gains a RECFM=U
+  guard: if RECFM is explicitly `Recfm::U` (or the dataset is being allocated as
+  a load library, see below), do NOT inject `Recfm::FB`/`lrecl = 80`; leave
+  LRECL absent (not-applicable) and still allow a BLKSIZE default. For all other
+  cases the existing FB/80/27920 defaults are unchanged.
+
+Representation of "LRECL not applicable": rather than add a tri-state, LRECL
+stays `Option<u32>` and the convention is `None` (preferred) or `Some(0)` for a
+RECFM=U dataset means not-applicable. Display code (Properties_Panel, LISTCAT/
+LISTDS) checks `recfm == Some(Recfm::U)` and renders LRECL as "not applicable"
+(blank). CHOSEN over a dedicated `Lrecl` newtype enum because it is the minimal
+additive change and keeps the stored schema (an integer column) unchanged;
+`Some(0)` round-trips through the existing `lrecl` column.
+
+Alternative considered and REJECTED: a new `Recfm::U0` variant or a boolean
+`lrecl_not_applicable` field. Rejected because `Recfm::U` already carries the
+"undefined, LRECL meaningless" semantics; a second variant/flag would duplicate
+state and risk inconsistency.
+
+### 2. Load-library / program-object content model (Requirement 38)
+
+Two new `#[non_exhaustive]` enums in `dataset.rs`, plus optional fields:
+
+```rust
+/// Intended content of a PO (partitioned) dataset. Additive; default = DataLibrary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum LibraryKind {
+    /// Ordinary record-data members (today's behaviour).
+    #[default]
+    DataLibrary,
+    /// Compiler output: object modules (binary).
+    ObjectLibrary,
+    /// Executable members: load modules (PDS) / program objects (PDSE).
+    LoadLibrary,
+}
+
+/// Content type of a member (and the per-dataset default). Additive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum MemberContentType {
+    /// Record-oriented data (today's behaviour).
+    #[default]
+    RecordData,
+    /// Object module -- opaque binary.
+    ObjectModule,
+    /// Executable load module / program object -- opaque binary.
+    Executable,
+}
+```
+
+- `AllocParams` gains `pub library_kind: Option<LibraryKind>` and
+  `pub member_content_type: Option<MemberContentType>` (both default `None`,
+  meaning record-data). `DatasetRecord` gains `pub library_kind: Option<LibraryKind>`
+  (the per-dataset default member content type is DERIVED: `LoadLibrary` ->
+  `Executable`, `ObjectLibrary` -> `ObjectModule`, else `RecordData`, so a second
+  always-present field is not strictly required; a `DatasetRecord` member-content
+  default may be stored or derived at the implementor's discretion).
+- These are orthogonal to `PartitionedSubtype`: PDS/PDSE still records the
+  physical subtype; `LibraryKind` records intended content. Requirement 38.6's
+  pairing (classic load library = PDS+RECFM=U; program-object library = PDSE) is
+  a RECOMMENDED default the allocator applies, not a hard constraint the model
+  enforces, so a PDSE load library (program objects) is permitted.
+- Member-level content type uses existing member metadata (Requirement 8). Where
+  per-member storage does not yet exist, the dataset-level `LibraryKind`-derived
+  default governs; a per-member override is additive and may be deferred to the
+  member-operations implementation.
+- `FromStr`/`Display` impls are added for both enums for parsing/round-trip,
+  mirroring the existing `Dsorg`/`Recfm`/`PartitionedSubtype` style.
+
+Opaque-binary handling: a member whose content type is `ObjectModule` or
+`Executable` is never offered for text-line editing. This composes with
+Requirement 16 (record-oriented storage, no CRLF/LF delimiters) -- an executable
+member is read/written as an opaque byte stream (RECFM=U passes bytes through,
+Requirement 34.2), and viewers treat it as binary.
+
+### 3. Program search / STEPLIB resolution primitive (Requirement 39)
+
+A new read-only resolution primitive owned by `ff-dscatalog`. Proposed shape
+(final signatures in implementation):
+
+```rust
+/// One match from a program search.
+#[derive(Debug, Clone)]
+pub struct ProgramMatch {
+    pub library_dsn: Dsn,          // the Load_Library that satisfied the search
+    pub member_name: String,       // the resolved member (program) name
+}
+
+/// Per-library condition encountered while searching (for diagnostics).
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum LibrarySearchCondition {
+    Searched,                      // resolved and inspected
+    NotCataloged(Dsn),
+    VolumeOffline(Dsn),
+    NotALoadLibrary(Dsn),          // Library_Kind != LoadLibrary (Req 39.5)
+}
+
+/// Result of a program search over an ordered library list.
+#[derive(Debug, Clone)]
+pub enum ProgramSearchResult {
+    Found(ProgramMatch),
+    NotFound { conditions: Vec<LibrarySearchCondition> },
+}
+
+/// Resolve `program` against `libraries` in order (STEPLIB ++ JOBLIB ++ default).
+/// Read-only metadata/member lookup; does NOT load or execute member bytes.
+pub fn resolve_program(
+    catalog: &impl CatalogQuery,       // existing catalog query surface
+    program: &str,
+    libraries: &[Dsn],
+) -> ProgramSearchResult;
+```
+
+Decisions:
+- The CALLER (future jes-emulator) assembles `libraries` as STEPLIB
+  concatenation, then JOBLIB, then the system default; `resolve_program` just
+  walks the slice in order and returns the FIRST member match. This keeps the
+  JCL concatenation logic OUT of `ff-dscatalog` (Requirement 39.4) and makes the
+  single-library and multi-library cases the same code path (Requirement 39.7).
+- Unavailable earlier library: CHOSEN behaviour is skip-with-diagnostic -- an
+  unresolvable or offline library records a `LibrarySearchCondition` and the
+  search CONTINUES to later libraries (Requirement 39.3), so one bad library
+  never masks a program present later. The accumulated conditions are returned on
+  a `NotFound` for the caller to surface. (A strict "hard fail on first
+  unresolvable" mode could be added later as a flag; not needed for the model.)
+- Only `LibraryKind::LoadLibrary` datasets satisfy a match (Requirement 39.5);
+  a record-data or object library yields `NotALoadLibrary` and is skipped.
+- Member matching reuses the existing PDS member enumeration (Requirement 8),
+  case-insensitive, honouring 1-8 character member-name rules.
+
+### Ownership and what is explicitly deferred
+
+Per ADR-001 the new types and the `resolve_program` primitive live in
+`ff-dscatalog`. Explicitly DEFERRED (NOT designed here, cross-referenced only):
+
+- `jes-emulator` (`ff-jes`): parsing `//STEPLIB`/`//JOBLIB` DD concatenations,
+  wiring `EXEC PGM=` (`ExecTarget::Program`, today only parsed) to call
+  `resolve_program`, assembling the ordered library list, and executing the
+  resolved program. This spec provides the lookup the executor will call.
+- `compiler-toolchain-integration`: the COMPILE step that writes object modules
+  into an object library and the LINK/bind step that writes load modules /
+  program objects into a Load_Library. This spec provides the dataset/member
+  content model those steps populate.
+
+### Testability
+
+- RECFM=U validation/defaults: pure unit tests on `AllocParams::validate` and
+  `with_defaults` (RECFM=U accepts LRECL 0/None; non-U still rejects LRECL 0;
+  with_defaults does not inject FB/80 for U).
+- `LibraryKind`/`MemberContentType`: `Display`/`FromStr` round-trip unit tests;
+  default-is-record-data unit test; derived member default unit test.
+- `resolve_program`: unit tests over a mock/in-memory catalog -- found in first
+  library, found in a later library after an offline/not-cataloged earlier one
+  (conditions accumulated), not-found returns conditions, a record-data library
+  is skipped (`NotALoadLibrary`), single-library vs multi-library concatenation.
+  All model-level and unit-testable; no GUI harness needed for Requirements
+  37-39 (the Properties_Panel display in 37.7/38.7 is a dataset-catalog UI task
+  tested when that UI is implemented).

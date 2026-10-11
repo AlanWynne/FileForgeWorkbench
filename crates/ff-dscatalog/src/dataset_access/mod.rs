@@ -14,6 +14,7 @@
 
 mod error;
 mod impl_access;
+mod impl_catalog;
 mod impl_io;
 mod impl_vsam;
 mod trait_def;
@@ -22,11 +23,14 @@ mod types;
 #[cfg(test)]
 mod impl_access_tests;
 #[cfg(test)]
+mod impl_catalog_tests;
+#[cfg(test)]
 mod impl_io_tests;
 #[cfg(test)]
 mod impl_vsam_tests;
 
 pub use error::DatasetError;
 pub use impl_access::CatalogDatasetAccess;
+pub use impl_catalog::CatalogRepositoryAccess;
 pub use trait_def::DatasetAccess;
 pub use types::{AccessIntent, DatasetHandle, DdRequest, OpenDataset, Positioner, StepOutcome};

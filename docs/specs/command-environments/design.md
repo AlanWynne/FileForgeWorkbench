@@ -865,3 +865,46 @@ dependency DAG is UNCHANGED and acyclic: `ff-idcams -> ff-dscatalog -> ff-volume
 `CommandTarget` / `WorkspaceContext` / `InteriorFocus` / `WorkspaceDescriptor`
 are untouched. This is the SINGLE owner-approved framework reshape serving
 CR-CH-058 and CR-CH-059 RC.B.8 Part 2 together.
+
+## MAINFRAME CE same-session store visibility (CR-CH-061) -- Requirement 19
+
+Design delta for CR-CH-061. The record-aware store path (Req 18) is in place and
+rides the single seam, but the mainframe CE was constructed with an in-memory
+`CatalogDatasetAccess` that does not read the on-disk SQLite catalog the Files
+Panel writes, so a same-session SAVE of a Files-Panel-allocated dataset resolves
+a FALSE NotFound (rc 12). Root cause and option analysis:
+`.agents/tasks/crch061-live-handles/findings.md` (Option c).
+
+### The only change: which concrete `DatasetAccess` the shell builds
+
+This CR introduces NO new command-environments mechanism. The mainframe CE
+(`MainframeEnvironment` in `ff-idcams`) already owns `Arc<dyn DatasetAccess>` and
+its `save_records` already does resolve -> open(Write) -> put -> close (Req 18.7).
+The ONLY change at this layer is that the shell constructs the CE with the
+catalog-backed `DatasetAccess` added under dataset-catalog Req 36 (which resolves
+against the on-disk catalog of record) instead of the fresh in-memory fixture in
+`build_mainframe_backend`. `MainframeEnvironment` is unchanged -- it is agnostic
+to which concrete access it wraps; a catalog-backed access simply makes `resolve`
+SUCCEED for a Files-Panel dataset, turning the rc-12 miss into rc 0.
+
+### Catalog identity from the existing tab binding
+
+The catalog repository path reaches the CE from the tab's EXISTING `(dsn, catalog)`
+store identity (Req 15 owning-environment binding; `PendingOpenReq.identity` /
+the tab `StoreTarget`), resolved to a repository path via the existing
+`ff_catalog_registry::CatalogRegistry::get_by_name(catalog).path` lookup. No new
+persistence field, no second identity channel (Req 19.3). Whether the catalog
+path is fixed at CE build time or resolved per save is a dataset-catalog design
+choice (see dataset-catalog design.md, Req 36) -- the per-save variant is
+preferred so multiple mainframe catalogs are each served.
+
+### Framework conformance
+
+- Single SAVE seam preserved (Req 18.6 / 19.4): FFEDIT -> owning CE ->
+  `save_records` -> `DatasetAccess`. No parallel save path, no second dispatcher.
+- Native/host byte SAVE unchanged and byte-identical (Req 18.1 / 19.5); only a
+  MAINFRAME-owned tab reaches the catalog-backed access.
+- DAG unchanged and acyclic (`ff-idcams -> ff-dscatalog -> ff-volume -> ff-vfs`);
+  the shell (ff-desktop) sits on top and threads the catalog path. No new edge.
+- `CommandTarget` / `WorkspaceContext` / `InteriorFocus` / `WorkspaceDescriptor`
+  are untouched.

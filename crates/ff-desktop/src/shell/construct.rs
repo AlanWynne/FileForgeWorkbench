@@ -281,7 +281,13 @@ impl WorkbenchShell {
             // routes to the record path (see shell/mainframe_backend.rs).
             environments:
                 super::environment_registry::EnvironmentRegistry::with_builtins_and_mainframe(
-                    super::mainframe_backend::build_mainframe_backend(&mainframe_root()),
+                    // CR-CH-061 Req 19.1: the mainframe CE's catalog-backed
+                    // access (dataset-catalog Req 36). Built with no repository
+                    // paths at startup (no catalogs are mounted yet); a SAVE
+                    // threads the active tab's catalog repository path per-save
+                    // via `build_mainframe_backend_for_repo` so the dataset
+                    // resolves against the catalog that owns it.
+                    super::mainframe_backend::build_mainframe_backend(Vec::new()),
                 ),
             // Live Provider_Registry (CR-CH-053 Task 22, Req 17.1): register an
             // `ff-vfs` ProviderRegistry LIVE at startup, seeded with the host-FS
@@ -352,15 +358,4 @@ impl WorkbenchShell {
             session_start: chrono::Local::now(),
         }
     }
-}
-
-/// The host root the MAINFRAME backend's native storage provider is rooted at
-/// (RC.B.8 (c)). The home directory (fallback: current dir, then `.`), matching
-/// how the navigator resolves host-rooted catalog/local paths. The dataset
-/// access resolves/stores BY DSN within this root; the root only anchors the
-/// native provider's physical I/O.
-fn mainframe_root() -> std::path::PathBuf {
-    dirs::home_dir()
-        .or_else(|| std::env::current_dir().ok())
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
 }

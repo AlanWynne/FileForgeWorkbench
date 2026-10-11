@@ -718,3 +718,72 @@ These tasks consolidate the drifted dataset stack onto `ff-dscatalog` as the sin
 | Req 35 | 35.3 (VSAM then retire ff-vsam-services) | 41.1, 41.2 |
 | Req 35 | 35.4 (collapse posix) | virtual-file-system tasks (RC.A step 4) |
 | Req 35 | 35.5 (do-not-build note) | design.md note; enforced across tasks |
+
+---
+
+### Phase (mainframe-live-catalog-handle) -- CR-CH-061 (catalog-backed DatasetAccess)
+
+- [x] 43. Catalog-backed `DatasetAccess` in `ff-dscatalog` (CR-CH-061, Requirement 36)
+  - DONE (code-complete pending the owner's full gate): `CatalogRepositoryAccess` in `crates/ff-dscatalog/src/dataset_access/impl_catalog.rs`. Scoped checks clean: `cargo check` exit 0; `cargo test -p ff-dscatalog` 313+6 pass incl. 4 new `impl_catalog_tests`; `cargo clippy -p ff-dscatalog --all-targets -- -D warnings` clean.
+  - [x] 43.1 Add a new public catalog-backed `DatasetAccess` implementor in its OWN file `crates/ff-dscatalog/src/dataset_access/impl_catalog.rs` (keep `impl_access.rs` under the 400-non-test-line rule); construct it from the catalog repository path(s) + an `Arc<dyn ff_vfs::StorageProvider>`; hold only `Send + Sync` state (no live `rusqlite::Connection`).
+    - Validates: Requirement 36.1, 36.3
+  - [x] 43.2 Implement `resolve(dsn, intent)` to open a SHORT-LIVED `ff_dscatalog::Catalog` / use `catalog_registry::CatalogRegistry::resolve` against the repository path(s), look the DSN up, and return the dataset's physical locator via the catalog + `ff-volume` (Requirement 32); drop the connection at end of call.
+    - Validates: Requirement 36.1, 36.2, 36.3, 36.4
+  - [x] 43.3 Implement `open`/`get`/`put`/`close` to perform physical I/O through the single `ff-vfs::StorageProvider` seam against the resolved physical file, framing records with the existing record codecs (Requirement 16/17); stored bytes are the RECFM-framed record image.
+    - Validates: Requirement 36.4, 36.5
+  - [x] 43.4 Return `DatasetError::NotFound` (existing non-zero rc mapping) when the DSN cannot be resolved in the active catalog(s); do not mask a true miss.
+    - Validates: Requirement 36.6
+  - [x] 43.5 Keep the `DatasetAccess` trait unchanged (new implementor only), object-safe and `Send + Sync`; retain the in-memory `CatalogDatasetAccess` for in-process/test consumers. Scoped tests: a round-trip proving a dataset allocated through the on-disk catalog resolves and stores via the catalog-backed access (rc 0), and a genuine-miss test returning NotFound.
+    - Validates: Requirement 36.1, 36.6, 36.7, 36.8
+
+### Acceptance Criteria Coverage (CR-CH-061)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 36: Catalog-backed DatasetAccess | 36.1-36.8 | 43.1-43.5 (+ ff-desktop shell task + ff-idcams round-trip test in command-environments tasks) |
+
+---
+
+### Phase (loadlib-model) -- CR-NR-108 (load libraries, RECFM=U/LRECL=0, program search)
+
+- [ ] 44. RECFM=U with LRECL=0 representation and validation (CR-NR-108, Requirement 37)
+  - [ ] 44.1 Make `AllocParams::validate` RECFM-aware: skip the LRECL 1..=32760 range check and the "BLKSIZE >= LRECL" check when the effective RECFM is `Recfm::U`; keep both checks for F/FB/V/VB. Add failing unit tests first (RECFM=U + LRECL 0/None validates OK; RECFM=FB + LRECL 0 still rejects).
+    - Validates: Requirement 37.1, 37.2, 37.3, 37.4
+  - [ ] 44.2 Make `AllocParams::with_defaults` leave a RECFM=U dataset undefined-format: do NOT inject `Recfm::FB` or `lrecl = 80` when RECFM is U (or when allocating a load library); still allow a BLKSIZE default.
+    - Validates: Requirement 37.5, 37.6
+  - [ ] 44.3 Render LRECL as "not applicable" for RECFM=U in the Properties_Panel and LISTCAT/LISTDS display paths (blank or 0 with a not-applicable marker). Unit-test the display mapping.
+    - Validates: Requirement 37.7
+
+- [ ] 45. Load-library / program-object content model (CR-NR-108, Requirement 38)
+  - [ ] 45.1 Add `#[non_exhaustive]` `LibraryKind` enum (`DataLibrary` default, `ObjectLibrary`, `LoadLibrary`) with `Display`/`FromStr`, mirroring the existing `Dsorg`/`Recfm` style. Failing round-trip + default unit tests first.
+    - Validates: Requirement 38.1
+  - [ ] 45.2 Add `#[non_exhaustive]` `MemberContentType` enum (`RecordData` default, `ObjectModule`, `Executable`) with `Display`/`FromStr`; derive the per-dataset default member content type from `LibraryKind`.
+    - Validates: Requirement 38.3, 38.4
+  - [ ] 45.3 Add optional `library_kind` to `AllocParams` and `DatasetRecord` (and `member_content_type` to `AllocParams`), defaulting to `None` = record-data; persist/round-trip through the catalog schema. Prove existing record-data PO datasets are unchanged.
+    - Validates: Requirement 38.2, 38.8
+  - [ ] 45.4 Treat `ObjectModule`/`Executable` members as opaque binary: ensure they are not offered for text-line editing and that any viewer treats them as binary (composes with Requirement 16). Unit-test the binary-vs-text classification.
+    - Validates: Requirement 38.5
+  - [ ] 45.5 Permit either load-library pairing (classic = PDS+RECFM=U; program-object = PDSE) without forbidding a PDSE load library or requiring RECFM=U for a PDSE library; surface `LibraryKind`/`MemberContentType` to Properties_Panel/context-menu model (UI realisation is a later dataset-catalog UI task).
+    - Validates: Requirement 38.6, 38.7
+
+- [ ] 46. Searchable load library -- program resolution primitive (CR-NR-108, Requirement 39)
+  - [ ] 46.1 Add `ProgramMatch`, `LibrarySearchCondition` (`#[non_exhaustive]`), and `ProgramSearchResult` types in `ff-dscatalog`. Failing unit tests first.
+    - Validates: Requirement 39.1, 39.2
+  - [ ] 46.2 Implement `resolve_program(catalog, program, libraries)`: walk the ordered `libraries` slice, match the program name case-insensitively against each `LoadLibrary`'s members (Requirement 8 enumeration), return the FIRST match; skip non-`LoadLibrary` datasets with a `NotALoadLibrary` condition.
+    - Validates: Requirement 39.1, 39.5, 39.7
+  - [ ] 46.3 Skip-with-diagnostic for unavailable libraries: an uncataloged or offline library records a condition and the search CONTINUES to later libraries; accumulate conditions on a `NotFound`.
+    - Validates: Requirement 39.3
+  - [ ] 46.4 Keep `resolve_program` read-only (no load/execute of member bytes); ensure the ordered list is caller-assembled (STEPLIB ++ JOBLIB ++ default) and the primitive imposes no JCL concatenation logic.
+    - Validates: Requirement 39.4, 39.6
+  - [ ] 46.5 Unit tests over an in-memory/mock catalog: found-first, found-after-offline-earlier, not-found-returns-conditions, record-data-library-skipped, single vs multi-library concatenation.
+    - Validates: Requirement 39.1, 39.2, 39.3, 39.5, 39.7
+
+### Acceptance Criteria Coverage (CR-NR-108)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 37: RECFM=U / LRECL=0 | 37.1-37.7 | 44.1-44.3 |
+| Req 38: Load-library content model | 38.1-38.8 | 45.1-45.5 |
+| Req 39: Program search primitive | 39.1-39.7 | 46.1-46.5 |
+| Req 39 (JCL concatenation / EXEC PGM= wiring) | future | DEFERRED to jes-emulator (cross-ref) |
+| Req 38 (compile/link populate libraries) | future | DEFERRED to compiler-toolchain-integration (cross-ref) |
