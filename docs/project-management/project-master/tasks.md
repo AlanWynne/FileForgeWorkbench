@@ -3436,6 +3436,11 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 > idcams-emulator Req 28; jes-emulator Req 19; volume-model Req 12. Pending owner approval
 > before any code.
 
+> GATE-CONFIRMED 2026-10-11: full `cargo gate --build` CLEAN on main (9866 run,
+> 9866 passed, 0 failed). RC.A.1-RC.A.4 and RC.B.5-RC.B.8 are DONE (no longer
+> "code-complete pending gate"). CR-CH-060 and CR-CH-061 landed on main and are
+> covered by the same clean gate.
+
 ### Phase RC.A -- cheap/safe-now docs + additive gated consolidation
 
 - [x] RC.A.1 ADR-001 correction + crate-name doc fixes -- name `ff-dscatalog` as the catalog authority, mark `ff-dataset-catalog`/`ff-vsam-services` deprecated-for-merge, update the fitness function, and fix the wrong crate names in jes-emulator. Delivers dataset-ownership-model Req 22 (task 13); jes-emulator Req 19 (task 35).
