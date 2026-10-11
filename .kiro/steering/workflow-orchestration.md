@@ -26,32 +26,48 @@ alone. It MUST corroborate with at least one piece of DELIVERABLE EVIDENCE from
 the filesystem (only a working agent produces these), then report an explicit
 verdict.
 
-Evidence to check (prefer dedicated tools -- file info / search / git -- over the
-interactive shell, per `tooling.md`):
+The single tool for this is `tools/powershell/liveness-probe.ps1` (default
+`-Task probe`). It gathers the signals below AND emits the verdict in one run,
+writing the full report to `tools/logs/liveness-probe.txt` and echoing it back,
+so the orchestrator does not compute the verdict by hand. The verdict is ALSO
+the exit code (0 ALIVE / 3 SLOWING / 4 STALLED), so the probe can gate a script:
 
-1. **File mtimes of the run's target files.** Recently modified (within the last
-   few minutes) = alive. Use the known target paths for the task (for a coding
-   phase, the source files it was told to edit/create).
-2. **Expected-artifact presence/absence.** Each phase/step writes known artifacts
-   at known stages (e.g. a `phaseN-note.md` only at code-complete, a
-   `phaseN-review.json` only at review-done). Their presence pins the REAL stage;
-   their absence means that stage is not reached yet.
-3. **git status churn.** A growing/working-tree diff is progress; a frozen diff
-   is a signal to look closer.
+```
+C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -File tools\powershell\liveness-probe.ps1 -Path <worktree-or-root> -StaleSeconds 300 -RunLabel <run-label>
+```
 
-Then report EXACTLY ONE verdict, with the evidence cited:
+If running the probe is not possible (terminal mangling per `tooling.md`),
+gather the same evidence with the dedicated file-info / search / git tools --
+prefer those over the interactive shell. The signals it combines:
 
-- **BUSY** -- cite the evidence ("`editable_surface.rs` modified 3 min ago" /
-  "diff grew since last check"). Say what stage it is in.
-- **POSSIBLE HANG** -- no deliverable activity (no target-file mtime change, no
-  new artifact, no diff churn) for a sustained period (soft threshold ~15-20 min
-  on a step that should be writing code). This is a SIGNAL TO FLAG, not an
-  automatic "it is dead": some steps are legitimately quiet (a long `cargo test`
-  run, a reviewer reading before it writes its verdict at the end). FLAG it to the
-  user with the evidence and let them decide (wait, inspect the step's session,
-  or abort/relaunch). Do NOT silently abort a run on suspicion.
-- **DONE / FAILED** -- the terminal artifact exists (note/review/verdict) or a
-  terminal notification arrived; report the outcome.
+1. **Bucketed file mtimes.** Recent writes are split into WORK (source / docs /
+   tasks / configs), GATE (`.gate\` workflow logs), and BUILD (`target\`
+   compiler output). The liveness signal is the FRESHER of newest-WORK and
+   newest-GATE; BUILD churn is shown for visibility but deliberately EXCLUDED
+   from the verdict, so a background `cargo build` cannot mask a stalled agent.
+2. **Heartbeat.** With `-RunLabel`, the last-write time of
+   `tools/logs/<run-label>-progress.txt` is folded into the liveness signal and
+   its last line is printed (see the heartbeat convention below).
+3. **Last git commit.** The latest commit time/subject is read; when the newest
+   work write is NEWER than the last commit, the probe flags "uncommitted work
+   in flight" -- the common "produced output but has not committed yet" stall
+   shape.
+
+The verdict (the probe prints it; this is what it means) compares the signal age
+to `-StaleSeconds` (default 300):
+
+- **ALIVE** (exit 0) -- newest work/gate/heartbeat write within 1x the threshold;
+  actively writing. Cite the evidence ("`editable_surface.rs` modified 40s ago").
+- **SLOWING** (exit 3) -- between 1x and 2x the threshold. Quiet; may be mid
+  build/review (a long `cargo test`, a reviewer reading before it writes its
+  verdict). RE-CHECK before calling it; do NOT abort yet. This is the SIGNAL TO
+  FLAG, not an automatic "it is dead".
+- **STALLED** (exit 4) -- older than 2x the threshold, or nothing written at all.
+  Treat as hung or restart-paused; FLAG it with the evidence and let the user
+  decide (wait, inspect the step's session, or abort/relaunch). Do NOT silently
+  abort a run on suspicion.
+- **DONE / FAILED** -- orthogonal to the probe: the terminal artifact exists
+  (note/review/verdict) or a terminal notification arrived; report the outcome.
 
 NEVER report "still working" / "still busy" without backing evidence. If the
 dedicated tools and the shell both fail to yield evidence (e.g. terminal mangling
@@ -67,17 +83,18 @@ per `tooling.md`), say so plainly rather than inferring liveness.
 
 ## The heartbeat convention -- make the check trivial for future runs
 
-The mtime/artifact check above is reliable but INDIRECT. To make busy-vs-hung a
-one-line read, every delegated workflow BRIEF the orchestrator authors SHOULD
-instruct each long-running step to append a timestamped progress line to
-`tools/logs/<run-label>-progress.txt` as it works (mirroring how the canonical
-gate `cargo gate` streams per-step progress to `.gate/gate.timing.log` /
-`.gate/gate.history.csv`). Keep these logs ephemeral (`tools/logs/` is
-git-ignored). When present, the liveness
-check is just reading the last line's timestamp; when absent, fall back to the
-mtime/artifact evidence above. Adopting the heartbeat is RECOMMENDED for every
-new multi-step or long-running workflow; the evidence-based check (the rule
-above) is MANDATORY regardless.
+The mtime/artifact check above is reliable but INDIRECT. To make the ALIVE /
+SLOWING / STALLED call a one-line read, every delegated workflow BRIEF the
+orchestrator authors SHOULD instruct each long-running step to append a
+timestamped progress line to `tools/logs/<run-label>-progress.txt` as it works
+(mirroring how the canonical gate `cargo gate` streams per-step progress to
+`.gate/gate.timing.log` / `.gate/gate.history.csv`). Keep these logs ephemeral
+(`tools/logs/` is git-ignored). Pass the matching `-RunLabel <run-label>` to
+`tools/powershell/liveness-probe.ps1` and it folds the heartbeat's last-write
+time into the liveness signal and prints its last line; when the heartbeat is
+absent the probe falls back to the WORK/GATE mtime and git-commit evidence above.
+Adopting the heartbeat is RECOMMENDED for every new multi-step or long-running
+workflow; the evidence-based check (the rule above) is MANDATORY regardless.
 
 ## Rationale
 

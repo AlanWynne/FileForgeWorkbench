@@ -84,6 +84,49 @@ Outputs (under `tools/logs/`, git-ignored):
 NOT the full completion gate; nor are `-AppOnly`/`--app-only` or
 `-Crate`/`--crate`. Only the default full `--workspace` run is the completion gate.
 
+### `powershell/liveness-probe.ps1` -- Liveness verdict + scoped-check helper
+
+THE single tool for judging whether a background terminal/agent is ALIVE,
+SLOWING, or STALLED, and for running the scoped cargo checks that produce that
+evidence. It is the merge of the proven Walrus liveness probe with this
+project's additions, and absorbs the former `powershell/ff-check.ps1` (now
+removed), so there is ONE liveness + scoped-check path, not two overlapping ones.
+
+Every task writes its full output to a log under `tools/logs/` (git-ignored,
+ephemeral) and THEN echoes that same log back to the terminal, so the caller
+always has a durable copy even when the interactive terminal mangles stdout. The
+repo root is derived from the script's own location (three parents up), so the
+script is fully portable and runs unchanged from any machine or worktree.
+
+Tasks (`-Task`, default `probe`):
+
+- `probe` -- the liveness verdict. Recent writes are bucketed into WORK (source /
+  docs / tasks / configs), GATE (`.gate\` logs), and BUILD (`target\` output);
+  the verdict uses the freshest WORK-or-GATE write plus an optional heartbeat
+  (`-RunLabel`), and EXCLUDES BUILD churn so a background build cannot mask a
+  stall. It also reads the last git commit and flags uncommitted work in flight.
+  The verdict (ALIVE / SLOWING / STALLED) vs `-StaleSeconds` (default 300) is
+  ALSO the exit code (0 / 3 / 4), so the probe can gate a script.
+- `status` -- the bucketed recent-write snapshot only (no verdict, exit 0).
+- `check` -- scoped `cargo check -p ff-idcams -p ff-desktop -p ff-dscatalog
+  -p ff-vfs -p ff-volume --all-targets`.
+- `test` -- scoped `cargo test -p ff-idcams` then `cargo test -p ff-desktop`.
+- `clippy` -- `cargo clippy -p ff-idcams -p ff-desktop -- -D warnings`.
+- `fmt` -- `cargo fmt` (writes), result note.
+
+```
+# Liveness verdict for a worktree (5-min baseline) with a heartbeat log:
+C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -File tools\powershell\liveness-probe.ps1 -Path .worktrees\editor-f3 -StaleSeconds 300 -RunLabel editor-f3
+
+# Scoped compile check (replaces the old ff-check.ps1 check):
+C:\tools\powershell7\pwsh.exe -NoProfile -NonInteractive -File tools\powershell\liveness-probe.ps1 -Task check
+```
+
+Outputs (under `tools/logs/`, git-ignored): `liveness-probe.txt`,
+`liveness-status.txt`, `ff-check.txt`, `ff-test.txt`, `ff-clippy.txt`,
+`ff-fmt.txt` (per task). The probe/status tasks keep no state between runs; the
+git signal comes from the live `git log`, not a persisted file.
+
 ### `python/logging_inventory.py` -- Logging inventory and gap report
 
 Read-only static scan of every `*.rs` under `crates/`. Regenerates a Markdown

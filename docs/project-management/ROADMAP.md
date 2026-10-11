@@ -105,9 +105,13 @@ All new plugin capability is framed as a FileForgePlugin on the core product
 
 **Active phase: CORE STABILISATION + TEST.**
 Get the six core capabilities working and sign off `core-acceptance-test-plan.md`
-before resuming plugin work. Priorities within it: item 4 (ISPF editor primary/
-line commands + Browse/View/Edit modes) and item 2 (Create-Menu dialog), then
-items 5/6 (command parity + macros-as-commands).
+before resuming plugin work. The concrete, re-sequenced forward plan (established
+by the 2026-10-11 status review) lives in Section 6a: localisation string
+extraction first, then the Volume UI + catalog/navigator rework cluster, with the
+editor windowed-record finish (F3-F5) running in parallel, converging on the
+item-4 ISPF-editor test pass. Item 2 (Create-Menu dialog) and items 5/6 (command
+parity + macros-as-commands) follow once the editor-against-datasets path is
+clear.
 
 Recently completed (context):
 - File navigator modernised onto `ff-file-tree` (CR-NR-060 Slice A); it is now
@@ -122,46 +126,78 @@ and the new-requirement gates in Section 7.
 
 ---
 
-## 6a. CORE PREREQUISITE -- Dataset Stack Rationalisation must complete before editor testing
+## 6a. CORE forward path -- re-sequenced after the 2026-10-11 status review
 
-Although the dataset / catalog / volume emulation is framed as PLUGIN phase 2
-(Section 5), the layer it rationalises is ESSENTIAL to CORE: the file navigator
-(CORE #3) and the ISPF editor (CORE #4) cannot be fully tested until the
-navigator can open files from dataset/volume catalogs and the editor can SAVE
-them record-aware. So the Dataset Stack Rationalisation (CR-CH-059, with its
-dependencies CR-CH-057/CR-NR-105 Volume model and CR-CH-060 record-aware SAVE
-contract) is a CORE PREREQUISITE, not deferred plugin work.
+This section supersedes the earlier "dataset prerequisite only" framing. A
+read-only, git-verified status review (`.agents/tasks/core-resequencing-review/
+report.md`, 2026-10-11) established the real state of every stream. The headline:
+much of what looked like forward work is ALREADY DONE and merged into `main`.
 
-**This work must be complete and gate-clean BEFORE the editor (CORE #4) can be
-signed off against `core-acceptance-test-plan.md`.**
+### What is DONE and merged (struck from the forward path)
 
-Current status (authoritative detail: `.agents/tasks/dataset-vision-fit/report.md`
-and `project-master/tasks.md` Phase (dataset-stack-rationalisation)):
+- **Core-framework decomposition** (DECOMP Waves 3-7): the ff-desktop god-crate
+  was split into `ff-files-panel`, `ff-editor-panel`, `ff-catalog-dialog`,
+  `ff-nav-model`, `ff-posix-provider`, `ff-explorer-view`, `ff-context-menu`, and
+  more. Merged. (Residual: CR-NR-078 WF.6 Context-migration tidy -- low priority.)
+- **SCRM** (CR-NR-098 Screen Snapshot + Collection/Replay): crates
+  `ff-screen-model` + `ff-scrm` built and wired; SCRM.0-SCRM.6 done. Merged.
+  (Residual: SCRM.7 TCR bookkeeping only.)
+- **Localisation MECHANISM** (CR-NR-103 Phase 1): the `ff-i18n` crate, the
+  `ui.locale` config key, and the alias-overlay loader. Merged, owner-gate clean.
+- **Dataset rationalisation ENGINE** (CR-CH-059 RC.A + RC.B, CR-CH-060, CR-CH-061):
+  single catalog authority, the `DatasetAccess` contract, the `ff-volume` crate,
+  record-aware MAINFRAME SAVE, retirement of the duplicate trait crates. DONE and
+  full-gate CLEAN from `main` on 2026-10-11 (9866 run / 9866 passed / 0 failed).
+- **Windowed-record editor F1 + F2** (CR-CH-058 WRF.2/WRF.3): piece-table spine,
+  immutable original index, append buffer, byte-identical native SAVE, windowed
+  byte residency. Merged.
 
-- Phase RC.A (consolidation: single catalog authority, one `Dsorg`/`Recfm`,
-  single `ff-vfs::StorageProvider` seam, single `posix` registrant) -- DONE,
-  code-complete pending the owner's full `cargo gate --build`.
-- Phase RC.B (the `ff-volume` crate, the single `DatasetAccess` access contract,
-  `ff-dsalloc` returning a handle, VSAM wired under `DatasetAccess`, `ff-idcams`
-  repointed, record-aware MAINFRAME SAVE, retirement of `ff-vsam-services` and
-  `ff-dataset-catalog`) -- DONE, code-complete pending the owner's full gate.
-- Phase RC.C (DEFERRED / owner-blocked): the Volume management UI + volume
-  picker (RC.C.10 / VM.6-VM.8) comes FIRST, then the JES/JCL executor (RC.C.9,
-  plugin phase 6) after it.
+All non-main branches are git-confirmed 0 commits ahead of `main` -- there is NO
+unmerged work. `main` is the single source of truth.
 
-Known gaps that still block full editor-against-dataset testing:
-1. **Owner full-gate confirmation** of RC.A/RC.B (`cargo gate --build` clean) --
-   flips the code-complete work to DONE.
-2. **CR-CH-061** (PENDING GATE): a same-session SAVE of a Files-Panel-created
-   dataset resolves `NotFound` because the shell builds a fresh
-   `CatalogDatasetAccess` not sharing the Files Panel's live catalog handles.
-   Owner chose option 1 (fix now).
-3. **Volume UI (RC.C.10 / VM.6-VM.8)**: now unblocked because `ff-volume` and
-   `DatasetAccess` exist; needed for the user to navigate volumes/VTOC and pick a
-   volume at allocation.
+### The remaining CORE forward path (the active plan)
 
-Also outstanding (housekeeping, not a build blocker): the `.worktrees/vsam-wiring`
-(`V`) stream is superseded by RC.B.7 and its output is throwaway -- mark/remove.
+Ordered with dependencies. The editor finish (F3-F5) and the dataset/volume UI
+cluster are INDEPENDENT and run in PARALLEL; localisation extraction is pulled to
+the FRONT by owner decision (2026-10-11) because it is a large, cross-cutting,
+mechanical change -- doing it first means every panel built afterward is written
+localisation-aware and avoids re-touching new UI and merge collisions.
+
+0. **Housekeeping** (non-blocking): prune the stale merged branches + the
+   `.worktrees/wrf-foundation` worktree; close SCRM.7 and WF.6 tidy later.
+1. **Localisation Phase 2 -- full string extraction + Settings locale picker**
+   (CR-NR-103 L10N.4): extract all user-facing strings across `ff-desktop` and the
+   panel crates to `ff-i18n` keys (English base), add the locale picker to the
+   Settings "Reset Bare" menu. Large footprint -- run in its OWN worktree, FIRST,
+   while the UI panels are still quiet. Phase 3 (other-language DATA, L10N.5) stays
+   the later capstone -- NOT in scope now.
+2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
+   WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
+   ALTER actions via the single command path, volume picker in catalog creation,
+   SPACE-against-volume allocation, DEFINE VOLUME + VOLUMES() in IDCAMS. Unblocked
+   (`ff-volume` + `DatasetAccess` exist). Written localisation-aware (after step 1).
+3. **Volume in the "Reset Bare" POM** (menu-workspace / CR-NR-090): a POM option
+   routing to the Volume Context via the single command path. After step 2.
+4. **Catalog UI rework** (CR-CH-057 catalog-as-pure-locator): the catalog UI
+   reflects catalog-as-locator + volume indirection. After step 2.
+5. **ff-vfs Volume/Catalog UI-path wiring** (CR-CH-059 RC.A.3/RC.A.4 seam already
+   DONE): wire the navigator/catalog UI THROUGH the existing single
+   `ff-vfs::StorageProvider` seam for volumes. Integration, not re-architecture.
+   After steps 2+4.
+6. **File Navigator dataset/volume duality** (CR-NR-060 Slice B): dataset/volume
+   navigation + PDS members (native-file nav / Slice A is already DONE). After
+   steps 2+4+5.
+7. **Editor windowed-record F3-F5** (CR-CH-058 WRF.4-WRF.6): background index +
+   instant-open UX (F3), windowed FIND/CHANGE + destructive-scale guard (F4),
+   scalability guard (F5). Depends only on F1/F2 (DONE) -- runs in PARALLEL with
+   steps 2-6.
+8. **CORE #4 editor test pass against real datasets** -- the convergence /
+   sign-off milestone. Needs step 6 (navigator opens dataset/volume files) AND
+   step 7 (editor finished), per `core-acceptance-test-plan.md`.
+
+**This path must complete and be gate-clean before the editor (CORE #4) is signed
+off.** The JES/JCL executor (RC.C.9) remains DEFERRED to PLUGIN phase 6, after the
+Volume UI, and is NOT part of this core path.
 
 ---
 
