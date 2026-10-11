@@ -3455,8 +3455,13 @@ DATA-SAFETY raw-fs write bypasses. Plus the orphan tally continues + a false-com
 
 ### Phase RC.C -- defer / owner-blocked
 
-- [ ] RC.C.9 JES/JCL executor on DatasetAccess (ROADMAP PLUGIN phase 6) -- contract/dependency criteria only; the executor depends ONLY on `ff-dsalloc` + `DatasetAccess`. Delivers jes-emulator Req 19 (task 35, docs/contract); build deferred.
-- [ ] RC.C.10 Volume UI after ff-volume + multivolume/extents/master-catalog -- Volume management WorkspaceContext + picker (virtual-catalog-manager Req 17-18, already gated under CR-CH-057 VM.6); multivolume/extents/master-catalog + alias routing remain owner-blocked (volume-model-recommendation open decisions). Deferred.
+> ORDERING (owner, 2026-10-11): RC.C.10 (Volume UI) comes BEFORE RC.C.9 (JES/JCL
+> executor). The Volume UI is a CORE-prerequisite enabler (navigate volumes/VTOC,
+> pick a volume at allocation) now unblocked by `ff-volume` + `DatasetAccess`; the
+> JES executor is later plugin-phase-6 work that builds on the same contract.
+
+- [ ] RC.C.10 Volume UI after ff-volume + multivolume/extents/master-catalog -- Volume management WorkspaceContext + picker (virtual-catalog-manager Req 17-18, already gated under CR-CH-057 VM.6); multivolume/extents/master-catalog + alias routing remain owner-blocked (volume-model-recommendation open decisions). Deferred. (Do FIRST, before RC.C.9.)
+- [ ] RC.C.9 JES/JCL executor on DatasetAccess (ROADMAP PLUGIN phase 6) -- contract/dependency criteria only; the executor depends ONLY on `ff-dsalloc` + `DatasetAccess`. Delivers jes-emulator Req 19 (task 35, docs/contract); build deferred. (Do AFTER RC.C.10.)
 - [ ] RC.C.11 DO NOT build before consolidation (standing guard) -- do not wire VSAM against `ff-vsam-services`'s dead trait or `ff-dscatalog::storage::StorageProvider`; do not build JES/Volume UI against `storage_path` or `physical_path`; do not add a MAINFRAME CE that calls the catalog's SQLite path directly; do not extend `ff-idcams`'s private traits. Recorded in dataset-catalog design.md + Req 35.5.
 
 ## Phase (backendenv-record-contract) -- CR-CH-060: record-aware ff-vfs::BackendEnvironment store contract

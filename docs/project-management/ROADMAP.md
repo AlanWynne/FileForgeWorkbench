@@ -55,8 +55,8 @@ draws on.
 |---|-----------------|--------|---------------|
 | 1 | **ISPF-like shell framework** -- open tabbed, DETACHABLE workspaces. | Built; detach + tab lifecycle need test pass | `platform-core`, `layout-and-docking`, `multi-tab-editor`, `menu-and-statusbar`, `startup-and-session`, `workspace-model` |
 | 2 | **Menu + configurable workspaces** -- two workspace kinds: MENU workspaces (all modelled on the POM: option / command / description) and configurable workspaces. Plus a **Create-Menu dialog**: name a menu (e.g. "Settings"), enter a list of option/command/description rows, save as a new menu. | Menu-workspace pattern built (POM, Settings); the create/edit-menu DIALOG is the key gap | `menu-workspace`, `command-semantics` |
-| 3 | **File directory navigator** -- select files for View / Edit / delete / create + standard file ops. | DONE (modern ff-file-tree explorer, CR-NR-060; edit ops incl. catalog subtrees, B042) | `file-tree-panel`, `file-operations`, `virtual-file-system`, `connector-local-fs` |
-| 4 | **ISPF editor** -- primary commands + line commands, two modes: Browse/View (no mutation; display filters like INCLUDE/EXCLUDE/FIND still work) and Edit (mutation allowed). | Largely built, NOT fully working -- primary/line command execution + mode enforcement need fixing and a test pass | `edit-operations`, `line-commands`, `multi-tab-editor`, `document-model`, `undo-redo-transactions`, `caret-and-selection`, `viewport-and-scrolling` |
+| 3 | **File directory navigator** -- select files for View / Edit / delete / create + standard file ops. | Native-file navigation DONE (modern ff-file-tree explorer, CR-NR-060; edit ops incl. catalog subtrees, B042); dataset/volume catalog navigation DEPENDS on the Dataset Stack Rationalisation (see Section 6a) | `file-tree-panel`, `file-operations`, `virtual-file-system`, `connector-local-fs` |
+| 4 | **ISPF editor** -- primary commands + line commands, two modes: Browse/View (no mutation; display filters like INCLUDE/EXCLUDE/FIND still work) and Edit (mutation allowed). | Largely built, NOT fully working -- primary/line command execution + mode enforcement need fixing and a test pass. End-to-end editor testing DEPENDS on the Dataset Stack Rationalisation (Section 6a): the navigator must be able to open files from dataset/volume catalogs and SAVE them record-aware before the editor can be tested against real datasets. | `edit-operations`, `line-commands`, `multi-tab-editor`, `document-model`, `undo-redo-transactions`, `caret-and-selection`, `viewport-and-scrolling` |
 | 5 | **Command-line execution of everything** -- as far as reasonable, every activity has a command, so any activity can run inside a macro as a list of commands. | Command framework + palette built; coverage/parity + chaining need completion (CR-NR-057) | `command-framework`, `command-semantics`, `command-palette`, `command-completion`, `shell-command`, `function-keys-and-history` |
 | 6 | **Macros as commands** -- save a macro to a file, and (in Settings) configure a saved macro as an individual command. | Lua engine + Macro Library partially built; save-macro-as-command wiring is the gap | `lua-macro-engine`, `command-configurator`, `batch-execution` |
 
@@ -122,6 +122,49 @@ and the new-requirement gates in Section 7.
 
 ---
 
+## 6a. CORE PREREQUISITE -- Dataset Stack Rationalisation must complete before editor testing
+
+Although the dataset / catalog / volume emulation is framed as PLUGIN phase 2
+(Section 5), the layer it rationalises is ESSENTIAL to CORE: the file navigator
+(CORE #3) and the ISPF editor (CORE #4) cannot be fully tested until the
+navigator can open files from dataset/volume catalogs and the editor can SAVE
+them record-aware. So the Dataset Stack Rationalisation (CR-CH-059, with its
+dependencies CR-CH-057/CR-NR-105 Volume model and CR-CH-060 record-aware SAVE
+contract) is a CORE PREREQUISITE, not deferred plugin work.
+
+**This work must be complete and gate-clean BEFORE the editor (CORE #4) can be
+signed off against `core-acceptance-test-plan.md`.**
+
+Current status (authoritative detail: `.agents/tasks/dataset-vision-fit/report.md`
+and `project-master/tasks.md` Phase (dataset-stack-rationalisation)):
+
+- Phase RC.A (consolidation: single catalog authority, one `Dsorg`/`Recfm`,
+  single `ff-vfs::StorageProvider` seam, single `posix` registrant) -- DONE,
+  code-complete pending the owner's full `cargo gate --build`.
+- Phase RC.B (the `ff-volume` crate, the single `DatasetAccess` access contract,
+  `ff-dsalloc` returning a handle, VSAM wired under `DatasetAccess`, `ff-idcams`
+  repointed, record-aware MAINFRAME SAVE, retirement of `ff-vsam-services` and
+  `ff-dataset-catalog`) -- DONE, code-complete pending the owner's full gate.
+- Phase RC.C (DEFERRED / owner-blocked): the Volume management UI + volume
+  picker (RC.C.10 / VM.6-VM.8) comes FIRST, then the JES/JCL executor (RC.C.9,
+  plugin phase 6) after it.
+
+Known gaps that still block full editor-against-dataset testing:
+1. **Owner full-gate confirmation** of RC.A/RC.B (`cargo gate --build` clean) --
+   flips the code-complete work to DONE.
+2. **CR-CH-061** (PENDING GATE): a same-session SAVE of a Files-Panel-created
+   dataset resolves `NotFound` because the shell builds a fresh
+   `CatalogDatasetAccess` not sharing the Files Panel's live catalog handles.
+   Owner chose option 1 (fix now).
+3. **Volume UI (RC.C.10 / VM.6-VM.8)**: now unblocked because `ff-volume` and
+   `DatasetAccess` exist; needed for the user to navigate volumes/VTOC and pick a
+   volume at allocation.
+
+Also outstanding (housekeeping, not a build blocker): the `.worktrees/vsam-wiring`
+(`V`) stream is superseded by RC.B.7 and its output is throwaway -- mark/remove.
+
+---
+
 ## 7. New / changed requirements (recorded, gated later)
 
 These are learnings captured as source documents. They are LOGGED in
@@ -134,6 +177,9 @@ requirements gate when their phase arrives -- NOT folded into CORE.
 - Effect: the current virtual mainframe/POSIX catalog is inadequate; this
   reworks/extends `virtual-file-system`, `dataset-catalog`, `virtual-catalog-manager`,
   `dataset-allocator`, `dataset-ownership-model`. Feeds PLUGIN phases 2 and 3.
+- NOTE: the consolidation half of this (CR-CH-059 Dataset Stack Rationalisation,
+  plus CR-CH-057/CR-NR-105 Volume model and CR-CH-060) is NOT deferred -- it is a
+  CORE PREREQUISITE for editor testing. See Section 6a.
 
 ### 7b. File Formatter plugin (new sub-project)
 - Source: `docs/specs/file-formatter/design-input.md` (+
