@@ -205,7 +205,15 @@ mod tests {
     // Validates: Requirement 8.2
     #[test]
     fn dry_run_writes_dry_run_prefix() {
-        let tmp = std::env::temp_dir().join("ffwb_batch_test_dry_run.txt");
+        let unique = format!(
+            "ffwb_batch_test_dry_run_{}_{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let tmp = std::env::temp_dir().join(unique);
         let sink = BatchOutputSink::File(tmp.to_string_lossy().to_string());
         let mut input = BatchInputSource::from_str("EDIT a.txt\n");
         let session = BatchSession::new(false, None);
@@ -220,6 +228,7 @@ mod tests {
             content.contains("[DRY-RUN]"),
             "expected [DRY-RUN] prefix in output"
         );
+        let _ = std::fs::remove_file(&tmp);
     }
 
     // Validates: Requirement 8.3
@@ -239,7 +248,15 @@ mod tests {
     // Validates: Requirement 8.4
     #[test]
     fn dry_run_read_only_commands_show_executed_label() {
-        let tmp = std::env::temp_dir().join("ffwb_batch_test_dry_run_ro.txt");
+        let unique = format!(
+            "ffwb_batch_test_dry_run_ro_{}_{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let tmp = std::env::temp_dir().join(unique);
         let sink = BatchOutputSink::File(tmp.to_string_lossy().to_string());
         let mut input = BatchInputSource::from_str("FIND ERROR\n");
         let session = BatchSession::new(false, None);
@@ -253,12 +270,21 @@ mod tests {
             content.contains("read-only"),
             "expected read-only label for FIND in dry-run: {content}"
         );
+        let _ = std::fs::remove_file(&tmp);
     }
 
     // Validates: Requirement 4.4
     #[test]
     fn echo_mode_writes_command_prefix() {
-        let tmp = std::env::temp_dir().join("ffwb_batch_test_echo.txt");
+        let unique = format!(
+            "ffwb_batch_test_echo_{}_{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let tmp = std::env::temp_dir().join(unique);
         let sink = BatchOutputSink::File(tmp.to_string_lossy().to_string());
         let mut input = BatchInputSource::from_str("SAVE\n");
         let session = BatchSession::new(false, None);
@@ -269,6 +295,7 @@ mod tests {
         runner.run(&mut input, &sink, &session);
         let content = std::fs::read_to_string(&tmp).unwrap_or_default();
         assert!(content.contains("===> SAVE"), "expected echo prefix");
+        let _ = std::fs::remove_file(&tmp);
     }
 
     // Validates: Requirement 6.5
@@ -310,7 +337,15 @@ mod tests {
     // Validates: Requirement 3.5
     #[test]
     fn interactive_command_returns_step_rc_8_with_diagnostic() {
-        let tmp = std::env::temp_dir().join("ffwb_batch_test_interactive.txt");
+        let unique = format!(
+            "ffwb_batch_test_interactive_{}_{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let tmp = std::env::temp_dir().join(unique);
         let sink = BatchOutputSink::File(tmp.to_string_lossy().to_string());
         let mut input = BatchInputSource::from_str("KEYS\n");
         let session = BatchSession::new(false, None);
@@ -322,6 +357,7 @@ mod tests {
             content.contains("requires interactive input"),
             "diagnostic message expected: {content}"
         );
+        let _ = std::fs::remove_file(&tmp);
     }
 
     // Validates: Requirement 3.5
