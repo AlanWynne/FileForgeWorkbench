@@ -8,7 +8,7 @@
       "matcher": "execute_pwsh|executeBash|execute_bash",
       "action": {
         "type": "command",
-        "command": "C:\\tools\\python\\python.exe C:\\workspace\\VSC\\FileForgeWorkbench\\tools\\python\\pwsh_command_guard.py",
+        "command": "C:\\tools\\python\\python.exe C:\\workspace\\apps\\FileForgeWorkbench\\tools\\python\\pwsh_command_guard.py",
         "timeout": 30
       }
     }
