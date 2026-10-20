@@ -244,6 +244,39 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    // Tests that mutate the process-global ACTIVE_PROFILE must not run
+    // concurrently: plain multithreaded `cargo test` runs them on separate
+    // threads, so without serialization one test's set_active_profile clobbers
+    // another's between its own set and read (test-isolation flake, same class
+    // as B048). This mirrors the CWD_LOCK pattern in Walrus
+    // (wal-cli-common/src/input_glob.rs): a test-only unit mutex plus an RAII
+    // guard that both serialises the tests and restores the global on drop, so
+    // restoration happens even if a test panics mid-body. The lock is recovered
+    // on poisoning so a panic in one test does not cascade into the next.
+    static PROFILE_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Serialise the ACTIVE_PROFILE global for the lifetime of the guard and
+    /// restore it to the DEFAULT_PROFILE (None) on drop.
+    struct ProfileGuard {
+        _lock: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl ProfileGuard {
+        fn enter() -> ProfileGuard {
+            let lock = PROFILE_TEST_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            set_active_profile(None);
+            ProfileGuard { _lock: lock }
+        }
+    }
+
+    impl Drop for ProfileGuard {
+        fn drop(&mut self) {
+            set_active_profile(None);
+        }
+    }
+
     #[test]
     fn resolve_with_custom_path_uses_provided_path() {
         // Validates: Requirement 3 AC 3.4
@@ -273,10 +306,13 @@ mod tests {
     // Validates: startup-and-session Req 22.1, 22.2, 22.3, 22.9 (CR-NR-081) --
     // the active profile redirects the resolved User_Data_Dir to a per-profile
     // sub-directory; the DEFAULT_PROFILE (None) is the base, unchanged; distinct
-    // profiles resolve to distinct dirs. A SINGLE serialized test drives the
-    // process-global so it does not race other tests; it always restores None.
+    // profiles resolve to distinct dirs. Holds PROFILE_TEST_LOCK for its whole
+    // body so it does not race the other profile-mutating test; always restores
+    // None.
     #[test]
     fn active_profile_redirects_resolved_user_data_dir() {
+        let _guard = ProfileGuard::enter();
+
         // Default (None): base path, unchanged (Req 22.2).
         set_active_profile(None);
         let default_path = UserDataDir::resolve(None).unwrap().path().to_path_buf();
@@ -315,9 +351,12 @@ mod tests {
     // Validates: startup-and-session Req 22.2, 22.3 (CR-NR-083) -- default_base
     // and profiles_root are INDEPENDENT of the active profile: they return the
     // profile-agnostic base and profiles root regardless of which profile is
-    // active. Serialized with the profile global; always restores None.
+    // active. Holds PROFILE_TEST_LOCK for its whole body so it does not race the
+    // other profile-mutating test; always restores None.
     #[test]
     fn default_base_and_profiles_root_ignore_active_profile() {
+        let _guard = ProfileGuard::enter();
+
         set_active_profile(None);
         let base_default = default_base().expect("base");
         let root_default = profiles_root().expect("root");
