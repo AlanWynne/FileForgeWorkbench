@@ -40,6 +40,16 @@ pub struct ConfigInitOptions {
 
     /// Whether to start file watching for hot-reload (default: true).
     pub enable_hot_reload: bool,
+
+    /// Explicit user-config file path override. When `Some(path)`, both the
+    /// READ side (`init()` loads the User layer from `path`) and the WRITE side
+    /// (`ConfigHandle::set_user_value` / `remove_user_value` / `import_settings`
+    /// and the audit writers) resolve to `path` instead of
+    /// `paths::user_config_path()`. When `None`, behaviour is exactly as before
+    /// (the env-var seam `FFWB_USER_CONFIG_PATH` and the platform default still
+    /// apply). This is a test-isolation seam (B048) that avoids the
+    /// process-global env var entirely; production passes `None`.
+    pub user_config_path: Option<PathBuf>,
 }
 
 impl Default for ConfigInitOptions {
@@ -48,6 +58,7 @@ impl Default for ConfigInitOptions {
             project_root: None,
             workspace_root: None,
             enable_hot_reload: true,
+            user_config_path: None,
         }
     }
 }
@@ -61,6 +72,7 @@ impl ConfigInitOptions {
             project_root: None,
             workspace_root: None,
             enable_hot_reload: true,
+            user_config_path: None,
         }
     }
 
@@ -79,6 +91,17 @@ impl ConfigInitOptions {
     /// Set whether hot-reload file watching should be enabled.
     pub fn with_hot_reload(mut self, enable: bool) -> Self {
         self.enable_hot_reload = enable;
+        self
+    }
+
+    /// Set an explicit user-config file path override (test-isolation seam B048).
+    ///
+    /// When set, both the read side (`init`) and the write side (via the
+    /// returned `ConfigHandle`) resolve the User layer to this path instead of
+    /// `paths::user_config_path()`. Takes precedence over the
+    /// `FFWB_USER_CONFIG_PATH` env var.
+    pub fn with_user_config_path(mut self, path: PathBuf) -> Self {
+        self.user_config_path = Some(path);
         self
     }
 }
@@ -127,7 +150,15 @@ pub fn init(options: ConfigInitOptions) -> Result<ConfigHandle, ConfigError> {
     }
 
     // User config
-    if let Some(user_path) = paths::user_config_path() {
+    // Resolve the user-config path ONCE: an explicitly injected path (B048 test
+    // seam) wins; otherwise fall back to `paths::user_config_path()`, which
+    // still honours the `FFWB_USER_CONFIG_PATH` env var and the platform default
+    // (production passes `None`, so behaviour is unchanged).
+    let user_cfg = options
+        .user_config_path
+        .clone()
+        .or_else(paths::user_config_path);
+    if let Some(user_path) = user_cfg {
         if user_path.exists() {
             match load_toml_file(&user_path) {
                 Ok(values) => {
@@ -154,6 +185,12 @@ pub fn init(options: ConfigInitOptions) -> Result<ConfigHandle, ConfigError> {
     } else {
         ConfigHandle::new(manager)
     };
+
+    // Thread the injected user-config path (if any) onto the handle so the
+    // WRITE side (`set_user_value` / `remove_user_value` / `import_settings` /
+    // audit writers) resolves to the SAME file the READ side loaded above. When
+    // `None`, the handle keeps resolving via `paths::user_config_path()` (B048).
+    handle.set_user_config_path(options.user_config_path.clone());
 
     // Step 5: Auto-activate persisted profile
     // The persisted profile name is stored under [_session].active_profile in the user config.
@@ -483,6 +520,15 @@ mod tests {
         assert_eq!(options.project_root, Some(PathBuf::from("/my/project")));
         assert_eq!(options.workspace_root, Some(PathBuf::from("/my/workspace")));
         assert!(!options.enable_hot_reload);
+        // user_config_path defaults to None and is unset by the other builders.
+        assert!(options.user_config_path.is_none());
+
+        // with_user_config_path round-trips the explicit override.
+        let options = options.with_user_config_path(PathBuf::from("/tmp/user.toml"));
+        assert_eq!(
+            options.user_config_path,
+            Some(PathBuf::from("/tmp/user.toml"))
+        );
     }
 
     // Validates: ConfigInitOptions::default() has expected defaults
@@ -493,6 +539,7 @@ mod tests {
         assert!(options.project_root.is_none());
         assert!(options.workspace_root.is_none());
         assert!(options.enable_hot_reload); // Default is true per design
+        assert!(options.user_config_path.is_none());
     }
 
     // ========================================================================
@@ -653,6 +700,58 @@ mod tests {
 
         // Workspace (priority 5) should override Project (priority 4)
         assert_eq!(handle.get_int("editor.tab_size").unwrap(), 8);
+    }
+
+    // Validates: test-isolation hazard B048 -- explicit user-config path seam.
+    // An injected user-config path is used by BOTH the read side (init loads the
+    // User layer from it) and the write side (set_user_value / remove_user_value
+    // through the handle write to it), without touching the process-global
+    // FFWB_USER_CONFIG_PATH env var.
+    #[test]
+    fn init_with_injected_user_config_path_reads_and_writes_that_file() {
+        let dir = TempDir::new().unwrap();
+        let user_path = dir.path().join("injected-user.toml");
+        // Seed an initial user layer so the READ side has something to load.
+        std::fs::write(&user_path, "[editor]\ntab_size = 7\n").unwrap();
+
+        let handle = init(
+            ConfigInitOptions::new()
+                .with_hot_reload(false)
+                .with_user_config_path(user_path.clone()),
+        )
+        .unwrap();
+
+        // Read side: the injected file's value is effective.
+        assert_eq!(handle.get_int("editor.tab_size").unwrap(), 7);
+
+        // Write side: set_user_value must persist to the SAME injected file.
+        handle
+            .set_user_value("editor.tab_size", ConfigValue::Integer(2))
+            .unwrap();
+        let after_set = std::fs::read_to_string(&user_path).unwrap();
+        assert!(
+            after_set.contains("tab_size"),
+            "set_user_value must write the injected user-config file, got: {after_set}"
+        );
+        let table = load_toml_file(&user_path).unwrap();
+        if let Some(ConfigValue::Table(editor)) = table.get("editor") {
+            assert_eq!(editor.get("tab_size"), Some(&ConfigValue::Integer(2)));
+        } else {
+            panic!("editor table must exist in the injected file after set");
+        }
+        assert_eq!(handle.get_int("editor.tab_size").unwrap(), 2);
+
+        // Write side: remove_user_value must clear the key from the injected file.
+        handle.remove_user_value("editor.tab_size").unwrap();
+        let table = load_toml_file(&user_path).unwrap();
+        if let Some(ConfigValue::Table(editor)) = table.get("editor") {
+            assert!(
+                !editor.contains_key("tab_size"),
+                "remove_user_value must clear the key from the injected file"
+            );
+        }
+        // With the override removed, the schema default (4) is effective again.
+        assert_eq!(handle.get_int("editor.tab_size").unwrap(), 4);
     }
 
     // ========================================================================

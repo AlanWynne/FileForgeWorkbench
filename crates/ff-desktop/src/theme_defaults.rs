@@ -392,10 +392,15 @@ mod tests {
 
     fn temp_config(root: &Path) -> ff_config::ConfigHandle {
         use ff_config::init::{init, ConfigInitOptions};
+        // Isolate the user-config layer to a temp file under `root` (B048) via
+        // the explicit injection seam, so the resolved config reflects schema
+        // defaults rather than a developer's real per-user settings -- without
+        // touching the process-global FFWB_USER_CONFIG_PATH env var.
         init(
             ConfigInitOptions::new()
                 .with_hot_reload(false)
-                .with_project_root(root.to_path_buf()),
+                .with_project_root(root.to_path_buf())
+                .with_user_config_path(root.join("iso-config.toml")),
         )
         .expect("config init")
     }
@@ -424,8 +429,8 @@ mod tests {
     #[test]
     fn resolve_startup_palette_loads_materialised_mode_file() {
         let dir = TempDir::new().expect("tempdir");
-        let cfg_path = dir.path().join("iso-config.toml");
-        std::env::set_var("FFWB_USER_CONFIG_PATH", &cfg_path);
+        // `temp_config` isolates the user-config layer under `dir` via the
+        // explicit injection seam (B048); no env var is touched.
         ensure_default_theme_files(dir.path());
         let config = temp_config(dir.path());
         let themes = dir.path().join("themes");
@@ -436,6 +441,5 @@ mod tests {
             .editor
             .background;
         assert_eq!(p.editor.background, expected_bg);
-        std::env::remove_var("FFWB_USER_CONFIG_PATH");
     }
 }

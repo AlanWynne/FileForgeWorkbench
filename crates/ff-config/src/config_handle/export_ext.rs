@@ -56,7 +56,7 @@ impl ConfigHandle {
         let imported = crate::export_import::read_export_file(path)?;
 
         let target_path = match target {
-            ImportTarget::UserLayer => crate::paths::user_config_path().ok_or_else(|| {
+            ImportTarget::UserLayer => self.user_config_path_resolved().ok_or_else(|| {
                 ConfigError::Io(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
                     "user config directory not available",

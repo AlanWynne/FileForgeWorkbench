@@ -100,77 +100,92 @@ pub(crate) fn make_shell() -> super::WorkbenchShell {
     use ff_config::init;
     use ff_config::ConfigInitOptions;
     use ff_core::WorkbenchApp;
+    use ff_keys::HistoryStore;
     use ff_logging::LoggingStatus;
     use ff_theme::defaults::dark_palette;
     use tokio::runtime::Runtime;
 
-    // Test isolation (B048): redirect user-config writes to a unique temp file so
-    // `set_user_value`-invoking tests (theme, follow_os, workspace overrides)
-    // never read or write the developer's real per-user config. Under nextest
-    // (process-per-test) this fully isolates each test; the env var is read by
-    // `ff_config::paths::user_config_path`. Set BEFORE `init()` so the config
-    // system resolves the temp path from the start.
-    let unique = format!(
-        "ffwb_test_cfg_{}_{}.toml",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
-    );
-    let cfg_path = std::env::temp_dir().join(unique);
-    std::env::set_var("FFWB_USER_CONFIG_PATH", &cfg_path);
-    // Test isolation (B048, function-keys Req 6): redirect the command-line
-    // history file to a unique temp path so tests never read/write the real
-    // command_history.toml. Distinct per test id so no cross-test bleed.
-    let hist_unique = format!(
-        "ffwb_test_hist_{}_{}.toml",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
-    );
-    std::env::set_var("FFWB_HISTORY_PATH", std::env::temp_dir().join(hist_unique));
+    // Test isolation (B048): redirect user-config and command-line-history writes
+    // to UNIQUE temp files so `set_user_value`-invoking tests (theme, follow_os,
+    // workspace overrides) and history-persistence tests never read or write the
+    // developer's real files. Both paths are injected DIRECTLY through
+    // constructor seams (`with_user_config_path` + `new_with_history_store`), not
+    // the process-global `FFWB_USER_CONFIG_PATH` / `FFWB_HISTORY_PATH` env vars,
+    // so parallel tests under plain multithreaded `cargo test` cannot race on a
+    // shared env var.
+    let cfg_path = std::env::temp_dir().join(unique_temp_name("ffwb_test_cfg"));
+    let hist_path = std::env::temp_dir().join(unique_temp_name("ffwb_test_hist"));
 
-    let config_handle = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
+    let config_handle = init(
+        ConfigInitOptions::new()
+            .with_hot_reload(false)
+            .with_user_config_path(cfg_path),
+    )
+    .expect("config init");
     let runtime = Runtime::new().expect("runtime");
     let app =
         WorkbenchApp::new(Box::new(config_handle.clone()), LoggingStatus::Fallback).expect("app");
     let palette = dark_palette();
-    super::WorkbenchShell::new(app, runtime, palette, vec![], config_handle)
+    super::WorkbenchShell::new_with_history_store(
+        app,
+        runtime,
+        palette,
+        vec![],
+        config_handle,
+        Some(HistoryStore::new(hist_path)),
+    )
+}
+
+/// Build a unique temp file name (`<prefix>_<pid>_<nanos>.toml`) for per-call
+/// isolation of injected config/history paths (B048).
+fn unique_temp_name(prefix: &str) -> String {
+    format!(
+        "{}_{}_{}.toml",
+        prefix,
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    )
 }
 
 /// Build a shell whose command-line history file is the given path (function-keys
-/// Req 6). Sets `FFWB_HISTORY_PATH` before `new` so the shell loads/saves there,
-/// keeping the test isolated from the real user history file.
+/// Req 6). Injects the history store DIRECTLY via `new_with_history_store` and a
+/// unique temp user-config path via `with_user_config_path`, so the shell
+/// loads/saves history at `history_path` without touching the process-global
+/// `FFWB_HISTORY_PATH` / `FFWB_USER_CONFIG_PATH` env vars (B048 test isolation).
 pub(crate) fn make_shell_with_history_path(
     history_path: &std::path::Path,
 ) -> super::WorkbenchShell {
     use ff_config::init;
     use ff_config::ConfigInitOptions;
     use ff_core::WorkbenchApp;
+    use ff_keys::HistoryStore;
     use ff_logging::LoggingStatus;
     use ff_theme::defaults::dark_palette;
     use tokio::runtime::Runtime;
 
-    let unique = format!(
-        "ffwb_test_cfg_{}_{}.toml",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
-    );
-    std::env::set_var("FFWB_USER_CONFIG_PATH", std::env::temp_dir().join(unique));
-    std::env::set_var("FFWB_HISTORY_PATH", history_path);
+    let cfg_path = std::env::temp_dir().join(unique_temp_name("ffwb_test_cfg"));
 
-    let config_handle = init(ConfigInitOptions::new().with_hot_reload(false)).expect("config init");
+    let config_handle = init(
+        ConfigInitOptions::new()
+            .with_hot_reload(false)
+            .with_user_config_path(cfg_path),
+    )
+    .expect("config init");
     let runtime = Runtime::new().expect("runtime");
     let app =
         WorkbenchApp::new(Box::new(config_handle.clone()), LoggingStatus::Fallback).expect("app");
     let palette = dark_palette();
-    super::WorkbenchShell::new(app, runtime, palette, vec![], config_handle)
+    super::WorkbenchShell::new_with_history_store(
+        app,
+        runtime,
+        palette,
+        vec![],
+        config_handle,
+        Some(HistoryStore::new(history_path.to_path_buf())),
+    )
 }
 
 // === DB.4 -- Command Target binding (menu options + shortcuts) ==============

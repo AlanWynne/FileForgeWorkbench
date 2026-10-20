@@ -35,6 +35,13 @@ pub(crate) struct ConfigSystem {
     /// In-memory audit log ring buffer.
     /// Addresses: Requirement 16
     pub(crate) audit_log: AuditLog,
+    /// Explicit user-config file path override (test-isolation seam B048).
+    /// When `Some`, the config WRITE paths (`set_user_value`,
+    /// `remove_user_value`, `import_settings`, audit writers) resolve to this
+    /// path instead of `crate::paths::user_config_path()`. `None` keeps the
+    /// prior behaviour (env-var seam + platform default). Set by `init()` from
+    /// `ConfigInitOptions::user_config_path`.
+    pub(crate) user_config_path: Option<std::path::PathBuf>,
 }
 
 /// Thread-safe, clonable handle to the configuration system.
@@ -86,6 +93,7 @@ impl ConfigHandle {
                 profile_manager: None,
                 locked_keys: std::collections::HashSet::new(),
                 audit_log: AuditLog::new(),
+                user_config_path: None,
             })),
         }
     }
@@ -98,8 +106,32 @@ impl ConfigHandle {
                 profile_manager: Some(profile_manager),
                 locked_keys: std::collections::HashSet::new(),
                 audit_log: AuditLog::new(),
+                user_config_path: None,
             })),
         }
+    }
+
+    /// Store an explicit user-config file path override on the handle (B048).
+    ///
+    /// Acquires a write lock and records `path` so the config WRITE methods
+    /// resolve the User layer to it. `None` clears the override (falls back to
+    /// `crate::paths::user_config_path()`).
+    pub(crate) fn set_user_config_path(&self, path: Option<std::path::PathBuf>) {
+        let mut system = self.inner.write().unwrap();
+        system.user_config_path = path;
+    }
+
+    /// Resolve the user-config file path the WRITE methods should target.
+    ///
+    /// Returns the explicit injected path when set, otherwise falls back to
+    /// `crate::paths::user_config_path()` (which honours `FFWB_USER_CONFIG_PATH`
+    /// and the platform default). Acquires a read lock.
+    pub(crate) fn user_config_path_resolved(&self) -> Option<std::path::PathBuf> {
+        let system = self.inner.read().unwrap();
+        system
+            .user_config_path
+            .clone()
+            .or_else(crate::paths::user_config_path)
     }
 
     // ====================================================================

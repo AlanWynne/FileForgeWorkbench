@@ -175,7 +175,7 @@ impl ConfigHandle {
                 });
             }
         }
-        let user_path = crate::paths::user_config_path().ok_or_else(|| {
+        let user_path = self.user_config_path_resolved().ok_or_else(|| {
             crate::error::ConfigError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 "user config directory not available",
@@ -204,7 +204,7 @@ impl ConfigHandle {
     ///
     /// Validates: Requirement 15.6
     pub fn remove_user_value(&self, key: &str) -> Result<(), crate::error::ConfigError> {
-        let user_path = crate::paths::user_config_path().ok_or_else(|| {
+        let user_path = self.user_config_path_resolved().ok_or_else(|| {
             crate::error::ConfigError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 "user config directory not available",
@@ -276,11 +276,33 @@ impl ConfigHandle {
     ///
     /// Validates: Requirement 16.6
     pub fn clear_audit_log(&self) {
+        let dir = self.resolved_audit_dir();
         let mut system = self.inner.write().unwrap();
         system.audit_log.clear();
-        if let Some(dir) = crate::paths::user_config_dir() {
+        if let Some(dir) = dir {
             crate::audit::truncate_log_file(&dir.join("audit.log"));
         }
+    }
+
+    /// Resolve the directory the audit log (`audit.log`) lives in.
+    ///
+    /// When an explicit user-config path is injected (B048 test seam), derive
+    /// the audit dir from that file's parent so audit writes stay co-located
+    /// with the injected config. Otherwise fall back to
+    /// `crate::paths::user_config_dir()` (prior behaviour, production unchanged).
+    fn resolved_audit_dir(&self) -> Option<std::path::PathBuf> {
+        if let Some(path) = self.user_config_path_injected() {
+            return path.parent().map(Path::to_path_buf);
+        }
+        crate::paths::user_config_dir()
+    }
+
+    /// The explicitly injected user-config path, if any (without the fallback to
+    /// `crate::paths::user_config_path()`). Used by the audit-dir resolver so a
+    /// `None` injection falls back to `user_config_dir()`, not a derived parent.
+    fn user_config_path_injected(&self) -> Option<std::path::PathBuf> {
+        let system = self.inner.read().unwrap();
+        system.user_config_path.clone()
     }
 
     /// Append an audit entry to the in-memory log and persist it to disk.
@@ -288,7 +310,7 @@ impl ConfigHandle {
     /// Write failures are logged at WARN level and do not block the caller.
     /// Validates: Requirement 16.1, 16.4
     pub fn record_audit_entry(&self, entry: AuditEntry) {
-        let audit_path = crate::paths::user_config_dir().map(|d| d.join("audit.log"));
+        let audit_path = self.resolved_audit_dir().map(|d| d.join("audit.log"));
         let mut system = self.inner.write().unwrap();
         if let Some(ref path) = audit_path {
             crate::audit::persist_entry(path, &entry);
