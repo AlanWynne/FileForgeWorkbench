@@ -1,0 +1,24 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "location": "docs/specs/dataset-catalog/requirements.md Req 7 AC 10 (~line 232)",
+      "problem": "The existing LRECL criterion that Req 37 narrows still carries prohibited Unicode <= / >= glyphs (pre-existing, not authored by this gate). Req 37 narrows it by note rather than editing in place.",
+      "fix": "At implementation (author decision 1), when AC 10 is edited to scope it to RECFM F/FB/V/VB, also replace the two Unicode glyphs with ASCII '<=' / '>='. Not blocking: glyphs predate this CR and the narrowing is unambiguous."
+    },
+    {
+      "severity": "NIT",
+      "location": "docs/specs/dataset-catalog/design.md section 2 / Req 38.3",
+      "problem": "'per-member content type where member-level metadata exists' leaves the per-member storage path semi-specified.",
+      "fix": "When Requirement 8 member storage is implemented, record whether per-member content-type is stored or derived-only. Design already states the dataset-level LibraryKind-derived default governs in the interim, which is sufficient for the gate."
+    },
+    {
+      "severity": "NIT",
+      "location": "docs/specs/dataset-catalog/design.md section 3 (resolve_program signature)",
+      "problem": "The primitive takes 'catalog: &impl CatalogQuery' but CatalogQuery is named as the 'existing catalog query surface' without a definition reference.",
+      "fix": "At implementation, confirm the concrete trait/type name (or introduce the minimal query trait) and cite it. The shape is marked 'final signatures in implementation', so this is a NIT."
+    }
+  ],
+  "reviewDoc": "c:/workspace/VSC/FileForgeWorkbench/.agents/tasks/loadlib-reqgate/review.md"
+}

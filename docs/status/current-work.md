@@ -12,6 +12,7 @@ summary short and link to the detailed task list.
 | `BLOCKED` | Cannot proceed until a dependency or decision is resolved |
 | `DONE` | Implemented and validated |
 | `DEFERRED` | Deliberately outside the current release |
+| `SUPERSEDED` | Replaced by a later decision; see the linked source |
 
 ## Work areas
 
@@ -30,8 +31,8 @@ summary short and link to the detailed task list.
 | Phase CS -- Test Warning Cleanup | DONE | All cargo test warnings eliminated across workspace | [project-master tasks](../project-management/project-master/tasks.md) |
 | Phase CT -- Workbench/Workspace/Context Terminology | DONE | All 7 tasks complete -- 69 specs updated | [project-master tasks](../project-management/project-master/tasks.md) |
 | Phase CU -- Menu Workspace Pattern | DONE | All 8 implementation tasks complete -- TabKind, loader, hot-reload, render, dispatch, defaults | [project-master tasks](../project-management/project-master/tasks.md) |
-| Phase CV -- POM Redesign | Spec DONE, impl NEXT | Spec complete (CV.1-CV.5). CV-impl pending: DEFAULT_POM_TOML, route options 9/S/B, BUILT_IN_OPTIONS (Tasks 9-12) | [menu-workspace tasks](../specs/menu-workspace/tasks.md) |
-| Phase CW -- Settings Menu | Spec DONE, impl NEXT | Spec complete (CW.1-CW.4). CW-impl pending: DEFAULT_SETTINGS_TOML, namespace view routing (Tasks 13-15) | [menu-workspace tasks](../specs/menu-workspace/tasks.md) |
+| Phase CV -- POM Redesign | SUPERSEDED | Menu Workspace pattern merged into `main`; Settings menu reworked under CR-CH-025. Forward CORE path now driven by ROADMAP Section 6a, not CV/CW task numbering | [ROADMAP](../project-management/ROADMAP.md) |
+| Phase CW -- Settings Menu | SUPERSEDED | Settings now opens as a real Menu_Workspace via keyword-less Menu_Name resolution (CR-CH-025, see bug B032 FIXED); flat browser moved to `CONFIG [<namespace>]` | [ROADMAP](../project-management/ROADMAP.md) |
 | Phase CX -- Named Workspaces + KEYS + SPLIT | DONE | Spec + implementation complete (CX.1-CX.7) | [project-master tasks](../project-management/project-master/tasks.md) |
 | Phase CZ -- FFTest Script Suite | DONE | All 9 deliverables complete | [project-master tasks](../project-management/project-master/tasks.md) |
 | Deferred connectors | DEFERRED | Network, FTP/SFTP, mainframe, and cloud connectors | [connector specs](../specs/) |
@@ -47,7 +48,65 @@ summary short and link to the detailed task list.
 
 ## Active work item
 
-**Current focus:** Phase CV-impl -- POM Redesign implementation. The Menu Workspace pattern (CU), POM redesign spec (CV), Settings menu spec (CW), and Named Workspaces (CX) are complete. The CV and CW specs are approved; their implementations (menu-workspace Tasks 9-15) are the next code work. Start with CV-impl Tasks 9-12 (DEFAULT_POM_TOML + option 9/S/B routing).
+**Authoritative source:** the single active phase and the ordered forward plan
+live in [`../project-management/ROADMAP.md`](../project-management/ROADMAP.md)
+(the control tower, Sections 6 and 6a). This dashboard summarises it; when the
+two disagree, the ROADMAP wins. The earlier "Phase CV-impl / POM Redesign" focus
+recorded here has been SUPERSEDED by the 2026-10-11 CORE re-sequencing.
+
+**Current focus:** Phase CORE STABILISATION + TEST. Get the six CORE capabilities
+working and sign off `../project-management/core-acceptance-test-plan.md` before
+resuming plugin work. The re-sequenced CORE forward path (ROADMAP Section 6a) is:
+
+1. **Localisation Phase 2** (CR-NR-103 L10N.4) -- full UI-string extraction +
+   Settings locale picker. Pulled to the FRONT (owner decision) because it is a
+   large, mechanical, cross-cutting change; doing it first means every panel built
+   afterward is written localisation-aware. Starting point: the WIP branch
+   `feature/localization-phase2`. Run in its own worktree.
+2. **Volume UI** (CR-CH-057 / CR-NR-105 VM.6-VM.8 / RC.C.10) -- Volume management
+   WorkspaceContext, Define_Volume_Dialog, DEFINE VOLUME / vary / ALTER via the
+   single command path, volume picker in catalog creation, IDCAMS VOLUMES().
+3. **Volume in the "Reset Bare" POM**, then **Catalog UI rework**
+   (catalog-as-pure-locator), then **ff-vfs Volume/Catalog UI-path wiring**, then
+   **File Navigator dataset/volume duality** (CR-NR-060 Slice B).
+4. **Editor windowed-record F3-F5** (CR-CH-058 WRF.4-6) -- runs in PARALLEL with
+   steps 2-3 (depends only on F1/F2, already merged). Starting point: the WIP
+   branch `feature/windowed-record-f3`.
+5. **CORE #4 editor test pass against real datasets** -- the convergence /
+   sign-off milestone (needs the navigator opening dataset/volume files AND the
+   editor finished).
+
+Plugin work (Utilities, mainframe emulation, File Formatter, Database, Job
+Monitor) stays DEFERRED until CORE is signed off.
+
+### Repository state (verified 2026-10-16)
+
+- **`main`** is the single source of truth, tip `8ada2dc`, 1 commit ahead of
+  `origin/main` (unpushed). The project was relocated to
+  `c:\workspace\apps\FileForgeWorkbench` -- see
+  [`../../.agents/POST-REORG-VERIFY.md`](../../.agents/POST-REORG-VERIFY.md).
+- **Two unmerged WIP branches** (git-confirmed `--no-merged main`):
+  `feature/windowed-record-f3` and `feature/localization-phase2` (both
+  "pre-stall checkpoint" commits). These are the starting points for steps 1 and
+  4 above. (The ROADMAP's "all non-main branches 0 ahead" line predates these.)
+- **Gate status:** last fully clean FULL gate was 2026-10-11 (9866 tests, 0
+  failed). The first gate run after the relocation reported 3 failures in
+  `ff-governance-tests::architecture_compliance` (`all_governed_crates_exist`,
+  `dataset_allocator_has_no_idcams_dependency`, `vfs_has_no_domain_dependencies`).
+  Root cause: a STALE cached `.rlib` from the old `c:\workspace\VSC\...` path --
+  `env!("CARGO_MANIFEST_DIR")` was baked into the pre-move artifact, so the tests
+  asserted the dead path. NOT a code regression. Resolved by
+  `cargo clean -p ff-governance-tests` + rebuild (all 8 pass). A fresh FULL gate
+  from `main` should be run to re-confirm green in the new location before new
+  work begins.
+
+### Resume-from-reorg checklist (do before new feature work)
+
+- [ ] Run a fresh FULL gate from `main`; confirm 9866/0 in the new location.
+- [ ] `git worktree prune` to clear the dead old-path worktree registrations.
+- [ ] Delete the stray `git\` PortableGit folder at the repo root (binary cruft).
+- [ ] Resolve the uncommitted `.kiro/steering/` changes (commit or revert the
+      in-flight steering refactor).
 
 ### Phase CQ -- Enterprise Features (next)
 

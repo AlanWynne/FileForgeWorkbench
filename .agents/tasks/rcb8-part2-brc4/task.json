@@ -1,0 +1,7 @@
+{
+  "task_id": "task-rcb8-part2-brc4",
+  "task_description": "Record-aware MAINFRAME editor SAVE: RC.B.8 Part 2 (b)-(d) wiring plus BRC.4 (the mainframe Command Environment in ff-idcams), built together as one end-to-end slice. The mainframe CE implements ff-vfs::BackendEnvironment over ff_dscatalog::DatasetAccess (resolve/allocate -> open -> put -> close; x37 -> non-zero rc); the registry gains a named-backend map + backend_for; the save seam resolves the backend by the active tab's owning_environment; mainframe tabs bind owning_env=MAINFRAME + a real DSN identity + the dataset RECFM at open and the nav edit-gate is lifted; the live catalog-scheme VFS provider is registered. Edits land directly on main, uncommitted, for the owner's full gate. ASCII-only .rs; 400-non-test-line rule; build ON the framework (single save seam, single open command, no second dispatcher).",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
