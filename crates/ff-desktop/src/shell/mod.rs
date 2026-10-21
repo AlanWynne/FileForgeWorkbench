@@ -58,7 +58,7 @@ mod environment_ffedit;
 mod environment_registry;
 mod external_adapter;
 mod handlers;
-mod help;
+pub(crate) mod help;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
 pub(crate) mod i18n_bootstrap;

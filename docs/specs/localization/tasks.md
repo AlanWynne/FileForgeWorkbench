@@ -66,19 +66,19 @@ TDD applies: write the failing test first, then the minimum implementation, per
 
 ## Phase 2 -- Incremental extraction (audit's recommended order)
 
-- [ ] 5. Localise the `DEFAULT_*_TOML` menu titles and descriptions
-  - [ ] 5.1 Read menu TITLE / option DESCRIPTIONS to display from the
+- [x] 5. Localise the `DEFAULT_*_TOML` menu titles and descriptions
+  - [x] 5.1 Read menu TITLE / option DESCRIPTIONS to display from the
         Message_Catalogue keyed by menu + option, out of the PARSED menu model
         (no translated TOML on disk; built-in menus stay code-only). Satisfies
         Req 7.1, 7.2.
-  - [ ] 5.2 Leave option `command` values unlocalised; fall back to Identity_Base
+  - [x] 5.2 Leave option `command` values unlocalised; fall back to Identity_Base
         English text for a missing key. Satisfies Req 7.3, 7.4, 4.2.
 
-- [ ] 6. Localise help content via per-locale directories
-  - [ ] 6.1 Add locale-aware path resolution in `ff-help` `content_loader`
+- [x] 6. Localise help content via per-locale directories
+  - [x] 6.1 Add locale-aware path resolution in `ff-help` `content_loader`
         (resolve `help/<locale>/`, English `help/` fallback) with NO change to
         parsing or the topic model. Satisfies Req 6.1, 6.2.
-  - [ ] 6.2 Keep `Topic_Key` / cross-reference keys unlocalised (body/title prose
+  - [x] 6.2 Keep `Topic_Key` / cross-reference keys unlocalised (body/title prose
         only); resolve subsequently displayed topics against the new locale on a
         hot-reload. Satisfies Req 6.3, 6.4.
 

@@ -116,6 +116,15 @@ fn main() -> anyhow::Result<()> {
         let config_for_reload = config_handle.clone();
         ff_config::on_locale_reload(&config_handle.callbacks(), move || {
             shell::i18n_bootstrap::install_catalogue(&config_for_reload);
+            // CR-NR-103 Req 6.4: re-resolve the per-locale help directory and
+            // swap the shell-owned registry's file topics in place, so help
+            // topics displayed after a locale change use the new locale. The
+            // registry Arc is published to a process-global slot during shell
+            // construction; this reload is a no-op until then (startup order).
+            let help_locale = config_for_reload
+                .get_string(ff_config::keys::ui::LOCALE)
+                .unwrap_or_else(|_| "en".to_string());
+            shell::help::reload_active_help_registry_for_locale(&help_locale);
         })
     };
 

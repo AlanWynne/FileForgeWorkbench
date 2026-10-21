@@ -125,6 +125,43 @@ impl HelpTopicRegistry {
         }
     }
 
+    /// Replace the file-based topic set in place (localization CR-NR-103, Req 6.4).
+    ///
+    /// Removes every FileBased-sourced topic from the SHARED inner map, then
+    /// bulk-inserts `topics_to_load` using the same priority rules as
+    /// `register_file_topic`. CommandRegistry and Plugin topics are left
+    /// untouched so their higher priority (and plugin lifecycle tracking) is
+    /// preserved.
+    ///
+    /// This mutates the shared `Arc<RwLock<HashMap>>` in place rather than
+    /// swapping the registry, so every `Arc<HelpTopicRegistry>` clone (the shell
+    /// `HelpState.registry` AND the `HelpContextPanel`'s model clone) observes
+    /// the new locale's topics WITHOUT reconstructing the panel. Used by the
+    /// `ui.locale` hot-reload path to swap help content to the new locale.
+    pub fn replace_file_topics(&self, topics_to_load: Vec<HelpTopic>) {
+        let mut topics = match self.topics.write() {
+            Ok(t) => t,
+            Err(_) => return,
+        };
+
+        // Drop the previous locale's file-based topics; keep runtime topics.
+        topics.retain(|_, topic| {
+            !matches!(topic.source(), crate::topic::TopicSource::FileBased { .. })
+        });
+
+        // Insert the new locale's set with the file-based priority rules: do not
+        // overwrite a surviving higher-priority (runtime) topic for the same key.
+        for topic in topics_to_load {
+            let key = topic.key().clone();
+            match topics.get(&key) {
+                Some(existing) if existing.source().priority() > topic.source().priority() => {}
+                _ => {
+                    topics.insert(key, topic);
+                }
+            }
+        }
+    }
+
     /// Register a topic from command metadata.
     ///
     /// Creates a `HelpTopic` from the command's help_text and help_syntax fields.
@@ -344,6 +381,53 @@ mod tests {
         registry.deregister_plugin("my_plugin");
         assert!(!registry.contains(&key1));
         assert!(!registry.contains(&key2));
+    }
+
+    // Validates: Requirement 6.4 -- replace_file_topics swaps the file-based set
+    // in place: old file topics are gone, new ones present, runtime topics kept.
+    #[test]
+    fn replace_file_topics_swaps_file_based_set_and_keeps_runtime() {
+        let registry = HelpTopicRegistry::new();
+        let old_key = TopicKey::command("FIND");
+        let runtime_key = TopicKey::command("CHANGE");
+        let new_key = TopicKey::command("LOCATE");
+
+        // A previous-locale file topic and a runtime (command) topic.
+        registry.register_file_topic(file_topic(old_key.clone(), "File FIND", "en find"));
+        registry.register_command_topic(cmd_topic(
+            runtime_key.clone(),
+            "Cmd CHANGE",
+            "runtime change",
+            "change",
+        ));
+
+        // Swap in a new locale's file topics.
+        registry.replace_file_topics(vec![file_topic(
+            new_key.clone(),
+            "File LOCATE",
+            "fr locate",
+        )]);
+
+        // Old file-based topic is gone; new one is present.
+        assert!(!registry.contains(&old_key));
+        assert!(registry.contains(&new_key));
+        // Runtime topic survives untouched.
+        let kept = registry.get(&runtime_key).unwrap();
+        assert_eq!(kept.title(), "Cmd CHANGE");
+    }
+
+    // Validates: Requirement 6.4 -- a surviving runtime topic is not overwritten
+    // by a same-key file topic in the replacement set.
+    #[test]
+    fn replace_file_topics_does_not_overwrite_runtime_for_same_key() {
+        let registry = HelpTopicRegistry::new();
+        let key = TopicKey::command("FIND");
+
+        registry.register_command_topic(cmd_topic(key.clone(), "Cmd FIND", "runtime", "find"));
+        registry.replace_file_topics(vec![file_topic(key.clone(), "File FIND", "from file")]);
+
+        let retrieved = registry.get(&key).unwrap();
+        assert_eq!(retrieved.title(), "Cmd FIND");
     }
 
     // Validates: Requirement 6.1 — Category filtering

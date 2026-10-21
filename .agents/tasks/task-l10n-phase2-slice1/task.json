@@ -1,0 +1,9 @@
+{
+  "task_id": "task-l10n-phase2-slice1",
+  "task_description": "Localisation Phase 2, Slice 1 (CR-NR-103, L10N.4): tick the Task 4 bookkeeping loose end, wire the ff-i18n catalogue bootstrap and add the English menu keys (FEAT-001); localise the DEFAULT_*_TOML menu titles and option descriptions at render time via the t() seam (FEAT-002); add locale-aware per-locale directory resolution to the ff-help content loader and reload it on ui.locale change (FEAT-003). English-only data; behaviour-neutral at ui.locale=en; no new mechanism; ASCII; no source file over 400 non-test lines.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-002", "FEAT-003"],
+  "feature_order_note": "FEAT-001 is DONE and merged to local main; it is intentionally omitted from the active feature_order so it is not re-run.",
+  "verification_policy": "AGENTS perform SCOPED compile/lint/fmt verification ONLY (cargo check/clippy/fmt -p <crate>), writing each to tools/logs/ and READING the log. A single named scoped test is allowed ONLY if it returns in a couple of seconds. AGENTS MUST NOT run `cargo test`/`cargo nextest` broadly, `cargo gate`, or `cargo full-gate` -- those hang this machine. The OWNER runs the full gate/test suite manually, outside Kiro.",
+  "blocked_reason": null
+}

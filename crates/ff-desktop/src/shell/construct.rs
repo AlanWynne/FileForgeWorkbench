@@ -151,42 +151,18 @@ impl WorkbenchShell {
             reg
         };
 
-        // Load the Help Topic Registry ONCE (context-help Req 18.1, CR-NR-097):
-        // the shipped `help/` `.help.md` content set. Searched, in order: the
-        // exe-dir `help/` (installed layout), the exe-dir `../../help` (the dev
-        // `target/<profile>/` -> workspace-root `help/` fallback), and the
-        // user-data `help/`. An absent directory leaves an empty registry (F1
-        // then reports "help not yet available" and records the miss).
-        let help_registry = {
-            let mut search_paths: Vec<std::path::PathBuf> = Vec::new();
-            if let Ok(exe) = std::env::current_exe() {
-                if let Some(exe_dir) = exe.parent() {
-                    search_paths.push(exe_dir.join("help"));
-                    search_paths.push(exe_dir.join("..").join("..").join("help"));
-                }
-            }
-            if let Some(data_dir) = dirs::data_dir() {
-                search_paths.push(data_dir.join("FileForgeWorkbench").join("help"));
-            }
-            let registry = ff_help::HelpTopicRegistry::new();
-            let loader = ff_help::ContentLoader::new(search_paths);
-            match loader.load_all() {
-                Ok(result) => {
-                    for (path, warning) in &result.warnings {
-                        ff_logging::log_warn!(
-                            "[help] content: failed to parse {} -- {}",
-                            path.display(),
-                            warning
-                        );
-                    }
-                    registry.load_file_topics(result.topics);
-                }
-                Err(e) => {
-                    ff_logging::log_warn!("[help] content: {}", e);
-                }
-            }
-            std::sync::Arc::new(registry)
-        };
+        // Load the Help Topic Registry ONCE (context-help Req 18.1, CR-NR-097)
+        // for the active ui.locale (localization CR-NR-103, Req 6.1): per-locale
+        // help directories are probed first, then the English base. The build is
+        // factored into `shell::help::build_help_registry_for_locale` so
+        // construct.rs stays flat and the hot-reload path can reuse the same
+        // search-path + loader logic. An absent directory leaves an empty
+        // registry (F1 then reports "help not yet available" and records the
+        // miss). With the default en the resolved content is unchanged (Req 10.2).
+        let help_locale = config_handle
+            .get_string(ff_config::keys::ui::LOCALE)
+            .unwrap_or_else(|_| "en".to_string());
+        let help_registry = super::help::build_help_registry_for_locale(&help_locale);
 
         // Notification channel -- Validates: notification-system Requirement 3.1, 3.3
         let (notification_tx, notification_rx) = std::sync::mpsc::sync_channel::<Notification>(64);

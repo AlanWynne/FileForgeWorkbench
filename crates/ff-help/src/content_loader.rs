@@ -144,6 +144,79 @@ impl ContentLoader {
         Ok(result)
     }
 
+    /// Resolve the help content directory for a specific locale (localization
+    /// CR-NR-103, Req 6.1, 6.2).
+    ///
+    /// For each base in the search paths, probe `base/<locale>` first, then
+    /// `base` itself (the English fallback); return the first directory that
+    /// exists. For locale `"en"` the `<locale>` sub-directory is not expected to
+    /// exist, so this resolves the SAME base directory `resolve_help_directory`
+    /// (and therefore `load_all`) would pick -- keeping the English baseline
+    /// behaviour unchanged (Req 10.2).
+    pub fn resolve_help_directory_for_locale(&self, locale: &str) -> Option<PathBuf> {
+        for base in &self.search_paths {
+            let localised = base.join(locale);
+            if localised.is_dir() {
+                return Some(localised);
+            }
+            if base.is_dir() {
+                return Some(base.clone());
+            }
+        }
+        None
+    }
+
+    /// Load all `.help.md` files for a specific locale (localization CR-NR-103,
+    /// Req 6.1, 6.3).
+    ///
+    /// Resolves the directory with [`resolve_help_directory_for_locale`], then
+    /// REUSES the existing `discover_files` + `ContentParser` pipeline unchanged.
+    /// Topic_Key and cross-references come from the parsed content, not the path,
+    /// so they stay unlocalised (Req 6.3). For locale `"en"` the resolved content
+    /// is identical to `load_all` (Req 10.2).
+    ///
+    /// # Errors
+    ///
+    /// Returns `HelpError::ContentDirectoryMissing` if no help directory is found
+    /// for the locale (neither a localised nor a base directory exists).
+    pub fn load_all_for_locale(&self, locale: &str) -> Result<ContentLoadResult, HelpError> {
+        let dir = self
+            .resolve_help_directory_for_locale(locale)
+            .ok_or_else(|| {
+                let paths: Vec<_> = self
+                    .search_paths
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect();
+                HelpError::ContentDirectoryMissing {
+                    searched_paths: paths.join(", "),
+                }
+            })?;
+
+        let files = Self::discover_files(&dir);
+        let mut result = ContentLoadResult {
+            topics: Vec::new(),
+            warnings: Vec::new(),
+            files_scanned: files.len(),
+        };
+
+        for file_path in &files {
+            match std::fs::read_to_string(file_path) {
+                Ok(content) => match ContentParser::parse_file(file_path, &content) {
+                    Ok(topics) => result.topics.extend(topics),
+                    Err(e) => {
+                        result.warnings.push((file_path.clone(), e.to_string()));
+                    }
+                },
+                Err(e) => {
+                    result.warnings.push((file_path.clone(), e.to_string()));
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
     /// Generate a minimal built-in help page for when no content files exist.
     pub fn built_in_minimal_help(search_paths: &[PathBuf]) -> HelpTopic {
         let paths_list: Vec<_> = search_paths
@@ -243,6 +316,79 @@ mod tests {
 
         let files = ContentLoader::discover_files(temp.path());
         assert_eq!(files.len(), 3, "must find files in nested subdirectories");
+    }
+
+    // Validates: Requirement 6.1 -- a present per-locale directory is chosen.
+    #[test]
+    fn resolve_help_directory_for_locale_picks_localised_dir_when_present() {
+        let temp = TempDir::new().unwrap();
+        let base = temp.path().join("help");
+        let localised = base.join("fr");
+        fs::create_dir_all(&localised).unwrap();
+
+        let loader = ContentLoader::new(vec![base]);
+        assert_eq!(
+            loader.resolve_help_directory_for_locale("fr"),
+            Some(localised)
+        );
+    }
+
+    // Validates: Requirement 6.2 -- absent per-locale directory falls back to the
+    // English base directory.
+    #[test]
+    fn resolve_help_directory_for_locale_falls_back_to_english_when_absent() {
+        let temp = TempDir::new().unwrap();
+        let base = temp.path().join("help");
+        fs::create_dir_all(&base).unwrap();
+
+        let loader = ContentLoader::new(vec![base.clone()]);
+        assert_eq!(loader.resolve_help_directory_for_locale("fr"), Some(base));
+    }
+
+    // Validates: Requirement 10.2 -- locale "en" resolves the SAME base directory
+    // that load_all / resolve_help_directory picks (English baseline unchanged).
+    #[test]
+    fn resolve_help_directory_for_locale_en_resolves_base_directory_unchanged() {
+        let temp = TempDir::new().unwrap();
+        let base = temp.path().join("help");
+        fs::create_dir_all(&base).unwrap();
+
+        let loader = ContentLoader::new(vec![base.clone()]);
+        assert_eq!(loader.resolve_help_directory_for_locale("en"), Some(base));
+        assert_eq!(
+            loader.resolve_help_directory_for_locale("en"),
+            loader.resolve_help_directory()
+        );
+    }
+
+    // Validates: Requirement 6.1 -- load_all_for_locale loads the localised
+    // directory's files; Topic discovery reuses the existing pipeline.
+    #[test]
+    fn load_all_for_locale_loads_localised_directory_files() {
+        let temp = TempDir::new().unwrap();
+        let base = temp.path().join("help");
+        let localised = base.join("fr");
+        fs::create_dir_all(&localised).unwrap();
+        fs::write(base.join("index.help.md"), "en content").unwrap();
+        fs::write(localised.join("index.help.md"), "fr content").unwrap();
+
+        let loader = ContentLoader::new(vec![base]);
+        let result = loader.load_all_for_locale("fr").unwrap();
+        assert_eq!(result.files_scanned, 1);
+    }
+
+    // Validates: Requirement 6.2 -- load_all_for_locale falls back to the English
+    // base directory when the locale directory is absent.
+    #[test]
+    fn load_all_for_locale_falls_back_to_english_base() {
+        let temp = TempDir::new().unwrap();
+        let base = temp.path().join("help");
+        fs::create_dir_all(&base).unwrap();
+        fs::write(base.join("index.help.md"), "en content").unwrap();
+
+        let loader = ContentLoader::new(vec![base]);
+        let result = loader.load_all_for_locale("fr").unwrap();
+        assert_eq!(result.files_scanned, 1);
     }
 
     // Validates: Requirement 5.1 — load_all returns error when directory missing

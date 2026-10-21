@@ -341,6 +341,105 @@ fn app_version() -> &'static str {
     concat!("FileForge Workbench ", env!("CARGO_PKG_VERSION"))
 }
 
+/// Build the ordered help search paths (localization CR-NR-103 / context-help
+/// Req 18.1). Searched, in order: the exe-dir `help/` (installed layout), the
+/// exe-dir `../../help` (the dev `target/<profile>/` -> workspace-root `help/`
+/// fallback), and the user-data `help/`. The per-locale loader probes a
+/// `<locale>/` sub-directory under each of these before falling back to the
+/// base directory.
+fn help_search_paths() -> Vec<std::path::PathBuf> {
+    let mut search_paths: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            search_paths.push(exe_dir.join("help"));
+            search_paths.push(exe_dir.join("..").join("..").join("help"));
+        }
+    }
+    if let Some(data_dir) = dirs::data_dir() {
+        search_paths.push(data_dir.join("FileForgeWorkbench").join("help"));
+    }
+    search_paths
+}
+
+/// Load the help topics for `locale` from the shipped `help/` tree, logging any
+/// per-file parse warnings. Returns an empty vector when no help directory is
+/// found for the locale (the registry then renders "help not yet available").
+fn load_help_topics_for_locale(locale: &str) -> Vec<HelpTopic> {
+    let loader = ff_help::ContentLoader::new(help_search_paths());
+    match loader.load_all_for_locale(locale) {
+        Ok(result) => {
+            for (path, warning) in &result.warnings {
+                ff_logging::log_warn!(
+                    "[help] content: failed to parse {} -- {}",
+                    path.display(),
+                    warning
+                );
+            }
+            result.topics
+        }
+        Err(e) => {
+            ff_logging::log_warn!("[help] content: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+/// Process-global slot holding a clone of the shell-owned Help Topic Registry
+/// Arc (localization CR-NR-103, Req 6.4). The shell publishes its registry here
+/// during construction; the `ui.locale` hot-reload closure (registered in
+/// main.rs BEFORE the shell exists) reads it to reload help for the new locale.
+///
+/// This shares ONE registry identity with the shell and its Help Context panel:
+/// the slot holds another `Arc` clone of the SAME inner `Arc<RwLock<HashMap>>`,
+/// so `reload_active_help_registry_for_locale` mutates the map every clone
+/// observes. No new config/reload mechanism is introduced (Req 10.1) -- the
+/// reload is chained onto the existing `ff_config::on_locale_reload` closure.
+static ACTIVE_HELP_REGISTRY: std::sync::Mutex<Option<std::sync::Arc<ff_help::HelpTopicRegistry>>> =
+    std::sync::Mutex::new(None);
+
+/// Build the shell-owned Help Topic Registry for the active `locale`
+/// (localization CR-NR-103, Req 6.1; context-help Req 18.1). Factored out of the
+/// shell constructor so construct.rs stays flat and the hot-reload path reuses
+/// the same search-path + loader logic. The built registry is published to the
+/// process-global slot so the `ui.locale` reload closure can swap its topics in
+/// place. With the default `en` the resolved content is identical to the
+/// pre-localization behaviour (Req 10.2).
+pub(crate) fn build_help_registry_for_locale(
+    locale: &str,
+) -> std::sync::Arc<ff_help::HelpTopicRegistry> {
+    let registry = ff_help::HelpTopicRegistry::new();
+    registry.load_file_topics(load_help_topics_for_locale(locale));
+    let registry = std::sync::Arc::new(registry);
+    if let Ok(mut slot) = ACTIVE_HELP_REGISTRY.lock() {
+        *slot = Some(registry.clone());
+    }
+    registry
+}
+
+/// Reload the active (shell-owned) help registry for `locale`, if one has been
+/// published (localization CR-NR-103, Req 6.4). Called from the `ui.locale`
+/// hot-reload closure in main.rs. A no-op when no registry has been published
+/// yet (the shell is not built), degrading safely.
+pub(crate) fn reload_active_help_registry_for_locale(locale: &str) {
+    let registry = match ACTIVE_HELP_REGISTRY.lock() {
+        Ok(slot) => slot.clone(),
+        Err(_) => return,
+    };
+    if let Some(registry) = registry {
+        reload_help_registry_for_locale(&registry, locale);
+    }
+}
+
+/// Reload the file-based help topics for `locale` into an existing shared
+/// registry (localization CR-NR-103, Req 6.4). Re-resolves the per-locale help
+/// directory and swaps the file-based topic set in place via
+/// `replace_file_topics`, so every `Arc<HelpTopicRegistry>` clone (the shell and
+/// its Help Context panel) observes the new locale's topics without
+/// reconstructing the panel. Runtime (command/plugin) topics are preserved.
+pub(crate) fn reload_help_registry_for_locale(registry: &ff_help::HelpTopicRegistry, locale: &str) {
+    registry.replace_file_topics(load_help_topics_for_locale(locale));
+}
+
 /// Human label for a Topic_Key in messages (mirrors ff-help's phrasing).
 fn help_label(key: &TopicKey) -> String {
     match key.namespace() {
@@ -397,4 +496,49 @@ fn is_expected_topic(key: &str) -> bool {
         };
     }
     false
+}
+
+#[cfg(test)]
+mod reload_tests {
+    use super::*;
+    use ff_help::{HelpTopic, HelpTopicRegistry, TopicKey, TopicSource};
+    use std::path::PathBuf;
+
+    fn file_topic(key: TopicKey, title: &str) -> HelpTopic {
+        HelpTopic::new(
+            key,
+            title.to_string(),
+            "body".to_string(),
+            TopicSource::FileBased {
+                file_path: PathBuf::from("test.help.md"),
+            },
+        )
+    }
+
+    // Validates: localization Requirement 6.4 -- reloading the shared registry
+    // swaps the displayed file-topic set to the new locale WITHOUT changing the
+    // Arc identity, so the shell and its Help Context panel (which hold clones
+    // of the SAME inner map) both observe the swap.
+    //
+    // This targets the reload seam directly rather than the full
+    // build/reload_active path, because build_help_registry_for_locale resolves
+    // the exe-dir `help/` search paths, which are not present or controllable
+    // beside the test binary. The content_loader load_all_for_locale fallback
+    // tests cover the directory resolution; this covers the in-place swap.
+    #[test]
+    fn reload_help_registry_for_locale_swaps_topics_on_shared_arc() {
+        let registry = std::sync::Arc::new(HelpTopicRegistry::new());
+        let panel_clone = registry.clone();
+
+        // Seed an "English" file topic set.
+        registry.load_file_topics(vec![file_topic(TopicKey::command("FIND"), "FIND en")]);
+        assert!(panel_clone.contains(&TopicKey::command("FIND")));
+
+        // Swap in a different "locale" set via the registry seam the reload uses.
+        registry.replace_file_topics(vec![file_topic(TopicKey::command("LOCATE"), "LOCATE fr")]);
+
+        // The panel's clone (same inner Arc) observes the new set.
+        assert!(!panel_clone.contains(&TopicKey::command("FIND")));
+        assert!(panel_clone.contains(&TopicKey::command("LOCATE")));
+    }
 }
