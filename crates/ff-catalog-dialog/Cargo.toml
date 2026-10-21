@@ -9,6 +9,7 @@ description = "Virtual catalog New/Edit/Delete modal dialogs (egui) for FileForg
 [dependencies]
 ff-catalog-registry = { path = "../ff-catalog-registry" }
 ff-dscatalog = { path = "../ff-dscatalog" }
+ff-i18n = { path = "../ff-i18n" }
 egui = { workspace = true }
 
 [dev-dependencies]

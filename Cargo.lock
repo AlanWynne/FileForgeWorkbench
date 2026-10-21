@@ -1545,6 +1545,7 @@ dependencies = [
  "egui",
  "ff-catalog-registry",
  "ff-dscatalog",
+ "ff-i18n",
  "pretty_assertions",
  "tempfile",
 ]

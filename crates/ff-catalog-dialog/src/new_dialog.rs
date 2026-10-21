@@ -135,32 +135,35 @@ pub enum DialogOutcome {
 pub fn validate(form: &NewCatalogForm, registry: &CatalogRegistry) -> Option<String> {
     // Common: name
     if !VirtualCatalog::is_valid_name(&form.name) {
-        return Some(
-            "Catalog Name must be 1-32 characters (alphanumeric, hyphen, underscore).".to_string(),
-        );
+        return Some(ff_i18n::t("catalog-dialog-new-err-name-format"));
     }
     if registry.exists(&form.name) {
-        return Some(format!("A catalog named '{}' already exists.", form.name));
+        return Some(ff_i18n::t_args(
+            "catalog-dialog-new-err-duplicate",
+            &ff_i18n::MessageArgs::new().set("name", form.name.clone()),
+        ));
     }
     // Common: description length
     if form.description.len() > 120 {
-        return Some("Description must be 120 characters or fewer.".to_string());
+        return Some(ff_i18n::t("catalog-dialog-new-err-description-length"));
     }
     // Type-specific required fields
     match form.catalog_type {
         CatalogType::Mainframe => {
             if form.repository_path.trim().is_empty() {
-                return Some("Repository Path is required for Mainframe catalogs.".to_string());
+                return Some(ff_i18n::t(
+                    "catalog-dialog-new-err-repository-path-required",
+                ));
             }
         }
         CatalogType::Posix => {
             if form.root_directory.trim().is_empty() {
-                return Some("Root Directory is required for POSIX catalogs.".to_string());
+                return Some(ff_i18n::t("catalog-dialog-new-err-root-directory-required"));
             }
         }
         CatalogType::Native => {
             if form.root_path.trim().is_empty() {
-                return Some("Root Path is required for Native catalogs.".to_string());
+                return Some(ff_i18n::t("catalog-dialog-new-err-root-path-required"));
             }
         }
     }
@@ -225,7 +228,7 @@ pub fn render(
 ) -> DialogOutcome {
     let mut outcome = DialogOutcome::Open;
 
-    egui::Window::new("New Catalog")
+    egui::Window::new(ff_i18n::t("catalog-dialog-new-title"))
         .collapsible(false)
         .resizable(false)
         .min_width(420.0)
@@ -235,24 +238,32 @@ pub fn render(
 
             // === Catalog Type selector -- Req 3.2 ============================
             ui.horizontal(|ui| {
-                ui.label("Catalog Type:");
+                ui.label(ff_i18n::t("catalog-dialog-new-label-type"));
                 egui::ComboBox::from_id_salt("catalog_type_selector")
                     .selected_text(catalog_type_label(form.catalog_type))
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
                             &mut form.catalog_type,
                             CatalogType::Mainframe,
-                            "Mainframe",
+                            ff_i18n::t("catalog-dialog-type-mainframe"),
                         );
-                        ui.selectable_value(&mut form.catalog_type, CatalogType::Posix, "POSIX");
-                        ui.selectable_value(&mut form.catalog_type, CatalogType::Native, "Native");
+                        ui.selectable_value(
+                            &mut form.catalog_type,
+                            CatalogType::Posix,
+                            ff_i18n::t("catalog-dialog-type-posix"),
+                        );
+                        ui.selectable_value(
+                            &mut form.catalog_type,
+                            CatalogType::Native,
+                            ff_i18n::t("catalog-dialog-type-native"),
+                        );
                     });
             });
             ui.separator();
 
             // === Common fields -- Req 3.3 ====================================
             ui.horizontal(|ui| {
-                ui.label("Catalog Name:  ");
+                ui.label(ff_i18n::t("catalog-dialog-new-label-name"));
                 let name_resp = ui.text_edit_singleline(&mut form.name);
                 // Live-update Mainframe repository path as name changes (Req 12.1)
                 if name_resp.changed() && form.catalog_type == CatalogType::Mainframe {
@@ -260,10 +271,13 @@ pub fn render(
                 }
             });
             ui.horizontal(|ui| {
-                ui.label("Description:   ");
+                ui.label(ff_i18n::t("catalog-dialog-new-label-description"));
                 ui.text_edit_singleline(&mut form.description);
             });
-            ui.checkbox(&mut form.auto_mount, "Auto-mount on startup");
+            ui.checkbox(
+                &mut form.auto_mount,
+                ff_i18n::t("catalog-dialog-new-chk-auto-mount"),
+            );
             ui.separator();
 
             // === Type-specific fields ========================================
@@ -282,7 +296,7 @@ pub fn render(
 
             // === Buttons =====================================================
             ui.horizontal(|ui| {
-                if ui.button("OK").clicked() {
+                if ui.button(ff_i18n::t("catalog-dialog-btn-ok")).clicked() {
                     match validate(form, registry) {
                         Some(err) => {
                             form.error = Some(err);
@@ -300,7 +314,10 @@ pub fn render(
                             {
                                 let repo = ff_dscatalog::repository::Repository::new(&catalog.path);
                                 if let Err(e) = repo.initialize(&catalog.name) {
-                                    form.error = Some(format!("Failed to create repository: {e}"));
+                                    form.error = Some(ff_i18n::t_args(
+                                        "catalog-dialog-new-err-create-repository-failed",
+                                        &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                                    ));
                                     // Do not register/confirm on failure.
                                     return;
                                 }
@@ -312,7 +329,7 @@ pub fn render(
                         }
                     }
                 }
-                if ui.button("Cancel").clicked() {
+                if ui.button(ff_i18n::t("catalog-dialog-btn-cancel")).clicked() {
                     outcome = DialogOutcome::Cancelled;
                 }
             });
@@ -329,36 +346,45 @@ pub fn render(
 fn render_mainframe_fields(ui: &mut egui::Ui, form: &mut NewCatalogForm) {
     // Validates: Requirement 3.4, 12.1
     ui.horizontal(|ui| {
-        ui.label("Repository Path:");
+        ui.label(ff_i18n::t("catalog-dialog-new-label-repository-path"));
         ui.text_edit_singleline(&mut form.repository_path);
     });
     ui.horizontal(|ui| {
-        ui.label("Default HLQ:    ");
+        ui.label(ff_i18n::t("catalog-dialog-new-label-default-hlq"));
         ui.text_edit_singleline(&mut form.default_hlq);
     });
-    ui.checkbox(&mut form.create_repository_now, "Create repository now");
+    ui.checkbox(
+        &mut form.create_repository_now,
+        ff_i18n::t("catalog-dialog-new-chk-create-repository"),
+    );
 }
 
 fn render_posix_fields(ui: &mut egui::Ui, form: &mut NewCatalogForm) {
     // Validates: Requirement 3.5
     ui.horizontal(|ui| {
-        ui.label("Root Directory: ");
+        ui.label(ff_i18n::t("catalog-dialog-new-label-root-directory"));
         ui.text_edit_singleline(&mut form.root_directory);
     });
     ui.horizontal(|ui| {
-        ui.label("Mount Point:    ");
+        ui.label(ff_i18n::t("catalog-dialog-new-label-mount-point"));
         ui.text_edit_singleline(&mut form.mount_point);
     });
-    ui.checkbox(&mut form.read_only, "Read-Only");
+    ui.checkbox(
+        &mut form.read_only,
+        ff_i18n::t("catalog-dialog-new-chk-read-only"),
+    );
 }
 
 fn render_native_fields(ui: &mut egui::Ui, form: &mut NewCatalogForm) {
     // Validates: Requirement 3.6
     ui.horizontal(|ui| {
-        ui.label("Root Path:      ");
+        ui.label(ff_i18n::t("catalog-dialog-new-label-root-path"));
         ui.text_edit_singleline(&mut form.root_path);
     });
-    ui.checkbox(&mut form.read_only, "Read-Only");
+    ui.checkbox(
+        &mut form.read_only,
+        ff_i18n::t("catalog-dialog-new-chk-read-only"),
+    );
 }
 
 // === Tests =====================================================================

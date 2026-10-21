@@ -30,11 +30,14 @@ pub use delete_dialog::{execute_delete, render_delete, DeleteCatalogConfirm, Del
 pub use edit_dialog::{render_edit, validate_edit, EditCatalogForm};
 pub use new_dialog::{build_catalog, render, validate, DialogOutcome, NewCatalogForm};
 
-/// Human-readable label for a catalog type, shared by the New and Edit dialogs.
-pub(crate) fn catalog_type_label(ct: CatalogType) -> &'static str {
+/// Human-readable DISPLAY label for a catalog type, shared by the New and Edit
+/// dialogs. Resolved through the ff_i18n seam (localization Req 4.1); the match
+/// is on the `CatalogType` enum variant (a logic key, never localised, Req 4.4)
+/// and maps to the catalogue key whose English value is the original literal.
+pub(crate) fn catalog_type_label(ct: CatalogType) -> String {
     match ct {
-        CatalogType::Mainframe => "Mainframe",
-        CatalogType::Posix => "POSIX",
-        CatalogType::Native => "Native",
+        CatalogType::Mainframe => ff_i18n::t("catalog-dialog-type-mainframe"),
+        CatalogType::Posix => ff_i18n::t("catalog-dialog-type-posix"),
+        CatalogType::Native => ff_i18n::t("catalog-dialog-type-native"),
     }
 }

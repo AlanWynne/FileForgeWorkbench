@@ -50,7 +50,7 @@ pub fn render_delete(ctx: &egui::Context, confirm: &DeleteCatalogConfirm) -> Del
     let mut choice = DeleteChoice::Cancel;
     let mut open = true;
 
-    egui::Window::new("Delete Catalog")
+    egui::Window::new(ff_i18n::t("catalog-dialog-delete-title"))
         .collapsible(false)
         .resizable(false)
         .min_width(380.0)
@@ -58,20 +58,26 @@ pub fn render_delete(ctx: &egui::Context, confirm: &DeleteCatalogConfirm) -> Del
         .open(&mut open)
         .show(ctx, |ui| {
             ui.set_min_width(360.0);
-            ui.label(format!(
-                "Delete catalog \"{}\"? This will unmount it.",
-                confirm.name
+            ui.label(ff_i18n::t_args(
+                "catalog-dialog-delete-confirm",
+                &ff_i18n::MessageArgs::new().set("name", confirm.name.clone()),
             ));
-            ui.label("Optionally delete all backing files.");
+            ui.label(ff_i18n::t("catalog-dialog-delete-optional-files"));
             ui.separator();
             ui.horizontal(|ui| {
-                if ui.button("Delete Catalog Only").clicked() {
+                if ui
+                    .button(ff_i18n::t("catalog-dialog-delete-btn-catalog-only"))
+                    .clicked()
+                {
                     choice = DeleteChoice::CatalogOnly;
                 }
-                if ui.button("Delete Catalog and Files").clicked() {
+                if ui
+                    .button(ff_i18n::t("catalog-dialog-delete-btn-catalog-and-files"))
+                    .clicked()
+                {
                     choice = DeleteChoice::CatalogAndFiles;
                 }
-                if ui.button("Cancel").clicked() {
+                if ui.button(ff_i18n::t("catalog-dialog-btn-cancel")).clicked() {
                     choice = DeleteChoice::Cancel;
                 }
             });
@@ -104,9 +110,10 @@ pub fn execute_delete(
     if choice != &DeleteChoice::Cancel {
         if let Some(cat) = registry.get_by_name(&confirm.name) {
             if cat.name == "Home" && cat.catalog_type == CatalogType::Native {
-                return Err(
-                    "The Home catalog cannot be deleted. Rename or edit it instead.".to_string(),
-                );
+                // The comparison `"Home"` + `CatalogType::Native` above is a LOGIC
+                // test, never localised (Req 4.4); only the user-facing SENTENCE
+                // is resolved through the seam (Req 4.1).
+                return Err(ff_i18n::t("catalog-dialog-delete-err-home-protected"));
             }
         }
     }
@@ -118,8 +125,14 @@ pub fn execute_delete(
         DeleteChoice::CatalogAndFiles => {
             registry.remove(&confirm.name).map_err(|e| e.to_string())?;
             if !confirm.path.is_empty() {
-                std::fs::remove_dir_all(&confirm.path)
-                    .map_err(|e| format!("Failed to delete '{}': {e}", confirm.path))?;
+                std::fs::remove_dir_all(&confirm.path).map_err(|e| {
+                    ff_i18n::t_args(
+                        "catalog-dialog-delete-err-delete-failed",
+                        &ff_i18n::MessageArgs::new()
+                            .set("path", confirm.path.clone())
+                            .set("error", e.to_string()),
+                    )
+                })?;
             }
             Ok(())
         }
@@ -136,6 +149,20 @@ mod tests {
 
     fn empty_registry() -> CatalogRegistry {
         CatalogRegistry::new()
+    }
+
+    /// Install the shipped English Identity_Base catalogue into the process-wide
+    /// seam so lookups resolve to their English prose (not the key fallback).
+    /// Idempotent and safe to call from multiple tests; the seam is a swappable
+    /// global handle. The `i18n/` tree lives in the sibling `ff-i18n` crate.
+    fn install_english_catalogue() {
+        let i18n_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("ff-i18n")
+            .join("i18n");
+        let catalogue = ff_i18n::Catalogue::load_identity_base(&i18n_root)
+            .expect("English Identity_Base must load for the catalog-dialog tests");
+        ff_i18n::set_catalogue(catalogue);
     }
 
     fn registered_mainframe(registry: &mut CatalogRegistry) -> VirtualCatalog {
@@ -236,6 +263,10 @@ mod tests {
     #[test]
     fn delete_home_native_catalog_is_rejected() {
         // Validates: Requirement 14.6
+        // The rejection MESSAGE is now localised through the ff_i18n seam
+        // (Req 4.1); install the English catalogue so the text assertion below
+        // reflects the ui.locale=en behaviour (Req 10.2).
+        install_english_catalogue();
         let mut registry = empty_registry();
         registry
             .register(VirtualCatalog {
@@ -292,5 +323,73 @@ mod tests {
         let result = execute_delete(&DeleteChoice::CatalogOnly, &confirm, &mut registry);
         assert!(result.is_ok(), "renamed catalog must be deletable");
         assert!(!registry.exists("MyHome"));
+    }
+
+    // === Localisation of converted render sites (FEAT-catalog-dialog) =========
+
+    /// With the English catalogue installed, a converted render site resolves to
+    /// its EXACT original English literal, byte-for-byte -- including the
+    /// alignment-padding spaces preserved via Fluent string-literal placeables.
+    ///
+    /// Validates: localization Requirement 4.1, 10.1, 10.2
+    #[test]
+    fn converted_sites_resolve_to_their_english_literals() {
+        install_english_catalogue();
+        // Plain labels / buttons.
+        assert_eq!(ff_i18n::t("catalog-dialog-delete-title"), "Delete Catalog");
+        assert_eq!(ff_i18n::t("catalog-dialog-btn-cancel"), "Cancel");
+        assert_eq!(ff_i18n::t("catalog-dialog-btn-ok"), "OK");
+        assert_eq!(ff_i18n::t("catalog-dialog-new-title"), "New Catalog");
+        assert_eq!(ff_i18n::t("catalog-dialog-edit-title"), "Edit Catalog");
+        // The type DISPLAY labels (distinct from the CatalogType enum variants).
+        assert_eq!(ff_i18n::t("catalog-dialog-type-mainframe"), "Mainframe");
+        assert_eq!(ff_i18n::t("catalog-dialog-type-posix"), "POSIX");
+        assert_eq!(ff_i18n::t("catalog-dialog-type-native"), "Native");
+        // Significant trailing/leading alignment whitespace is preserved exactly.
+        assert_eq!(
+            ff_i18n::t("catalog-dialog-new-label-name"),
+            "Catalog Name:  "
+        );
+        assert_eq!(
+            ff_i18n::t("catalog-dialog-new-label-root-path"),
+            "Root Path:      "
+        );
+        assert_eq!(
+            ff_i18n::t("catalog-dialog-new-label-root-directory"),
+            "Root Directory: "
+        );
+    }
+
+    /// An argument-bearing converted site interpolates its runtime value, and the
+    /// `catalog_type_label` helper routes the CatalogType logic key through the
+    /// seam to the English display label.
+    ///
+    /// Validates: localization Requirement 4.1, 9.1
+    #[test]
+    fn converted_argument_site_interpolates_and_type_label_resolves() {
+        install_english_catalogue();
+        let confirm = ff_i18n::t_args(
+            "catalog-dialog-delete-confirm",
+            &ff_i18n::MessageArgs::new().set("name", "PAYROLL"),
+        );
+        assert_eq!(confirm, "Delete catalog \"PAYROLL\"? This will unmount it.");
+        assert_eq!(
+            crate::catalog_type_label(CatalogType::Mainframe),
+            "Mainframe"
+        );
+    }
+
+    /// A key that is absent in every catalogue falls back to the key itself (a
+    /// stable, visible, diagnosable sentinel) rather than panicking or rendering
+    /// blank text -- the ff_i18n seam fallback discipline.
+    ///
+    /// Validates: localization Requirement 3.2, 3.3, 10.2
+    #[test]
+    fn missing_key_falls_back_to_the_key_itself() {
+        install_english_catalogue();
+        assert_eq!(
+            ff_i18n::t("catalog-dialog-no-such-key-zzz"),
+            "catalog-dialog-no-such-key-zzz"
+        );
     }
 }

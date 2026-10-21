@@ -55,7 +55,7 @@ impl EditCatalogForm {
 /// Validates: Requirement 4.2
 pub fn validate_edit(form: &EditCatalogForm) -> Option<String> {
     if form.description.len() > 120 {
-        return Some("Description must be 120 characters or fewer.".to_string());
+        return Some(ff_i18n::t("catalog-dialog-edit-err-description-length"));
     }
     None
 }
@@ -73,7 +73,7 @@ pub fn render_edit(
 ) -> DialogOutcome {
     let mut outcome = DialogOutcome::Open;
 
-    egui::Window::new("Edit Catalog")
+    egui::Window::new(ff_i18n::t("catalog-dialog-edit-title"))
         .collapsible(false)
         .resizable(false)
         .min_width(420.0)
@@ -83,11 +83,11 @@ pub fn render_edit(
 
             // Name and type -- read-only display (Req 4.2)
             ui.horizontal(|ui| {
-                ui.label("Catalog Name:  ");
+                ui.label(ff_i18n::t("catalog-dialog-edit-label-name"));
                 ui.label(egui::RichText::new(&form.name).monospace().strong());
             });
             ui.horizontal(|ui| {
-                ui.label("Catalog Type:  ");
+                ui.label(ff_i18n::t("catalog-dialog-edit-label-type"));
                 ui.label(
                     egui::RichText::new(catalog_type_label(form.catalog_type))
                         .monospace()
@@ -96,28 +96,34 @@ pub fn render_edit(
             });
             // Repository path -- read-only (Req 15.1, 15.2, 15.3)
             ui.horizontal(|ui| {
-                ui.label("Repository Path:");
+                ui.label(ff_i18n::t("catalog-dialog-edit-label-repository-path"));
                 ui.label(egui::RichText::new(&form.path).monospace().weak());
             });
             ui.separator();
 
             // Editable fields
             ui.horizontal(|ui| {
-                ui.label("Description:   ");
+                ui.label(ff_i18n::t("catalog-dialog-edit-label-description"));
                 ui.text_edit_singleline(&mut form.description);
             });
-            ui.checkbox(&mut form.auto_mount, "Auto-mount on startup");
+            ui.checkbox(
+                &mut form.auto_mount,
+                ff_i18n::t("catalog-dialog-edit-chk-auto-mount"),
+            );
 
             // Type-specific editable fields (Req 4.2)
             match form.catalog_type {
                 CatalogType::Mainframe => {
                     ui.horizontal(|ui| {
-                        ui.label("Default HLQ:   ");
+                        ui.label(ff_i18n::t("catalog-dialog-edit-label-default-hlq"));
                         ui.text_edit_singleline(&mut form.default_hlq);
                     });
                 }
                 CatalogType::Posix | CatalogType::Native => {
-                    ui.checkbox(&mut form.read_only, "Read-Only");
+                    ui.checkbox(
+                        &mut form.read_only,
+                        ff_i18n::t("catalog-dialog-edit-chk-read-only"),
+                    );
                 }
             }
 
@@ -127,7 +133,7 @@ pub fn render_edit(
             ui.separator();
 
             ui.horizontal(|ui| {
-                if ui.button("Save").clicked() {
+                if ui.button(ff_i18n::t("catalog-dialog-btn-save")).clicked() {
                     match validate_edit(form) {
                         Some(err) => {
                             form.error = Some(err);
@@ -156,7 +162,7 @@ pub fn render_edit(
                         }
                     }
                 }
-                if ui.button("Cancel").clicked() {
+                if ui.button(ff_i18n::t("catalog-dialog-btn-cancel")).clicked() {
                     outcome = DialogOutcome::Cancelled;
                 }
             });
