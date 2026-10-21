@@ -102,6 +102,23 @@ fn main() -> anyhow::Result<()> {
         register_builtin_schema(&config_handle, &user_data_dir);
     }
 
+    // == 2a-i18n. Localization message catalogue (CR-NR-103) ==============
+    // Install the active Message_Catalogue on the process-wide ff-i18n seam from
+    // the shipped i18n/ tree, selecting the locale from ui.locale (default "en").
+    // This is the FIRST production caller of ff_i18n::set_catalogue -- until now
+    // every t() lookup fell back to the key string (localization Req 3.4). Then
+    // register a ui.locale hot-reload callback that re-runs the install so a
+    // locale change swaps the catalogue through the EXISTING CallbackRegistry,
+    // with no new mechanism (localization Req 1.4, 1.5). The handle is held for
+    // the process lifetime so the callback stays registered.
+    shell::i18n_bootstrap::install_catalogue(&config_handle);
+    let _locale_reload_handle = {
+        let config_for_reload = config_handle.clone();
+        ff_config::on_locale_reload(&config_handle.callbacks(), move || {
+            shell::i18n_bootstrap::install_catalogue(&config_for_reload);
+        })
+    };
+
     // == 2c. Logging (Phase 2: apply configured settings) =================
     // Re-point the log sink at the configured directory/level now that config
     // is loaded, before the GUI shell is constructed (Req 11.7). Config-only

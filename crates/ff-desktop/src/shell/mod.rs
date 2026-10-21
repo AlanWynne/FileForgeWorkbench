@@ -61,6 +61,7 @@ mod handlers;
 mod help;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
+pub(crate) mod i18n_bootstrap;
 mod keys_editor;
 mod kinds_editor;
 mod mainframe_backend;

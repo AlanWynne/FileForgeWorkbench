@@ -53,7 +53,7 @@ TDD applies: write the failing test first, then the minimum implementation, per
   - [x] 3.2 Add a seam smoke test: `t("key")` resolves the English string;
         behaviour at `ui.locale = "en"` is unchanged. Satisfies Req 3.2, 10.2.
 
-- [ ] 4. Per-environment, per-locale alias-catalogue LOADER (no new mechanism)
+- [x] 4. Per-environment, per-locale alias-catalogue LOADER (no new mechanism)
   - [x] 4.1 Implement the loader that overlays a per-environment set of
         surface-form -> canonical-verb rows onto the EXISTING `AliasTable`
         (base English + locale overlay), one catalogue per locale, organised per

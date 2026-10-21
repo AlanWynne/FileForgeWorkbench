@@ -67,6 +67,33 @@ fn identity_base_resolves_a_shipped_key_from_ftl_data() {
     assert_eq!(catalogue.resolve("files-panel-title"), "Files");
 }
 
+/// Validates: Requirement 7.1, 7.4 -- the shipped English catalogue carries the
+/// built-in menu title and option-description keys, resolving to the exact
+/// current English prose (mirrored from menu_workspace/defaults.rs). A single
+/// `.ftl` dir merges every file, so `menus.ftl` is picked up alongside
+/// `main.ftl`.
+#[test]
+fn shipped_catalogue_resolves_built_in_menu_keys_to_english_prose() {
+    let catalogue = Catalogue::load_identity_base(&shipped_i18n_root())
+        .expect("English Identity_Base must load");
+    // POM title (Req 7.1) -- the '--' dash prose, byte-identical to DEFAULT_POM_TOML.
+    assert_eq!(
+        catalogue.resolve("menu-pom-title"),
+        "FileForge Workbench -- Primary Option Menu"
+    );
+    // A POM option description (Req 7.4).
+    assert_eq!(
+        catalogue.resolve("menu-pom-opt-catalogs-desc"),
+        "Virtual File Catalogs -- Mainframe, POSIX, Native"
+    );
+    // Settings title + the Recovery "Reset bare" option description (Req 7.4).
+    assert_eq!(catalogue.resolve("menu-settings-title"), "Settings");
+    assert_eq!(
+        catalogue.resolve("menu-settings-opt-reset-bare-desc"),
+        "Reset to barebones -- archive config and start fresh"
+    );
+}
+
 /// Validates: Requirement 2.2, 2.3 -- `.ftl` files load into a bundle keyed by locale.
 #[test]
 fn catalogue_loads_ftl_file_into_a_bundle() {

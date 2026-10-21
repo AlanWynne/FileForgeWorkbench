@@ -29,6 +29,7 @@ ff-display-line-mapping = { path = "../ff-display-line-mapping" }
 ff-file-tree = { path = "../ff-file-tree" }
 ff-keys = { path = "../ff-keys" }
 ff-help = { path = "../ff-help" }
+ff-i18n = { path = "../ff-i18n" }
 ff-session = { path = "../ff-session" }
 ff-zoom = { path = "../ff-zoom" }
 ff-dscatalog = { path = "../ff-dscatalog" }
