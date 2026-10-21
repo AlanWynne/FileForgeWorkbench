@@ -257,6 +257,11 @@ pub fn render_menu_workspace(
         Some(menu) => menu.clone(),
     };
 
+    // CR-NR-103 (localization Req 7.1, 7.4): the menu-name used to key the
+    // localised option descriptions, derived once from the backing file stem
+    // (slugged by the i18n_keys helper). Empty when the stem is unavailable.
+    let menu_name = state.menu_name_label().unwrap_or_default();
+
     // CR-CH-042 (menu-workspace Req 20.1; menu-and-statusbar Req 17.11): the
     // centered Menu_Title heading that USED to render here (above the option
     // list) is REMOVED. The Menu_Title is now shown ONCE, on the shell Title_Line
@@ -391,7 +396,8 @@ pub fn render_menu_workspace(
                         // single-galley Button re-wrapped everything back to x0).
                         let prefix_job =
                             option_prefix_job(option, cmd_width, row_key_col, row_cmd_col);
-                        let desc = option.description.clone();
+                        let desc =
+                            super::i18n_keys::localised_option_description(&menu_name, option);
                         let row_resp = ui
                             .horizontal(|ui| {
                                 ui.spacing_mut().item_spacing.x = 0.0;
@@ -435,7 +441,9 @@ pub fn render_menu_workspace(
                                 result.focused_option = Some((
                                     opt_id,
                                     option.command.clone(),
-                                    option.description.clone(),
+                                    super::i18n_keys::localised_option_description(
+                                        &menu_name, option,
+                                    ),
                                 ));
                             }
                             if row_resp.clicked() {

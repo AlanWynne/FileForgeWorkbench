@@ -8,6 +8,7 @@
 
 pub mod commands;
 pub mod defaults;
+pub mod i18n_keys;
 pub mod loader;
 pub mod render;
 pub mod serialiser;

@@ -72,10 +72,21 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         // CURRENTLY loaded menu each frame so an in-place context switch can never
         // leave it stale. Falls back to the cached `tab.title` only when no menu
         // is loaded yet (e.g. a fresh POM before its menu loads -> "[POM]").
-        TabKind::MenuWorkspace(ref mw) => mw
-            .as_ref()
-            .and_then(|mw| mw.menu_title())
-            .unwrap_or_else(|| tab.title.clone()),
+        // CR-NR-103 (localization Req 7.1, 7.4): localise the raw Menu_Title
+        // through the i18n seam, keyed by the menu-name, falling back to the
+        // parsed English title on a miss. Falls back to the cached `tab.title`
+        // only when no menu is loaded yet.
+        TabKind::MenuWorkspace(ref mw) => match mw.as_ref() {
+            Some(mw) => match (mw.menu_title(), mw.menu_name_label()) {
+                (Some(raw_title), Some(name)) => crate::menu_workspace::i18n_keys::t_or(
+                    &crate::menu_workspace::i18n_keys::menu_title_key(&name),
+                    &raw_title,
+                ),
+                (Some(raw_title), None) => raw_title,
+                _ => tab.title.clone(),
+            },
+            None => tab.title.clone(),
+        },
         // The Help Context uses its cached title ("[HELP]"). CR-NR-097.
         TabKind::HelpContext => tab.title.clone(),
         // The SCRM Replay viewer uses its cached title ("[REPLAY]"). CR-NR-098.
