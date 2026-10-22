@@ -28,3 +28,15 @@ ff-desktop-shell-msg-delete-provider-failed = Delete: { $error }
 ff-desktop-shell-msg-delete-failed = Delete failed: { $error }
 ff-desktop-shell-msg-rename-provider-failed = Rename: { $error }
 ff-desktop-shell-msg-rename-failed = Rename failed: { $error }
+
+# --- Workspace open/save (workspace_io.rs) ---
+# "WORKSPACE SAVE AS" is a command verb phrase, baked into the English value (D1).
+# The root path and error text are DATA placeables (non-translated).
+ff-desktop-shell-msg-ws-open-failed = Cannot open workspace: { $error }
+ff-desktop-shell-msg-ws-root-not-found = Workspace warning: root '{ $root }' not found on disk
+ff-desktop-shell-msg-ws-none-to-save = No active workspace to save
+ff-desktop-shell-msg-ws-no-path = No workspace file path set -- use WORKSPACE SAVE AS <path>
+ff-desktop-shell-msg-ws-save-failed = Cannot save workspace: { $error }
+
+# --- Session restore (commands_session.rs) ---
+ff-desktop-shell-msg-restore-failed = Could not restore: { $error }

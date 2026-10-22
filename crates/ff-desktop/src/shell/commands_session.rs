@@ -275,7 +275,10 @@ impl WorkbenchShell {
                     WorkspaceKind::Editor => {
                         if let Some(DescriptorValue::String(uri)) = params.get("uri") {
                             if let Err(e) = self.shell_open_file(uri) {
-                                self.open_error = Some(format!("Could not restore: {e}"));
+                                self.open_error = Some(ff_i18n::t_args(
+                                    "ff-desktop-shell-msg-restore-failed",
+                                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                                ));
                             }
                         }
                     }

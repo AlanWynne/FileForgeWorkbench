@@ -39,7 +39,10 @@ impl WorkbenchShell {
     pub(crate) fn open_workspace_force(&mut self, path: &std::path::Path) {
         match load_workspace(path) {
             Err(e) => {
-                self.open_error = Some(format!("Cannot open workspace: {e}"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-ws-open-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
             }
             Ok(ws) => {
                 // Close any existing workspace first.
@@ -50,9 +53,9 @@ impl WorkbenchShell {
                 let mut root_warning: Option<String> = None;
                 for root in &ws.roots {
                     if !root.exists() {
-                        root_warning = Some(format!(
-                            "Workspace warning: root '{}' not found on disk",
-                            root.display()
+                        root_warning = Some(ff_i18n::t_args(
+                            "ff-desktop-shell-msg-ws-root-not-found",
+                            &ff_i18n::MessageArgs::new().set("root", root.display().to_string()),
                         ));
                         continue;
                     }
@@ -89,7 +92,7 @@ impl WorkbenchShell {
     /// Validates: workspace-model Requirement 2.2, 2.3
     pub(crate) fn save_workspace_to(&mut self, path: Option<&std::path::Path>) {
         let Some(ws) = self.active_workspace.as_mut() else {
-            self.open_error = Some("No active workspace to save".to_string());
+            self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-ws-none-to-save"));
             return;
         };
         let target = match path {
@@ -97,9 +100,7 @@ impl WorkbenchShell {
             None => match &ws.file_path {
                 Some(p) => p.clone(),
                 None => {
-                    self.open_error = Some(
-                        "No workspace file path set -- use WORKSPACE SAVE AS <path>".to_string(),
-                    );
+                    self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-ws-no-path"));
                     return;
                 }
             },
@@ -110,7 +111,12 @@ impl WorkbenchShell {
         ws.is_modified = false;
         match save_workspace(ws, &target) {
             Ok(()) => self.open_error = None,
-            Err(e) => self.open_error = Some(format!("Cannot save workspace: {e}")),
+            Err(e) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-ws-save-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ))
+            }
         }
     }
 
