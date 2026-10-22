@@ -75,7 +75,7 @@ pub fn render(
     state.first_interior_id = None;
     ui.horizontal(|ui| {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let add = ui.button("Add");
+            let add = ui.button(ff_i18n::t("ff-desktop-command-config-add"));
             // The "Add" button is the first interior Tab stop (B059).
             state.first_interior_id = Some(add.id);
             if add.clicked() && state.form.is_none() {
@@ -100,17 +100,17 @@ pub fn render(
         .id_salt("command_configurator_list")
         .show(ui, |ui| {
             if store.definitions.is_empty() {
-                ui.label("No user-defined commands. Use Add to create one.");
+                ui.label(ff_i18n::t("ff-desktop-command-config-empty"));
             } else {
                 egui::Grid::new("command_configurator_grid")
                     .num_columns(5)
                     .striped(true)
                     .show(ui, |ui| {
-                        ui.strong("Id");
-                        ui.strong("Label");
-                        ui.strong("Variant");
-                        ui.strong("Mode");
-                        ui.strong("Actions");
+                        ui.strong(ff_i18n::t("ff-desktop-command-config-col-id"));
+                        ui.strong(ff_i18n::t("ff-desktop-command-config-col-label"));
+                        ui.strong(ff_i18n::t("ff-desktop-command-config-col-variant"));
+                        ui.strong(ff_i18n::t("ff-desktop-command-config-col-mode"));
+                        ui.strong(ff_i18n::t("ff-desktop-command-config-col-actions"));
                         ui.end_row();
 
                         for def in &store.definitions {
@@ -119,11 +119,18 @@ pub fn render(
                             ui.label(def.target.variant_name());
                             ui.label(external_mode_label(&def.target));
                             ui.horizontal(|ui| {
-                                if ui.small_button("Edit").clicked() && state.form.is_none() {
+                                if ui
+                                    .small_button(ff_i18n::t("ff-desktop-command-config-edit"))
+                                    .clicked()
+                                    && state.form.is_none()
+                                {
                                     state.form = Some(EditForm::from_definition(def));
                                     state.error = None;
                                 }
-                                if ui.small_button("Delete").clicked() {
+                                if ui
+                                    .small_button(ff_i18n::t("ff-desktop-command-config-delete"))
+                                    .clicked()
+                                {
                                     // Req 2.3: delete requires confirmation.
                                     state.pending_delete = Some(def.id.clone());
                                 }
@@ -136,17 +143,26 @@ pub fn render(
 
     // Delete confirmation (Requirement 2.3).
     if let Some(id) = state.pending_delete.clone() {
-        egui::Window::new("Confirm delete")
+        egui::Window::new(ff_i18n::t("ff-desktop-command-config-confirm-delete-title"))
             .collapsible(false)
             .resizable(false)
             .show(ui.ctx(), |ui| {
-                ui.label(format!("Delete command definition '{id}'?"));
+                ui.label(ff_i18n::t_args(
+                    "ff-desktop-command-config-confirm-delete-body",
+                    &ff_i18n::MessageArgs::new().set("id", id.as_str()),
+                ));
                 ui.horizontal(|ui| {
-                    if ui.button("Delete").clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-command-config-delete"))
+                        .clicked()
+                    {
                         action = ConfiguratorAction::Delete(id.clone());
                         state.pending_delete = None;
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-command-config-cancel"))
+                        .clicked()
+                    {
                         state.pending_delete = None;
                     }
                 });
@@ -158,9 +174,9 @@ pub fn render(
         let mut save_clicked = false;
         let mut cancel_clicked = false;
         egui::Window::new(if state.form.as_ref().map(|f| f.is_edit).unwrap_or(false) {
-            "Edit command"
+            ff_i18n::t("ff-desktop-command-config-window-edit")
         } else {
-            "Add command"
+            ff_i18n::t("ff-desktop-command-config-window-add")
         })
         .collapsible(false)
         .resizable(true)
@@ -170,10 +186,16 @@ pub fn render(
             }
             ui.separator();
             ui.horizontal(|ui| {
-                if ui.button("Save").clicked() {
+                if ui
+                    .button(ff_i18n::t("ff-desktop-command-config-save"))
+                    .clicked()
+                {
                     save_clicked = true;
                 }
-                if ui.button("Cancel").clicked() {
+                if ui
+                    .button(ff_i18n::t("ff-desktop-command-config-cancel"))
+                    .clicked()
+                {
                     cancel_clicked = true;
                 }
             });

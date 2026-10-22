@@ -172,19 +172,19 @@ impl EditForm {
         egui::Grid::new("command_edit_fields")
             .num_columns(2)
             .show(ui, |ui| {
-                ui.label("Id");
+                ui.label(ff_i18n::t("ff-desktop-command-config-field-id"));
                 ui.add_enabled(!self.is_edit, egui::TextEdit::singleline(&mut self.id));
                 ui.end_row();
 
-                ui.label("Label");
+                ui.label(ff_i18n::t("ff-desktop-command-config-field-label"));
                 ui.text_edit_singleline(&mut self.label);
                 ui.end_row();
 
-                ui.label("Description");
+                ui.label(ff_i18n::t("ff-desktop-command-config-field-description"));
                 ui.text_edit_singleline(&mut self.description);
                 ui.end_row();
 
-                ui.label("Variant");
+                ui.label(ff_i18n::t("ff-desktop-command-config-field-variant"));
                 egui::ComboBox::from_id_salt("command_variant")
                     .selected_text(self.variant.label())
                     .show_ui(ui, |ui| {
@@ -202,40 +202,46 @@ impl EditForm {
             .num_columns(2)
             .show(ui, |ui| match self.variant {
                 TargetVariant::Menu => {
-                    ui.label("Menu name");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-menu-name"));
                     ui.text_edit_singleline(&mut self.menu_name);
                     ui.end_row();
                 }
                 TargetVariant::CustomWorkspace => {
-                    ui.label("Workspace kind");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-workspace-kind"));
                     ui.text_edit_singleline(&mut self.workspace_kind);
                     ui.end_row();
                 }
                 TargetVariant::Function => {
-                    ui.label("Command id");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-command-id"));
                     ui.text_edit_singleline(&mut self.command_id);
                     ui.end_row();
                 }
                 TargetVariant::Macro => {
-                    ui.label("Macro");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-macro"));
                     ui.text_edit_singleline(&mut self.macro_source);
                     ui.end_row();
-                    ui.label("Is path");
-                    ui.checkbox(&mut self.macro_is_path, "treat as file path");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-is-path"));
+                    ui.checkbox(
+                        &mut self.macro_is_path,
+                        ff_i18n::t("ff-desktop-command-config-check-treat-as-path"),
+                    );
                     ui.end_row();
                 }
                 TargetVariant::External => {
-                    ui.label("Program");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-program"));
                     ui.text_edit_singleline(&mut self.program);
                     ui.end_row();
-                    ui.label("Args");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-args"));
                     ui.text_edit_singleline(&mut self.args);
                     ui.end_row();
-                    ui.label("Working dir");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-working-dir"));
                     ui.text_edit_singleline(&mut self.working_dir);
                     ui.end_row();
-                    ui.label("Captured");
-                    ui.checkbox(&mut self.external_captured, "capture output");
+                    ui.label(ff_i18n::t("ff-desktop-command-config-field-captured"));
+                    ui.checkbox(
+                        &mut self.external_captured,
+                        ff_i18n::t("ff-desktop-command-config-check-capture-output"),
+                    );
                     ui.end_row();
                 }
             });
