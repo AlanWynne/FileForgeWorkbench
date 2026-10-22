@@ -51,12 +51,12 @@ impl WorkbenchShell {
         if let Some(entries) = self.show_history_list.clone() {
             let mut keep_open = true;
             let mut selected: Option<String> = None;
-            egui::Window::new("Command History")
+            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-history-title"))
                 .collapsible(false)
                 .resizable(true)
                 .show(ctx, |ui| {
                     if entries.is_empty() {
-                        ui.label("No command history.");
+                        ui.label(ff_i18n::t("ff-desktop-shell-dialogs-history-empty"));
                     } else {
                         egui::ScrollArea::vertical()
                             .max_height(300.0)
@@ -75,7 +75,10 @@ impl WorkbenchShell {
                             });
                     }
                     ui.separator();
-                    if ui.button("Cancel").clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
+                        .clicked()
+                    {
                         keep_open = false;
                     }
                 });
@@ -107,7 +110,7 @@ impl WorkbenchShell {
             let mut chosen: Option<usize> = None; // 1-based selection
             let mut cancel = false;
             let num_id = egui::Id::new("swap_list_number_input");
-            egui::Window::new("Swap to Tab")
+            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-swap-title"))
                 .collapsible(false)
                 .resizable(true)
                 .show(ctx, |ui| {
@@ -128,7 +131,7 @@ impl WorkbenchShell {
                         });
                     ui.separator();
                     ui.horizontal(|ui| {
-                        ui.label("Number:");
+                        ui.label(ff_i18n::t("ff-desktop-shell-dialogs-swap-number"));
                         let mut num_text: String =
                             ui.data_mut(|d| d.get_temp::<String>(num_id).unwrap_or_default());
                         let resp = ui.add(
@@ -146,7 +149,10 @@ impl WorkbenchShell {
                             }
                         }
                         ui.data_mut(|d| d.insert_temp(num_id, num_text));
-                        if ui.button("Cancel").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
+                            .clicked()
+                        {
                             cancel = true;
                         }
                     });
@@ -174,17 +180,23 @@ impl WorkbenchShell {
             } else {
                 format!("{} {}", pending.program, pending.args.join(" "))
             };
-            egui::Window::new("Run external program?")
+            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-exec-title"))
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.label("An external program is about to run:");
+                    ui.label(ff_i18n::t("ff-desktop-shell-dialogs-exec-body"));
                     ui.monospace(&cmd_display);
                     ui.horizontal(|ui| {
-                        if ui.button("Run").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-exec-run"))
+                            .clicked()
+                        {
                             run_clicked = true;
                         }
-                        if ui.button("Cancel").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
+                            .clicked()
+                        {
                             cancel_clicked = true;
                         }
                     });
@@ -225,32 +237,41 @@ impl WorkbenchShell {
             self.reset_bare_focus_requested = false;
             let modal = egui::Modal::new(egui::Id::new("reset_bare_modal")).show(ctx, |ui| {
                 ui.set_max_width(460.0);
-                ui.heading("Reset to barebones?");
-                ui.label(
-                    "This archives the current configuration and reopens the \
-                     workbench in a minimal barebones state.",
-                );
+                ui.heading(ff_i18n::t("ff-desktop-shell-dialogs-reset-heading"));
+                ui.label(ff_i18n::t("ff-desktop-shell-dialogs-reset-intro"));
                 if profile_names.len() == 1 {
-                    ui.label(format!("Profile to be reset: {}", profile_names[0]));
+                    ui.label(ff_i18n::t_args(
+                        "ff-desktop-shell-dialogs-reset-one",
+                        &ff_i18n::MessageArgs::new().set("name", profile_names[0].clone()),
+                    ));
                 } else {
-                    ui.label(format!("{} profiles will be reset:", profile_names.len()));
+                    // Count passed as TEXT (pre-formatted) to keep byte-identical
+                    // rendering (no Fluent NUMBER() grouping).
+                    ui.label(ff_i18n::t_args(
+                        "ff-desktop-shell-dialogs-reset-many",
+                        &ff_i18n::MessageArgs::new().set("count", profile_names.len().to_string()),
+                    ));
                     for name in &profile_names {
-                        ui.label(format!("    - {name}"));
+                        ui.label(ff_i18n::t_args(
+                            "ff-desktop-shell-dialogs-reset-bullet",
+                            &ff_i18n::MessageArgs::new().set("name", name.clone()),
+                        ));
                     }
                 }
-                ui.label(
-                    "Each profile's menus, themes, session, config and catalogs \
-                     are MOVED (not deleted) to a timestamped folder under that \
-                     profile's config-archive/ so you can recover them later.",
-                );
+                ui.label(ff_i18n::t("ff-desktop-shell-dialogs-reset-archive-note"));
                 ui.horizontal(|ui| {
                     // Cancel is first and the safe default -- it receives initial
                     // focus (B077). Its stable id anchors the modal focus trap.
                     let cancel = ui
-                        .add(egui::Button::new("Cancel").min_size(egui::vec2(96.0, 0.0)))
-                        .on_hover_text("Close without changing any configuration");
-                    let confirm =
-                        ui.add(egui::Button::new("Confirm reset").min_size(egui::vec2(120.0, 0.0)));
+                        .add(
+                            egui::Button::new(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
+                                .min_size(egui::vec2(96.0, 0.0)),
+                        )
+                        .on_hover_text(ff_i18n::t("ff-desktop-shell-dialogs-reset-cancel-hover"));
+                    let confirm = ui.add(
+                        egui::Button::new(ff_i18n::t("ff-desktop-shell-dialogs-reset-confirm"))
+                            .min_size(egui::vec2(120.0, 0.0)),
+                    );
                     if focus_cancel {
                         cancel.request_focus();
                     }
@@ -290,19 +311,31 @@ impl WorkbenchShell {
                 .as_ref()
                 .map(|ws| ws.name.clone())
                 .unwrap_or_default();
-            egui::Window::new("Unsaved Workspace Changes")
+            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-unsaved-title"))
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.label(format!("Workspace '{}' has unsaved changes.", ws_name));
+                    ui.label(ff_i18n::t_args(
+                        "ff-desktop-shell-dialogs-unsaved-body",
+                        &ff_i18n::MessageArgs::new().set("name", ws_name.clone()),
+                    ));
                     ui.horizontal(|ui| {
-                        if ui.button("Save").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-unsaved-save"))
+                            .clicked()
+                        {
                             save_clicked = true;
                         }
-                        if ui.button("Discard").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-unsaved-discard"))
+                            .clicked()
+                        {
                             discard_clicked = true;
                         }
-                        if ui.button("Cancel").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
+                            .clicked()
+                        {
                             cancel_clicked = true;
                         }
                     });
