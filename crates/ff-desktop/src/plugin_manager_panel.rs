@@ -100,16 +100,23 @@ pub fn filter_field_id() -> egui::Id {
 /// Validates: plugin-manager-ui Requirement 1.1-1.6, 2.1-2.5, 3.1-3.3
 pub fn render(ui: &mut egui::Ui, state: &mut PluginManagerPanelState) {
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("Plugin Manager").monospace().strong());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("ff-desktop-plugin-manager-heading"))
+                .monospace()
+                .strong(),
+        );
         ui.separator();
-        ui.label("Filter:");
+        ui.label(ff_i18n::t("ff-desktop-plugin-manager-filter"));
         ui.add(
             egui::TextEdit::singleline(&mut state.filter)
                 .id(filter_field_id())
                 .desired_width(200.0)
-                .hint_text("plugin name..."),
+                .hint_text(ff_i18n::t("ff-desktop-plugin-manager-filter-hint")),
         );
-        if ui.small_button("Clear").clicked() {
+        if ui
+            .small_button(ff_i18n::t("ff-desktop-plugin-manager-clear"))
+            .clicked()
+        {
             state.filter.clear();
         }
     });
@@ -117,7 +124,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut PluginManagerPanelState) {
 
     if state.plugins.is_empty() {
         ui.label(
-            egui::RichText::new("No plugins registered.")
+            egui::RichText::new(ff_i18n::t("ff-desktop-plugin-manager-empty"))
                 .weak()
                 .italics(),
         );
@@ -176,19 +183,19 @@ pub fn render(ui: &mut egui::Ui, state: &mut PluginManagerPanelState) {
                 if let Some((name, plugin_state)) = state.plugins.get(idx) {
                     ui.label(egui::RichText::new(name.as_str()).monospace().strong());
                     ui.horizontal(|ui| {
-                        ui.label("State:");
+                        ui.label(ff_i18n::t("ff-desktop-plugin-manager-state"));
                         ui.colored_label(state_colour(*plugin_state), state_label(plugin_state));
                     });
                     ui.separator();
                     ui.label(
-                        egui::RichText::new("No additional metadata available.")
+                        egui::RichText::new(ff_i18n::t("ff-desktop-plugin-manager-no-metadata"))
                             .weak()
                             .italics(),
                     );
                 }
             } else {
                 ui.label(
-                    egui::RichText::new("Select a plugin to view details.")
+                    egui::RichText::new(ff_i18n::t("ff-desktop-plugin-manager-select-prompt"))
                         .weak()
                         .italics(),
                 );
