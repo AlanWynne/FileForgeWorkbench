@@ -277,7 +277,7 @@ pub fn render_calendar(
 
         // Day-of-week header: non-interactive (not a Tab stop).
         ui.label(
-            egui::RichText::new("Su Mo Tu We Th Fr Sa")
+            egui::RichText::new(ff_i18n::t("ff-desktop-pom-weekday-header"))
                 .monospace()
                 .color(calendar_fg),
         );
@@ -301,15 +301,24 @@ pub fn render_calendar(
         }
 
         ui.add_space(4.0);
+        // The time / day-of-year VALUES are pre-formatted here and passed as TEXT
+        // placeables so ":02"/spacing render byte-identically; only the dotted-
+        // leader label prose localises.
         ui.label(
-            egui::RichText::new(format!("Time . . . . : {:02}:{:02}", hour, min))
-                .monospace()
-                .color(calendar_fg),
+            egui::RichText::new(ff_i18n::t_args(
+                "ff-desktop-pom-time",
+                &ff_i18n::MessageArgs::new().set("value", format!("{:02}:{:02}", hour, min)),
+            ))
+            .monospace()
+            .color(calendar_fg),
         );
         ui.label(
-            egui::RichText::new(format!("Day of year. :   {}", doy))
-                .monospace()
-                .color(calendar_fg),
+            egui::RichText::new(ff_i18n::t_args(
+                "ff-desktop-pom-day-of-year",
+                &ff_i18n::MessageArgs::new().set("value", doy.to_string()),
+            ))
+            .monospace()
+            .color(calendar_fg),
         );
     });
 
