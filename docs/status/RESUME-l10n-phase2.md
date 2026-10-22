@@ -6,9 +6,217 @@ verification policy in testing.md "Execution split").
 
 ## One-line status
 
-SLICE 1 (FEAT-001/002/003) is DONE and MERGED to local `main`
-(`44312e4`), FULL-GATE CLEAN (9885/9885 passed, 0 failed, owner-run 2026-10-21).
-UNPUSHED. Next: Slice 2 = task 7 (panel-crate render literals).
+SLICE 1 (FEAT-001/002/003): DONE, merged to `main`, PUSHED. Gate-clean 9885.
+SLICE 2 (task 7) IN PROGRESS: crate1 (ff-catalog-dialog) COMPLETE, committed
+(b518513), gate-clean 9888. crate2 (ff-dataset-alloc-dialog) COMPLETE, committed
+(8281a48, 2026-10-22) -- GATE-CLEAN: OWNER ran cargo gate --build = 9888/9888
+passed, 0 failed, 2026-10-22 09:01 (count unchanged from crate1, as expected for
+a behaviour-neutral literal->t() conversion).
+crate3 (ff-files-panel) COMPLETE, committed (74f62cc, 2026-10-22) -- compile +
+clippy -D warnings + fmt + ASCII all clean (agent compile-verify only; OWNER
+still owes the full cargo gate --build run for this commit). NOTE: files-panel.ftl
+is the FIRST .ftl to use Fluent unicode-escape placeables ({ "\u2014" } em dash,
+{ "\u2026" } ellipsis) to keep the source ASCII while rendering byte-identical UI
+prose -- the owner gate confirms this resolves correctly.
+crate4 (ff-explorer-view) COMPLETE, committed (fbf222e, 2026-10-22) -- compile +
+clippy -D warnings + fmt + ASCII all clean (agent compile-verify; OWNER owes the
+full gate). Only the 9 row context-menu labels were localised; row glyphs and the
+clipboard text-tree format (Req 19.5/19.6) stay as source literals.
+crate5 (ff-theme-editor) COMPLETE, committed (4765c45, 2026-10-22) -- compile +
+clippy -D warnings + fmt + ASCII clean; new unit test passes. OWNER owes the full
+gate. Option B chosen (owner): the 48 colour-token labels ARE localised. Pattern:
+EditableToken.label stays the stable English IDENTITY (PartialEq/tests untouched);
+a new EditableToken::label_key() maps each label to a Fluent key via a total
+token_label_key() match, resolved by t() only at the render site. A guard test
+(every_token_has_a_unique_dedicated_label_key) asserts every SURFACE token maps to
+a unique dedicated key. 64 keys total in theme-editor.ftl (16 chrome + 48 tokens);
+the contrast-advisory ratio is pre-formatted to 1 decimal in Rust and passed as a
+text placeable to keep rendering byte-identical.
+GATE on crate5 (2026-10-22 10:13) found ISSUES: 4 ff-catalog-dialog delete_dialog
+tests FAILED because the whole `en` Fluent bundle failed to BUILD -- crate3's
+files-panel.ftl had reused the key id `files-panel-title`, which ALREADY exists
+in main.ftl (`= Files`, a baseline key with tests). ff-i18n merges every en .ftl
+into ONE bundle, so a duplicate id makes add_resource reject and takes the whole
+bundle down; the first test to load it (ff-catalog-dialog) was the canary.
+FIXED (commit 4a70994): renamed the crate3 key to `files-panel-title-bar` in the
+.ftl + tree.rs. Verified: ff-i18n tests (15) PASS (they load the real shipped en
+dir), ff-catalog-dialog delete_dialog tests (10) PASS, and a new guard tool
+tools/python/ftl_dupe_check.py reports 7 files / 182 keys / NO duplicates.
+LESSON: per-crate cargo check/clippy do NOT catch a cross-file key collision --
+the bundle only builds at runtime/test time. Run ftl_dupe_check.py (or the ff-i18n
+tests) after adding any .ftl, and NEVER reuse an existing key id for new content.
+OWNER: please RE-RUN cargo gate --build -- the previous run was on the broken
+state; crate5 + the fix need a clean authoritative gate.
+
+crate6 (ff-toolchain-panel) COMPLETE, committed (be852cb, 2026-10-22) -- compile +
+clippy -D warnings + fmt + ASCII + dupe-check (8 files/196 keys, no dupes) all
+clean. Localised the render-function literals (headings, status labels, buttons,
+install-failed/detected/ready messages). LEFT unlocalised (have English-asserting
+unit tests / are model-layer or terse codes): ToolchainEntry::build_status_text(),
+severity_label() (E/W/N), and the plugin names (Rust/GCC, proper nouns).
+
+*** TASK 7 CODE COMPLETE *** all six crates done (7.1-7.6), task 7 parent ticked.
+*** BUT: a gate found a second regression -- NOT yet fully resolved (see below). ***
+
+=== SECOND GATE FAILURE (2026-10-22 10:30) -- full-shell UI test ===============
+Gate on be852cb: 1 test FAILED --
+  ff-desktop shell::tests_focus::full_shell_theme_editor_type_name_and_save_creates_user_theme
+Two layers:
+ (A) FIXED: the test does harness.get_by_label("Save").click(). crate5 localised
+     the Save button to t("theme-editor-btn-save"); but the test harness
+     (harness_shell/make_shell in shell/tests_common.rs) never installed the i18n
+     catalogue, so under nextest (each test = its own process) t() returned the
+     KEY, not "Save", and get_by_label("Save") found nothing (panic at
+     tests_focus.rs:1246). FIX APPLIED (uncommitted): added
+     i18n_bootstrap::install_catalogue_for_tests() (new #[cfg(test)] pub(crate)
+     helper calling install_catalogue_for_locale("en")) and call it at the top of
+     harness_shell(). After this the label resolves and the click lands.
+ (B) STILL FAILING (1 test only; fix A fixed ALL others -- latest gate 11:02 =
+     2770 passed, 1 failed): the test gets PAST the label lookup but fails the
+     file-write assertion ("clicking Save ... writes a USER theme") -- after
+     get_by_label("Save").click() + run(), the user .toml is not on disk.
+     DISPROVEN hypothesis: NOT frame timing. I tried `for _ in 0..4 { run() }`
+     after the click -- STILL fails. Reverted that test change.
+     CONFIRMED by code reading (not speculation):
+       - apply path is SINGLE-FRAME and correct: render_body.rs renders the
+         theme editor via render_workspace_context, takes panel.pending_action,
+         and calls apply_theme_editor_action in the SAME update() frame; the
+         ThemeEditorState WorkspaceContext::render does `self.pending_action =
+         render(ui, self)` each frame.
+       - apply_theme_editor_action(Save) on a built-in -> SaveAs(name_buffer) ->
+         write_theme_file(new_name) to themes_dir(). Save-button wiring in
+         theme-editor lib.rs is intact (action = ThemeEditorAction::Save).
+       - test preconditions hold: name_buffer pre-filled (asserted), working is
+         Some, dir_overrides.themes set to the TempDir.
+     DIAGNOSTIC RUN (temporary panic after the click, then reverted) proved the
+     SAVE ACTION NEVER FIRED. Immediately after get_by_label("Save").click() +
+     run():
+       new_name   = "Default Dark Copy"   (slug "default-dark-copy")
+       error      = None       (no error set)
+       name_buffer= "Default Dark Copy"    (NOT cleared)
+       available  = [Default Dark, Default Light, Default High Contrast,
+                     Default Legacy, Legacy Soft]   (new theme NOT present)
+       themes dir = []          (empty -- no file written)
+     SaveAs clears name_buffer + refreshes available on success; none of that
+     happened, and error is None -> apply_theme_editor_action(Save) was NEVER
+     invoked. So pending_action was not Save after the click: the click found a
+     node (get_by_label did NOT panic as not-found/ambiguous, so exactly one
+     "Save" node exists) but did NOT register as the theme-editor Save button's
+     .clicked(). This is a kittest click-vs-widget issue, NOT a frame-count issue
+     and NOT a bundle/label-resolution issue (the label clearly resolved to
+     "Save", else get_by_label would have failed as before fix A).
+     NEXT (unresolved -- needs egui_kittest know-how): determine why the clicked
+     "Save" node does not drive the theme editor button's .clicked(). Candidates:
+       - the Save button lives in the lower region AFTER the 48-row colour-token
+         ScrollArea; the clicked node's rect may be off-screen / clipped so the
+         simulated pointer does not hit it (a real kittest gotcha for widgets
+         below a tall scroll area). Pre-slice-2 the button text was a literal but
+         the LAYOUT was the same, so this would have been latent -- RE-CHECK
+         whether this exact test actually passed at the slice-2 base (git log the
+         test; it may be a NEWER test that never truly exercised the click path
+         until the catalogue was installed by fix A).
+       - OR enumerate the tree (egui_kittest Queryable::get_all_by / node debug)
+         to see the Save node's role/rect. My attempts used unverified API names;
+         confirm the correct egui_kittest 0.33 accessor first.
+     Do NOT add frames (disproven) and do NOT weaken the assertion.
+     NOTE: fix A (harness_shell catalogue install + install_catalogue_for_tests)
+     is CORRECT and MUST be KEPT -- it got every OTHER full-shell label-lookup
+     test green (gate 11:02 = 2770 passed, 1 failed). It is currently UNCOMMITTED
+     (2 files: shell/i18n_bootstrap.rs + shell/tests_common.rs); commit it with
+     the layer-B fix once B is understood.
+
+IMPORTANT UNKNOWN: the gate used nextest and stopped reporting after the FIRST
+ff-desktop failure. There may be OTHER full-shell tests that click now-localised
+buttons by English label (e.g. catalog-dialog "OK"/"Cancel"/"Delete Catalog",
+toolchain "Build", explorer ctx items). The harness_shell catalogue install (fix
+A) should fix ALL of those at once (they all go through harness_shell). After
+fixing (B), the OWNER must RE-RUN the full gate to surface any remaining ones.
+
+Terminal note: the shell channel hit a dead episode during diagnosis (commands
+returning no output / not writing logs). File reads stayed reliable.
+
+*** LAYER B RESOLVED (2026-10-22) -- the theme-editor save test now PASSES. ***
+
+Root cause (proven, not guessed):
+  - The test was byte-identical to its pre-Slice-2 (d9dd2f9) form and passed then.
+  - DIAG2 proved the PRODUCT is correct: with working=Some, calling
+    apply_theme_editor_action(Save) directly WROTE the user .toml and added the
+    theme to `available`. So Save -> SaveAs -> write_theme_file + the dir override
+    all work. The failure was purely that get_by_label("Save").click() did not
+    deliver a .clicked() to the button.
+  - Trigger: fix A installs the i18n catalogue in the harness, so labels render
+    as real English (different widths) instead of the long key fallback. The test
+    queried get_by_label("Save") in the SAME frame the button was first laid out
+    with the new widths, so the simulated click targeted an unsettled rect.
+
+Fix (layer B): add ONE harness.run() BEFORE the get_by_label("Save") query so the
+accessibility tree + layout are settled at query time; then click + run to apply.
+This is a test-harness timing fix only -- product behaviour and the assertions are
+unchanged. VERIFIED: the scoped test now reports `ok` (1 passed).
+
+Three uncommitted test-infra files (fix A + layer B), ALL in ff-desktop:
+  crates/ff-desktop/src/shell/i18n_bootstrap.rs   (install_catalogue_for_tests)
+  crates/ff-desktop/src/shell/tests_common.rs     (harness_shell installs it)
+  crates/ff-desktop/src/shell/tests_focus.rs      (settle-frame before the click)
+COMMITTED: 8de5b2d "fix(l10n/test): install i18n catalogue in full-shell harness,
+settle a frame before the theme-editor Save click" (3 files, 28 insertions).
+
+Slice 2 branch commits (feature/l10n-phase2-slice2), in order:
+  b518513 (7.1 catalog-dialog)  8281a48 (7.2 dataset-alloc-dialog)
+  74f62cc (7.3 files-panel)     fbf222e (7.4 explorer-view)
+  4765c45 (7.5 theme-editor)    4a70994 (ftl key-collision fix)
+  be852cb (7.6 toolchain-panel) 8de5b2d (test-infra: harness catalogue + settle frame)
+
+REMAINING (owner): a clean full `cargo gate --build` on the branch tip 8de5b2d
+(the owner is running cargo test now). Expected CLEAN -- the only prior failure
+(theme-editor Save test) is fixed and scoped-verified. Then:
+  ff-merge feature/l10n-phase2-slice2 -> main, push, remove the worktree + branch.
+Also: commit tools/python/ftl_dupe_check.py to MAIN separately (it lives in the
+main checkout, not this branch) as a reusable guard, and consider wiring it into
+the gate so a cross-file .ftl key collision is caught at build time, not test time.
+
+NEXT (do NOT skip the gate): OWNER runs cargo gate --build on the slice2 branch
+tip (be852cb). The last owner gate (10:13) ran on the BROKEN pre-fix state; the
+fix (4a70994) + crate6 have only been AGENT-verified (compile/clippy/fmt/ASCII +
+the ff-i18n & ff-catalog-dialog tests I ran scoped). A clean full gate is required
+before ff-merge. THEN: ff-merge feature/l10n-phase2-slice2 -> main, push, remove
+the .worktrees/l10n-phase2-slice2 worktree + branch.
+Slice 2 commits: b518513 (7.1) 8281a48 (7.2) 74f62cc (7.3) fbf222e (7.4)
+4765c45 (7.5) 4a70994 (collision fix) be852cb (7.6).
+Also note: tools/python/ftl_dupe_check.py was added in the MAIN checkout (not the
+worktree, so not in this branch) -- commit it to main separately as a reusable
+guard tool; run it after adding any .ftl.
+
+## SLICE 2 resume steps (do these next)
+
+Worktree: c:\workspace\apps\FileForgeWorkbench\.worktrees\l10n-phase2-slice2
+Branch:   feature/l10n-phase2-slice2 (off main). The slice2 WORKFLOW was ABORTED.
+
+1. DONE -- crate1 (ff-catalog-dialog) committed b518513, task 7.1 ticked.
+2. DONE -- crate2 (ff-dataset-alloc-dialog) committed 8281a48, task 7.2 ticked.
+   Pattern used (copy for remaining crates): add ff-i18n path dep to the crate's
+   Cargo.toml; author a per-crate .ftl in crates/ff-i18n/i18n/en/ with the EXACT
+   current English literals (ASCII only, trailing-space alignment preserved via a
+   { "  " } quoted placeable); swap each displayed literal at the render/validate
+   sites for ff_i18n::t("key") / t_args("key", MessageArgs::new().set(...) /
+   .set_number(...)); leave command verbs, enum logic keys, id_salt values, and
+   technical mnemonic codes (e.g. DSORG/RECFM PS/PO/FB...) UNLOCALISED. Agent
+   verification = scoped cargo check + clippy -D warnings + fmt --check + ASCII
+   scan, reading each log; the OWNER runs the full cargo gate --build.
+3. DO the remaining task-7 crates HANDS-ON, NOT via a workflow (workflow coder
+   agents reliably WRITE code but have stalled repeatedly at the verify/commit/
+   signal shell step). Remaining: ff-files-panel, ff-explorer-view,
+   ff-theme-editor, ff-toolchain-panel -- one commit per crate.
+4. After the last crate: tick task 7 parent, ff-merge the branch to main, remove
+   the worktree. OWNER runs the final cargo gate --build.
+
+NOTE (assistant-emission bug 2026-10-21 pm): this session repeatedly emitted
+MALFORMED tool calls (rendering as garbled "court ..." plaintext no-ops) across
+all tools, and the shell channel hit dead episodes. A Kiro RESTART cleared it
+earlier. If tool calls garble again, restart Kiro -- nothing is lost (work is on
+disk; workflow state is server-side).
+
+(Historical detail of Slice 1 and later tasks follows below.)
 
 ## Where things stand
 

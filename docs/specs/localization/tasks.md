@@ -82,14 +82,14 @@ TDD applies: write the failing test first, then the minimum implementation, per
         only); resolve subsequently displayed topics against the new locale on a
         hot-reload. Satisfies Req 6.3, 6.4.
 
-- [ ] 7. Convert the clean dialog/panel-crate render literals (one crate per step)
-  - [ ] 7.1 Convert `ff-catalog-dialog` literals to `t("key")` lookups; keep its
+- [x] 7. Convert the clean dialog/panel-crate render literals (one crate per step)
+  - [x] 7.1 Convert `ff-catalog-dialog` literals to `t("key")` lookups; keep its
         `egui_kittest` behaviour tests green. Satisfies Req 3.4, 4.1, 10.1.
-  - [ ] 7.2 Convert `ff-dataset-alloc-dialog`. Satisfies Req 3.4, 4.1.
-  - [ ] 7.3 Convert `ff-files-panel`. Satisfies Req 3.4, 4.1.
-  - [ ] 7.4 Convert `ff-explorer-view`. Satisfies Req 3.4, 4.1.
-  - [ ] 7.5 Convert `ff-theme-editor`. Satisfies Req 3.4, 4.1.
-  - [ ] 7.6 Convert `ff-toolchain-panel`. Satisfies Req 3.4, 4.1.
+  - [x] 7.2 Convert `ff-dataset-alloc-dialog`. Satisfies Req 3.4, 4.1.
+  - [x] 7.3 Convert `ff-files-panel`. Satisfies Req 3.4, 4.1.
+  - [x] 7.4 Convert `ff-explorer-view`. Satisfies Req 3.4, 4.1.
+  - [x] 7.5 Convert `ff-theme-editor`. Satisfies Req 3.4, 4.1.
+  - [x] 7.6 Convert `ff-toolchain-panel`. Satisfies Req 3.4, 4.1.
 
 - [ ] 8. Convert the `ff-desktop` render literals (labels / buttons / hover text)
   - [ ] 8.1 Convert the editor-panel and shell render labels/buttons/hover text to
