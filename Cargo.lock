@@ -2628,6 +2628,7 @@ version = "0.1.0"
 dependencies = [
  "egui",
  "ff-gcc-toolchain",
+ "ff-i18n",
  "ff-rust-toolchain",
  "ff-toolchain-api",
  "pretty_assertions",

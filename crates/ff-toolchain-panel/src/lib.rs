@@ -145,7 +145,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut ToolchainPanelState) -> Option<(Str
     ui.vertical(|ui| {
         ui.add_space(4.0);
         ui.label(
-            egui::RichText::new("Compiler Toolchains")
+            egui::RichText::new(ff_i18n::t("toolchain-panel-heading-toolchains"))
                 .monospace()
                 .strong(),
         );
@@ -160,7 +160,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut ToolchainPanelState) -> Option<(Str
         ui.separator();
 
         // Build output
-        ui.label(egui::RichText::new("Build Output").monospace().strong());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("toolchain-panel-heading-build-output"))
+                .monospace()
+                .strong(),
+        );
         egui::ScrollArea::vertical()
             .id_salt("toolchain_output")
             .max_height(120.0)
@@ -176,7 +180,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut ToolchainPanelState) -> Option<(Str
         ui.separator();
 
         // Diagnostics list
-        ui.label(egui::RichText::new("Diagnostics").monospace().strong());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("toolchain-panel-heading-diagnostics"))
+                .monospace()
+                .strong(),
+        );
         egui::ScrollArea::vertical()
             .id_salt("toolchain_diagnostics")
             .max_height(120.0)
@@ -231,14 +239,14 @@ fn render_status_row(ui: &mut egui::Ui, entry: &mut ToolchainEntry) {
         match &state {
             ToolchainState::NotDetected => {
                 ui.label(
-                    egui::RichText::new("Not found")
+                    egui::RichText::new(ff_i18n::t("toolchain-panel-status-not-found"))
                         .monospace()
                         .color(egui::Color32::RED),
                 );
                 let btn_label = if name == "Rust" {
-                    "Install via rustup"
+                    ff_i18n::t("toolchain-panel-btn-install-rustup")
                 } else {
-                    "Install GCC"
+                    ff_i18n::t("toolchain-panel-btn-install-gcc")
                 };
                 if ui.button(btn_label).clicked() {
                     // NOTE: Full async install wiring is handled by the shell's
@@ -248,7 +256,7 @@ fn render_status_row(ui: &mut egui::Ui, entry: &mut ToolchainEntry) {
             }
             ToolchainState::Installing => {
                 ui.label(
-                    egui::RichText::new("Installing...")
+                    egui::RichText::new(ff_i18n::t("toolchain-panel-status-installing"))
                         .monospace()
                         .color(egui::Color32::YELLOW),
                 );
@@ -256,19 +264,28 @@ fn render_status_row(ui: &mut egui::Ui, entry: &mut ToolchainEntry) {
             }
             ToolchainState::InstallFailed { reason } => {
                 ui.label(
-                    egui::RichText::new(format!("Install failed: {reason}"))
-                        .monospace()
-                        .color(egui::Color32::RED),
+                    egui::RichText::new(ff_i18n::t_args(
+                        "toolchain-panel-status-install-failed",
+                        &ff_i18n::MessageArgs::new().set("reason", reason.clone()),
+                    ))
+                    .monospace()
+                    .color(egui::Color32::RED),
                 );
-                if ui.button("Retry").clicked() {
+                if ui.button(ff_i18n::t("toolchain-panel-btn-retry")).clicked() {
                     // Retry wired through shell install flow.
                 }
             }
             ToolchainState::Detected { version } | ToolchainState::Ready { version } => {
                 let label = if matches!(state, ToolchainState::Ready { .. }) {
-                    format!("Ready -- {version}")
+                    ff_i18n::t_args(
+                        "toolchain-panel-status-ready",
+                        &ff_i18n::MessageArgs::new().set("version", version.clone()),
+                    )
                 } else {
-                    format!("Detected -- {version}")
+                    ff_i18n::t_args(
+                        "toolchain-panel-status-detected",
+                        &ff_i18n::MessageArgs::new().set("version", version.clone()),
+                    )
                 };
                 ui.label(
                     egui::RichText::new(label)
@@ -277,7 +294,7 @@ fn render_status_row(ui: &mut egui::Ui, entry: &mut ToolchainEntry) {
                 );
 
                 if !entry.is_building() {
-                    if ui.button("Build").clicked() {
+                    if ui.button(ff_i18n::t("toolchain-panel-btn-build")).clicked() {
                         let (tx, rx) = mpsc::channel();
                         entry.output_lines.clear();
                         entry.diagnostics.clear();
@@ -292,7 +309,7 @@ fn render_status_row(ui: &mut egui::Ui, entry: &mut ToolchainEntry) {
                     }
                 } else {
                     ui.label(
-                        egui::RichText::new("Building...")
+                        egui::RichText::new(ff_i18n::t("toolchain-panel-status-building"))
                             .monospace()
                             .color(egui::Color32::YELLOW),
                     );
@@ -310,7 +327,9 @@ fn render_status_row(ui: &mut egui::Ui, entry: &mut ToolchainEntry) {
                 }
             }
             _ => {
-                ui.label(egui::RichText::new("Unknown state").monospace());
+                ui.label(
+                    egui::RichText::new(ff_i18n::t("toolchain-panel-status-unknown")).monospace(),
+                );
             }
         }
     });
