@@ -167,13 +167,23 @@ Slice 2 branch commits (feature/l10n-phase2-slice2), in order:
   4765c45 (7.5 theme-editor)    4a70994 (ftl key-collision fix)
   be852cb (7.6 toolchain-panel) 8de5b2d (test-infra: harness catalogue + settle frame)
 
-REMAINING (owner): a clean full `cargo gate --build` on the branch tip 8de5b2d
-(the owner is running cargo test now). Expected CLEAN -- the only prior failure
-(theme-editor Save test) is fixed and scoped-verified. Then:
-  ff-merge feature/l10n-phase2-slice2 -> main, push, remove the worktree + branch.
-Also: commit tools/python/ftl_dupe_check.py to MAIN separately (it lives in the
-main checkout, not this branch) as a reusable guard, and consider wiring it into
-the gate so a cross-file .ftl key collision is caught at build time, not test time.
+*** SLICE 2 COMPLETE AND MERGED TO MAIN (2026-10-22). ***
+- OWNER full gate on tip 8de5b2d: CLEAN -- 9889/9889 passed, 0 failed (the +1 vs
+  9888 is the new theme-editor label-key guard test).
+- Fast-forwarded main 9b07352..8de5b2d (all 8 Slice 2 commits).
+- Docs commit 6108ed3 (task 7 ticked, this resume updated).
+- Guard tool commit a7d825e (tools/python/ftl_dupe_check.py).
+- Worktree .worktrees/l10n-phase2-slice2 removed; branch feature/l10n-phase2-slice2
+  deleted (was 8de5b2d, fully merged).
+- main is AHEAD of origin/main by 10 commits -- NOT yet pushed. OWNER: push when ready.
+
+FOLLOW-UP (optional, not blocking): wire tools/python/ftl_dupe_check.py into the
+gate so a cross-file .ftl key collision is caught at build time, not test time.
+
+NEXT L10N WORK (tasks.md Phase 2): Task 8 (ff-desktop render literals),
+Task 9 (hard status/error messages, argument-bearing), Task 10 (capstone: author
+fr/de catalogue DATA + per-locale help dirs). Same compile-only agent policy;
+ALWAYS run ftl_dupe_check.py after adding any .ftl, and never reuse a key id.
 
 NEXT (do NOT skip the gate): OWNER runs cargo gate --build on the slice2 branch
 tip (be852cb). The last owner gate (10:13) ran on the BROKEN pre-fix state; the
