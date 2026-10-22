@@ -310,6 +310,13 @@ pub(crate) fn point_themes_at_temp(shell: &mut super::WorkbenchShell) -> tempfil
 /// startup (session/config load + first render that captures menu-bar ids).
 pub(crate) fn harness_shell<'a>() -> egui_kittest::Harness<'a, super::WorkbenchShell> {
     use egui_kittest::Harness;
+    // Install the English Identity_Base on the process-wide i18n seam so the
+    // full-shell render shows the same English labels production does (where
+    // i18n_bootstrap::install_catalogue runs at startup). Without this, a fresh
+    // nextest process leaves the seam uninstalled and every localised `t()`
+    // label renders as its key, breaking `get_by_label("...")` queries
+    // (CR-NR-103 Slice 2: ff-*-dialog/panel crates now resolve labels via t()).
+    super::i18n_bootstrap::install_catalogue_for_tests();
     let mut harness = Harness::builder()
         .with_size(egui::Vec2::new(1200.0, 900.0))
         .build_eframe(|_cc| make_shell());

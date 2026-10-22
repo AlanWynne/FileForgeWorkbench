@@ -1242,7 +1242,12 @@ fn full_shell_theme_editor_type_name_and_save_creates_user_theme() {
     );
 
     // Click the actual Save button in the render (not apply_theme_editor_action).
+    // Run a frame first so the accessibility tree + layout are fully settled at
+    // query time (with the i18n catalogue installed, label widths differ from the
+    // key-fallback render); then query, click, and run to apply. Querying against
+    // a settled frame makes the simulated pointer hit the button's current rect.
     use egui_kittest::kittest::Queryable;
+    harness.run();
     harness.get_by_label("Save").click();
     harness.run();
 

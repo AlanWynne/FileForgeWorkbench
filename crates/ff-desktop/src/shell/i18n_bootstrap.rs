@@ -169,6 +169,22 @@ fn load_base(root: &std::path::Path) -> Option<Catalogue> {
     }
 }
 
+/// Install the English Identity_Base catalogue for the TEST harness, so the
+/// full-shell `egui_kittest` tests see the same English labels production shows
+/// (where [`install_catalogue`] runs at startup). Without this the process-wide
+/// seam is uninstalled in a fresh test process (nextest runs each test in its
+/// own process), so every `t()` renders its key instead of the English string
+/// and a `get_by_label("Save")`-style query fails.
+///
+/// Resolves the shipped root via the same exe-dir search path as production
+/// ([`resolve_i18n_root`], whose dev fallback reaches `crates/ff-i18n/i18n` from
+/// the test binary). Safe to call repeatedly; a missing root degrades to the key
+/// fallback exactly as production does.
+#[cfg(test)]
+pub(crate) fn install_catalogue_for_tests() {
+    install_catalogue_for_locale(ff_i18n::IDENTITY_BASE_TAG);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
