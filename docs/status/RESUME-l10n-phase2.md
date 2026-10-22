@@ -6,6 +6,30 @@ verification policy in testing.md "Execution split").
 
 ## One-line status
 
+*** TASK 8 (8.1 -- ff-desktop render literals) COMPLETE and MERGED to `main`
+(2026-10-22). *** Tip `4fc79d8`. OWNER gate CLEAN: 9889/9889 passed, 0 failed,
+fmt ok, clippy clean (full nextest workspace run, 0:10:55). All 20 areas done
+INLINE (areas 1-4 prior, 5-20 this session) after the delegated-workflow trial
+hung at the commit/signal boundary on its first step (see DEFECT-terminal-
+execution.md section 8 -- the 3-part step-completion pattern did NOT prevent the
+hang; inline is the reliable path on this machine). 22 new per-area
+`ff-desktop-*.ftl` catalogues under crates/ff-i18n/i18n/en/. Localised: all
+user-facing render prose across the ff-desktop panels, shell chrome, dialogs,
+tab bar, POM calendar, SCRM viewer. LEFT (documented in each .ftl header):
+glyphs, mnemonic captions (Aa/W/.*, CAPS/NULLS/..., on/bar), egui ids, proper
+nouns, menu/POM descriptions (Task 5). DEFERRED to Task 9 by design: all
+argument-bearing STATUS/ERROR messages (open_error strings; status-bar
+Ln/Col/lines/CAPS/phase labels). Worktree + branch removed post-merge.
+NOT YET PUSHED: `main` is ahead of origin/main (push when ready).
+
+NEXT: Task 9 (hard status/error messages -- open_error + status-bar, via t_args
+with command verbs as NON-translated args; localise thiserror text at the
+display boundary). THEN Task 10 (capstone: author fr/de .ftl catalogue DATA +
+per-environment alias catalogues + per-locale help/ dirs). ALWAYS run
+ftl_dupe_check.py after adding any .ftl; never reuse a key id.
+
+--- historical log below (Slices 1-2, Task 7) ---
+
 SLICE 1 (FEAT-001/002/003): DONE, merged to `main`, PUSHED. Gate-clean 9885.
 SLICE 2 (task 7) IN PROGRESS: crate1 (ff-catalog-dialog) COMPLETE, committed
 (b518513), gate-clean 9888. crate2 (ff-dataset-alloc-dialog) COMPLETE, committed
@@ -180,10 +204,50 @@ Slice 2 branch commits (feature/l10n-phase2-slice2), in order:
 FOLLOW-UP (optional, not blocking): wire tools/python/ftl_dupe_check.py into the
 gate so a cross-file .ftl key collision is caught at build time, not test time.
 
-NEXT L10N WORK (tasks.md Phase 2): Task 8 (ff-desktop render literals),
-Task 9 (hard status/error messages, argument-bearing), Task 10 (capstone: author
-fr/de catalogue DATA + per-locale help dirs). Same compile-only agent policy;
-ALWAYS run ftl_dupe_check.py after adding any .ftl, and never reuse a key id.
+Slice 2 pushed to origin/main (2026-10-22).
+
+=== TASK 8 IN PROGRESS (workflow ABORTED -- now continuing INLINE) ===
+Worktree .worktrees/l10n-phase2-task8, branch feature/l10n-phase2-task8 (off main).
+Workflow wf_7a5d44144739f873 was launched but its code step STALLED ~15 min at the
+signal/commit boundary (the documented terminal hang) after doing only area 1.
+ABORTED it. Area-1 work was committed by hand (75f4c9b feat(l10n): task8
+command-config localise render literals). Decision: finish the remaining 19 areas
+INLINE (file tools reliable; the workflow coder keeps hanging at the commit
+boundary on this machine) following the planner's plan at
+.worktrees/l10n-phase2-task8/.agents/tasks/plan.md -- 20 ordered areas, each with
+files + exact literals + leave-unlocalised rules + a scoped egui_kittest test.
+Per-area commit, scoped cargo check/clippy/fmt + ftl_dupe_check after each .ftl.
+OWNER runs the authoritative full cargo gate --build at the end; ORCHESTRATOR then
+ff-merges to main + removes the worktree.
+Progress: [x] 1 command-config (75f4c9b). [x] 2 config-panel (ddd3dfb). Areas
+3-20 delegated to a TRIAL workflow (see below).
+
+=== TASK 8 TRIAL WORKFLOW (areas 3-20) -- testing a clean step-completion pattern ===
+After the first task-8 workflow hung at the commit/signal boundary (defect doc
+section 7), the owner confirmed they PREFER workflows and want them to END cleanly
+rather than fall back to inline. Diagnosis: the hang is the COMPLETION SIGNAL not
+landing (a long/quiet shell command as the step's last act losing completion in
+Kiro's wrapper), NOT the commit itself. Owner ideas folded in: (a) scripted commit
+to a log, (b) async/fire-and-forget the long command.
+Trial infrastructure (committed on the branch): tools/powershell/wf-commit.ps1
+(dd19f14) -- bounded, logged git-commit helper; stages only listed files, commits,
+writes resulting HEAD to tools/logs/wf-commit.log for verify-by-effect. Smoke-
+tested OK.
+Launched workflow wf_df38cebc46b21acb (label l10n-task8-areas3-20-trial) for areas
+3-20, briefed with the 3-part STEP-COMPLETION PATTERN: (1) no long/quiet command as
+a step's last act (background compile-verify to a log + read it), (2) commit via
+wf-commit.ps1 and confirm via its log, (3) signal completion via the agent/tool
+layer (send_message success / status), NOT a trailing shell command. The run also
+reports whether this pattern avoided the boundary hang -- that is the key
+diagnostic for whether we can return to the preferred delegated-workflow path for
+tasks 9 and 10.
+Orchestrator: ff-merge to main + remove the worktree after the run; OWNER runs the
+authoritative full cargo gate --build.
+
+NEXT L10N WORK after Task 8: Task 9 (hard status/error messages, argument-bearing),
+Task 10 (capstone: author fr/de catalogue DATA + per-locale help dirs). Same
+compile-only agent policy; ALWAYS run ftl_dupe_check.py after adding any .ftl, and
+never reuse a key id.
 
 NEXT (do NOT skip the gate): OWNER runs cargo gate --build on the slice2 branch
 tip (be852cb). The last owner gate (10:13) ran on the BROKEN pre-fix state; the
