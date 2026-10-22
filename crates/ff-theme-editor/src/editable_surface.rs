@@ -58,9 +58,24 @@ impl PartialEq for EditableToken {
 impl Eq for EditableToken {}
 
 impl EditableToken {
-    /// Human-readable label for the token (e.g. "Chrome: panel fill").
+    /// Human-readable English label for the token (e.g. "Chrome: panel fill").
+    ///
+    /// This is the token's STABLE IDENTITY (used by `PartialEq`, tests, and the
+    /// positional `all()` ordering); it is NOT localised. The DISPLAYED label is
+    /// resolved at the render site via [`EditableToken::label_key`] + the
+    /// `ff_i18n::t()` seam (localization Req 4.1), with this English string as
+    /// the Identity_Base fallback.
     pub fn label(self) -> &'static str {
         self.label
+    }
+
+    /// The stable `ff-i18n` message key for this token's displayed label
+    /// (localization Req 4.1, task 7.5). The key is a pure function of the
+    /// English identity `label`, so it never drifts from the surface table. The
+    /// render site calls `ff_i18n::t(token.label_key())`; a missing catalogue
+    /// key falls back to the English `label()` string (resolved by the caller).
+    pub fn label_key(self) -> &'static str {
+        token_label_key(self.label)
     }
 
     /// Read the token's current colour from a palette.
@@ -94,6 +109,82 @@ macro_rules! colour_token {
             },
         }
     };
+}
+
+/// Map a token's stable English identity `label` to its `ff-i18n` message key.
+///
+/// A pure, total function over the surface table's labels. Every label in
+/// `SURFACE` has a case here; an unmapped label (only possible if a new token is
+/// added to `SURFACE` without a matching key) falls back to a stable "unknown"
+/// key so the render still resolves (and the English `label()` remains the
+/// Identity_Base fallback). A unit test asserts every `SURFACE` label is mapped.
+///
+/// Validates: localization Requirement 4.1 (task 7.5).
+fn token_label_key(label: &str) -> &'static str {
+    match label {
+        // --- egui chrome -----------------------------------------------------
+        "Chrome: panel fill" => "theme-editor-token-chrome-panel-fill",
+        "Chrome: window fill" => "theme-editor-token-chrome-window-fill",
+        "Chrome: panel border" => "theme-editor-token-chrome-panel-border",
+        "Chrome: extreme (input) bg" => "theme-editor-token-chrome-extreme-input-bg",
+        "Chrome: raised (button) bg" => "theme-editor-token-chrome-raised-button-bg",
+        "Chrome: hovered bg" => "theme-editor-token-chrome-hovered-bg",
+        "Chrome: menu bar text" => "theme-editor-token-chrome-menu-bar-text",
+        "Chrome: input foreground" => "theme-editor-token-chrome-input-foreground",
+        "Chrome: input border" => "theme-editor-token-chrome-input-border",
+        "Chrome: focus ring" => "theme-editor-token-chrome-focus-ring",
+        "Chrome: accent" => "theme-editor-token-chrome-accent",
+        "Chrome: title band bg" => "theme-editor-token-chrome-title-band-bg",
+        "Chrome: tab active bg" => "theme-editor-token-chrome-tab-active-bg",
+        "Chrome: tab inactive bg" => "theme-editor-token-chrome-tab-inactive-bg",
+        "Chrome: tab active text" => "theme-editor-token-chrome-tab-active-text",
+        "Chrome: tab inactive text" => "theme-editor-token-chrome-tab-inactive-text",
+        // --- domain: syntax --------------------------------------------------
+        "Syntax: keyword" => "theme-editor-token-syntax-keyword",
+        "Syntax: comment" => "theme-editor-token-syntax-comment",
+        "Syntax: string" => "theme-editor-token-syntax-string",
+        "Syntax: number" => "theme-editor-token-syntax-number",
+        "Syntax: operator" => "theme-editor-token-syntax-operator",
+        "Syntax: type" => "theme-editor-token-syntax-type",
+        "Syntax: function" => "theme-editor-token-syntax-function",
+        "Syntax: macro" => "theme-editor-token-syntax-macro",
+        "Syntax: preprocessor" => "theme-editor-token-syntax-preprocessor",
+        "Syntax: default text" => "theme-editor-token-syntax-default-text",
+        // --- domain: editor content -----------------------------------------
+        "Editor: foreground" => "theme-editor-token-editor-foreground",
+        "Editor: muted" => "theme-editor-token-editor-muted",
+        "Editor: current line bg" => "theme-editor-token-editor-current-line-bg",
+        // --- domain: gutter --------------------------------------------------
+        "Gutter: line number fg" => "theme-editor-token-gutter-line-number-fg",
+        "Gutter: line number bg" => "theme-editor-token-gutter-line-number-bg",
+        "Gutter: fold margin bg" => "theme-editor-token-gutter-fold-margin-bg",
+        "Gutter: fold margin fg" => "theme-editor-token-gutter-fold-margin-fg",
+        "Gutter: margin separator" => "theme-editor-token-gutter-margin-separator",
+        "Gutter: cursor row border" => "theme-editor-token-gutter-cursor-row-border",
+        "Gutter: cursor column" => "theme-editor-token-gutter-cursor-column",
+        // --- domain: file tree -----------------------------------------------
+        "File tree: binary" => "theme-editor-token-file-tree-binary",
+        "File tree: structured" => "theme-editor-token-file-tree-structured",
+        "File tree: text" => "theme-editor-token-file-tree-text",
+        "File tree: unknown" => "theme-editor-token-file-tree-unknown",
+        "File tree: directory" => "theme-editor-token-file-tree-directory",
+        "File tree: symlink" => "theme-editor-token-file-tree-symlink",
+        // --- domain: decorations ---------------------------------------------
+        "Decoration: search highlight" => "theme-editor-token-decoration-search-highlight",
+        "Decoration: error underline" => "theme-editor-token-decoration-error-underline",
+        "Decoration: warning underline" => "theme-editor-token-decoration-warning-underline",
+        "Decoration: info underline" => "theme-editor-token-decoration-info-underline",
+        "Decoration: change added" => "theme-editor-token-decoration-change-added",
+        "Decoration: change modified" => "theme-editor-token-decoration-change-modified",
+        "Decoration: change deleted" => "theme-editor-token-decoration-change-deleted",
+        "Decoration: bookmark" => "theme-editor-token-decoration-bookmark",
+        // --- domain: indicators ----------------------------------------------
+        "Indicator: find match" => "theme-editor-token-indicator-find-match",
+        "Indicator: brace match" => "theme-editor-token-indicator-brace-match",
+        "Indicator: brace mismatch" => "theme-editor-token-indicator-brace-mismatch",
+        "Indicator: hotspot underline" => "theme-editor-token-indicator-hotspot-underline",
+        _ => "theme-editor-token-unknown",
+    }
 }
 
 /// The derived editable surface. CHROME tokens map onto the flat authoring
@@ -231,6 +322,30 @@ mod tests {
         keyword.set(&mut p, green);
         assert_eq!(keyword.get(&p), green);
         assert_eq!(p.syntax.keyword, green);
+    }
+
+    // Validates: localization Requirement 4.1 (task 7.5) -- every token in the
+    // surface maps to a dedicated i18n label key (never the "unknown" fallback),
+    // and every key is unique. Guards against a new token being added to SURFACE
+    // without a matching key in `token_label_key`.
+    #[test]
+    fn every_token_has_a_unique_dedicated_label_key() {
+        let tokens = EditableToken::all();
+        let mut keys: Vec<&str> = Vec::with_capacity(tokens.len());
+        for t in tokens {
+            let key = t.label_key();
+            assert_ne!(
+                key,
+                "theme-editor-token-unknown",
+                "token {:?} has no dedicated label key -- add it to token_label_key",
+                t.label()
+            );
+            keys.push(key);
+        }
+        let total = keys.len();
+        keys.sort_unstable();
+        keys.dedup();
+        assert_eq!(keys.len(), total, "token label keys must be unique");
     }
 
     // Validates: Requirement 20.11 -- the surface covers both chrome and every

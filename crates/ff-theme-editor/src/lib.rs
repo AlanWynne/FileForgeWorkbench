@@ -164,9 +164,14 @@ impl ThemeEditorState {
         self.advisories.clear();
         if let Some(p) = &self.working {
             for w in ff_theme::check_theme_contrast(p) {
-                self.advisories.push(format!(
-                    "{}: contrast {:.1}:1 (below AA 4.5:1)",
-                    w.pair_name, w.ratio
+                // Pre-format the ratio to one decimal in Rust and pass it as a
+                // TEXT placeable so the "4.5"-style rendering stays byte-identical
+                // regardless of the locale's Fluent number formatter.
+                self.advisories.push(ff_i18n::t_args(
+                    "theme-editor-advisory-row",
+                    &ff_i18n::MessageArgs::new()
+                        .set("pair", w.pair_name)
+                        .set("ratio", format!("{:.1}", w.ratio)),
                 ));
             }
         }
@@ -191,11 +196,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
     // command-field -> first-interior Tab jump to the combo's FRESH id).
     state.first_interior_id = None;
     ui.horizontal(|ui| {
-        ui.label("Theme:");
+        ui.label(ff_i18n::t("theme-editor-label-theme"));
         let current = state
             .selected
             .clone()
-            .unwrap_or_else(|| "(none)".to_string());
+            .unwrap_or_else(|| ff_i18n::t("theme-editor-selected-none"));
         let combo = egui::ComboBox::from_id_salt("theme_editor_select")
             .selected_text(current)
             .show_ui(ui, |ui| {
@@ -210,12 +215,15 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
             });
         // The combo's toggle button is the FIRST interior Tab stop (B057).
         state.first_interior_id = Some(combo.response.id);
-        if ui.button("Set Active").clicked() {
+        if ui
+            .button(ff_i18n::t("theme-editor-btn-set-active"))
+            .clicked()
+        {
             if let Some(name) = &state.selected {
                 action = ThemeEditorAction::SetActive(name.clone());
             }
         }
-        if ui.button("Reset to built-in").clicked() {
+        if ui.button(ff_i18n::t("theme-editor-btn-reset")).clicked() {
             if let Some(name) = &state.selected {
                 state.pending_reset = Some(name.clone());
             }
@@ -227,13 +235,19 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
         ui.horizontal(|ui| {
             ui.colored_label(
                 egui::Color32::from_rgb(0xC8, 0x8A, 0x00),
-                format!("Reset '{name}' to its baseline and discard edits?"),
+                ff_i18n::t_args(
+                    "theme-editor-reset-confirm",
+                    &ff_i18n::MessageArgs::new().set("name", name.clone()),
+                ),
             );
-            if ui.button("Confirm reset").clicked() {
+            if ui
+                .button(ff_i18n::t("theme-editor-btn-confirm-reset"))
+                .clicked()
+            {
                 action = ThemeEditorAction::Reset(name.clone());
                 state.pending_reset = None;
             }
-            if ui.button("Cancel").clicked() {
+            if ui.button(ff_i18n::t("theme-editor-btn-cancel")).clicked() {
                 state.pending_reset = None;
             }
         });
@@ -247,7 +261,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
     // immediately. Pressing Save with a built-in selected performs Save As at
     // the shell (Requirement 20.5 amended, 20.13).
     ui.horizontal(|ui| {
-        ui.label("New name:");
+        ui.label(ff_i18n::t("theme-editor-label-new-name"));
         ui.add(
             egui::TextEdit::singleline(&mut state.name_buffer)
                 .id(egui::Id::new("theme_editor_name"))
@@ -255,16 +269,25 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
         );
         let name = state.name_buffer.trim().to_string();
         let name_ok = !name.is_empty();
-        if ui.add_enabled(name_ok, egui::Button::new("Copy")).clicked() {
+        if ui
+            .add_enabled(
+                name_ok,
+                egui::Button::new(ff_i18n::t("theme-editor-btn-copy")),
+            )
+            .clicked()
+        {
             action = ThemeEditorAction::Copy(name.clone());
         }
         if ui
-            .add_enabled(name_ok, egui::Button::new("Save As"))
+            .add_enabled(
+                name_ok,
+                egui::Button::new(ff_i18n::t("theme-editor-btn-save-as")),
+            )
             .clicked()
         {
             action = ThemeEditorAction::SaveAs(name.clone());
         }
-        if ui.button("Save").clicked() {
+        if ui.button(ff_i18n::t("theme-editor-btn-save")).clicked() {
             action = ThemeEditorAction::Save;
         }
     });
@@ -272,10 +295,10 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
     // Import / Export affordances (Requirement 20.12 / 24): both invoke the
     // shell commands (the shell owns the file-picker path I/O).
     ui.horizontal(|ui| {
-        if ui.button("Export...").clicked() {
+        if ui.button(ff_i18n::t("theme-editor-btn-export")).clicked() {
             action = ThemeEditorAction::Export;
         }
-        if ui.button("Import...").clicked() {
+        if ui.button(ff_i18n::t("theme-editor-btn-import")).clicked() {
             action = ThemeEditorAction::Import;
         }
     });
@@ -305,7 +328,10 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
                         state.hex_buffers.resize(i + 1, String::new());
                     }
                     ui.horizontal(|ui| {
-                        ui.add_sized([LABEL_WIDTH, 0.0], egui::Label::new(token.label()));
+                        ui.add_sized(
+                            [LABEL_WIDTH, 0.0],
+                            egui::Label::new(ff_i18n::t(token.label_key())),
+                        );
                         // Stable per-row id so Tab focus round-trips reliably and
                         // the LAST row can anchor the shell's last-interior
                         // boundary (B057).
@@ -335,21 +361,24 @@ pub fn render(ui: &mut egui::Ui, state: &mut ThemeEditorState) -> ThemeEditorAct
                                 }
                             }
                             Err(_) => {
-                                ui.colored_label(egui::Color32::RED, "invalid hex");
+                                ui.colored_label(
+                                    egui::Color32::RED,
+                                    ff_i18n::t("theme-editor-hex-invalid"),
+                                );
                             }
                         }
                     });
                 }
             });
     } else {
-        ui.label("Select a theme to edit its colours.");
+        ui.label(ff_i18n::t("theme-editor-empty"));
     }
 
     // --- Contrast advisory (Requirement 20.9) --------------------------
     if !state.advisories.is_empty() {
         ui.separator();
         ui.label(
-            egui::RichText::new("Contrast advisories (below AA):")
+            egui::RichText::new(ff_i18n::t("theme-editor-advisory-heading"))
                 .color(egui::Color32::from_rgb(0xC8, 0x8A, 0x00)),
         );
         for a in &state.advisories {

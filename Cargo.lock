@@ -2610,6 +2610,7 @@ name = "ff-theme-editor"
 version = "0.1.0"
 dependencies = [
  "egui",
+ "ff-i18n",
  "ff-theme",
  "pretty_assertions",
 ]

@@ -8,6 +8,7 @@ description = "Theme Editor Context for FileForgeWorkbench (CR-NR-098 decomposit
 
 [dependencies]
 ff-theme = { path = "../ff-theme" }
+ff-i18n = { path = "../ff-i18n" }
 egui = { workspace = true }
 
 [dev-dependencies]
