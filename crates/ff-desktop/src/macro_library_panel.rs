@@ -131,12 +131,16 @@ pub fn render(ui: &mut egui::Ui, state: &mut MacroLibraryPanelState) -> MacroLib
 
     // Filter bar -- Validates: Requirement 12.4
     ui.horizontal(|ui| {
-        ui.label("Filter:");
+        ui.label(ff_i18n::t("ff-desktop-macro-library-filter"));
         ui.add(egui::TextEdit::singleline(&mut state.filter).id(filter_field_id()));
+        // "x" is a UI clear glyph (mnemonic), not prose -- left unlocalised.
         if ui.small_button("x").clicked() {
             state.filter.clear();
         }
-        if ui.small_button("Refresh").clicked() {
+        if ui
+            .small_button(ff_i18n::t("ff-desktop-macro-library-refresh"))
+            .clicked()
+        {
             // Caller must call state.refresh() with the macro dirs.
             // We signal via a special action variant -- reuse None here;
             // the shell calls refresh() directly when it sees the button.
@@ -150,15 +154,23 @@ pub fn render(ui: &mut egui::Ui, state: &mut MacroLibraryPanelState) -> MacroLib
     let visible: Vec<MacroEntry> = state.filtered_entries().into_iter().cloned().collect();
 
     if visible.is_empty() {
-        ui.label("No macros found. Place .lua files in your macro directories.");
+        ui.label(ff_i18n::t("ff-desktop-macro-library-no-macros"));
         return action;
     }
 
     // Header row
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("Name").monospace().strong());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("ff-desktop-macro-library-header-name"))
+                .monospace()
+                .strong(),
+        );
         ui.add_space(120.0);
-        ui.label(egui::RichText::new("Directory").monospace().strong());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("ff-desktop-macro-library-header-directory"))
+                .monospace()
+                .strong(),
+        );
     });
     ui.separator();
 
@@ -169,13 +181,22 @@ pub fn render(ui: &mut egui::Ui, state: &mut MacroLibraryPanelState) -> MacroLib
                 ui.add_space(8.0);
                 ui.label(egui::RichText::new(&entry.dir).monospace().weak().small());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.small_button("Delete").clicked() {
+                    if ui
+                        .small_button(ff_i18n::t("ff-desktop-macro-library-delete"))
+                        .clicked()
+                    {
                         action = MacroLibraryAction::Delete(entry.path.clone());
                     }
-                    if ui.small_button("Edit").clicked() {
+                    if ui
+                        .small_button(ff_i18n::t("ff-desktop-macro-library-edit"))
+                        .clicked()
+                    {
                         action = MacroLibraryAction::Edit(entry.path.clone());
                     }
-                    if ui.small_button("Run").clicked() {
+                    if ui
+                        .small_button(ff_i18n::t("ff-desktop-macro-library-run"))
+                        .clicked()
+                    {
                         action = MacroLibraryAction::Run(entry.path.clone());
                     }
                 });
