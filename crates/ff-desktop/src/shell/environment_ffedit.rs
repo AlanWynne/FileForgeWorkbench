@@ -278,9 +278,9 @@ impl CommandEnvironment for FfEditEnvironment {
                     shell.scroll_field_text = shell.scroll_amount.display_string();
                     shell.open_error = None;
                 } else {
-                    shell.open_error = Some(format!(
-                        "SCROLL: '{arg}' is not a valid scroll amount \
-                         (PAGE/HALF/CSR/MAX/DATA/n)"
+                    shell.open_error = Some(ff_i18n::t_args(
+                        "ff-desktop-shell-commandline-scroll-invalid",
+                        &ff_i18n::MessageArgs::new().set("arg", arg.to_string()),
                     ));
                 }
                 true

@@ -173,9 +173,9 @@ impl WorkbenchShell {
                         self.scroll_field_text = self.scroll_amount.display_string();
                         self.open_error = None;
                     } else {
-                        self.open_error = Some(format!(
-                            "SCROLL: '{}' is not a valid scroll amount (PAGE/HALF/CSR/MAX/DATA/n)",
-                            text
+                        self.open_error = Some(ff_i18n::t_args(
+                            "ff-desktop-shell-commandline-scroll-invalid",
+                            &ff_i18n::MessageArgs::new().set("arg", text),
                         ));
                     }
                     // Return focus to command field.
