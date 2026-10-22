@@ -26,7 +26,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut FilesPanelState) -> FilesPanelActio
         // === Title bar ======================================================
         ui.horizontal(|ui| {
             ui.label(
-                egui::RichText::new(ff_i18n::t("files-panel-title"))
+                egui::RichText::new(ff_i18n::t("files-panel-title-bar"))
                     .monospace()
                     .strong(),
             );

@@ -23,7 +23,11 @@ files-panel-filter-hint = name{ "\u2026" }
 files-panel-ctx-properties = Properties
 
 # --- Title bar --------------------------------------------------------------
-files-panel-title = FileForge Workbench { "\u2014" } Virtual File Catalogs
+# NOTE: keyed `-title-bar` (NOT `files-panel-title`): `files-panel-title = Files`
+# is a DISTINCT pre-existing baseline key in main.ftl (the panel's short title),
+# with tests asserting it resolves to "Files". Reusing that id would collide in
+# the merged `en` bundle and break bundle build. This is the title-bar banner.
+files-panel-title-bar = FileForge Workbench { "\u2014" } Virtual File Catalogs
 
 # --- Toolbar ----------------------------------------------------------------
 files-panel-btn-new-catalog = New Catalog
