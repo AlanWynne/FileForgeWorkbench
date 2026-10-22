@@ -43,7 +43,7 @@ pub const DESCRIPTION: &str = "A cross-platform enterprise file editor and mainf
 pub fn render(ctx: &egui::Context, open: &mut bool) {
     let mut close = false;
 
-    egui::Window::new("About FileForge Workbench")
+    egui::Window::new(ff_i18n::t("ff-desktop-about-window-title"))
         .collapsible(false)
         .resizable(false)
         .min_width(480.0)
@@ -53,8 +53,11 @@ pub fn render(ctx: &egui::Context, open: &mut bool) {
 
             // ── App name — Req 13.2 ──────────────────────────────────────
             ui.vertical_centered(|ui| {
-                ui.heading("FileForge Workbench");
-                ui.label(format!("Version {VERSION}"));
+                ui.heading(ff_i18n::t("ff-desktop-about-heading"));
+                ui.label(ff_i18n::t_args(
+                    "ff-desktop-about-version",
+                    &ff_i18n::MessageArgs::new().set("version", VERSION),
+                ));
             });
 
             ui.separator();
@@ -78,7 +81,7 @@ pub fn render(ctx: &egui::Context, open: &mut bool) {
 
             // ── Close button — Req 13.8 ──────────────────────────────────
             ui.vertical_centered(|ui| {
-                if ui.button("  Close  ").clicked() {
+                if ui.button(ff_i18n::t("ff-desktop-about-close")).clicked() {
                     close = true;
                 }
             });
