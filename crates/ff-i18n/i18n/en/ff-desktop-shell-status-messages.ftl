@@ -123,3 +123,22 @@ ff-desktop-shell-msg-command-not-defined = Command '{ $id }' is not defined.
 ff-desktop-shell-msg-custom-ws-not-runnable = Custom workspace target '{ $target }' is not yet runnable via a command binding.
 ff-desktop-shell-msg-macro-not-runnable = Macro targets are not yet runnable via a command binding.
 ff-desktop-shell-msg-external-cancelled = External execution cancelled.
+
+# --- mid-sentence verb (Req 9.2 canonical) + HILITE/PFSHOW ---
+# profile-locked is THE Req 9.2 example: the verb "LOCK OFF" sits MID-SENTENCE
+# and would move under translation, so it is a NON-translated { $verb } placeable
+# (NOT baked), while the surrounding prose localises. HILITE / PFSHOW verbs +
+# their keyword lists stay baked English (D1); keyword/arg echoed back are DATA.
+ff-desktop-shell-msg-profile-locked = Profile is locked -- use { $verb } to unlock
+ff-desktop-shell-msg-hilite-unknown-mode = HILITE: unknown mode '{ $keyword }'
+ff-desktop-shell-msg-pfshow-bad-arg = Unknown PFSHOW argument '{ $arg }' -- expected ON, OFF, BASE, SHIFT, CTRL, or ALT.
+
+# === TASK 9.3 -- thiserror DISPLAY-BOUNDARY keys (D2) ===
+# Req 9.3: localise WHERE SHOWN, not at the error source. The ProfileError /
+# ShellError enums are UNCHANGED (ff_i18n is NOT a dependency of the library
+# error crates). Only the fixed-shape variants are keyed here; open-ended
+# runtime/OS e.to_string() errors stay pass-through. The clean user-facing keys
+# DROP the enum's "[profile]" / "[shell]" dev prefixes. key/value/name are DATA.
+ff-desktop-shell-msg-profile-unknown-key = Unknown profile key: { $key }
+ff-desktop-shell-msg-profile-unknown-value = Unknown value for { $key }: { $value }
+ff-desktop-shell-msg-shell-disabled = Shell access is disabled by configuration

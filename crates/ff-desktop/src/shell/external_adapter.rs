@@ -11,7 +11,7 @@
 //! Requirement 19.
 
 use ff_command::ExternalMode;
-use ff_shell::{ExecutionMode, ExternalOutcome, ShellError, ShellMode};
+use ff_shell::{ExecutionMode, ExternalOutcome, ShellMode};
 
 use super::WorkbenchShell;
 
@@ -104,7 +104,9 @@ impl WorkbenchShell {
         match self.shell_engine.config().mode {
             ShellMode::Disabled => {
                 // Req 3.7: refuse with the standard shell-disabled message.
-                self.open_error = Some(ShellError::ShellDisabled.to_string());
+                // D2 / Req 9.3: keyed at the DISPLAY boundary (the ShellError enum
+                // is unchanged; its "[shell]" dev prefix is not shown to the user).
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-shell-disabled"));
             }
             ShellMode::Prompt => {
                 // Req 3.8: confirm before spawning; the dialog is rendered in update().

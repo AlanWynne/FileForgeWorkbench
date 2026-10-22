@@ -395,8 +395,9 @@ impl WorkbenchShell {
                 } else {
                     // Unknown argument (12.13): leave the mode unchanged, surface a
                     // clear non-fatal error.
-                    self.open_error = Some(format!(
-                        "Unknown PFSHOW argument '{arg}' -- expected ON, OFF, BASE, SHIFT, CTRL, or ALT."
+                    self.open_error = Some(ff_i18n::t_args(
+                        "ff-desktop-shell-msg-pfshow-bad-arg",
+                        &ff_i18n::MessageArgs::new().set("arg", arg.to_string()),
                     ));
                 }
             }

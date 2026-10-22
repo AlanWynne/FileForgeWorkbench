@@ -278,9 +278,30 @@ impl WorkbenchShell {
         {
             Ok(()) => self.open_error = None,
             Err(ProfileError::Locked) => {
-                self.open_error = Some("Profile is locked -- use LOCK OFF to unlock".to_string());
+                // Req 9.2 canonical: the verb "LOCK OFF" is a NON-translated
+                // mid-sentence placeable so the prose localises, verb stays English.
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-profile-locked",
+                    &ff_i18n::MessageArgs::new().set("verb", "LOCK OFF"),
+                ));
             }
-            Err(e) => self.open_error = Some(e.to_string()),
+            // D2 / Req 9.3: key the fixed-shape ProfileError variants at the
+            // DISPLAY boundary (the enum is unchanged; its "[profile]" dev prefix
+            // is not shown). key/value are DATA placeables.
+            Err(ProfileError::UnknownKey(key)) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-profile-unknown-key",
+                    &ff_i18n::MessageArgs::new().set("key", key),
+                ));
+            }
+            Err(ProfileError::UnknownValue { key, value }) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-profile-unknown-value",
+                    &ff_i18n::MessageArgs::new()
+                        .set("key", key)
+                        .set("value", value),
+                ));
+            }
         }
     }
 
@@ -301,7 +322,10 @@ impl WorkbenchShell {
                 self.open_error = None;
             }
             None => {
-                self.open_error = Some(format!("HILITE: unknown mode '{keyword}'"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-hilite-unknown-mode",
+                    &ff_i18n::MessageArgs::new().set("keyword", keyword.to_string()),
+                ));
             }
         }
     }
