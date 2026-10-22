@@ -93,7 +93,7 @@ impl WorkbenchShell {
         };
         panel.show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label("Command ===>");
+                ui.label(ff_i18n::t("ff-desktop-shell-commandline-command-prompt"));
                 let cmd_id = egui::Id::new("command_field_input");
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut self.command_text)
@@ -155,7 +155,7 @@ impl WorkbenchShell {
 
                 // ── SCROLL ===> field — Validates: Requirement 19.1, 19.2, 19.3 ──
                 ui.separator();
-                ui.label("SCROLL ===>");
+                ui.label(ff_i18n::t("ff-desktop-shell-commandline-scroll-prompt"));
                 let scroll_id = egui::Id::new("scroll_field_input");
                 let scroll_resp = ui.add(
                     egui::TextEdit::singleline(&mut self.scroll_field_text)
@@ -273,7 +273,7 @@ impl WorkbenchShell {
     ) -> CommandFieldSignal {
         let mut signal = CommandFieldSignal::default();
         ui.horizontal(|ui| {
-            ui.label("Command ===>");
+            ui.label(ff_i18n::t("ff-desktop-shell-commandline-command-prompt"));
             let response = ui.add(
                 egui::TextEdit::singleline(command_text)
                     .id(cmd_id)
