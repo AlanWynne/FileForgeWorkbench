@@ -107,10 +107,16 @@ impl WorkbenchShell {
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 let phase_label = match self.app.phase() {
-                    LifecyclePhase::Running => "RUNNING",
-                    LifecyclePhase::Initializing => "STARTING",
-                    LifecyclePhase::ShuttingDown => "SHUTTING DOWN",
-                    LifecyclePhase::Terminated => "TERMINATED",
+                    LifecyclePhase::Running => ff_i18n::t("ff-desktop-shell-status-phase-running"),
+                    LifecyclePhase::Initializing => {
+                        ff_i18n::t("ff-desktop-shell-status-phase-starting")
+                    }
+                    LifecyclePhase::ShuttingDown => {
+                        ff_i18n::t("ff-desktop-shell-status-phase-shutting-down")
+                    }
+                    LifecyclePhase::Terminated => {
+                        ff_i18n::t("ff-desktop-shell-status-phase-terminated")
+                    }
                 };
                 // Status_Bar segments are non-interactive labels, NOT
                 // SelectableLabel. SelectableLabel uses Sense::click() and is a
@@ -136,8 +142,15 @@ impl WorkbenchShell {
                 let tab = self.tabs.active_tab();
                 let line = tab.cursor.cursor_line();
                 let col = tab.cursor.cursor_column();
-                // Requirement 7.1: format "Ln {line}, Col {col}" (1-based)
-                ui.label(format!("Ln {line}, Col {col}"));
+                // Requirement 7.1: format "Ln {line}, Col {col}" (1-based).
+                // line/col pre-formatted as TEXT placeables (byte-identical, no
+                // Fluent NUMBER() grouping).
+                ui.label(ff_i18n::t_args(
+                    "ff-desktop-shell-status-line-col",
+                    &ff_i18n::MessageArgs::new()
+                        .set("line", line.to_string())
+                        .set("col", col.to_string()),
+                ));
                 ui.separator();
                 // Requirement 7.3: real encoding from document
                 ui.label(tab.encoding_label());
@@ -152,8 +165,11 @@ impl WorkbenchShell {
                         ui.separator();
                     }
                 }
-                // Requirement 7.4: real line count
-                ui.label(format!("{} lines", tab.line_count));
+                // Requirement 7.4: real line count (TEXT placeable, byte-identical)
+                ui.label(ff_i18n::t_args(
+                    "ff-desktop-shell-status-line-count",
+                    &ff_i18n::MessageArgs::new().set("count", tab.line_count.to_string()),
+                ));
                 ui.separator();
                 // Requirement 6.5: modified indicator
                 if tab.is_modified {
@@ -162,7 +178,10 @@ impl WorkbenchShell {
                 }
                 // Req 16.3: CAPS mode indicator
                 if tab.edit_profile.caps.is_on() {
-                    ui.colored_label(self.palette.chrome_style.accent_color(), "CAPS");
+                    ui.colored_label(
+                        self.palette.chrome_style.accent_color(),
+                        ff_i18n::t("ff-desktop-shell-status-caps"),
+                    );
                     ui.separator();
                 }
 
@@ -205,7 +224,10 @@ impl WorkbenchShell {
                                 .strong()
                                 .color(egui::Color32::from_rgb(0xD2, 0x0F, 0x39)),
                             ))
-                            .on_hover_text(format!("Logging degraded: {reason}"));
+                            .on_hover_text(ff_i18n::t_args(
+                                "ff-desktop-shell-status-log-degraded-hover",
+                                &ff_i18n::MessageArgs::new().set("reason", reason.clone()),
+                            ));
                         // Register for automation / headless assertion (B038 test).
                         self.automation.register_str(
                             crate::automation::ids::LOGGING_DEGRADED,

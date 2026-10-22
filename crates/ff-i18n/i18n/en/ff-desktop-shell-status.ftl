@@ -10,12 +10,28 @@
 # verbatim (product name stays English, Req 4.2); "LOG!" is prose (a status
 # mnemonic indicator).
 #
-# NOT localised here: the phase labels (RUNNING/STARTING/SHUTTING DOWN/
-# TERMINATED -- uppercase status mnemonics), the "Ln {} Col {}" / "{} lines" /
-# "CAPS" data+status segments, and the open_error text are swept/decided in
-# area 20 / the Task 9 status pass, not area 14; key-label-bar slot text is DATA
-# (key display names + bound command labels); the degraded-logging tooltip is an
-# argument-bearing status message (Task 9).
+# Area 14 (Task 8) added the banner + LOG! indicator. TASK 9 (this pass) adds the
+# remaining status-bar rows that were deferred: the four lifecycle phase labels,
+# the "Ln/Col" and line-count segments, the CAPS mode indicator, and the
+# argument-bearing degraded-logging hover. Line/col/count are TEXT placeables
+# (pre-formatted in Rust, no Fluent NUMBER()) to stay byte-identical. The phase
+# labels and CAPS are uppercase status-mnemonic PROSE (translatable, Req 4.1).
+# Still NOT localised: key-label-bar slot text is DATA (key display names + bound
+# command labels); session-start/profile/encoding/zoom segments are DATA owned
+# elsewhere; the modified-dot glyph is a UI icon.
 
 ff-desktop-shell-status-banner = FileForge Workbench v0.1.0
 ff-desktop-shell-status-log-indicator = LOG!
+
+# --- Task 9: lifecycle phase labels (LifecyclePhase match) ---
+ff-desktop-shell-status-phase-running = RUNNING
+ff-desktop-shell-status-phase-starting = STARTING
+ff-desktop-shell-status-phase-shutting-down = SHUTTING DOWN
+ff-desktop-shell-status-phase-terminated = TERMINATED
+
+# --- Task 9: cursor position / line count / CAPS / degraded hover ---
+# The degraded-logging reason is a DATA placeable (built by logging_degradation_reason).
+ff-desktop-shell-status-line-col = Ln { $line }, Col { $col }
+ff-desktop-shell-status-line-count = { $count } lines
+ff-desktop-shell-status-caps = CAPS
+ff-desktop-shell-status-log-degraded-hover = Logging degraded: { $reason }
