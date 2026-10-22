@@ -12,5 +12,6 @@ ff-context-menu = { path = "../ff-context-menu" }
 ff-file-tree = { path = "../ff-file-tree" }
 ff-theme = { path = "../ff-theme" }
 ff-vfs = { path = "../ff-vfs" }
+ff-i18n = { path = "../ff-i18n" }
 egui = { workspace = true }
 eframe = { workspace = true }

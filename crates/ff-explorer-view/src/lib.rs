@@ -652,45 +652,54 @@ fn context_menu_ui(ui: &mut egui::Ui, row: &VisibleRow) -> Option<ExplorerEffect
     let mut chosen = None;
     // Open: only meaningful for leaf (file/dataset) nodes; containers use
     // expand/collapse instead.
-    if !row.expandable && ui.button("Open").clicked() {
+    if !row.expandable && ui.button(ff_i18n::t("explorer-view-ctx-open")).clicked() {
         chosen = Some(ExplorerEffect::Open(row.id));
         ui.close();
     }
-    if ui.button("Copy").clicked() {
+    if ui.button(ff_i18n::t("explorer-view-ctx-copy")).clicked() {
         // Mark the selection (or this node) for a file copy (Req 21.1).
         chosen = Some(ExplorerEffect::MarkCopy(row.id));
         ui.close();
     }
-    if ui.button("Paste").clicked() {
+    if ui.button(ff_i18n::t("explorer-view-ctx-paste")).clicked() {
         // Paste the file clipboard into this node's directory (Req 21.2/21.3).
         chosen = Some(ExplorerEffect::Paste(row.id));
         ui.close();
     }
-    if ui.button("Copy Full Path").clicked() {
+    if ui
+        .button(ff_i18n::t("explorer-view-ctx-copy-full-path"))
+        .clicked()
+    {
         chosen = Some(ExplorerEffect::CopyPath(row.id));
         ui.close();
     }
-    if ui.button("Reveal in File Manager").clicked() {
+    if ui.button(ff_i18n::t("explorer-view-ctx-reveal")).clicked() {
         chosen = Some(ExplorerEffect::Reveal(row.id));
         ui.close();
     }
     ui.separator();
-    if ui.button("Rename").clicked() {
+    if ui.button(ff_i18n::t("explorer-view-ctx-rename")).clicked() {
         chosen = Some(ExplorerEffect::Rename(row.id));
         ui.close();
     }
-    if ui.button("Delete").clicked() {
+    if ui.button(ff_i18n::t("explorer-view-ctx-delete")).clicked() {
         chosen = Some(ExplorerEffect::Delete(row.id));
         ui.close();
     }
-    if ui.button("New File").clicked() {
+    if ui
+        .button(ff_i18n::t("explorer-view-ctx-new-file"))
+        .clicked()
+    {
         chosen = Some(ExplorerEffect::NewChild {
             anchor: row.id,
             is_dir: false,
         });
         ui.close();
     }
-    if ui.button("New Folder").clicked() {
+    if ui
+        .button(ff_i18n::t("explorer-view-ctx-new-folder"))
+        .clicked()
+    {
         chosen = Some(ExplorerEffect::NewChild {
             anchor: row.id,
             is_dir: true,

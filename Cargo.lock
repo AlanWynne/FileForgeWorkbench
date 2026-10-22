@@ -1953,6 +1953,7 @@ dependencies = [
  "egui",
  "ff-context-menu",
  "ff-file-tree",
+ "ff-i18n",
  "ff-nav-model",
  "ff-theme",
  "ff-vfs",
