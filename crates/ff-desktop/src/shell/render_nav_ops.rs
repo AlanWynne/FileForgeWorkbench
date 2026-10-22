@@ -35,10 +35,17 @@ impl WorkbenchShell {
                 resp.request_focus();
                 let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.horizontal(|ui| {
-                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-create")).clicked() || enter {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-nav-create"))
+                        .clicked()
+                        || enter
+                    {
                         confirm = true;
                     }
-                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-cancel")).clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-nav-cancel"))
+                        .clicked()
+                    {
                         still_open = false;
                     }
                 });
@@ -197,10 +204,16 @@ impl WorkbenchShell {
                     &ff_i18n::MessageArgs::new().set("label", label.clone()),
                 ));
                 ui.horizontal(|ui| {
-                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-delete-title")).clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-nav-delete-title"))
+                        .clicked()
+                    {
                         decision = Some(true);
                     }
-                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-cancel")).clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-nav-cancel"))
+                        .clicked()
+                    {
                         decision = Some(false);
                     }
                 });
@@ -274,10 +287,17 @@ impl WorkbenchShell {
                 resp.request_focus();
                 let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.horizontal(|ui| {
-                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-rename-title")).clicked() || enter {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-nav-rename-title"))
+                        .clicked()
+                        || enter
+                    {
                         confirm = true;
                     }
-                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-cancel")).clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-nav-cancel"))
+                        .clicked()
+                    {
                         still_open = false;
                     }
                 });
