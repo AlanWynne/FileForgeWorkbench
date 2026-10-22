@@ -50,11 +50,14 @@ impl WorkbenchShell {
                 let _ = self.dispatch.execute_command("file.open", p);
             }
             A::Run(_path) => {
-                self.open_error = Some("Lua execution not yet available".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-lua-not-available"));
             }
             A::Delete(path) => {
                 if let Err(e) = std::fs::remove_file(&path) {
-                    self.open_error = Some(format!("Delete failed: {e}"));
+                    self.open_error = Some(ff_i18n::t_args(
+                        "ff-desktop-shell-msg-delete-failed",
+                        &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                    ));
                 } else {
                     let dirs = self.macro_dirs();
                     self.macro_library_panel.refresh(&dirs);
@@ -109,13 +112,18 @@ impl WorkbenchShell {
                         &unsaved,
                     ) {
                         Ok((summary, _conflicts)) => {
-                            self.open_error = Some(format!(
-                                "Replaced {} occurrence(s) in {} file(s)",
-                                summary.replacements, summary.files_modified
+                            self.open_error = Some(ff_i18n::t_args(
+                                "ff-desktop-shell-msg-replace-summary",
+                                &ff_i18n::MessageArgs::new()
+                                    .set("count", summary.replacements.to_string())
+                                    .set("files", summary.files_modified.to_string()),
                             ));
                         }
                         Err(e) => {
-                            self.open_error = Some(format!("Replace failed: {e}"));
+                            self.open_error = Some(ff_i18n::t_args(
+                                "ff-desktop-shell-msg-replace-failed",
+                                &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                            ));
                         }
                     }
                 }

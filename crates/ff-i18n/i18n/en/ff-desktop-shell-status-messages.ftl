@@ -46,3 +46,10 @@ ff-desktop-shell-msg-restore-failed = Could not restore: { $error }
 ff-desktop-shell-msg-theme-mode-save-failed = Theme changed to { $mode } for this session, but could not be saved: { $error }
 ff-desktop-shell-msg-theme-name-save-failed = Theme '{ $name }' applied for this session, but could not be saved: { $error }
 ff-desktop-shell-msg-theme-load-failed = Theme '{ $name }' could not be loaded
+
+# --- Macro library / search apply (actions.rs) ---
+# "Delete failed: { $error }" reuses ff-desktop-shell-msg-delete-failed (identical
+# text, shared with render_nav_ops). Replace counts are TEXT placeables.
+ff-desktop-shell-msg-lua-not-available = Lua execution not yet available
+ff-desktop-shell-msg-replace-summary = Replaced { $count } occurrence(s) in { $files } file(s)
+ff-desktop-shell-msg-replace-failed = Replace failed: { $error }
