@@ -34,7 +34,7 @@ pub struct AllocParams {
 pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
     // Dataset name required
     if form.dataset_name.trim().is_empty() {
-        return Err("Dataset Name is required.".to_string());
+        return Err(ff_i18n::t("dataset-alloc-err-name-required"));
     }
 
     // LRECL: integer, 1-32760
@@ -42,9 +42,12 @@ pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
         .lrecl
         .trim()
         .parse()
-        .map_err(|_| "LRECL must be a positive integer.".to_string())?;
+        .map_err(|_| ff_i18n::t("dataset-alloc-err-lrecl-integer"))?;
     if lrecl == 0 || lrecl > 32760 {
-        return Err(format!("LRECL must be between 1 and 32760 (got {lrecl})."));
+        return Err(ff_i18n::t_args(
+            "dataset-alloc-err-lrecl-range",
+            &ff_i18n::MessageArgs::new().set_number("lrecl", lrecl as f64),
+        ));
     }
 
     // BLKSIZE: 0 = system-determined (accepted as-is); otherwise must be >= LRECL
@@ -52,10 +55,13 @@ pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
         .blksize
         .trim()
         .parse()
-        .map_err(|_| "Block Size must be a non-negative integer.".to_string())?;
+        .map_err(|_| ff_i18n::t("dataset-alloc-err-blksize-integer"))?;
     if blksize != 0 && blksize < lrecl {
-        return Err(format!(
-            "Block Size ({blksize}) must be >= LRECL ({lrecl}), or 0 for system-determined."
+        return Err(ff_i18n::t_args(
+            "dataset-alloc-err-blksize-range",
+            &ff_i18n::MessageArgs::new()
+                .set_number("blksize", blksize as f64)
+                .set_number("lrecl", lrecl as f64),
         ));
     }
 
@@ -66,7 +72,7 @@ pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
                 .dir_blocks
                 .trim()
                 .parse()
-                .map_err(|_| "Directory Blocks must be a positive integer.".to_string())?;
+                .map_err(|_| ff_i18n::t("dataset-alloc-err-dir-blocks-integer"))?;
             Some(db)
         }
         _ => None,
@@ -79,10 +85,11 @@ pub fn validate(form: &AllocDatasetForm) -> Result<AllocParams, String> {
                 .gdg_limit
                 .trim()
                 .parse()
-                .map_err(|_| "GDG Limit must be an integer between 1 and 255.".to_string())?;
+                .map_err(|_| ff_i18n::t("dataset-alloc-err-gdg-limit-integer"))?;
             if limit == 0 || limit > 255 {
-                return Err(format!(
-                    "GDG Limit must be between 1 and 255 (got {limit})."
+                return Err(ff_i18n::t_args(
+                    "dataset-alloc-err-gdg-limit-range",
+                    &ff_i18n::MessageArgs::new().set_number("limit", limit as f64),
                 ));
             }
             Some(limit)
@@ -125,9 +132,9 @@ pub fn validate_for_catalog(
     let params = validate(form)?;
     let upper = params.dataset_name.to_uppercase();
     if existing_names.iter().any(|n| n.to_uppercase() == upper) {
-        return Err(format!(
-            "Dataset '{}' already exists in this catalog.",
-            upper
+        return Err(ff_i18n::t_args(
+            "dataset-alloc-err-duplicate",
+            &ff_i18n::MessageArgs::new().set("name", upper.clone()),
         ));
     }
     Ok(params)

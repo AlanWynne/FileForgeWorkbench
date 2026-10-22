@@ -1748,6 +1748,7 @@ name = "ff-dataset-alloc-dialog"
 version = "0.1.0"
 dependencies = [
  "egui",
+ "ff-i18n",
  "pretty_assertions",
 ]
 

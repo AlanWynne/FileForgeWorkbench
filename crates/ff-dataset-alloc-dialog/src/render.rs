@@ -20,7 +20,7 @@ use crate::validate::validate;
 pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome {
     let mut outcome = AllocOutcome::Open;
 
-    egui::Window::new("Allocate Dataset")
+    egui::Window::new(ff_i18n::t("dataset-alloc-title"))
         .collapsible(false)
         .resizable(false)
         .min_width(460.0)
@@ -30,13 +30,13 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
 
             // === Dataset Name ===================================================
             ui.horizontal(|ui| {
-                ui.label("Dataset Name:      ");
+                ui.label(ff_i18n::t("dataset-alloc-label-name"));
                 ui.text_edit_singleline(&mut form.dataset_name);
             });
 
             // === DSORG selector =================================================
             ui.horizontal(|ui| {
-                ui.label("Dataset Org (DSORG):");
+                ui.label(ff_i18n::t("dataset-alloc-label-dsorg"));
                 for dsorg in [Dsorg::Ps, Dsorg::Po, Dsorg::Pdse, Dsorg::Gdg] {
                     ui.selectable_value(&mut form.dsorg, dsorg, dsorg.label());
                 }
@@ -44,7 +44,7 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
 
             // === RECFM selector =================================================
             ui.horizontal(|ui| {
-                ui.label("Record Format:     ");
+                ui.label(ff_i18n::t("dataset-alloc-label-recfm"));
                 for recfm in [Recfm::Fb, Recfm::F, Recfm::Vb, Recfm::V, Recfm::U] {
                     ui.selectable_value(&mut form.recfm, recfm, recfm.label());
                 }
@@ -52,13 +52,13 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
 
             // === LRECL / BLKSIZE ================================================
             ui.horizontal(|ui| {
-                ui.label("LRECL:             ");
+                ui.label(ff_i18n::t("dataset-alloc-label-lrecl"));
                 ui.add(
                     egui::TextEdit::singleline(&mut form.lrecl)
                         .desired_width(60.0)
                         .font(egui::TextStyle::Monospace),
                 );
-                ui.label("  Block Size:");
+                ui.label(ff_i18n::t("dataset-alloc-label-blksize"));
                 ui.add(
                     egui::TextEdit::singleline(&mut form.blksize)
                         .desired_width(80.0)
@@ -70,7 +70,7 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
             match form.dsorg {
                 Dsorg::Po | Dsorg::Pdse => {
                     ui.horizontal(|ui| {
-                        ui.label("Directory Blocks:  ");
+                        ui.label(ff_i18n::t("dataset-alloc-label-dir-blocks"));
                         ui.add(
                             egui::TextEdit::singleline(&mut form.dir_blocks)
                                 .desired_width(60.0)
@@ -80,21 +80,21 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
                 }
                 Dsorg::Gdg => {
                     ui.horizontal(|ui| {
-                        ui.label("GDG Limit (1-255): ");
+                        ui.label(ff_i18n::t("dataset-alloc-label-gdg-limit"));
                         ui.add(
                             egui::TextEdit::singleline(&mut form.gdg_limit)
                                 .desired_width(60.0)
                                 .font(egui::TextStyle::Monospace),
                         );
                     });
-                    ui.checkbox(&mut form.scratch, "Scratch on roll-off");
+                    ui.checkbox(&mut form.scratch, ff_i18n::t("dataset-alloc-chk-scratch"));
                 }
                 _ => {}
             }
 
             // === Description ====================================================
             ui.horizontal(|ui| {
-                ui.label("Description:       ");
+                ui.label(ff_i18n::t("dataset-alloc-label-description"));
                 ui.text_edit_singleline(&mut form.description);
             });
 
@@ -107,7 +107,10 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
 
             // === Buttons ========================================================
             ui.horizontal(|ui| {
-                if ui.button("Allocate").clicked() {
+                if ui
+                    .button(ff_i18n::t("dataset-alloc-btn-allocate"))
+                    .clicked()
+                {
                     match validate(form) {
                         Ok(_) => {
                             form.error = None;
@@ -118,7 +121,7 @@ pub fn render(ctx: &egui::Context, form: &mut AllocDatasetForm) -> AllocOutcome 
                         }
                     }
                 }
-                if ui.button("Cancel").clicked() {
+                if ui.button(ff_i18n::t("dataset-alloc-btn-cancel")).clicked() {
                     outcome = AllocOutcome::Cancelled;
                 }
             });
