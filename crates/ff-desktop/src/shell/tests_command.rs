@@ -80,6 +80,9 @@ fn file_open_dialog_pending_open_is_set_when_path_returned() {
     // is available, it must be written into pending_open as `(path, owning_env)`.
     // The native dialog opens a host file, so owning_env is None (host FS
     // default, CR-CH-053 Task 19 Req 15.3).
+    // Mirrors the real pending_open shape; the nested type is inherent to the
+    // simulated contract, so the clippy type-complexity lint is allowed here.
+    #[allow(clippy::type_complexity)]
     let pending: Arc<Mutex<Option<(String, Option<String>)>>> = Arc::new(Mutex::new(None));
     let path = "/tmp/test_file.txt".to_string();
 
@@ -93,6 +96,7 @@ fn file_open_dialog_pending_open_is_set_when_path_returned() {
 /// Validates: Requirement S.1 -- file_open_dialog leaves pending_open None when dialog is cancelled.
 #[test]
 fn file_open_dialog_pending_open_unchanged_when_cancelled() {
+    #[allow(clippy::type_complexity)]
     let pending: Arc<Mutex<Option<(String, Option<String>)>>> = Arc::new(Mutex::new(None));
 
     // Simulate cancelled dialog -- closure does nothing

@@ -31,6 +31,21 @@
 //! `i18n/<locale>/aliases/<environment>.toml`) is DEFERRED to Phase 3; Task 4
 //! does NOT author real fr/de catalogue DATA.
 //!
+//! ## Plugin seam (localization Requirement 8, Task 9.4)
+//!
+//! Req 8 needs NO plugin-specific mechanism and NO production rewrite:
+//! - Req 8.1 (plugin-authored UI): the Catalogue_Lookup_Seam `ff_i18n::t` /
+//!   `ff_i18n::t_args` is a GUI-free PUBLIC crate API (`crates/ff-i18n`), so a
+//!   plugin crate calls it DIRECTLY to localise its own user-facing text through
+//!   the SAME seam as the core -- there is no plugin-specific catalogue API.
+//! - Req 8.2 (plugin-authored command environment, CR-CH-053 Req 9.4): a plugin
+//!   environment is just another NAME in the per-environment `AliasCatalogue`;
+//!   its per-locale rows load into the plugin's own `AliasTable` via the
+//!   IDENTICAL `load_into` / `apply_locale_overlay` seam below. Proven by
+//!   `plugin_authored_environment_localises_through_the_same_alias_seam`.
+//! - Req 8.3 (no new capability): supplying catalogue DATA and calling the lookup
+//!   seam are the only localization affordances; this adds no plugin permission.
+//!
 //! See docs/specs/localization/{requirements,design}.md.
 
 // Task 4 ships the loader MECHANISM; its runtime consumer (the locale-switch
@@ -408,5 +423,45 @@ mod tests {
             .expect("no FFEDIT rows -> base unchanged");
         assert_eq!(ffedit.canonical_verb("X"), Some("EXCLUDE"));
         assert_eq!(ffedit.canonical_verb("CHERCHER"), None);
+    }
+
+    /// Validates: localization Requirement 8.2 (Task 9.4 -- plugin seam) -- a
+    /// PLUGIN-authored command environment (CR-CH-053 Req 9.4) localises its verb
+    /// aliases through the SAME per-environment Alias_Catalogue model as the core,
+    /// with NO plugin-specific mechanism: a plugin environment is just another
+    /// NAME in the catalogue, and its per-locale rows load into its own
+    /// `AliasTable` via the identical `load_into` / `apply_locale_overlay` seam.
+    /// The localized plugin surface resolves to the same canonical verb a bare
+    /// English plugin verb yields, so a plugin's dispatch stays behaviour-neutral
+    /// under a locale change (Req 5.1, 8.2).
+    #[test]
+    fn plugin_authored_environment_localises_through_the_same_alias_seam() {
+        // A plugin environment is identified only by its NAME in the catalogue --
+        // there is no separate plugin alias API. The plugin's English base table
+        // carries its canonical verbs (here a fictional ACME plugin's DEPLOY verb,
+        // modelled on an empty identity base so no core verbs are involved).
+        let mut plugin_table = AliasTable::empty_for_test();
+        plugin_table
+            .apply_locale_overlay("FFPLUGIN_ACME", &[row("DEPLOY", "DEPLOY")])
+            .expect("plugin English identity row applies");
+
+        // A per-locale catalogue carries the plugin environment's localized
+        // surface (fr: DEPLOYER -> DEPLOY) under the plugin's environment name,
+        // loaded through the SAME catalogue loader the core environments use.
+        let catalogue = AliasCatalogue::new()
+            .with_environment("FFPLUGIN_ACME", vec![row("DEPLOYER", "DEPLOY")]);
+        catalogue
+            .load_into("FFPLUGIN_ACME", &mut plugin_table)
+            .expect("plugin environment overlay loads via the identical seam");
+
+        // Both the localized surface and the English canonical resolve to the
+        // SAME canonical verb -> behaviour-neutral dispatch for the plugin.
+        assert_eq!(plugin_table.canonical_verb("DEPLOYER"), Some("DEPLOY"));
+        assert_eq!(plugin_table.canonical_verb("DEPLOY"), Some("DEPLOY"));
+        assert_eq!(
+            plugin_table.canonical_verb("DEPLOYER"),
+            plugin_table.canonical_verb("DEPLOY"),
+            "a plugin's localized surface resolves to the same canonical as its English verb"
+        );
     }
 }
