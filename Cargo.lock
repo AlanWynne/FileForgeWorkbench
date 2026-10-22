@@ -2029,6 +2029,7 @@ dependencies = [
  "ff-catalog-registry",
  "ff-dataset-alloc-dialog",
  "ff-dscatalog",
+ "ff-i18n",
  "pretty_assertions",
  "tempfile",
 ]

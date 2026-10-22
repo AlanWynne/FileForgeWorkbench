@@ -11,6 +11,7 @@ ff-catalog-registry = { path = "../ff-catalog-registry" }
 ff-catalog-dialog = { path = "../ff-catalog-dialog" }
 ff-dataset-alloc-dialog = { path = "../ff-dataset-alloc-dialog" }
 ff-dscatalog = { path = "../ff-dscatalog" }
+ff-i18n = { path = "../ff-i18n" }
 egui = { workspace = true }
 
 [dev-dependencies]

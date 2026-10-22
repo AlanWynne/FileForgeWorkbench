@@ -26,7 +26,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut FilesPanelState) -> FilesPanelActio
         // === Title bar ======================================================
         ui.horizontal(|ui| {
             ui.label(
-                egui::RichText::new("FileForge Workbench \u{2014} Virtual File Catalogs")
+                egui::RichText::new(ff_i18n::t("files-panel-title"))
                     .monospace()
                     .strong(),
             );
@@ -35,19 +35,23 @@ pub fn render(ui: &mut egui::Ui, state: &mut FilesPanelState) -> FilesPanelActio
 
         // === Toolbar -- Req 1.3 =============================================
         ui.horizontal(|ui| {
-            if ui.button("New Catalog").clicked() {
+            if ui
+                .button(ff_i18n::t("files-panel-btn-new-catalog"))
+                .clicked()
+            {
                 action = FilesPanelAction::NewCatalog;
             }
             ui.separator();
-            ui.button("Open").clicked();
-            ui.button("Refresh").clicked();
-            ui.button("Properties").clicked();
+            ui.button(ff_i18n::t("files-panel-btn-open")).clicked();
+            ui.button(ff_i18n::t("files-panel-btn-refresh")).clicked();
+            ui.button(ff_i18n::t("files-panel-btn-properties"))
+                .clicked();
             ui.separator();
-            ui.label("Filter:");
+            ui.label(ff_i18n::t("files-panel-filter-label"));
             ui.add(
                 egui::TextEdit::singleline(&mut state.filter)
                     .desired_width(160.0)
-                    .hint_text("name\u{2026}")
+                    .hint_text(ff_i18n::t("files-panel-filter-hint"))
                     .font(egui::TextStyle::Monospace),
             );
         });
@@ -55,7 +59,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut FilesPanelState) -> FilesPanelActio
 
         // === Command field -- Req 1.6, 1.7 ==================================
         ui.horizontal(|ui| {
-            ui.label("Command ===>");
+            ui.label(ff_i18n::t("files-panel-command-label"));
             let resp = ui.add(
                 egui::TextEdit::singleline(&mut state.command)
                     .id(egui::Id::new("files_panel_cmd"))
@@ -171,9 +175,9 @@ fn render_catalog_tree(ui: &mut egui::Ui, state: &mut FilesPanelState) -> Option
     let mf_entries = state.registry.list_by_type(CatalogType::Mainframe);
     let px_entries = state.registry.list_by_type(CatalogType::Posix);
     let nat_entries = state.registry.list_by_type(CatalogType::Native);
-    let native_header = format!(
-        "Native Catalogs ({})",
-        FilesPanelState::native_platform_label()
+    let native_header = ff_i18n::t_args(
+        "files-panel-section-native",
+        &ff_i18n::MessageArgs::new().set("platform", FilesPanelState::native_platform_label()),
     );
     let focused = state.focused_catalog.clone();
 
@@ -185,7 +189,7 @@ fn render_catalog_tree(ui: &mut egui::Ui, state: &mut FilesPanelState) -> Option
         };
         render_section(
             ui,
-            egui::RichText::new("Mainframe Catalogs")
+            egui::RichText::new(ff_i18n::t("files-panel-section-mainframe"))
                 .monospace()
                 .strong(),
             mf_open,
@@ -195,7 +199,9 @@ fn render_catalog_tree(ui: &mut egui::Ui, state: &mut FilesPanelState) -> Option
         );
         render_section(
             ui,
-            egui::RichText::new("POSIX Catalogs").monospace().strong(),
+            egui::RichText::new(ff_i18n::t("files-panel-section-posix"))
+                .monospace()
+                .strong(),
             px_open,
             px_entries,
             &filter,
@@ -246,11 +252,9 @@ fn render_section(
                 .collect();
             if visible.is_empty() {
                 ui.label(
-                    egui::RichText::new(
-                        "  No catalogs defined \u{2014} click New Catalog to create one",
-                    )
-                    .monospace()
-                    .weak(),
+                    egui::RichText::new(ff_i18n::t("files-panel-section-empty"))
+                        .monospace()
+                        .weak(),
                 );
             } else {
                 for cat in visible.iter() {
@@ -280,15 +284,24 @@ fn render_section(
                     }
                     // Right-click context menu -- Req 4.1, 4.3, 5.1
                     resp.context_menu(|ui| {
-                        if ui.button("Properties").clicked() {
+                        if ui
+                            .button(ff_i18n::t("files-panel-ctx-properties"))
+                            .clicked()
+                        {
                             *ctx.action = Some(FilesPanelAction::EditCatalog(cat.name.clone()));
                             ui.close();
                         }
-                        if ui.button("Allocate Dataset").clicked() {
+                        if ui
+                            .button(ff_i18n::t("files-panel-ctx-allocate-dataset"))
+                            .clicked()
+                        {
                             *ctx.action = Some(FilesPanelAction::AllocateDataset(cat.name.clone()));
                             ui.close();
                         }
-                        if ui.button("Delete Catalog").clicked() {
+                        if ui
+                            .button(ff_i18n::t("files-panel-ctx-delete-catalog"))
+                            .clicked()
+                        {
                             *ctx.action = Some(FilesPanelAction::DeleteCatalog(cat.name.clone()));
                             ui.close();
                         }

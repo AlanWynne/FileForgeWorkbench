@@ -22,7 +22,7 @@ pub(crate) fn render_content_area(
 
     if state.content.selected_catalog.is_none() {
         ui.label(
-            egui::RichText::new("Select a catalog to browse its contents.")
+            egui::RichText::new(ff_i18n::t("files-panel-content-no-catalog"))
                 .monospace()
                 .weak(),
         );
@@ -88,11 +88,11 @@ pub(crate) fn render_content_area(
 
     // === Content filter -- Req 10.6 =========================================
     ui.horizontal(|ui| {
-        ui.label("Filter:");
+        ui.label(ff_i18n::t("files-panel-filter-label"));
         ui.add(
             egui::TextEdit::singleline(&mut state.content.content_filter)
                 .desired_width(200.0)
-                .hint_text("name\u{2026}")
+                .hint_text(ff_i18n::t("files-panel-filter-hint"))
                 .font(egui::TextStyle::Monospace),
         );
     });
@@ -124,10 +124,30 @@ pub(crate) fn render_content_area(
                     true
                 }
         };
-        col_btn(ui, "Name", SortColumn::Name, &mut state.content);
-        col_btn(ui, "Type", SortColumn::Type, &mut state.content);
-        col_btn(ui, "Size", SortColumn::Size, &mut state.content);
-        col_btn(ui, "Modified", SortColumn::Modified, &mut state.content);
+        col_btn(
+            ui,
+            &ff_i18n::t("files-panel-col-name"),
+            SortColumn::Name,
+            &mut state.content,
+        );
+        col_btn(
+            ui,
+            &ff_i18n::t("files-panel-col-type"),
+            SortColumn::Type,
+            &mut state.content,
+        );
+        col_btn(
+            ui,
+            &ff_i18n::t("files-panel-col-size"),
+            SortColumn::Size,
+            &mut state.content,
+        );
+        col_btn(
+            ui,
+            &ff_i18n::t("files-panel-col-modified"),
+            SortColumn::Modified,
+            &mut state.content,
+        );
     });
     ui.separator();
 
@@ -141,7 +161,7 @@ pub(crate) fn render_content_area(
 
     if visible.is_empty() {
         ui.label(
-            egui::RichText::new("No entries to display.")
+            egui::RichText::new(ff_i18n::t("files-panel-content-no-entries"))
                 .monospace()
                 .weak(),
         );
