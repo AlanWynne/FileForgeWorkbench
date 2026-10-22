@@ -147,8 +147,10 @@ impl WorkbenchShell {
                     active_file,
                 ) {
                     Ok(_handle) => {
-                        self.open_error =
-                            Some(format!("Started '{}' (detached).", pending.program));
+                        self.open_error = Some(ff_i18n::t_args(
+                            "ff-desktop-shell-msg-external-started-detached",
+                            &ff_i18n::MessageArgs::new().set("program", pending.program.clone()),
+                        ));
                     }
                     Err(e) => {
                         // Req 3.9: launch failure reported; no Workspace opened.
@@ -173,9 +175,11 @@ impl WorkbenchShell {
                             .code
                             .map(|c| c.to_string())
                             .unwrap_or_else(|| "signal".to_string());
-                        self.open_error = Some(format!(
-                            "'{}' finished (exit {}). See the Output panel.",
-                            pending.program, code
+                        self.open_error = Some(ff_i18n::t_args(
+                            "ff-desktop-shell-msg-external-finished",
+                            &ff_i18n::MessageArgs::new()
+                                .set("program", pending.program.clone())
+                                .set("code", code),
                         ));
                     }
                     Ok(ExternalOutcome::Detached(_)) => {

@@ -53,3 +53,13 @@ ff-desktop-shell-msg-theme-load-failed = Theme '{ $name }' could not be loaded
 ff-desktop-shell-msg-lua-not-available = Lua execution not yet available
 ff-desktop-shell-msg-replace-summary = Replaced { $count } occurrence(s) in { $files } file(s)
 ff-desktop-shell-msg-replace-failed = Replace failed: { $error }
+
+# --- External program execution (external_adapter.rs) ---
+# program name + exit code are DATA placeables. The ShellDisabled display-boundary
+# key and the open-ended spawn e.to_string() errors are handled in step 11 / left
+# per D2 (not here).
+ff-desktop-shell-msg-external-started-detached = Started '{ $program }' (detached).
+ff-desktop-shell-msg-external-finished = '{ $program }' finished (exit { $code }). See the Output panel.
+
+# --- Startup workspace restore (update_startup.rs) ---
+ff-desktop-shell-msg-workspace-not-found = Workspace '{ $path }' not found -- starting without workspace

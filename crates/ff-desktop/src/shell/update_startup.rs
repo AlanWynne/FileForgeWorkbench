@@ -115,9 +115,9 @@ impl WorkbenchShell {
                     if ws_path.exists() {
                         self.open_workspace(&ws_path);
                     } else {
-                        self.open_error = Some(format!(
-                            "Workspace '{}' not found -- starting without workspace",
-                            ws_path.display()
+                        self.open_error = Some(ff_i18n::t_args(
+                            "ff-desktop-shell-msg-workspace-not-found",
+                            &ff_i18n::MessageArgs::new().set("path", ws_path.display().to_string()),
                         ));
                     }
                 }
