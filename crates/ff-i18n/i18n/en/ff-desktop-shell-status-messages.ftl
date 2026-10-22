@@ -63,3 +63,17 @@ ff-desktop-shell-msg-external-finished = '{ $program }' finished (exit { $code }
 
 # --- Startup workspace restore (update_startup.rs) ---
 ff-desktop-shell-msg-workspace-not-found = Workspace '{ $path }' not found -- starting without workspace
+
+# --- SCRM capture/snapshot command status (commands_scrm.rs) ---
+# Only the clearly-UF command-status own-literals here. The SCRM ENGINE report
+# returns (scrm.start/stop/status/list/purge and the handle_capture_export/
+# evidence/save/load helper report strings, e.g. "Collection exported to ...",
+# "CAPTURE LOAD failed: ...") are DEFERRED per decision D3 (SCRM report text) and
+# left as source strings this gate. CAPTURE / CAPTURE SCREEN verbs baked in (D1);
+# seq, subcommand, and format label are DATA placeables.
+ff-desktop-shell-msg-scrm-captured-screen = Captured screen { $seq }.
+ff-desktop-shell-msg-scrm-screen-not-capturable = CAPTURE SCREEN: the active workspace cannot be captured yet.
+ff-desktop-shell-msg-scrm-unknown-subcommand = CAPTURE: unknown subcommand '{ $subcommand }'.
+ff-desktop-shell-msg-scrm-no-collection-replay = No screen collection to replay.
+ff-desktop-shell-msg-scrm-snapshot-copied = Snapshot copied to clipboard ({ $format }).
+ff-desktop-shell-msg-scrm-snapshot-no-clipboard = Snapshot rendered ({ $format }) but the clipboard was unavailable.

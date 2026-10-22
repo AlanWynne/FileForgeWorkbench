@@ -81,9 +81,12 @@ impl WorkbenchShell {
                 Some(model) => {
                     let name = self.active_screen_name();
                     let seq = self.scrm.capture(model, name);
-                    format!("Captured screen {seq}.")
+                    ff_i18n::t_args(
+                        "ff-desktop-shell-msg-scrm-captured-screen",
+                        &ff_i18n::MessageArgs::new().set("seq", seq.to_string()),
+                    )
                 }
-                None => "CAPTURE SCREEN: the active workspace cannot be captured yet.".to_string(),
+                None => ff_i18n::t("ff-desktop-shell-msg-scrm-screen-not-capturable"),
             },
             "STATUS" => self.scrm.status(),
             "LIST" => self.scrm.list(),
@@ -97,7 +100,10 @@ impl WorkbenchShell {
             "SAVE" => self.handle_capture_save(arg),
             "LOAD" | "OPEN" => self.handle_capture_load(arg),
             "" => self.scrm.status(),
-            other => format!("CAPTURE: unknown subcommand '{other}'."),
+            other => ff_i18n::t_args(
+                "ff-desktop-shell-msg-scrm-unknown-subcommand",
+                &ff_i18n::MessageArgs::new().set("subcommand", other.to_string()),
+            ),
         };
         self.open_error = Some(msg);
     }
@@ -284,7 +290,7 @@ impl WorkbenchShell {
     /// Validates: screen-snapshot-scrm Requirement 10.1, 16.1.
     pub(super) fn open_scrm_viewer(&mut self) {
         if !self.scrm.is_active() {
-            self.open_error = Some("No screen collection to replay.".to_string());
+            self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-scrm-no-collection-replay"));
             return;
         }
         self.nav_to_kind(ff_session::session_state::WorkspaceKind::ScrmViewer);
@@ -323,9 +329,15 @@ impl WorkbenchShell {
                 // Req 6.2: confirm to the user, including the format.
                 let fmt = snapshot_format_label(format);
                 self.open_error = Some(if copied {
-                    format!("Snapshot copied to clipboard ({fmt}).")
+                    ff_i18n::t_args(
+                        "ff-desktop-shell-msg-scrm-snapshot-copied",
+                        &ff_i18n::MessageArgs::new().set("format", fmt),
+                    )
                 } else {
-                    format!("Snapshot rendered ({fmt}) but the clipboard was unavailable.")
+                    ff_i18n::t_args(
+                        "ff-desktop-shell-msg-scrm-snapshot-no-clipboard",
+                        &ff_i18n::MessageArgs::new().set("format", fmt),
+                    )
                 });
             }
             // Req 6.3 / 2.3: unknown format or not-capturable Context.
