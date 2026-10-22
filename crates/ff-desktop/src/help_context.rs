@@ -79,12 +79,12 @@ impl WorkspaceContext for HelpContextPanel {
     fn render(&mut self, ui: &mut egui::Ui, _services: &mut ShellServices<'_>) -> InteriorFocus {
         // --- Search field (FIRST interior control, stable id) ---------------
         ui.horizontal(|ui| {
-            ui.label("Search:");
+            ui.label(ff_i18n::t("ff-desktop-help-context-search-label"));
             let resp = ui.add(
                 egui::TextEdit::singleline(&mut self.search_text)
                     .id(help_search_field_id())
                     .desired_width(240.0)
-                    .hint_text("type to search help"),
+                    .hint_text(ff_i18n::t("ff-desktop-help-context-search-hint")),
             );
             if resp.changed() {
                 self.model.search(&self.search_text);
@@ -116,7 +116,7 @@ impl WorkspaceContext for HelpContextPanel {
                     // raw Markdown by design (content is data, not code).
                     ui.label(egui::RichText::new(topic.body()).monospace());
                 } else {
-                    ui.label("No help topic is open.");
+                    ui.label(ff_i18n::t("ff-desktop-help-context-no-topic"));
                 }
             });
 
