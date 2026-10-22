@@ -38,11 +38,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
     // --- Kind selector (FIRST interior control) --------------------------
     state.first_interior_id = None;
     ui.horizontal(|ui| {
-        ui.label("Kind:");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-kind-label"));
         let current = state
             .selected
             .clone()
-            .unwrap_or_else(|| "(select)".to_string());
+            .unwrap_or_else(|| ff_i18n::t("ff-desktop-kinds-editor-kind-select"));
         let combo = egui::ComboBox::from_id_salt("kinds_editor_select")
             .selected_text(current)
             .show_ui(ui, |ui| {
@@ -65,14 +65,14 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
     // --- "New Kind modelled on <base>" -----------------------------------
     ui.separator();
     ui.horizontal(|ui| {
-        ui.label("New Kind:");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-new-label"));
         ui.add(
             egui::TextEdit::singleline(&mut state.new_name)
                 .id(egui::Id::new("kinds_editor_new_name"))
                 .desired_width(160.0)
-                .hint_text("name"),
+                .hint_text(ff_i18n::t("ff-desktop-kinds-editor-new-name-hint")),
         );
-        ui.label("modelled on");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-modelled-on-inline"));
         egui::ComboBox::from_id_salt("kinds_editor_new_base")
             .selected_text(state.new_base.stable_name())
             .show_ui(ui, |ui| {
@@ -80,7 +80,10 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
                     ui.selectable_value(&mut state.new_base, base, base.stable_name());
                 }
             });
-        if ui.button("Create").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-kinds-editor-create"))
+            .clicked()
+        {
             let name = state.new_name.trim().to_string();
             if !name.is_empty() {
                 action = KindsEditorAction::NewKind {
@@ -94,26 +97,26 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
     // --- Editable form for the selected Kind -----------------------------
     let Some(cfg) = state.working.as_mut() else {
         ui.separator();
-        ui.label("Select a Kind to edit, or create a new one.");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-select-prompt"));
         return action;
     };
 
     ui.separator();
     ui.horizontal(|ui| {
-        ui.label("Modelled on:");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-modelled-on-label"));
         let base_label = match &cfg.modelled_on {
             BaseKind::Builtin(k) => k.stable_name().to_string(),
             BaseKind::External(n) => format!("ext:{n}"),
         };
         ui.label(egui::RichText::new(base_label).monospace());
         ui.label(
-            egui::RichText::new("(create a new Kind to change the base)")
+            egui::RichText::new(ff_i18n::t("ff-desktop-kinds-editor-change-base-hint"))
                 .weak()
                 .small(),
         );
     });
     ui.horizontal(|ui| {
-        ui.label("Title:");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-title-label"));
         ui.add(
             egui::TextEdit::singleline(&mut cfg.title)
                 .id(egui::Id::new("kinds_editor_title"))
@@ -122,11 +125,21 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
     });
     // menu_bar / key_list are Option<String>; edit via a scratch String bound to
     // the option (empty => None).
-    edit_optional(ui, "Menu bar:", "kinds_editor_menu_bar", &mut cfg.menu_bar);
-    edit_optional(ui, "Key list:", "kinds_editor_key_list", &mut cfg.key_list);
+    edit_optional(
+        ui,
+        &ff_i18n::t("ff-desktop-kinds-editor-menu-bar-label"),
+        "kinds_editor_menu_bar",
+        &mut cfg.menu_bar,
+    );
+    edit_optional(
+        ui,
+        &ff_i18n::t("ff-desktop-kinds-editor-key-list-label"),
+        "kinds_editor_key_list",
+        &mut cfg.key_list,
+    );
 
     ui.separator();
-    ui.label(egui::RichText::new("Profile").strong());
+    ui.label(egui::RichText::new(ff_i18n::t("ff-desktop-kinds-editor-profile")).strong());
     let p = &mut cfg.profile;
     let mut caps = p.edit_profile.caps.is_on();
     if ui.checkbox(&mut caps, "CAPS").changed() {
@@ -157,9 +170,9 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
         };
     }
     ui.horizontal(|ui| {
-        ui.label("Tab size:");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-tab-size"));
         ui.add(egui::DragValue::new(&mut p.tab_size).range(1..=16));
-        ui.label("Line endings:");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-line-endings"));
         let mut unicode = p.line_end_mode.eq_ignore_ascii_case("unicode");
         if ui.checkbox(&mut unicode, "Unicode").changed() {
             p.line_end_mode = if unicode { "unicode" } else { "default" }.to_string();
@@ -169,7 +182,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
     // the working profile; Save persists it via the same write+reload path.
     ui.horizontal(|ui| {
         use crate::workspace_kind::CommandLinePosition;
-        ui.label("Command line:");
+        ui.label(ff_i18n::t("ff-desktop-kinds-editor-command-line"));
         egui::ComboBox::from_id_salt("kinds_editor_cmdline_pos")
             .selected_text(match p.command_line_position {
                 CommandLinePosition::Top => "Top",
@@ -191,13 +204,16 @@ pub fn render(ui: &mut egui::Ui, state: &mut KindsEditorState) -> KindsEditorAct
 
     ui.separator();
     ui.horizontal(|ui| {
-        let save = ui.add(egui::Button::new("Save").min_size(egui::vec2(60.0, 0.0)));
+        let save = ui.add(
+            egui::Button::new(ff_i18n::t("ff-desktop-kinds-editor-save"))
+                .min_size(egui::vec2(60.0, 0.0)),
+        );
         state.last_interior_id = Some(save.id);
         if save.clicked() {
             action = KindsEditorAction::Save;
         }
         ui.label(
-            egui::RichText::new("Saves to workspace-kinds/<name>.toml")
+            egui::RichText::new(ff_i18n::t("ff-desktop-kinds-editor-saves-to"))
                 .weak()
                 .small(),
         );
@@ -214,7 +230,7 @@ fn edit_optional(ui: &mut egui::Ui, label: &str, id: &str, field: &mut Option<St
             egui::TextEdit::singleline(&mut text)
                 .id(egui::Id::new(id))
                 .desired_width(220.0)
-                .hint_text("(use base default)"),
+                .hint_text(ff_i18n::t("ff-desktop-kinds-editor-optional-hint")),
         );
         if resp.changed() {
             let t = text.trim().to_string();
