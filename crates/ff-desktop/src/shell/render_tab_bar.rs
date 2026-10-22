@@ -150,43 +150,65 @@ impl WorkbenchShell {
                         if close_resp.clicked() {
                             close_idx = Some(i);
                         }
-                        close_resp.on_hover_text("Close tab");
+                        close_resp
+                            .on_hover_text(ff_i18n::t("ff-desktop-shell-tab-bar-close-hover"));
                         // Validates: Requirement 14.15, 14.15a, 14.15b, 14.15c
                         resp.context_menu(|ui| {
                             let tab_count_inner = self.tabs.len();
                             // ── Universal items (all tab kinds) — Req 14.15a ──
-                            if ui.button("Close").clicked() {
+                            if ui
+                                .button(ff_i18n::t("ff-desktop-shell-tab-bar-close"))
+                                .clicked()
+                            {
                                 close_idx = Some(i);
                                 ui.close();
                             }
                             ui.add_enabled_ui(tab_count_inner > 1, |ui| {
-                                if ui.button("Close All BUT This").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-close-all-but"))
+                                    .clicked()
+                                {
                                     close_all_but = Some(i);
                                     ui.close();
                                 }
                             });
                             ui.add_enabled_ui(i > 0, |ui| {
-                                if ui.button("Close All to the Left").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-close-left"))
+                                    .clicked()
+                                {
                                     close_left_of = Some(i);
                                     ui.close();
                                 }
                             });
                             ui.add_enabled_ui(i < tab_count_inner - 1, |ui| {
-                                if ui.button("Close All to the Right").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-close-right"))
+                                    .clicked()
+                                {
                                     close_right_of = Some(i);
                                     ui.close();
                                 }
                             });
-                            if ui.button("Close All Unchanged").clicked() {
+                            if ui
+                                .button(ff_i18n::t("ff-desktop-shell-tab-bar-close-unchanged"))
+                                .clicked()
+                            {
                                 close_unchanged = true;
                                 ui.close();
                             }
                             ui.separator();
-                            if ui.button("Clone to Other Tab").clicked() {
+                            if ui
+                                .button(ff_i18n::t("ff-desktop-shell-tab-bar-clone"))
+                                .clicked()
+                            {
                                 // stub — deferred
                                 ui.close();
                             }
-                            if ui.button("Move to Other View").clicked() {
+                            if ui
+                                .button(ff_i18n::t("ff-desktop-shell-tab-bar-move-other-view"))
+                                .clicked()
+                            {
                                 // Validates: Requirement 18.1, 18.7
                                 if self.detach_split.floating_tabs.len() < 16 {
                                     self.detach_split.detach_pending = Some(i);
@@ -198,14 +220,20 @@ impl WorkbenchShell {
                                 ui.close();
                             }
                             ui.separator();
-                            if ui.button("Pin Tab").clicked() {
+                            if ui
+                                .button(ff_i18n::t("ff-desktop-shell-tab-bar-pin"))
+                                .clicked()
+                            {
                                 // stub — deferred
                                 ui.close();
                             }
 
                             // ── Exit — Req 14.15a, 14.38 (all tab kinds) ─────
                             ui.separator();
-                            if ui.button("Exit").clicked() {
+                            if ui
+                                .button(ff_i18n::t("ff-desktop-shell-tab-bar-exit"))
+                                .clicked()
+                            {
                                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                                 ui.close();
                             }
@@ -214,32 +242,62 @@ impl WorkbenchShell {
                             // Only shown when the tab is a FileEditor.
                             if tab_kind == KindTag::FileEditor {
                                 ui.separator();
-                                if ui.button("Open Containing Folder in Explorer").clicked() {
+                                // The tool name (Explorer/CMD/PowerShell/Terminal) is a
+                                // NON-translated arg so the prose localises and the tool
+                                // name stays English (Req 9.2).
+                                if ui
+                                    .button(ff_i18n::t_args(
+                                        "ff-desktop-shell-tab-bar-open-folder-in",
+                                        &ff_i18n::MessageArgs::new().set("target", "Explorer"),
+                                    ))
+                                    .clicked()
+                                {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::Explorer);
                                     }
                                     ui.close();
                                 }
-                                if ui.button("Open Containing Folder in CMD").clicked() {
+                                if ui
+                                    .button(ff_i18n::t_args(
+                                        "ff-desktop-shell-tab-bar-open-folder-in",
+                                        &ff_i18n::MessageArgs::new().set("target", "CMD"),
+                                    ))
+                                    .clicked()
+                                {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::Cmd);
                                     }
                                     ui.close();
                                 }
-                                if ui.button("Open Containing Folder in PowerShell").clicked() {
+                                if ui
+                                    .button(ff_i18n::t_args(
+                                        "ff-desktop-shell-tab-bar-open-folder-in",
+                                        &ff_i18n::MessageArgs::new().set("target", "PowerShell"),
+                                    ))
+                                    .clicked()
+                                {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::PowerShell);
                                     }
                                     ui.close();
                                 }
-                                if ui.button("Open Containing Folder in Terminal").clicked() {
+                                if ui
+                                    .button(ff_i18n::t_args(
+                                        "ff-desktop-shell-tab-bar-open-folder-in",
+                                        &ff_i18n::MessageArgs::new().set("target", "Terminal"),
+                                    ))
+                                    .clicked()
+                                {
                                     if let Some(path) = self.tabs.tabs()[i].path.as_deref() {
                                         open_containing_folder(path, FolderOpenMode::Terminal);
                                     }
                                     ui.close();
                                 }
                                 ui.separator();
-                                if ui.button("Copy Name to Clipboard").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-copy-name"))
+                                    .clicked()
+                                {
                                     if let Some(title) =
                                         self.tabs.tabs().get(i).map(|t| t.title.clone())
                                     {
@@ -247,21 +305,33 @@ impl WorkbenchShell {
                                     }
                                     ui.close();
                                 }
-                                if ui.button("Copy Path to Clipboard").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-copy-path"))
+                                    .clicked()
+                                {
                                     if let Some(path) = self.tabs.tabs()[i].path.clone() {
                                         ui.ctx().copy_text(path);
                                     }
                                     ui.close();
                                 }
                                 ui.separator();
-                                if ui.button("Save").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-save"))
+                                    .clicked()
+                                {
                                     // handled after menu closes via pending action
                                     ui.close();
                                 }
-                                if ui.button("Save As").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-save-as"))
+                                    .clicked()
+                                {
                                     ui.close();
                                 }
-                                if ui.button("Reload").clicked() {
+                                if ui
+                                    .button(ff_i18n::t("ff-desktop-shell-tab-bar-reload"))
+                                    .clicked()
+                                {
                                     ui.close();
                                 }
                             }
@@ -275,11 +345,17 @@ impl WorkbenchShell {
                         egui::Sense::click(),
                     );
                     bar_resp.context_menu(|ui| {
-                        if ui.button("New").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-tab-bar-new"))
+                            .clicked()
+                        {
                             self.pending_tab_actions.new_pom = true;
                             ui.close();
                         }
-                        if ui.button("New File").clicked() {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-tab-bar-new-file"))
+                            .clicked()
+                        {
                             self.pending_tab_actions.new_file = true;
                             ui.close();
                         }
