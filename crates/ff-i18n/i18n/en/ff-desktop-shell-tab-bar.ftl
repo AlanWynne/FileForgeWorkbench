@@ -32,3 +32,8 @@ ff-desktop-shell-tab-bar-save-as = Save As
 ff-desktop-shell-tab-bar-reload = Reload
 ff-desktop-shell-tab-bar-new = New
 ff-desktop-shell-tab-bar-new-file = New File
+
+# TASK 9: the tab-bar "Move to Other View" max-floating open_error status message
+# (the commands_ladder_c "Maximum number of detached Workspaces (16) reached."
+# counterpart lives in ff-desktop-shell-status-messages.ftl).
+ff-desktop-shell-tab-bar-max-floating = Maximum 16 floating windows already open.

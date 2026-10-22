@@ -209,7 +209,7 @@ impl WorkbenchShell {
                 // Req 3.8: declining must NOT spawn the process.
                 self.pending_external = None;
                 self.modal_open = false;
-                self.open_error = Some("External execution cancelled.".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-external-cancelled"));
             }
         }
 

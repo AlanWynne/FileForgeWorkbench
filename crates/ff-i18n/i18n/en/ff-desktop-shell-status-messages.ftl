@@ -109,3 +109,17 @@ ff-desktop-shell-msg-workspace-no-active-open-first = No active workspace -- use
 ff-desktop-shell-msg-workspace-removeroot-requires-path = WORKSPACE REMOVE ROOT requires a path
 ff-desktop-shell-msg-workspace-no-active = No active workspace
 ff-desktop-shell-msg-workspace-unknown-subcommand = WORKSPACE: unknown subcommand. Use OPEN/SAVE/SAVE AS/CLOSE/ADD ROOT/REMOVE ROOT
+
+# --- verb-prefixed cluster B (ladder_a/b, commands, fastpath, target_dispatch, dialogs) ---
+# EDIT/DOCK/COMMAND/THEME verbs + TOP/BOTTOM keywords baked (D1). arg/name are
+# DATA placeables (theme name, position token echoed back). command_id and
+# workspace_kind strings are stable identifiers -> non-translated DATA placeables.
+ff-desktop-shell-msg-edit-requires-path = EDIT requires a file path
+ff-desktop-shell-msg-dock-not-detached = DOCK: the current workspace is not detached
+ff-desktop-shell-msg-command-bad-position = COMMAND: '{ $arg }' is not a valid position (TOP or BOTTOM)
+ff-desktop-shell-msg-theme-not-exist = THEME: '{ $name }' does not exist
+ff-desktop-shell-msg-chain-depth-exceeded = Chained path exceeds maximum depth of 4 segments.
+ff-desktop-shell-msg-command-not-defined = Command '{ $id }' is not defined.
+ff-desktop-shell-msg-custom-ws-not-runnable = Custom workspace target '{ $target }' is not yet runnable via a command binding.
+ff-desktop-shell-msg-macro-not-runnable = Macro targets are not yet runnable via a command binding.
+ff-desktop-shell-msg-external-cancelled = External execution cancelled.

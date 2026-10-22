@@ -260,7 +260,10 @@ impl WorkbenchShell {
                     self.set_active_theme(&name);
                 }
                 None => {
-                    self.open_error = Some(format!("THEME: '{arg}' does not exist"));
+                    self.open_error = Some(ff_i18n::t_args(
+                        "ff-desktop-shell-msg-theme-not-exist",
+                        &ff_i18n::MessageArgs::new().set("name", arg.to_string()),
+                    ));
                 }
             }
             return;

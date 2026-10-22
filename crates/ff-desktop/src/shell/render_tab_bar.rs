@@ -213,9 +213,8 @@ impl WorkbenchShell {
                                 if self.detach_split.floating_tabs.len() < 16 {
                                     self.detach_split.detach_pending = Some(i);
                                 } else {
-                                    self.open_error = Some(
-                                        "Maximum 16 floating windows already open.".to_string(),
-                                    );
+                                    self.open_error =
+                                        Some(ff_i18n::t("ff-desktop-shell-tab-bar-max-floating"));
                                 }
                                 ui.close();
                             }

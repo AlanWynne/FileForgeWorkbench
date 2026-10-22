@@ -71,7 +71,7 @@ impl WorkbenchShell {
         // stays on the ladder; revisit if the Function arm learns to carry params.
         if let Some(rest) = verb_arg(cmd, "EDIT") {
             if rest.is_empty() {
-                self.open_error = Some("EDIT requires a file path".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-edit-requires-path"));
             } else {
                 let mut p = CommandParams::new();
                 p.insert("path", rest);
@@ -143,7 +143,7 @@ impl WorkbenchShell {
         if upper == "DOCK" {
             let active_id = self.tabs.active_tab().id;
             if !self.tabs.active_tab().is_floating {
-                self.open_error = Some("DOCK: the current workspace is not detached".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-dock-not-detached"));
                 return true;
             }
             if let Some(ft_pos) = self

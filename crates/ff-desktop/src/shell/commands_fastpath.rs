@@ -99,7 +99,7 @@ impl WorkbenchShell {
             return None;
         }
         if segments.len() > 4 {
-            self.open_error = Some("Chained path exceeds maximum depth of 4 segments.".to_string());
+            self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-chain-depth-exceeded"));
             return Some(true);
         }
 

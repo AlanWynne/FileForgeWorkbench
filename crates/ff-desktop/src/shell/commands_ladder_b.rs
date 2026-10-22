@@ -50,8 +50,9 @@ impl WorkbenchShell {
                 "BOTTOM" => self.set_active_command_line_position(CommandLinePosition::Bottom),
                 other => {
                     // Req 8.9: unknown argument -> non-blocking error, unchanged.
-                    self.open_error = Some(format!(
-                        "COMMAND: '{other}' is not a valid position (TOP or BOTTOM)"
+                    self.open_error = Some(ff_i18n::t_args(
+                        "ff-desktop-shell-msg-command-bad-position",
+                        &ff_i18n::MessageArgs::new().set("arg", other.to_string()),
                     ));
                 }
             }

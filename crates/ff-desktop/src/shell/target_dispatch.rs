@@ -150,7 +150,10 @@ impl WorkbenchShell {
         match target {
             Some(t) => self.dispatch_command_target(&t),
             None => {
-                self.open_error = Some(format!("Command '{}' is not defined.", id.trim()));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-command-not-defined",
+                    &ff_i18n::MessageArgs::new().set("id", id.trim().to_string()),
+                ));
             }
         }
     }
@@ -266,16 +269,15 @@ impl WorkbenchShell {
                         self.open_error = None;
                     }
                     other => {
-                        self.open_error = Some(format!(
-                            "Custom workspace target '{other}' is not yet runnable via a \
-                             command binding."
+                        self.open_error = Some(ff_i18n::t_args(
+                            "ff-desktop-shell-msg-custom-ws-not-runnable",
+                            &ff_i18n::MessageArgs::new().set("target", other.to_string()),
                         ));
                     }
                 }
             }
             CommandTarget::Macro { .. } => {
-                self.open_error =
-                    Some("Macro targets are not yet runnable via a command binding.".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-macro-not-runnable"));
             }
             CommandTarget::External {
                 program,
