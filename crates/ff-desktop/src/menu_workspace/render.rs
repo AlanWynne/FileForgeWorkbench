@@ -333,7 +333,7 @@ pub fn render_menu_workspace(
                     ui.set_max_width(option_col_w);
                     if menu.options.is_empty() {
                         // Req 2.6 -- empty options placeholder
-                        ui.label("No options defined in this menu.");
+                        ui.label(ff_i18n::t("ff-desktop-menu-workspace-no-options"));
                         return;
                     }
 
