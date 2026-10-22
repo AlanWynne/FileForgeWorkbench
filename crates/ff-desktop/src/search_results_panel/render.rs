@@ -48,11 +48,11 @@ pub fn render(
 
     // ── Search input row ──────────────────────────────────────────────────
     ui.horizontal(|ui| {
-        ui.label("Search:");
+        ui.label(ff_i18n::t("ff-desktop-search-results-search-label"));
         let resp = ui.add(
             egui::TextEdit::singleline(&mut state.query)
                 .id(query_field_id())
-                .hint_text("Search across files...")
+                .hint_text(ff_i18n::t("ff-desktop-search-results-search-hint"))
                 .desired_width(280.0),
         );
         // Trigger search on Enter.
@@ -63,18 +63,25 @@ pub fn render(
         // History dropdown button.
         if ui
             .small_button("v")
-            .on_hover_text("Search history")
+            .on_hover_text(ff_i18n::t("ff-desktop-search-results-history-hover"))
             .clicked()
         {
             state.history_open = !state.history_open;
         }
 
-        if ui.button("Search").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-search-results-search-button"))
+            .clicked()
+        {
             start_search(state, roots, runtime);
         }
 
         // Cancel button while running.
-        if matches!(state.phase, SearchPhase::Running { .. }) && ui.button("Cancel").clicked() {
+        if matches!(state.phase, SearchPhase::Running { .. })
+            && ui
+                .button(ff_i18n::t("ff-desktop-search-results-cancel"))
+                .clicked()
+        {
             if let SearchPhase::Running { ref cancel, .. } = state.phase {
                 cancel.cancel();
             }
@@ -108,18 +115,18 @@ pub fn render(
     // ── Options row ───────────────────────────────────────────────────────
     ui.horizontal(|ui| {
         ui.checkbox(&mut state.options.case_sensitive, "Aa")
-            .on_hover_text("Case sensitive");
+            .on_hover_text(ff_i18n::t("ff-desktop-search-results-hover-case"));
         ui.checkbox(&mut state.options.whole_word, "W")
-            .on_hover_text("Whole word");
+            .on_hover_text(ff_i18n::t("ff-desktop-search-results-hover-word"));
         ui.checkbox(&mut state.options.use_regex, ".*")
-            .on_hover_text("Use regex");
-        ui.label("Include:");
+            .on_hover_text(ff_i18n::t("ff-desktop-search-results-hover-regex"));
+        ui.label(ff_i18n::t("ff-desktop-search-results-include-label"));
         ui.add(
             egui::TextEdit::singleline(&mut state.options.include_globs)
                 .hint_text("**/*.rs")
                 .desired_width(100.0),
         );
-        ui.label("Exclude:");
+        ui.label(ff_i18n::t("ff-desktop-search-results-exclude-label"));
         ui.add(
             egui::TextEdit::singleline(&mut state.options.exclude_globs)
                 .hint_text("**/target/**")
@@ -145,12 +152,15 @@ pub fn render(
         if state.replace_expanded {
             ui.add(
                 egui::TextEdit::singleline(&mut state.replace_text)
-                    .hint_text("Replacement text")
+                    .hint_text(ff_i18n::t("ff-desktop-search-results-replace-hint"))
                     .desired_width(280.0),
             );
             let has_results = !state.results.is_empty();
             ui.add_enabled_ui(has_results, |ui| {
-                if ui.button("Replace All").clicked() {
+                if ui
+                    .button(ff_i18n::t("ff-desktop-search-results-replace-all"))
+                    .clicked()
+                {
                     let file_count = state.results.len();
                     let match_count = state.total_match_count();
                     state.replace_confirm = ReplaceConfirm::Pending {
@@ -170,17 +180,31 @@ pub fn render(
     {
         let fc = *file_count;
         let mc = *match_count;
-        egui::Window::new("Confirm Replace All")
+        egui::Window::new(ff_i18n::t("ff-desktop-search-results-confirm-title"))
             .collapsible(false)
             .resizable(false)
             .show(ui.ctx(), |ui| {
-                ui.label(format!("Replace {mc} occurrence(s) in {fc} file(s)?"));
+                // Counts are pre-formatted in Rust and passed as TEXT so the
+                // rendering stays byte-identical (Fluent NUMBER() would insert
+                // locale grouping, e.g. "1,000", for counts >= 1000; Req 10.2).
+                ui.label(ff_i18n::t_args(
+                    "ff-desktop-search-results-confirm-body",
+                    &ff_i18n::MessageArgs::new()
+                        .set("mc", mc.to_string())
+                        .set("fc", fc.to_string()),
+                ));
                 ui.horizontal(|ui| {
-                    if ui.button("Replace").clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-search-results-replace"))
+                        .clicked()
+                    {
                         state.replace_confirm = ReplaceConfirm::None;
                         outcome = SearchPanelOutcome::ReplaceAll;
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-search-results-cancel"))
+                        .clicked()
+                    {
                         state.replace_confirm = ReplaceConfirm::None;
                     }
                 });
@@ -195,18 +219,26 @@ pub fn render(
             matches_found,
             ..
         } => {
-            ui.label(format!(
-                "Searching... {files_scanned} files scanned, {matches_found} matches"
+            ui.label(ff_i18n::t_args(
+                "ff-desktop-search-results-running",
+                &ff_i18n::MessageArgs::new()
+                    .set("files", files_scanned.to_string())
+                    .set("matches", matches_found.to_string()),
             ));
         }
         SearchPhase::Done {
             total_files,
             total_matches,
         } => {
-            ui.label(format!("{total_matches} matches in {total_files} files"));
+            ui.label(ff_i18n::t_args(
+                "ff-desktop-search-results-done",
+                &ff_i18n::MessageArgs::new()
+                    .set("matches", total_matches.to_string())
+                    .set("files", total_files.to_string()),
+            ));
         }
         SearchPhase::Cancelled => {
-            ui.label("Search cancelled.");
+            ui.label(ff_i18n::t("ff-desktop-search-results-cancelled"));
         }
     }
 
