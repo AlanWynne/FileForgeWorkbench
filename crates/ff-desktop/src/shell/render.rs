@@ -269,7 +269,13 @@ impl WorkbenchShell {
                 .min_height(160.0)
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new("Toolchain Panel").monospace().strong());
+                        ui.label(
+                            egui::RichText::new(ff_i18n::t(
+                                "ff-desktop-shell-nav-toolchain-heading",
+                            ))
+                            .monospace()
+                            .strong(),
+                        );
                         if ui.small_button("✕").clicked() {
                             self.show_toolchain_panel = false;
                         }

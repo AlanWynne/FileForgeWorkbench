@@ -94,7 +94,11 @@ impl WorkbenchShell {
     ) -> Vec<crate::explorer_view::ExplorerEffect> {
         use crate::explorer_view::{keyboard_effects, render_tree};
         let mut effects = Vec::new();
-        ui.label(egui::RichText::new("File Explorer").monospace().strong());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("ff-desktop-shell-nav-file-explorer-heading"))
+                .monospace()
+                .strong(),
+        );
         ui.separator();
         // Keyboard navigation (Req 8/20) when the explorer is hovered/
         // focused, then mouse interactions from the tree.

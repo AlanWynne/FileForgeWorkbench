@@ -18,7 +18,11 @@ impl WorkbenchShell {
         let Some((parent, is_dir, mut buffer)) = self.nav_ui.nav_new.take() else {
             return;
         };
-        let title = if is_dir { "New Folder" } else { "New File" };
+        let title = if is_dir {
+            ff_i18n::t("ff-desktop-shell-nav-new-folder-title")
+        } else {
+            ff_i18n::t("ff-desktop-shell-nav-new-file-title")
+        };
         let mut still_open = true;
         let mut confirm = false;
         egui::Window::new(title)
@@ -26,15 +30,15 @@ impl WorkbenchShell {
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                ui.label("Name:");
+                ui.label(ff_i18n::t("ff-desktop-shell-nav-name-label"));
                 let resp = ui.text_edit_singleline(&mut buffer);
                 resp.request_focus();
                 let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.horizontal(|ui| {
-                    if ui.button("Create").clicked() || enter {
+                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-create")).clicked() || enter {
                         confirm = true;
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-cancel")).clicked() {
                         still_open = false;
                     }
                 });
@@ -183,17 +187,20 @@ impl WorkbenchShell {
             return;
         };
         let mut decision: Option<bool> = None; // Some(true)=delete, Some(false)=cancel
-        egui::Window::new("Delete")
+        egui::Window::new(ff_i18n::t("ff-desktop-shell-nav-delete-title"))
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                ui.label(format!("Delete '{label}'? This cannot be undone."));
+                ui.label(ff_i18n::t_args(
+                    "ff-desktop-shell-nav-delete-confirm",
+                    &ff_i18n::MessageArgs::new().set("label", label.clone()),
+                ));
                 ui.horizontal(|ui| {
-                    if ui.button("Delete").clicked() {
+                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-delete-title")).clicked() {
                         decision = Some(true);
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-cancel")).clicked() {
                         decision = Some(false);
                     }
                 });
@@ -257,20 +264,20 @@ impl WorkbenchShell {
         };
         let mut still_open = true;
         let mut confirm = false;
-        egui::Window::new("Rename")
+        egui::Window::new(ff_i18n::t("ff-desktop-shell-nav-rename-title"))
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                ui.label("New name:");
+                ui.label(ff_i18n::t("ff-desktop-shell-nav-new-name-label"));
                 let resp = ui.text_edit_singleline(&mut buffer);
                 resp.request_focus();
                 let enter = resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.horizontal(|ui| {
-                    if ui.button("Rename").clicked() || enter {
+                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-rename-title")).clicked() || enter {
                         confirm = true;
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.button(ff_i18n::t("ff-desktop-shell-nav-cancel")).clicked() {
                         still_open = false;
                     }
                 });
