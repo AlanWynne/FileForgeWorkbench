@@ -69,9 +69,11 @@ impl WorkbenchShell {
             ff_config::keys::theme::ACTIVE,
             ff_config::ConfigValue::String(mode_str),
         ) {
-            self.open_error = Some(format!(
-                "Theme changed to {} for this session, but could not be saved: {e}",
-                mode.section_name()
+            self.open_error = Some(ff_i18n::t_args(
+                "ff-desktop-shell-msg-theme-mode-save-failed",
+                &ff_i18n::MessageArgs::new()
+                    .set("mode", mode.section_name())
+                    .set("error", e.to_string()),
             ));
         }
 
@@ -124,13 +126,19 @@ impl WorkbenchShell {
                     ff_config::keys::theme::ACTIVE_NAME,
                     ff_config::ConfigValue::String(name.to_string()),
                 ) {
-                    self.open_error = Some(format!(
-                        "Theme '{name}' applied for this session, but could not be saved: {e}"
+                    self.open_error = Some(ff_i18n::t_args(
+                        "ff-desktop-shell-msg-theme-name-save-failed",
+                        &ff_i18n::MessageArgs::new()
+                            .set("name", name.to_string())
+                            .set("error", e.to_string()),
                     ));
                 }
             }
             None => {
-                self.open_error = Some(format!("Theme '{name}' could not be loaded"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-theme-load-failed",
+                    &ff_i18n::MessageArgs::new().set("name", name.to_string()),
+                ));
             }
         }
     }
