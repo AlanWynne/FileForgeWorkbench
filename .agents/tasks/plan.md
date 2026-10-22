@@ -157,7 +157,7 @@ another's output); order is for risk-laddering and reviewability only.
 
 ---
 
-- [ ] 1. Area COMMAND-CONFIG: Command Configurator panel.
+- [x] 1. Area COMMAND-CONFIG: Command Configurator panel.
       Swap render literals in the configurator list/toolbar and the edit form:
       `render.rs` -- "Add", "No user-defined commands. Use Add to create one.",
       "Delete", "Cancel", "Save" (+ the `format!("Delete command definition '{id}'?")`
@@ -175,7 +175,7 @@ another's output); order is for risk-laddering and reviewability only.
       (`cargo test -p ff-desktop --bin ffwb command_config` -- the
       first-interior-on-Add test) and confirm PASS in the log.
 
-- [ ] 2. Area CONFIG-PANEL: Configuration Context panel + value widgets.
+- [x] 2. Area CONFIG-PANEL: Configuration Context panel + value widgets.
       `render.rs` -- "Filter:", "Source File:"; `widgets.rs` --
       "[complex value -- edit TOML file directly]" (the `--` is ASCII, no escape
       needed). Do NOT touch the filter field `.id(...)` (B058 anchor).
