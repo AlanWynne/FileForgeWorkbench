@@ -29,8 +29,7 @@ impl WorkbenchShell {
             // single source of truth shared with the "Move to Other View" context
             // item (was `is_floating` count here -- an inconsistency, B045).
             if self.detach_split.floating_tabs.len() >= 16 {
-                self.open_error =
-                    Some("Maximum number of detached Workspaces (16) reached.".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-detach-max-reached"));
             } else {
                 self.detach_split.detach_pending = Some(idx);
                 self.open_error = None;
@@ -68,7 +67,7 @@ impl WorkbenchShell {
                 self.tabs.unsplit();
                 self.open_error = None;
             } else {
-                self.open_error = Some("UNSPLIT: the Workspace is not split.".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-unsplit-not-split"));
             }
             return true;
         }
@@ -79,7 +78,7 @@ impl WorkbenchShell {
                 self.tabs.focus_other_group();
                 self.open_error = None;
             } else {
-                self.open_error = Some("FOCUS: the Workspace is not split.".to_string());
+                self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-focus-not-split"));
             }
             return true;
         }
@@ -113,14 +112,18 @@ impl WorkbenchShell {
                     self.tabs.set_active(n - 1);
                     self.open_error = None;
                 } else {
-                    self.open_error = Some(format!(
-                        "SWAP: tab number {n} out of range (valid: 1 to {count})"
+                    self.open_error = Some(ff_i18n::t_args(
+                        "ff-desktop-shell-msg-swap-out-of-range",
+                        &ff_i18n::MessageArgs::new()
+                            .set("n", n.to_string())
+                            .set("count", count.to_string()),
                     ));
                 }
             } else {
                 // Non-numeric, non-LIST argument (Req 18.2).
-                self.open_error = Some(format!(
-                    "SWAP: invalid argument '{arg}'. Usage: SWAP <n>, SWAP LIST"
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-swap-bad-arg",
+                    &ff_i18n::MessageArgs::new().set("arg", arg),
                 ));
             }
             return true;
@@ -146,18 +149,21 @@ impl WorkbenchShell {
         // ── SUBMIT — Validates: Requirement 17.1 ─────────────────────────────
         if upper == "SUBMIT" {
             // Stub: JES subsystem dispatch deferred to Phase CC/CD.
-            self.open_error = Some("SUBMIT: JES subsystem not yet available".to_string());
+            self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-submit-not-available"));
             return true;
         }
 
         // ── TIME — Validates: Requirement 20.4 ───────────────────────────────
         if upper == "TIME" {
             let now = chrono::Local::now();
-            let msg = format!(
-                "Date: {}  Time: {}  Day: {}",
-                now.format("%Y-%m-%d"),
-                now.format("%H:%M:%S"),
-                now.format("%j")
+            // Date/time/day pre-formatted in Rust, passed as TEXT placeables so
+            // the rendering stays byte-identical.
+            let msg = ff_i18n::t_args(
+                "ff-desktop-shell-msg-time-status",
+                &ff_i18n::MessageArgs::new()
+                    .set("date", now.format("%Y-%m-%d").to_string())
+                    .set("time", now.format("%H:%M:%S").to_string())
+                    .set("day", now.format("%j").to_string()),
             );
             self.open_error = Some(msg);
             return true;
@@ -171,8 +177,11 @@ impl WorkbenchShell {
                 Some(arg.to_string())
             };
             let msg = match jobname {
-                Some(ref j) => format!("STATUS: routing to JES panel (filter: {})", j),
-                None => "STATUS: routing to JES job status panel".to_string(),
+                Some(ref j) => ff_i18n::t_args(
+                    "ff-desktop-shell-msg-status-routing-filter",
+                    &ff_i18n::MessageArgs::new().set("filter", j.clone()),
+                ),
+                None => ff_i18n::t("ff-desktop-shell-msg-status-routing"),
             };
             self.open_error = Some(msg);
             return true;
@@ -181,13 +190,19 @@ impl WorkbenchShell {
         // ── CREATE — Validates: Requirement 17.2 ─────────────────────────────
         if let Some(dsn) = verb_arg(cmd, "CREATE").filter(|a| !a.is_empty()) {
             // Stub: dataset creation deferred to Phase BU/CB.
-            self.open_error = Some(format!("CREATE {dsn}: dataset creation not yet available"));
+            self.open_error = Some(ff_i18n::t_args(
+                "ff-desktop-shell-msg-create-not-available",
+                &ff_i18n::MessageArgs::new().set("dsn", dsn.to_string()),
+            ));
             return true;
         }
 
         // ── REPLACE — Validates: Requirement 17.3 ────────────────────────────
         if let Some(dsn) = verb_arg(cmd, "REPLACE").filter(|a| !a.is_empty()) {
-            self.open_error = Some(format!("REPLACE {dsn}: dataset replace not yet available"));
+            self.open_error = Some(ff_i18n::t_args(
+                "ff-desktop-shell-msg-replace-dsn-not-available",
+                &ff_i18n::MessageArgs::new().set("dsn", dsn.to_string()),
+            ));
             return true;
         }
 
@@ -230,7 +245,10 @@ impl WorkbenchShell {
         // ── COMPARE — Validates: Requirement 17.7 ────────────────────────────
         if let Some(dsn) = verb_arg(cmd, "COMPARE").filter(|a| !a.is_empty()) {
             // Stub: compare view deferred to Phase BX/ff-compare.
-            self.open_error = Some(format!("COMPARE {dsn}: compare view not yet available"));
+            self.open_error = Some(ff_i18n::t_args(
+                "ff-desktop-shell-msg-compare-not-available",
+                &ff_i18n::MessageArgs::new().set("dsn", dsn.to_string()),
+            ));
             return true;
         }
 
@@ -241,7 +259,9 @@ impl WorkbenchShell {
             if rest_upper.starts_with("OPEN ") {
                 let path = rest.get(5..).unwrap_or("").trim();
                 if path.is_empty() {
-                    self.open_error = Some("WORKSPACE OPEN requires a path".to_string());
+                    self.open_error = Some(ff_i18n::t(
+                        "ff-desktop-shell-msg-workspace-open-requires-path",
+                    ));
                 } else {
                     self.open_workspace(std::path::Path::new(path));
                 }
@@ -250,7 +270,9 @@ impl WorkbenchShell {
             } else if rest_upper.starts_with("SAVE AS ") {
                 let path = rest.get(8..).unwrap_or("").trim();
                 if path.is_empty() {
-                    self.open_error = Some("WORKSPACE SAVE AS requires a path".to_string());
+                    self.open_error = Some(ff_i18n::t(
+                        "ff-desktop-shell-msg-workspace-saveas-requires-path",
+                    ));
                 } else {
                     self.save_workspace_to(Some(std::path::Path::new(path)));
                 }
@@ -259,7 +281,9 @@ impl WorkbenchShell {
             } else if rest_upper.starts_with("ADD ROOT ") {
                 let path = rest.get(9..).unwrap_or("").trim();
                 if path.is_empty() {
-                    self.open_error = Some("WORKSPACE ADD ROOT requires a path".to_string());
+                    self.open_error = Some(ff_i18n::t(
+                        "ff-desktop-shell-msg-workspace-addroot-requires-path",
+                    ));
                 } else if let Some(ws) = self.active_workspace.as_mut() {
                     let p = std::path::PathBuf::from(path);
                     if !ws.roots.contains(&p) {
@@ -282,13 +306,16 @@ impl WorkbenchShell {
                     let _ = self.files_panel.registry.register(cat);
                     self.open_error = None;
                 } else {
-                    self.open_error =
-                        Some("No active workspace -- use WORKSPACE OPEN first".to_string());
+                    self.open_error = Some(ff_i18n::t(
+                        "ff-desktop-shell-msg-workspace-no-active-open-first",
+                    ));
                 }
             } else if rest_upper.starts_with("REMOVE ROOT ") {
                 let path = rest.get(12..).unwrap_or("").trim();
                 if path.is_empty() {
-                    self.open_error = Some("WORKSPACE REMOVE ROOT requires a path".to_string());
+                    self.open_error = Some(ff_i18n::t(
+                        "ff-desktop-shell-msg-workspace-removeroot-requires-path",
+                    ));
                 } else if let Some(ws) = self.active_workspace.as_mut() {
                     let p = std::path::PathBuf::from(path);
                     ws.roots.retain(|r| r != &p);
@@ -300,13 +327,12 @@ impl WorkbenchShell {
                     let _ = self.files_panel.registry.remove(&name);
                     self.open_error = None;
                 } else {
-                    self.open_error = Some("No active workspace".to_string());
+                    self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-workspace-no-active"));
                 }
             } else {
-                self.open_error = Some(
-                    "WORKSPACE: unknown subcommand. Use OPEN/SAVE/SAVE AS/CLOSE/ADD ROOT/REMOVE ROOT"
-                        .to_string(),
-                );
+                self.open_error = Some(ff_i18n::t(
+                    "ff-desktop-shell-msg-workspace-unknown-subcommand",
+                ));
             }
             return true;
         }

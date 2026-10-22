@@ -77,3 +77,35 @@ ff-desktop-shell-msg-scrm-unknown-subcommand = CAPTURE: unknown subcommand '{ $s
 ff-desktop-shell-msg-scrm-no-collection-replay = No screen collection to replay.
 ff-desktop-shell-msg-scrm-snapshot-copied = Snapshot copied to clipboard ({ $format }).
 ff-desktop-shell-msg-scrm-snapshot-no-clipboard = Snapshot rendered ({ $format }) but the clipboard was unavailable.
+
+# === TASK 9.3 -- verb-embedding command-ladder messages ===
+# Verb + keyword tokens (DETACH/UNSPLIT/FOCUS/SWAP/SUBMIT/STATUS/CREATE/REPLACE/
+# COMPARE/WORKSPACE + OPEN/SAVE/LIST/...) are English, BAKED into the value (D1).
+# Interpolated DATA (tab number, range, arg, dsn, filter, date/time/day) are
+# placeables. Counts/numbers are TEXT placeables (pre-formatted) for byte-identical
+# en rendering.
+
+# --- detach / split / swap (commands_ladder_c.rs) ---
+ff-desktop-shell-msg-detach-max-reached = Maximum number of detached Workspaces (16) reached.
+ff-desktop-shell-msg-unsplit-not-split = UNSPLIT: the Workspace is not split.
+ff-desktop-shell-msg-focus-not-split = FOCUS: the Workspace is not split.
+ff-desktop-shell-msg-swap-out-of-range = SWAP: tab number { $n } out of range (valid: 1 to { $count })
+ff-desktop-shell-msg-swap-bad-arg = SWAP: invalid argument '{ $arg }'. Usage: SWAP <n>, SWAP LIST
+
+# --- JES / dataset stubs (commands_ladder_c.rs) ---
+ff-desktop-shell-msg-submit-not-available = SUBMIT: JES subsystem not yet available
+ff-desktop-shell-msg-time-status = Date: { $date }  Time: { $time }  Day: { $day }
+ff-desktop-shell-msg-status-routing-filter = STATUS: routing to JES panel (filter: { $filter })
+ff-desktop-shell-msg-status-routing = STATUS: routing to JES job status panel
+ff-desktop-shell-msg-create-not-available = CREATE { $dsn }: dataset creation not yet available
+ff-desktop-shell-msg-replace-dsn-not-available = REPLACE { $dsn }: dataset replace not yet available
+ff-desktop-shell-msg-compare-not-available = COMPARE { $dsn }: compare view not yet available
+
+# --- WORKSPACE subcommands (commands_ladder_c.rs) ---
+ff-desktop-shell-msg-workspace-open-requires-path = WORKSPACE OPEN requires a path
+ff-desktop-shell-msg-workspace-saveas-requires-path = WORKSPACE SAVE AS requires a path
+ff-desktop-shell-msg-workspace-addroot-requires-path = WORKSPACE ADD ROOT requires a path
+ff-desktop-shell-msg-workspace-no-active-open-first = No active workspace -- use WORKSPACE OPEN first
+ff-desktop-shell-msg-workspace-removeroot-requires-path = WORKSPACE REMOVE ROOT requires a path
+ff-desktop-shell-msg-workspace-no-active = No active workspace
+ff-desktop-shell-msg-workspace-unknown-subcommand = WORKSPACE: unknown subcommand. Use OPEN/SAVE/SAVE AS/CLOSE/ADD ROOT/REMOVE ROOT
