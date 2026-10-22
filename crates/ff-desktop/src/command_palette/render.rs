@@ -132,7 +132,7 @@ fn render_palette_contents(
     let _resp = ui.add(
         egui::TextEdit::singleline(&mut state.query)
             .id(search_id)
-            .hint_text("Type to search commands...")
+            .hint_text(ff_i18n::t("ff-desktop-command-palette-search-hint"))
             .desired_width(f32::INFINITY)
             .font(egui::TextStyle::Monospace),
     );
@@ -148,7 +148,7 @@ fn render_palette_contents(
     // Recently Used header -- Validates: Requirement 5.1
     if query_empty && !recent.is_empty() {
         ui.label(
-            egui::RichText::new("Recently Used")
+            egui::RichText::new(ff_i18n::t("ff-desktop-command-palette-recently-used"))
                 .small()
                 .color(egui::Color32::GRAY),
         );
@@ -158,8 +158,11 @@ fn render_palette_contents(
     if visible_count == 0 && !query_empty {
         // Empty state -- Validates: Requirement 2.6
         ui.label(
-            egui::RichText::new(format!("No commands match '{}'", state.query.trim()))
-                .color(egui::Color32::GRAY),
+            egui::RichText::new(ff_i18n::t_args(
+                "ff-desktop-command-palette-no-match",
+                &ff_i18n::MessageArgs::new().set("query", state.query.trim()),
+            ))
+            .color(egui::Color32::GRAY),
         );
     } else {
         egui::ScrollArea::vertical()
