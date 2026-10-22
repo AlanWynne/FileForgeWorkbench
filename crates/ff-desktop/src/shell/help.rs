@@ -500,7 +500,6 @@ fn is_expected_topic(key: &str) -> bool {
 
 #[cfg(test)]
 mod reload_tests {
-    use super::*;
     use ff_help::{HelpTopic, HelpTopicRegistry, TopicKey, TopicSource};
     use std::path::PathBuf;
 
