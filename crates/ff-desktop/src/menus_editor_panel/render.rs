@@ -54,11 +54,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // Reset the reported first-interior id each frame; the combo below sets it.
     state.first_interior_id = None;
     ui.horizontal(|ui| {
-        ui.label("Menu:");
+        ui.label(ff_i18n::t("ff-desktop-menus-editor-menu-label"));
         let current = state
             .selected
             .clone()
-            .unwrap_or_else(|| "(none)".to_string());
+            .unwrap_or_else(|| ff_i18n::t("ff-desktop-menus-editor-menu-none"));
         let combo = egui::ComboBox::from_id_salt("menus_editor_select")
             .selected_text(current)
             .show_ui(ui, |ui| {
@@ -83,7 +83,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     }
 
     let Some(menu) = state.working.as_mut() else {
-        ui.label("Select a menu to edit.");
+        ui.label(ff_i18n::t("ff-desktop-menus-editor-select-prompt"));
         return action;
     };
 
@@ -94,7 +94,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // keystrokes persist across frames (a per-frame local buffer is discarded
     // before the next frame and the field appears frozen).
     ui.horizontal(|ui| {
-        ui.label("Title:");
+        ui.label(ff_i18n::t("ff-desktop-menus-editor-title-label"));
         ui.add(
             egui::TextEdit::singleline(&mut menu.title)
                 .id(egui::Id::new("menus_editor_title"))
@@ -103,19 +103,25 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     });
 
     ui.horizontal(|ui| {
-        ui.checkbox(&mut menu.show_calendar, "Show calendar");
-        ui.checkbox(&mut menu.group_headers, "Group headers");
+        ui.checkbox(
+            &mut menu.show_calendar,
+            ff_i18n::t("ff-desktop-menus-editor-show-calendar"),
+        );
+        ui.checkbox(
+            &mut menu.group_headers,
+            ff_i18n::t("ff-desktop-menus-editor-group-headers"),
+        );
     });
 
     ui.horizontal(|ui| {
-        ui.label("Group separator:");
-        for (label, sep) in [
-            ("Space", GroupSeparator::Space),
-            ("Line", GroupSeparator::Line),
-            ("None", GroupSeparator::None),
+        ui.label(ff_i18n::t("ff-desktop-menus-editor-group-separator"));
+        for (label_key, sep) in [
+            ("ff-desktop-menus-editor-sep-space", GroupSeparator::Space),
+            ("ff-desktop-menus-editor-sep-line", GroupSeparator::Line),
+            ("ff-desktop-menus-editor-sep-none", GroupSeparator::None),
         ] {
             if ui
-                .selectable_label(menu.group_separator == sep, label)
+                .selectable_label(menu.group_separator == sep, ff_i18n::t(label_key))
                 .clicked()
             {
                 menu.group_separator = sep;
@@ -124,7 +130,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     });
 
     ui.separator();
-    ui.label(egui::RichText::new("Options (key | command | description | group)").strong());
+    ui.label(egui::RichText::new(ff_i18n::t("ff-desktop-menus-editor-options-header")).strong());
 
     let option_count = menu.options.len();
 
@@ -145,7 +151,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
                         egui::TextEdit::singleline(&mut option.key)
                             .id(egui::Id::new(("menus_opt_key", i)))
                             .desired_width(44.0)
-                            .hint_text("key"),
+                            .hint_text(ff_i18n::t("ff-desktop-menus-editor-hint-key")),
                     );
                     if key_resp.lost_focus() {
                         let upper = option.key.trim().to_uppercase();
@@ -157,20 +163,20 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
                         egui::TextEdit::singleline(&mut option.command)
                             .id(egui::Id::new(("menus_opt_command", i)))
                             .desired_width(120.0)
-                            .hint_text("command"),
+                            .hint_text(ff_i18n::t("ff-desktop-menus-editor-hint-command")),
                     );
                     ui.add(
                         egui::TextEdit::singleline(&mut option.description)
                             .id(egui::Id::new(("menus_opt_description", i)))
                             .desired_width(200.0)
-                            .hint_text("description"),
+                            .hint_text(ff_i18n::t("ff-desktop-menus-editor-hint-description")),
                     );
                     let mut group_val = option.group.clone().unwrap_or_default();
                     let grp_resp = ui.add(
                         egui::TextEdit::singleline(&mut group_val)
                             .id(egui::Id::new(("menus_opt_group", i)))
                             .desired_width(80.0)
-                            .hint_text("group"),
+                            .hint_text(ff_i18n::t("ff-desktop-menus-editor-hint-group")),
                     );
                     if grp_resp.changed() {
                         let trimmed = group_val.trim();
@@ -194,7 +200,10 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
                     {
                         action = MenusEditorAction::MoveOptionDown(i);
                     }
-                    if ui.button("Delete").clicked() {
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-menus-editor-delete"))
+                        .clicked()
+                    {
                         action = MenusEditorAction::DeleteOption(i);
                     }
                 });
@@ -206,21 +215,30 @@ pub fn render(ui: &mut egui::Ui, state: &mut MenusEditorState) -> MenusEditorAct
     // central area rather than a separate bottom panel, so creation order
     // matches Tab order. Validates Req 13.5.
     ui.separator();
-    if ui.button("Add option").clicked() {
+    if ui
+        .button(ff_i18n::t("ff-desktop-menus-editor-add-option"))
+        .clicked()
+    {
         action = MenusEditorAction::AddOption;
     }
     ui.horizontal(|ui| {
-        if ui.button("Save").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-menus-editor-save"))
+            .clicked()
+        {
             action = MenusEditorAction::Save;
         }
-        ui.label("Save As:");
+        ui.label(ff_i18n::t("ff-desktop-menus-editor-save-as-label"));
         ui.add(
             egui::TextEdit::singleline(&mut state.name_buffer)
                 .id(egui::Id::new("menus_editor_save_as_name"))
                 .desired_width(120.0)
-                .hint_text("new name"),
+                .hint_text(ff_i18n::t("ff-desktop-menus-editor-save-as-hint")),
         );
-        if ui.button("Save As").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-menus-editor-save-as"))
+            .clicked()
+        {
             let name = state.name_buffer.trim().to_string();
             if !name.is_empty() {
                 action = MenusEditorAction::SaveAs(name);
