@@ -183,7 +183,7 @@ impl WorkbenchShell {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // Non-interactive version label (B055: not a Tab focus stop).
-                    ui.label("FileForge Workbench v0.1.0");
+                    ui.label(ff_i18n::t("ff-desktop-shell-status-banner"));
 
                     // B038 (CR-NR-086, logging-subsystem Req 8.7): surface logging
                     // DEGRADATION to the user. Shown only when the subsystem is in
@@ -199,9 +199,11 @@ impl WorkbenchShell {
                         ui.separator();
                         let resp = ui
                             .add(egui::Label::new(
-                                egui::RichText::new("LOG!")
-                                    .strong()
-                                    .color(egui::Color32::from_rgb(0xD2, 0x0F, 0x39)),
+                                egui::RichText::new(ff_i18n::t(
+                                    "ff-desktop-shell-status-log-indicator",
+                                ))
+                                .strong()
+                                .color(egui::Color32::from_rgb(0xD2, 0x0F, 0x39)),
                             ))
                             .on_hover_text(format!("Logging degraded: {reason}"));
                         // Register for automation / headless assertion (B038 test).
