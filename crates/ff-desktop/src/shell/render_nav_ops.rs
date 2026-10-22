@@ -81,7 +81,10 @@ impl WorkbenchShell {
         let (provider, child_path) = match self.nav_edit_provider(&child) {
             Ok(v) => v,
             Err(e) => {
-                self.open_error = Some(format!("New file/folder: {e}"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-new-file-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
                 return;
             }
         };
@@ -98,7 +101,12 @@ impl WorkbenchShell {
                 }
                 self.refresh_nav_parent(parent);
             }
-            Err(e) => self.open_error = Some(format!("Create failed: {e}")),
+            Err(e) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-create-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ))
+            }
         }
     }
 
@@ -126,7 +134,10 @@ impl WorkbenchShell {
         let (target_provider, _target_path) = match self.nav_edit_provider(&target_uri) {
             Ok(v) => v,
             Err(e) => {
-                self.open_error = Some(format!("Paste: {e}"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-paste-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
                 return;
             }
         };
@@ -176,7 +187,10 @@ impl WorkbenchShell {
             }
         }
         if errors > 0 {
-            self.open_error = Some(format!("Paste: {errors} file(s) could not be copied"));
+            self.open_error = Some(ff_i18n::t_args(
+                "ff-desktop-shell-msg-paste-count-failed",
+                &ff_i18n::MessageArgs::new().set("count", errors.to_string()),
+            ));
         }
         // Refresh the target directory listing so the pasted files appear.
         if let Some(n) = self.nav_model.tree.get_node_mut(target) {
@@ -248,7 +262,10 @@ impl WorkbenchShell {
         let (provider, path) = match self.nav_edit_provider(&uri) {
             Ok(v) => v,
             Err(e) => {
-                self.open_error = Some(format!("Delete: {e}"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-delete-provider-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
                 return;
             }
         };
@@ -261,7 +278,12 @@ impl WorkbenchShell {
                     self.refresh_nav_parent(parent);
                 }
             }
-            Err(e) => self.open_error = Some(format!("Delete failed: {e}")),
+            Err(e) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-delete-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ))
+            }
         }
     }
 
@@ -334,14 +356,20 @@ impl WorkbenchShell {
         let (provider, old_path) = match self.nav_edit_provider(&uri) {
             Ok(v) => v,
             Err(e) => {
-                self.open_error = Some(format!("Rename: {e}"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-rename-provider-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
                 return;
             }
         };
         let new_path = match self.nav_edit_provider(&new_uri) {
             Ok((_, p)) => p,
             Err(e) => {
-                self.open_error = Some(format!("Rename: {e}"));
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-rename-provider-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
                 return;
             }
         };
@@ -353,7 +381,12 @@ impl WorkbenchShell {
                     self.refresh_nav_parent(parent);
                 }
             }
-            Err(e) => self.open_error = Some(format!("Rename failed: {e}")),
+            Err(e) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-rename-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ))
+            }
         }
     }
 }
