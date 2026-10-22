@@ -46,11 +46,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut KeysEditorState) -> KeysEditorActio
     // Reset the reported first-interior id each frame; the combo below sets it.
     state.first_interior_id = None;
     ui.horizontal(|ui| {
-        ui.label("Workspace kind:");
+        ui.label(ff_i18n::t("ff-desktop-keys-editor-kind-label"));
         let current = state
             .selected_kind
             .clone()
-            .unwrap_or_else(|| "(select)".to_string());
+            .unwrap_or_else(|| ff_i18n::t("ff-desktop-keys-editor-kind-select"));
         let combo = egui::ComboBox::from_id_salt("keys_editor_kind")
             .selected_text(current)
             .show_ui(ui, |ui| {
@@ -74,7 +74,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut KeysEditorState) -> KeysEditorActio
     }
 
     if state.selected_kind.is_none() {
-        ui.label("Select a workspace kind to edit its key list.");
+        ui.label(ff_i18n::t("ff-desktop-keys-editor-select-prompt"));
         return action;
     }
 
@@ -90,10 +90,15 @@ pub fn render(ui: &mut egui::Ui, state: &mut KeysEditorState) -> KeysEditorActio
 
     ui.horizontal(|ui| {
         ui.add_sized([KEY_LABEL_WIDTH, 0.0], egui::Label::new(""));
-        for header in ["Base command", "Shift", "Ctrl", "Alt"] {
+        for header_key in [
+            "ff-desktop-keys-editor-header-base",
+            "ff-desktop-keys-editor-header-shift",
+            "ff-desktop-keys-editor-header-ctrl",
+            "ff-desktop-keys-editor-header-alt",
+        ] {
             ui.add_sized(
                 [FIELD_WIDTH, 0.0],
-                egui::Label::new(egui::RichText::new(header).strong()),
+                egui::Label::new(egui::RichText::new(ff_i18n::t(header_key)).strong()),
             );
         }
     });
@@ -126,7 +131,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut KeysEditorState) -> KeysEditorActio
                             egui::TextEdit::singleline(&mut row.commands[i])
                                 .id(egui::Id::new(("keys_editor_cmd", mk.toml_name())))
                                 .desired_width(FIELD_WIDTH)
-                                .hint_text("unassigned"),
+                                .hint_text(ff_i18n::t("ff-desktop-keys-editor-unassigned")),
                         );
                     }
                 });
@@ -138,16 +143,22 @@ pub fn render(ui: &mut egui::Ui, state: &mut KeysEditorState) -> KeysEditorActio
         // Save is the LAST interior control; capture its FRESH response id so
         // the WorkspaceContext reports it as `InteriorFocus.last`, anchoring the
         // Shift+Tab reverse boundary on a known widget.
-        let save = ui.add(egui::Button::new("Save").min_size(egui::vec2(60.0, 0.0)));
+        let save = ui.add(
+            egui::Button::new(ff_i18n::t("ff-desktop-keys-editor-save"))
+                .min_size(egui::vec2(60.0, 0.0)),
+        );
         state.last_interior_id = Some(save.id);
         if save.clicked() {
             action = KeysEditorAction::Save;
         }
-        if ui.button("Reset to default").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-keys-editor-reset"))
+            .clicked()
+        {
             action = KeysEditorAction::Reset;
         }
         ui.label(
-            egui::RichText::new("Saves to keymaps/<kind>.toml")
+            egui::RichText::new(ff_i18n::t("ff-desktop-keys-editor-saves-to"))
                 .weak()
                 .small(),
         );
