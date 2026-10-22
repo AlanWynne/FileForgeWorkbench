@@ -105,7 +105,10 @@ pub fn render(
                 .hint_text(ff_i18n::t("ff-desktop-event-log-search-hint")),
         );
         // Validates: Req 2.6
-        if ui.small_button("Clear Log").clicked() {
+        if ui
+            .small_button(ff_i18n::t("ff-desktop-event-log-clear"))
+            .clicked()
+        {
             state.clear_requested = true;
         }
     });

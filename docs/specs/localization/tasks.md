@@ -91,11 +91,18 @@ TDD applies: write the failing test first, then the minimum implementation, per
   - [x] 7.5 Convert `ff-theme-editor`. Satisfies Req 3.4, 4.1.
   - [x] 7.6 Convert `ff-toolchain-panel`. Satisfies Req 3.4, 4.1.
 
-- [ ] 8. Convert the `ff-desktop` render literals (labels / buttons / hover text)
-  - [ ] 8.1 Convert the editor-panel and shell render labels/buttons/hover text to
+- [x] 8. Convert the `ff-desktop` render literals (labels / buttons / hover text)
+  - [x] 8.1 Convert the editor-panel and shell render labels/buttons/hover text to
         `t("key")` lookups, keeping render APIs and behaviour unchanged; keep
         focus/behaviour `egui_kittest` tests green. Satisfies Req 3.4, 4.1, 10.1,
         10.2.
+    - DONE (20 areas, per-area commits on feature/l10n-phase2-task8). User-facing
+      render prose across the ff-desktop panels, shell chrome, dialogs, tab bar,
+      POM calendar, and SCRM viewer now resolves through the ff_i18n seam; glyphs,
+      enum/mnemonic captions, ids, proper nouns, and menu/POM descriptions
+      (Task 5) left as-is. Argument-bearing STATUS/ERROR messages (open_error,
+      status-bar Ln/Col/lines/CAPS/phase) are deferred to Task 9 by design.
+      Agent-verified compile + ftl-dupe clean per area; OWNER runs the full gate.
 
 - [ ] 9. Convert the hard status/error messages (argument-bearing, verb-embedding)
   - [ ] 9.1 Triage the `open_error` / ladder `format!` sites crate-by-crate,

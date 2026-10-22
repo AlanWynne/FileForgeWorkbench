@@ -81,35 +81,50 @@ pub fn render(ui: &mut egui::Ui, state: &mut ScrmViewerState) -> Option<egui::Id
         // The FIRST interior control gets a STABLE id (workspace-conformance:
         // the first Tab from the command field must land here, no phantom stop).
         // We capture the button's fresh same-frame id and report it as `first`.
-        let first = ui.button("|< First");
+        let first = ui.button(ff_i18n::t("ff-desktop-scrm-viewer-first"));
         first_id = Some(first.id);
         if first.clicked() {
             if let Some(r) = state.replay.as_mut() {
                 r.first();
             }
         }
-        if ui.button("< Prev").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-scrm-viewer-prev"))
+            .clicked()
+        {
             if let Some(r) = state.replay.as_mut() {
                 r.previous();
             }
         }
-        if ui.button("Next >").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-scrm-viewer-next"))
+            .clicked()
+        {
             if let Some(r) = state.replay.as_mut() {
                 r.next();
             }
         }
-        if ui.button("Last >|").clicked() {
+        if ui
+            .button(ff_i18n::t("ff-desktop-scrm-viewer-last"))
+            .clicked()
+        {
             if let Some(r) = state.replay.as_mut() {
                 r.last();
             }
         }
     });
 
-    // Position / timing line.
+    // Position / timing line. Counts passed as TEXT placeables (pre-formatted)
+    // to keep byte-identical rendering (no Fluent NUMBER() grouping).
     if count > 0 {
-        ui.label(format!("Capture {} of {}", position + 1, count));
+        ui.label(ff_i18n::t_args(
+            "ff-desktop-scrm-viewer-position",
+            &ff_i18n::MessageArgs::new()
+                .set("position", (position + 1).to_string())
+                .set("count", count.to_string()),
+        ));
     } else {
-        ui.label("No captures");
+        ui.label(ff_i18n::t("ff-desktop-scrm-viewer-no-captures"));
     }
 
     ui.separator();

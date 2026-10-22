@@ -536,3 +536,46 @@ with escaped placeables for any non-ASCII / significant whitespace), (c) no
 `egui::Id` / `id_salt` changed, and (d) `cargo check`/`clippy`/`fmt -p ff-desktop`
 are clean. The whole-bundle collision check is why the review is kept whole-diff
 rather than split per area.
+
+---
+
+## Area-20 FINAL SWEEP results (inline execution, 2026-10-22)
+
+Swept `crates/ff-desktop/src/**/*.rs` for residual `.label(`/`.button(`/
+`.heading(`/`.on_hover_text(`/`.hint_text(`/`.small_button(`/`.selectable_label(`
+/`RichText::new("`/`Window::new("` string literals. Results:
+
+CONVERTED (genuine misses, done in area 20):
+- `event_log_panel.rs` "Clear Log" button -- missed in area 3; key
+  `ff-desktop-event-log-clear` added to the existing event-log .ftl.
+- `scrm_viewer_panel.rs` -- the SCRM screen-snapshot viewer was not enumerated in
+  any area. Converted its four nav buttons ("|< First", "< Prev", "Next >",
+  "Last >|" -- the directional glyph is kept as part of each label value), the
+  `Capture {} of {}` position line (counts as TEXT placeables), and "No captures".
+  New file `ff-desktop-scrm-viewer.ftl`.
+
+LEFT UNLOCALISED (intentional, per the established rules; annotated in each
+`.ftl` header):
+- Glyph/whitespace-only: macro-library "x"; POM "<"/">"/"   "/" "; config-panel
+  "X" clear + the `\u{21ba} Reset` per-row reset glyph; search-results "v";
+  tab-bar `\u{00d7}` and shell/render.rs `\u{2715}` close glyphs. UI icons.
+- `command_palette` `Window::new("Command Palette")` -- `title_bar(false)`, never
+  displayed.
+- search-results glob example hints `**/*.rs` / `**/target/**` -- technical
+  examples.
+- `tests_focus.rs` "sentinel" buttons -- test-only, not product UI.
+
+DEFERRED to the Task 9 status/error pass (NOT converted in Task 8 -- they are
+status/data-formatting prose that the status pass will handle with t_args
+consistently, and they sit in already-committed areas 2/14):
+- Status bar (`shell/render_status.rs`): the phase labels RUNNING/STARTING/
+  SHUTTING DOWN/TERMINATED, `format!("Ln {line}, Col {col}")`,
+  `format!("{} lines", ...)`, and the "CAPS" mode indicator.
+- Every `self.open_error = Some(format!(...))` status/error string across the
+  shell (SCROLL invalid-amount, New/Create/Paste/Delete/Rename failures, external
+  cancelled, max-windows) -- these are Req 9.x argument-bearing status messages,
+  explicitly Task 9 scope.
+
+Final area-20 verification: `ftl_dupe_check` = 28 files / 391 keys / no
+duplicates; `cargo check -p ff-desktop` clean. The OWNER runs the authoritative
+`cargo gate --build` full suite.

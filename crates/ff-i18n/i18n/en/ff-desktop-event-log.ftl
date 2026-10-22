@@ -13,3 +13,5 @@
 ff-desktop-event-log-heading = Event Log
 ff-desktop-event-log-search-hint = search...
 ff-desktop-event-log-empty = No log entries.
+# Added in the area-20 final sweep (missed in area 3): the Clear Log button.
+ff-desktop-event-log-clear = Clear Log
