@@ -59,7 +59,11 @@ pub fn render(
     let mut first_interior: Option<egui::Id> = None;
 
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("Event Log").monospace().strong());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("ff-desktop-event-log-heading"))
+                .monospace()
+                .strong(),
+        );
         ui.separator();
         // Level filter -- Validates: Req 2.4
         let combo = egui::ComboBox::from_id_salt("event_log_level_filter")
@@ -98,7 +102,7 @@ pub fn render(
         ui.add(
             egui::TextEdit::singleline(&mut state.text_filter)
                 .desired_width(150.0)
-                .hint_text("search..."),
+                .hint_text(ff_i18n::t("ff-desktop-event-log-search-hint")),
         );
         // Validates: Req 2.6
         if ui.small_button("Clear Log").clicked() {
@@ -126,7 +130,11 @@ pub fn render(
         .collect();
 
     if entries.is_empty() {
-        ui.label(egui::RichText::new("No log entries.").weak().italics());
+        ui.label(
+            egui::RichText::new(ff_i18n::t("ff-desktop-event-log-empty"))
+                .weak()
+                .italics(),
+        );
         return first_interior;
     }
 

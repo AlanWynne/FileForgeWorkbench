@@ -188,7 +188,7 @@ another's output); order is for risk-laddering and reviewability only.
       and confirm PASS (the filter field id is unchanged, so first-Tab still lands
       on it).
 
-- [ ] 3. Area EVENT-LOG: Event Log panel.
+- [x] 3. Area EVENT-LOG: Event Log panel.
       `event_log_panel.rs` -- heading `RichText::new("Event Log")`, filter
       `hint_text("search...")`, "No log entries." Leave log-level enum captions
       that are logic/identity; convert only displayed prose.
