@@ -179,7 +179,9 @@ pub(super) fn render_widget(
 
         // Array / Table -- read-only display for now
         ValueType::Array | ValueType::Table => {
-            ui.label(egui::RichText::new("[complex value -- edit TOML file directly]").weak());
+            ui.label(
+                egui::RichText::new(ff_i18n::t("ff-desktop-config-panel-complex-value")).weak(),
+            );
             None
         }
     }

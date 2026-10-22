@@ -19,7 +19,7 @@ use super::{
 pub fn render(ui: &mut egui::Ui, state: &mut ConfigPanelState, config: &ConfigHandle) {
     // == Filter bar -- Req 15.7 ===
     ui.horizontal(|ui| {
-        ui.label("Filter:");
+        ui.label(ff_i18n::t("ff-desktop-config-panel-filter"));
         // Stable id so Tab focus round-trips and the shell can anchor the
         // command-field -> first-interior boundary here (B058).
         ui.add(egui::TextEdit::singleline(&mut state.filter).id(filter_field_id()));
@@ -32,7 +32,7 @@ pub fn render(ui: &mut egui::Ui, state: &mut ConfigPanelState, config: &ConfigHa
     // == Source file indicator -- Req 15.8 ===
     if let Some(user_path) = ff_config::paths::user_config_path() {
         ui.horizontal(|ui| {
-            ui.label("Source File:");
+            ui.label(ff_i18n::t("ff-desktop-config-panel-source-file"));
             ui.monospace(user_path.to_string_lossy().as_ref());
         });
         ui.separator();
