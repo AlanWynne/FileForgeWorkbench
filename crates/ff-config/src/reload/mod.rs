@@ -134,6 +134,7 @@ impl ReloadManager {
 
 mod diff;
 mod ops;
+mod project_ops;
 
 #[cfg(test)]
 mod tests {

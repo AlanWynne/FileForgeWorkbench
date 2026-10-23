@@ -58,12 +58,14 @@ pub(crate) struct ConfigSystem {
 /// shared (read) mode, clone the result into an owned value, and release
 /// the lock immediately. This ensures readers never block each other.
 ///
-/// Write operations (`reload`, `set_active_profile`, `load_project`,
-/// `unload_project`) acquire the `RwLock` in exclusive (write) mode,
-/// perform the mutation atomically, and release the lock. Callbacks are
-/// invoked by the `ReloadManager` internally during the write lock scope
-/// using the `CallbackRegistry`'s own internal `Mutex` -- callbacks must
-/// not re-enter `ConfigHandle` methods to avoid deadlock.
+/// Write operations (`reload`, `set_user_value`, `remove_user_value`,
+/// `load_project`, `unload_project`) acquire the `RwLock` in exclusive (write)
+/// mode, recompute and atomically swap the effective store, and then RELEASE
+/// the lock BEFORE invoking any reload callbacks. Because callback invocation
+/// happens after the write guard is dropped, a callback may safely re-enter
+/// `ConfigHandle` read methods (e.g. the `ui.locale` catalogue-swap callback
+/// reading `get_string`) without self-deadlocking on the non-reentrant
+/// `std::sync::RwLock` (CR-NR-103 Fix 1).
 ///
 /// # Examples
 ///
@@ -669,6 +671,79 @@ mod tests {
         let values = crate::value::ConfigTable::new();
         let locked = extract_locked_keys(&values);
         assert!(locked.is_empty());
+    }
+
+    // Validates: localization Requirement 1.4/1.5 (CR-NR-103 Fix 1) -- a
+    // ui.locale change driven through set_user_value completes PROMPTLY (does
+    // not self-deadlock) even when the registered reload callback re-reads the
+    // handle via get_string, and the callback observes the NEW value. Before the
+    // fix, set_user_value held the write lock across callback invocation, so the
+    // callback's get_string read lock deadlocked on the non-reentrant RwLock and
+    // this test would hang forever. A watchdog thread bounds the wait so a
+    // regression fails (times out) rather than wedging the test runner.
+    #[test]
+    fn locale_change_through_set_user_value_does_not_deadlock() {
+        use std::sync::mpsc;
+        use tempfile::TempDir;
+
+        let dir = TempDir::new().unwrap();
+        let user_path = dir.path().join("config.toml");
+        std::fs::write(&user_path, "[ui]\nlocale = \"en\"\n").unwrap();
+
+        // Build a handle whose User layer is this file, with a shared callback
+        // registry so we can register a locale callback that re-reads the handle.
+        let values = crate::loader::load_toml_file(&user_path).unwrap();
+        let layers = vec![LayerData {
+            layer: ConfigLayer::User,
+            source_path: user_path.clone(),
+            values,
+        }];
+        let schema = SchemaRegistry::new();
+        let callbacks = Arc::new(crate::callback::CallbackRegistry::new());
+        let manager = ReloadManager::with_callbacks(layers, schema, Arc::clone(&callbacks));
+        let handle = ConfigHandle::new(manager);
+        // Target the writes at the temp file (B048 injection seam).
+        handle.set_user_config_path(Some(user_path.clone()));
+
+        // Register a ui.locale callback that re-enters the handle for a read --
+        // exactly the shape that deadlocked. It records what value it observed.
+        let observed = Arc::new(std::sync::Mutex::new(String::new()));
+        let observed_cb = Arc::clone(&observed);
+        let handle_for_cb = handle.clone();
+        let _cb_handle = crate::locale_reload::on_locale_reload(&callbacks, move || {
+            // This read lock is the one that would self-deadlock if invocation
+            // happened under the write lock still held by set_user_value.
+            let locale = handle_for_cb
+                .get_string(crate::keys::ui::LOCALE)
+                .unwrap_or_default();
+            *observed_cb.lock().unwrap() = locale;
+        });
+
+        // Drive the change on a worker thread and bound it with a watchdog so a
+        // deadlock surfaces as a timeout instead of hanging the whole suite.
+        let (tx, rx) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            let result =
+                handle.set_user_value(crate::keys::ui::LOCALE, ConfigValue::String("af".into()));
+            let _ = tx.send(result.is_ok());
+            handle
+        });
+
+        let completed = rx
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("set_user_value must return promptly -- a timeout here means the ui.locale reentrant-lock deadlock regressed");
+        assert!(completed, "set_user_value should succeed");
+
+        let handle = worker.join().expect("worker thread panicked");
+
+        // The callback fired and observed the NEW locale value.
+        assert_eq!(
+            *observed.lock().unwrap(),
+            "af",
+            "the locale reload callback must observe the newly written value"
+        );
+        // And the effective store reflects the change.
+        assert_eq!(handle.get_string(crate::keys::ui::LOCALE).unwrap(), "af");
     }
 
     // Validates: Requirement 18.8 -- update_locked_keys replaces the locked set

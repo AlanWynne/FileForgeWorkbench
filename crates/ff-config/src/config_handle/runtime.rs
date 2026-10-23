@@ -22,8 +22,26 @@ impl ConfigHandle {
     ///
     /// Returns results for each layer reload attempt.
     pub fn reload(&self) -> Vec<Result<Option<ReloadEvent>, ConfigError>> {
-        let mut system = self.inner.write().unwrap();
-        system.manager.reload_all()
+        // Recompute+swap every layer under the write lock, DROP the guard, then
+        // invoke callbacks for each changed layer. Invoking after the guard is
+        // released is what prevents a callback that reads this handle from
+        // self-deadlocking on the non-reentrant RwLock (CR-NR-103 Fix 1).
+        let (results, events) = {
+            let mut system = self.inner.write().unwrap();
+            let results = system.manager.reload_all_compute();
+            let events: Vec<ReloadEvent> = results
+                .iter()
+                .filter_map(|r| r.as_ref().ok().and_then(|opt| opt.clone()))
+                .collect();
+            (results, events)
+        };
+        if !events.is_empty() {
+            let callbacks = self.callbacks();
+            for event in &events {
+                callbacks.invoke(event);
+            }
+        }
+        results
     }
 
     /// Set the active user profile, triggering a re-merge.
@@ -74,8 +92,16 @@ impl ConfigHandle {
     /// Acquires a write lock, loads the project config file, re-merges layers,
     /// and invokes callbacks for changed keys.
     pub fn load_project(&self, root: &Path) -> Result<ReloadEvent, ConfigError> {
-        let mut system = self.inner.write().unwrap();
-        system.manager.load_project(root)
+        // Compute+swap under the write lock, drop the guard, then invoke
+        // callbacks -- keeping invocation off the lock (CR-NR-103 Fix 1).
+        let event = {
+            let mut system = self.inner.write().unwrap();
+            system.manager.load_project_compute(root)?
+        };
+        if !event.changed_keys.is_empty() {
+            self.callbacks().invoke(&event);
+        }
+        Ok(event)
     }
 
     /// Unload the project-layer configuration.
@@ -83,8 +109,16 @@ impl ConfigHandle {
     /// Acquires a write lock, removes the project layer, re-merges remaining
     /// layers, and invokes callbacks for changed keys.
     pub fn unload_project(&self) -> ReloadEvent {
-        let mut system = self.inner.write().unwrap();
-        system.manager.unload_project()
+        // Compute+swap under the write lock, drop the guard, then invoke
+        // callbacks -- keeping invocation off the lock (CR-NR-103 Fix 1).
+        let event = {
+            let mut system = self.inner.write().unwrap();
+            system.manager.unload_project_compute()
+        };
+        if !event.changed_keys.is_empty() {
+            self.callbacks().invoke(&event);
+        }
+        event
     }
 
     /// Get a reference to the shared callback registry.
@@ -182,12 +216,48 @@ impl ConfigHandle {
             ))
         })?;
         write_key_to_toml_file(&user_path, key, value)?;
-        // Trigger reload so the effective store picks up the change.
-        let mut system = self.inner.write().unwrap();
-        let _ = system
-            .manager
-            .reload_file(&user_path, crate::layer::ConfigLayer::User);
+        // Trigger reload so the effective store picks up the change. Recompute
+        // and swap the store UNDER the write lock, then DROP the guard before
+        // invoking reload callbacks: a callback (e.g. the ui.locale catalogue
+        // swap) may re-read this handle, and the non-reentrant RwLock would
+        // self-deadlock if invocation happened while the write lock is held
+        // (CR-NR-103 Fix 1).
+        self.reload_user_layer_and_notify(&user_path);
         Ok(())
+    }
+
+    /// Recompute+swap the User layer for `user_path` under the write lock, then
+    /// release the lock and invoke the matching reload callbacks.
+    ///
+    /// This is the shared helper for [`set_user_value`](Self::set_user_value)
+    /// and [`remove_user_value`](Self::remove_user_value). Keeping callback
+    /// invocation strictly AFTER the write guard is dropped is what prevents the
+    /// reentrant-`RwLock` self-deadlock when a callback reads the handle back
+    /// (CR-NR-103 Fix 1). The catalogue swap performed inside a callback takes
+    /// `ff_i18n`'s own independent lock, which is never nested under the config
+    /// lock here.
+    fn reload_user_layer_and_notify(&self, user_path: &Path) {
+        let event = {
+            let mut system = self.inner.write().unwrap();
+            match system
+                .manager
+                .reload_file_compute(&user_path.to_path_buf(), crate::layer::ConfigLayer::User)
+            {
+                Ok(event) => event,
+                Err(e) => {
+                    ff_logging::log_warn!(
+                        "[config] reload after user-layer write failed: {} -- \
+                         effective store retains previous values",
+                        e
+                    );
+                    None
+                }
+            }
+            // Write guard dropped here, before any callback runs.
+        };
+        if let Some(event) = event {
+            self.callbacks().invoke(&event);
+        }
     }
 
     /// Remove a user-layer override for a key, restoring the schema default.
@@ -211,10 +281,10 @@ impl ConfigHandle {
             ))
         })?;
         remove_key_from_toml_file(&user_path, key)?;
-        let mut system = self.inner.write().unwrap();
-        let _ = system
-            .manager
-            .reload_file(&user_path, crate::layer::ConfigLayer::User);
+        // Same lock discipline as set_user_value: recompute+swap under the
+        // write lock, then invoke callbacks after the guard is dropped so a
+        // callback that reads the handle cannot self-deadlock (CR-NR-103 Fix 1).
+        self.reload_user_layer_and_notify(&user_path);
         Ok(())
     }
 
