@@ -161,7 +161,13 @@ TDD applies: write the failing test first, then the minimum implementation, per
         `ff-config` schema so the locale is selectable. `allowed_values` extended
         to `["en","af","fr","de"]`; allowed_values test updated to loop the shipped
         set and reject `"xx"`. Satisfies Req 1.2.
-  - [ ] 10.5 Author per-locale help content directories (`help/af/`, `help/fr/`,
+  - [x] 10.5 Author per-locale help content directories (`help/af/`, `help/fr/`,
         `help/de/`) for the translated topics, with English fallback for
         untranslated topics. The ff-help loader resolves `help/<locale>/` then the
         English `help/` (Task 6, wired + tested). Satisfies Req 6.1, 6.2.
+    - DONE (POC scope): the getting-started topic (`index.help.md`) is translated
+      per locale (af reviewed; fr/de AI-draft, flagged). TOPIC key + topic/feature:/
+      line: cross-references stay unlocalised (Req 6.3); every other topic falls
+      back to the English `help/` directory (Req 6.2). The remaining ~dozens of
+      topics are left to the native-speaker translation pass, which the fallback
+      supports first-class.
