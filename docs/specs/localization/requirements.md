@@ -177,10 +177,22 @@ translate.
    menu-option `command` values, config KEY names, `Topic_Key` identifiers, and
    `command_id` strings SHALL remain source-language and SHALL NOT be routed
    through the Message_Catalogue.
+   - AMENDED by CR-NR-109: the CANONICAL (root) verb remains source-language and
+     is NOT routed through the Message_Catalogue (unchanged). What a user SEES for
+     a verb (a menu option's displayed verb, and the typeable surface form) MAY be
+     the active-locale alias surface, resolved via the alias row's localisation
+     key (Requirement 11). The stable identifier underneath is unchanged; only the
+     displayed surface is locale-aware.
 3. WHERE displayed text and a command verb coexist (e.g. a menu option's
    description beside its `command` value), ONLY the description SHALL be
    localised; the `command` value SHALL be unchanged, preserving the verb/text
    split of `command-environments` Req 6a.
+   - AMENDED by CR-NR-109: a menu-kind option MAY also display its VERB in the
+     active locale (the alias surface via its localisation key, English fallback),
+     in addition to its localised description. The option's underlying ROOT
+     command value SHALL remain unchanged and is what resolution/persistence use
+     (Requirement 11, Requirement 10.3). The verb/text split is preserved at the
+     IDENTITY level (root verb stable); it is relaxed only at the DISPLAY level.
 4. THE localization layer SHALL NOT derive any displayed text by matching on a
    translated string: displayed text is resolved FROM a stable key, never used AS
    a key, so a locale change cannot alter behaviour.
@@ -324,6 +336,86 @@ presentation layer and changes no framework mechanism.
    `command` values, keybindings, and Workspace descriptors SHALL store the
    canonical English verb regardless of the active locale (Requirement 4.4,
    `command-environments` Req 6a.2).
+
+### Requirement 11: Locale-aware alias resolution and menu-kind options rendered via localised aliases (CR-NR-109)
+
+**User Story:** As a user in a localized install, I want to type a command verb
+in my own language OR pick a menu option whose verb shows in my own language, and
+in both cases have it resolve to the same root command, falling back to English
+when no localised alias exists.
+
+This requirement makes the command-alias layer locale-aware and makes every
+menu-kind Context render its options THROUGH that layer. It builds ON the existing
+per-environment `AliasTable` (`ff-desktop/src/shell/environment.rs`) and the
+single command-dispatch front door; it adds NO second dispatcher, NO second
+navigation stack, and NO new persistence format. The ROOT (canonical) command
+remains the stable identifier used for dispatch and persistence (Requirement 10.3
+unchanged). This requirement AMENDS the DISPLAY claims of Requirement 4.2 and 7.3
+(see their amendment notes); it does not change the identity-level verb/text
+split.
+
+#### Acceptance Criteria
+
+1. THE `AliasTable` entry SHALL carry an OPTIONAL localisation key in addition to
+   its surface form and canonical (root) verb, so an entry is
+   `(surface-form, canonical-verb, localisation_key?)`. WHERE a localisation key
+   is present, THE displayed surface text for that alias SHALL be resolved through
+   the EXISTING `ff-i18n` Catalogue_Lookup_Seam (`t(key)`, Requirement 3) against
+   the active locale, adding NO new lookup mechanism.
+2. THE resolved localised string for an alias SHALL be BOTH the displayed surface
+   form AND a typeable surface form for that locale (one source of truth): what a
+   user sees for a verb is what the user can type to invoke it.
+3. THE alias layer SHALL AUTO-SYNTHESISE an identity alias row for every root
+   command (canonical -> itself), so the root command is always resolvable in
+   whatever source language it was authored, WITHOUT requiring an author to hand-
+   write an identity row (this preserves "English/root is always resolvable",
+   Requirement 5.5).
+4. AN auto-synthesised identity row SHALL be EDITABLE and, once edited, PERSISTED
+   and SHALL override the synthesised default: a user MAY rename a root command's
+   surface form and assign it a localisation key (e.g. give a Russian-authored
+   root command an English surface with an `en` localisation key), WITHOUT
+   changing the root command itself.
+5. THE localization layer SHALL provide an ON-DISK alias-catalogue reader that
+   parses per-locale, per-environment alias DATA (e.g.
+   `i18n/<locale>/aliases/<environment>.toml`, each row carrying its surface form,
+   root verb, and optional localisation key) into an in-memory catalogue and
+   loads it into the CORRESPONDING environment's `AliasTable` via the EXISTING
+   `AliasTable::apply_locale_overlay` seam (localization Requirement 5.1, 5.5),
+   adding NO new overlay mechanism. (This is the reader localization Task 10.2
+   recorded as BLOCKED.)
+6. THE resolver SHALL, for an entered verb `V` at active locale `L`, apply this
+   order, which is IDENTICAL whether `V` originates from the command line or from
+   a selected menu-kind option:
+   1. look up `V` in the alias table scoped to localisation key `L`;
+      1. WHEN found, THE resolver SHALL resolve `V` to its root command and
+         execute that root command;
+      2. WHEN not found, THE resolver SHALL look up `V` in the root command table;
+         1. WHEN found, THE resolver SHALL execute that root command;
+         2. WHEN not found, THE resolver SHALL issue an appropriate unknown-command
+            message.
+7. A menu-kind Context (POM/Home, Settings, and user-defined menus rendered via
+   the Workspace Kinds / menu model -- ALL menu kinds) SHALL reference a command
+   ALIAS as each option (not a raw command string). AT render THE option SHALL
+   DISPLAY the active-locale surface for that alias (its localisation-key
+   resolution, Identity_Base/root fallback when absent, Requirement 3.2); WHEN the
+   option is selected THE same verb SHALL be fed through the resolver of criterion
+   6, reaching the root command.
+8. THE displayed localised verb and localised description of a menu option SHALL
+   both fall back to the Identity_Base/root text when the active locale provides
+   no value (Requirement 3.2, 7.4), so a menu-kind screen always renders a
+   complete, invocable option set.
+9. THE root (canonical) command SHALL remain the recorded/persisted value for a
+   command issued via either entry point (command line or menu selection),
+   regardless of the active locale or the alias surface used (Requirement 10.3,
+   `command-environments` Req 6a.2); a locale change SHALL NOT alter which root
+   command a given option resolves to.
+10. WHEN loading a per-locale alias catalogue produces a within-environment
+    collision (a surface form mapping to two different roots), THE reader SHALL
+    reject that environment's catalogue with a diagnostic and retain the
+    Identity_Base, reusing the existing `apply_locale_overlay` collision
+    discipline (localization Requirement 5.6); the menu-kind render SHALL then
+    fall back to the root/English surface for the affected options rather than
+    failing to render.
 
 ---
 

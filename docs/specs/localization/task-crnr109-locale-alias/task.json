@@ -1,0 +1,7 @@
+{
+  "task_id": "task-crnr109-locale-alias",
+  "task_description": "Implement CR-NR-109: make the command-alias layer locale-aware and render every menu-kind Context's options through that layer. Grow the AliasTable entry with an optional localisation key, build the on-disk per-locale/per-environment alias reader, auto-synthesise editable identity rows, add the unified locale-aware resolver (one path for command line and menu selection returning the ROOT command), refactor the shared menu renderer to show the active-locale alias surface in the command column, and author the Afrikaans POC alias data plus the minimal verb keys. Behaviour-neutral at ui.locale=en. Satisfies localization Requirement 11 (11.1-11.10) and the Req 4.2/7.3 display amendments; turns the 10 CR-NR-109 TCR rows green.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

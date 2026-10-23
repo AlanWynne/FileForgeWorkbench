@@ -230,3 +230,178 @@ second dispatcher, no second navigation stack, no new persistence format, and no
 per-Context focus mechanism. With `ui.locale = "en"` the workbench is
 behaviour-identical to today (Req 10.2), and the canonical English verb remains
 the recorded/persisted value regardless of locale (Req 10.3).
+
+## Locale-aware alias resolution + menu-kind options via localised aliases (CR-NR-109, Requirement 11)
+
+CR-NR-109 makes the command-alias layer LOCALE-AWARE and routes every menu-kind
+Context's options THROUGH that layer. It builds ON the existing per-environment
+`AliasTable` (`crates/ff-desktop/src/shell/environment.rs`), the existing
+`ff_i18n::t()` seam, and the single command-dispatch front door
+(`shell/dispatch.rs`). It adds NO second dispatcher, NO second navigation stack,
+NO new persistence format, and NO per-Context focus mechanism. The ROOT
+(canonical) command stays the stable dispatched/persisted identity (Req 10.3).
+
+This is a FRAMEWORK CHANGE (owner-confirmed in-thread, per
+`framework-conformance.md`): it reshapes the `AliasTable` ENTRY model and the
+menu-option display model. The two reshaped shapes are described below; both are
+additive (the English/`en` default path is behaviour-neutral, Req 10.2).
+
+### 1. The `AliasTable` entry grows a localisation key
+
+Today an entry is `(surface-form-UPPERCASED, canonical-verb)` (a `Vec<(String,
+String)>`). CR-NR-109 grows it to carry an OPTIONAL localisation key:
+
+```
+struct AliasEntry {
+    surface: String,          // UPPERCASED typeable/displayed surface form
+    canonical: String,        // the root (canonical) verb -- the dispatched identity
+    localisation_key: Option<String>, // ff-i18n key -> displayed surface per locale
+}
+```
+
+- WHERE `localisation_key` is `Some(k)`, the DISPLAYED surface for the entry is
+  `ff_i18n::t(k)` resolved against the active locale (Req 11.1), reusing the
+  EXISTING seam (no new lookup mechanism). The resolved string is ALSO the
+  typeable surface for that locale (one source of truth, Req 11.2).
+- WHERE `localisation_key` is `None`, the `surface` string itself is both
+  displayed and typeable (the pre-CR-NR-109 behaviour, so the `en` default is
+  unchanged).
+- The existing `canonical_verb(surface)` resolver and `apply_locale_overlay`
+  stay; `apply_locale_overlay` gains the ability to carry the per-row
+  localisation key through to the entry (its collision discipline is unchanged,
+  Req 11.10, localization Req 5.6). The seed constructors (`ffedit_english`)
+  default `localisation_key` to `None`, so the English base is byte-identical.
+
+### 2. Auto-synthesised, editable identity rows
+
+Every ROOT command is SEEDED with an identity alias row (`surface == canonical`,
+`localisation_key = None`) automatically at table construction, so the root is
+always resolvable in whatever source language it was authored (Req 11.3; this is
+the existing `ffedit_english` identity-row pattern made universal and explicit).
+
+A seeded row is EDITABLE: an authored/overlaid row for the SAME canonical
+REPLACES the synthesised default and is persisted (Req 11.4). The Russian-root /
+English-surface example is exactly this: the root stays the Russian canonical;
+an `en` overlay row `(surface="FIND", canonical="<russian-root>",
+localisation_key="verb.find")` gives it an English face without touching the
+root. Persistence rides the existing per-locale alias DATA on disk (part 3); the
+synthesised default exists only in memory as the fallback when no row overrides
+it.
+
+### 3. The on-disk alias-catalogue reader (unblocks Task 10.2)
+
+A new reader parses per-locale, per-environment alias DATA into an in-memory
+`AliasCatalogue` and loads it via the EXISTING `AliasTable::apply_locale_overlay`
+(today `#[allow(dead_code)]`, no non-test caller -- this reader is its first
+production caller). Data shape, mirroring the help/`.ftl` "content is data"
+posture:
+
+```
+i18n/<locale>/aliases/<environment>.toml
+  # one [[alias]] per surface form
+  [[alias]]
+  surface = "SOEK"
+  canonical = "FIND"
+  localisation_key = "verb.find"   # optional
+```
+
+- The reader is wired into environment construction and into the `ui.locale`
+  reload callback (the reload target the Task 2.3 callback already fires, design
+  "The `ui.locale` key wiring" above). On a locale switch it loads that locale's
+  per-environment catalogues; a different locale loads a DIFFERENT catalogue
+  (localization Req 5.2).
+- A within-environment collision is rejected by `apply_locale_overlay`'s existing
+  discipline; the reader surfaces the diagnostic and retains the Identity_Base
+  for that environment (Req 11.10).
+- This reader is MECHANISM (gate + code + tests), which is precisely why
+  localization Task 10.2 recorded the on-disk reader as BLOCKED; CR-NR-109 is the
+  gated change that builds it.
+
+### 4. The unified locale-aware resolver (one path, two entry points)
+
+A single resolver function implements the Req 11.6 order for an entered verb `V`
+at active locale `L`, and is called from BOTH the command-line entry
+(`shell/dispatch.rs::dispatch_command_string`, before `resolve_target`) and the
+menu-kind option-selection entry (the `MenuRenderResult::selected` handling in
+the shell render path):
+
+```
+resolve_locale_verb(V, L):
+    1. if alias table (scoped to localisation key L) has surface V
+           -> return its canonical (root) command            # Req 11.6.1.1
+    2. else look up V in the root command table
+           2.1 if present -> return V as the root command     # Req 11.6.1.2.1
+           2.2 else        -> UnknownCommand(V)                # Req 11.6.1.2.2
+```
+
+The returned root command is then dispatched through the UNCHANGED front door
+(`resolve_target` / `dispatch_command_target`), so there is no parallel dispatch
+path (Req 11.6, framework mechanism 1). The root command is what history /
+session / macro `command=` record (Req 11.9, 10.3). Because the menu-selection
+entry feeds the option's alias surface into the SAME resolver, a clicked option
+and a typed verb take the identical path.
+
+### 5. Menu-kind render refactor: options reference an alias, display the locale surface
+
+Today `menu_workspace/render.rs` paints `option.command` (the raw root verb) in
+the command column via `option_prefix_job`, and localises only the DESCRIPTION
+via `i18n_keys::localised_option_description`. CR-NR-109 changes the COMMAND
+column to render the active-locale alias surface:
+
+- A menu-kind option references a command ALIAS (its `command` field remains the
+  root value on disk/in the parsed model -- unchanged persistence -- but the
+  render path resolves the DISPLAYED verb through the alias layer for `L`).
+- A new `i18n_keys` helper, e.g. `localised_option_command(environment, option,
+  L)`, returns the alias surface for the option's root command in locale `L`
+  (the alias row's `localisation_key` resolution), falling back to the root
+  command string when no localised alias exists (Req 11.7, 11.8). `render.rs`
+  calls it where it currently formats `option.command`.
+- Selecting the option still yields `MenuOption` carrying the ROOT `command`;
+  the shell feeds it through the unified resolver (part 4). What the user SEES is
+  the locale surface; what dispatches/persists is the root (Req 11.9).
+- This applies to ALL menu kinds, because every menu kind renders through the one
+  shared `render_menu_workspace` (POM, Settings, and user-defined menus all use
+  it -- menu-workspace Req 2.1). No per-kind special-casing.
+
+### Framework-conformance statement (CR-NR-109)
+
+The change reshapes two load-bearing shapes (the `AliasTable` entry model and the
+menu-option DISPLAY model) and is therefore an owner-confirmed FRAMEWORK CHANGE.
+It does NOT: add a second command-dispatch path (resolution ends at the existing
+front door), add a second navigation stack, introduce a new persistence format
+(the root command remains the persisted identity), or add a per-Context focus
+mechanism (the menu-kind focus latch is unchanged). With `ui.locale = "en"` and
+`localisation_key = None` on the seed rows, every menu renders its root verbs
+exactly as today (Req 10.2 behaviour-neutral).
+
+### Testability (CR-NR-109)
+
+- `AliasTable`: unit test that an entry with a `localisation_key` displays the
+  `t(key)` resolution and that `None` displays the raw surface; that an overlay
+  row replaces the synthesised identity default for the same canonical.
+- On-disk reader: unit test parsing a temp `i18n/<locale>/aliases/<env>.toml`
+  into a catalogue and loading it via `apply_locale_overlay`; a collision in the
+  data is rejected and the Identity_Base retained.
+- Unified resolver: table-driven unit test covering Req 11.6's four outcomes
+  (1.1 localised alias -> root; 1.2.1 root-table hit; 1.2.2 unknown-command
+  message), asserting the root command is what is returned regardless of surface.
+- Menu-kind render: an `egui_kittest` full-shell test that, with a non-`en`
+  locale and an alias catalogue loaded, a menu option's command column shows the
+  localised surface; selecting it dispatches the ROOT command (assert history
+  records the root). With `en` / no overlay the column shows the root verb
+  unchanged (Req 10.2).
+
+## Relationship to structured-messages (ff-message)
+
+See `docs/specs/structured-messages`. The new `ff-message` crate DEPENDS ON
+`ff-i18n` and is the concrete realization of localization Req 9.3 (route
+error/structured text through the lookup seam at the display boundary). It adds a
+stable `{class, number}` message IDENTITY and a severity axis -- the two things
+`ff-i18n` deliberately omits -- and renders via `ff_i18n::t_args` at the edge. It
+does NOT change `ff-i18n`.
+
+PROPOSED (future) cross-spec change: structured-message text lives as ordinary
+`ff-i18n` `.ftl` DATA keyed `vfs-0007`-style (and optional per-locale overlays).
+Growing that catalogue data beyond the English seed is future work under this
+spec's incremental extraction; it is marked PROPOSED here, not committed in this
+gate.

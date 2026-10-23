@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Author the Afrikaans (af) POC alias DATA and the minimal verb-* catalogue keys it references so the mechanism from FEAT-001/002 exercises end-to-end, and update the TCR coverage record. Per the SEQUENCING CAVEAT, no verb-* keys exist in any .ftl today, so this feature authors both the alias .toml and the matching verb-find keys in the en Identity_Base and the af catalogue. fr/de alias data are OUT of scope (localization Task 10.2/10.3). Depends on FEAT-001 (reader) and FEAT-002 (resolver/render). ASCII-only; TDD; agent COMPILE-ONLY scoped verification.",
+  "status": "pending",
+  "steps": [
+    "Read context.json and the FEAT-001/FEAT-002 findings FIRST (reader entry point, store env names, display_surface helper).",
+    "Author crates/ff-i18n/i18n/af/aliases/FFCMD.toml (and FFEDIT.toml if an editor verb is in the POC) as REVIEWED Afrikaans rows, each [[alias]] carrying surface, canonical, localisation_key. Minimum POC row: surface=SOEK, canonical=FIND, localisation_key=verb-find. Keep it to the reviewed POC set (do not invent broad unreviewed data).",
+    "Per the SEQUENCING CAVEAT author the minimal verb-* keys the POC rows reference in the EXISTING .ftl tree: verb-find = FIND in crates/ff-i18n/i18n/en/<file>.ftl (Identity_Base) and verb-find = SOEK in crates/ff-i18n/i18n/af/<file>.ftl. Use a focused catalogue file consistent with the per-area .ftl convention (e.g. a new ff-desktop-verbs.ftl); if the catalogue loader enumerates files explicitly, register the new file. Keep en/af key parity (the ftl_locale_check tool, if run, must stay green). ASCII-only.",
+    "Test FIRST (alias_reader.rs or a data test #[cfg(test)]): af_poc_alias_catalogue_loads_and_resolves with // Validates: localization Requirement 11.1, 5.1, 5.5 -- load the shipped af/aliases/FFCMD.toml via the FEAT-001 reader into the FFCMD identity table and assert SOEK resolves to FIND, FIND still resolves to FIND (Identity_Base retained, Req 5.5), and under an af catalogue the display surface for the row is t(verb-find)=SOEK.",
+    "Update docs/quality/TCR.md: turn the 10 CR-NR-109 rows (Req 11.1-11.10) from NOT COVERED to PASS, citing the test name that validates each (per the mapping in crnr109-impl-plan.md). Only mark a row PASS when its test actually exists and passes scoped; leave anything unverified as NEEDS-RETEST with a note. ASCII-only."
+  ],
+  "acceptance_criteria": [
+    "crates/ff-i18n/i18n/af/aliases/FFCMD.toml exists with the reviewed POC rows (at least SOEK->FIND with localisation_key=verb-find).",
+    "verb-find keys exist with en=FIND and af=SOEK in the .ftl tree; en/af key parity is preserved.",
+    "cargo test -p ff-desktop af_poc_alias_catalogue_loads_and_resolves passes (SOEK->FIND, FIND->FIND retained, display surface=SOEK under af).",
+    "docs/quality/TCR.md CR-NR-109 rows reflect real, verified coverage (PASS with test-name evidence where the test passes; NEEDS-RETEST otherwise).",
+    "No .rs file exceeds 400 non-test lines; docs/data are ASCII-only.",
+    "cargo check/clippy -- -D warnings/fmt -- --check (all -p ff-desktop) are clean."
+  ],
+  "verification": [
+    "Pipe each command through the pwsh7 wrapper to tools\\logs\\<name>.log and READ the log (one command per call; no ';' chaining).",
+    "cargo test -p ff-desktop af_poc_alias_catalogue_loads_and_resolves -- confirm PASS in the log (scoped/bounded).",
+    "cargo check -p ff-desktop / clippy -- -D warnings / fmt -- --check -- clean.",
+    "grep the TCR to confirm the 10 CR-NR-109 rows are updated; grep the .ftl tree to confirm verb-find exists in both en and af."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
