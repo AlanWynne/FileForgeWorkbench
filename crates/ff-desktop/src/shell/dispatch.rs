@@ -69,6 +69,24 @@ impl WorkbenchShell {
             return;
         }
 
+        // CR-NR-109 (localization Req 11.6): the unified locale-aware verb
+        // resolver runs ONCE here -- AFTER the `=` strip, BEFORE the prelude and
+        // `resolve_target` -- at the command-line front door. It rewrites ONLY
+        // the verb TOKEN to its ROOT (canonical) command under the active
+        // environment's active-locale alias table; the argument is untouched and
+        // its case preserved (B062). When the resolved root differs from the
+        // entered surface, the rest of the front door runs with the ROOT, so a
+        // localised surface (e.g. af SOEK) dispatches, records, and persists as
+        // its English root (FIND) -- the single dispatched/persisted identity
+        // (Req 11.9). On an Unknown outcome (or at `en`/no overlay, where the
+        // table is identity-only and verb == root) the string is UNCHANGED, so
+        // behaviour is byte-identical and the existing not-found path still runs
+        // (Req 10.2, 11.6 branch 1.2.2). The resolver does NOT dispatch and adds
+        // NO second dispatch path -- the prelude/resolve_target/ladder below are
+        // the unchanged single front door.
+        let raw = self.rewrite_verb_to_root(raw);
+        let raw = raw.as_str();
+
         let upper = raw.trim().to_uppercase();
 
         // Prelude first (A1 ordering: stage 1 / EXIT family / POM / chained before

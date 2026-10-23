@@ -173,6 +173,19 @@ impl WorkbenchShell {
             self.dispatch_command_target(target);
             return;
         }
+        // CR-NR-109 (localization Req 11.6, single-path property): route the
+        // option's command through the SAME locale-aware resolver the command
+        // line uses, so menu selection and the typed line share one resolution
+        // path. A menu option's `command` is already the ROOT (built-in menus are
+        // code-only English; a user menu authors the root), so this is root-in
+        // -> same-root-out and is behaviour-neutral -- but routing it through the
+        // resolver (rather than bypassing it) is what makes the two seams
+        // provably one path (Req 11.6 last sentence). The resolved ROOT is what
+        // is dispatched and recorded (Req 11.9); an Unknown outcome leaves the
+        // command unchanged so a non-aliased option command still dispatches.
+        let root_command = self.rewrite_verb_to_root(command);
+        let command = root_command.as_str();
+
         // Req 10.1/10.3: resolve the option's command to a user-owned target and
         // dispatch it; otherwise handle the raw command string (Req 10.2) through
         // `handle_command`, which (as of B080 Step 2) runs the stage-1 Option_Key

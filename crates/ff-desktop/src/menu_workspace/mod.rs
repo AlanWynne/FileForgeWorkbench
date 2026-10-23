@@ -11,6 +11,7 @@ pub mod defaults;
 pub mod i18n_keys;
 pub mod loader;
 pub mod render;
+pub mod render_layout;
 pub mod serialiser;
 pub mod validate;
 

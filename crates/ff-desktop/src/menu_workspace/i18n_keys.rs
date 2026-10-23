@@ -84,6 +84,38 @@ pub(crate) fn localised_option_description(menu_name: &str, option: &MenuOption)
     )
 }
 
+/// The DISPLAYED command-column text for `option` under the active locale
+/// (CR-NR-109 Task 11.5, localization Req 11.7, 11.8): the alias SURFACE for the
+/// option's ROOT command in the active locale when one exists, else the raw root
+/// command string.
+///
+/// `display_surface_source` is the result of looking the option's ROOT command
+/// up in the active environment's active-locale `AliasTable` via
+/// `display_surface_for_canonical` (computed SHELL-side, where `&self` and the
+/// alias store are available, so this menu-crate helper stays free of shell
+/// coupling). It is `Some(surface)` when the environment's table has a row for
+/// that root -- where the row carries a localisation key the surface is already
+/// the `t(key)` resolution; where it does not, the surface is the raw root, so
+/// either way a present source is the right display text. It is `None` when the
+/// root is not in the table at all, in which case the raw `option.command` (the
+/// ROOT) is shown (Req 11.8 fallback). A blank source also falls back, so a
+/// mis-seeded empty surface never blanks the column.
+///
+/// The returned text is DISPLAY-ONLY: selecting the option still carries the
+/// ROOT `option.command` through the 11.6 resolver (Req 11.9), so nothing about
+/// dispatch or persistence changes.
+///
+/// Validates: localization Requirement 11.7, 11.8
+pub(crate) fn localised_option_command(
+    option: &MenuOption,
+    display_surface_source: Option<&str>,
+) -> String {
+    match display_surface_source {
+        Some(surface) if !surface.trim().is_empty() => surface.to_string(),
+        _ => option.command.clone(),
+    }
+}
+
 // === Tests ==================================================================
 
 #[cfg(test)]
@@ -162,6 +194,38 @@ mod tests {
         assert_eq!(
             localised_option_description("settings", &o),
             "Reset to barebones -- archive config".to_string()
+        );
+    }
+
+    // Validates: localization Requirement 11.7, 11.8 -- the command-column helper
+    // shows the active-locale alias SURFACE for the option's root when the store
+    // supplied one (e.g. af SOEK for a FIND option), and falls back to the raw
+    // ROOT command (e.g. CATALOGS) when no alias/surface exists. The option
+    // `command` (the ROOT) is unchanged either way -- the surface is display-only.
+    #[test]
+    fn localised_option_command_resolves_alias_surface_else_root() {
+        // A FIND option whose active-locale table resolved to the display surface
+        // SOEK (the store looked up display_surface_for_canonical("FIND") and
+        // found a row keyed verb-find = SOEK) -> the column shows SOEK.
+        let find = opt("FIND", "Find text");
+        assert_eq!(
+            localised_option_command(&find, Some("SOEK")),
+            "SOEK".to_string(),
+            "a localised alias surface must be shown in the command column (Req 11.7)"
+        );
+
+        // A CATALOGS option with no alias/surface (None) -> the raw ROOT is shown.
+        let catalogs = opt("CATALOGS", "Catalog Explorer");
+        assert_eq!(
+            localised_option_command(&catalogs, None),
+            "CATALOGS".to_string(),
+            "with no alias/key the raw root command is shown (Req 11.8 fallback)"
+        );
+
+        // A blank surface also falls back to the root (never blank the column).
+        assert_eq!(
+            localised_option_command(&catalogs, Some("   ")),
+            "CATALOGS".to_string()
         );
     }
 }

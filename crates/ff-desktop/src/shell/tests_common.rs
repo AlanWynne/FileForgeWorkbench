@@ -337,6 +337,74 @@ pub(crate) fn cmd_field_id() -> egui::Id {
     egui::Id::new("command_field_input")
 }
 
+// === CR-NR-109: locale-aware menu/resolver test setup =======================
+
+/// Install a TEST catalogue defining `verb-find = SOEK` on the process-wide i18n
+/// seam, so a localised display surface keyed `verb-find` resolves to SOEK
+/// end-to-end through the real `ff_i18n::t` seam (the shipped `.ftl` tree has no
+/// verb-* keys yet).
+///
+/// CRITICAL: this builds the catalogue from a COPY of the SHIPPED English base
+/// PLUS the extra `verb-find` key, not a one-key catalogue. Because the i18n seam
+/// is PROCESS-WIDE and the ff-desktop test binary runs many tests in one process,
+/// installing a one-key catalogue would strip every other English label (e.g.
+/// "Save") and break unrelated full-shell label-query tests that run later in the
+/// same process. Copying the shipped `en/` tree keeps all real labels resolving
+/// while adding verb-find. Call AFTER building the harness when a test needs the
+/// localised surface to resolve.
+///
+/// Validates: localization Requirement 11.7, 11.8 (test-support)
+pub(crate) fn install_verb_find_soek_catalogue() {
+    // Resolve the shipped i18n root via the same search path production uses
+    // (the dev-tree marker walk reaches crates/ff-i18n/i18n from the test binary).
+    let shipped_root = super::i18n_bootstrap::resolve_i18n_root()
+        .expect("shipped i18n/ root must resolve for the verb-find test catalogue");
+    let shipped_en = shipped_root.join("en");
+
+    // Build a temp i18n root with an en/ that mirrors the shipped English base
+    // plus an extra verbs.ftl defining verb-find = SOEK.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let en = dir.path().join("en");
+    std::fs::create_dir_all(&en).expect("create en dir");
+    if let Ok(entries) = std::fs::read_dir(&shipped_en) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("ftl") {
+                if let Some(name) = path.file_name() {
+                    // SKIP the shipped verb catalogue: it defines `verb-find = FIND`
+                    // (CR-NR-109 Task 11.7 Identity_Base). Copying it alongside the
+                    // test's own `verb-find = SOEK` below would make `verb-find`
+                    // appear TWICE in the same en bundle -- a Fluent duplicate-message
+                    // bundle error. The test's zz-test-verbs.ftl is the sole
+                    // `verb-find` definition, overriding the root surface to SOEK.
+                    if name.eq_ignore_ascii_case("ff-desktop-verbs.ftl") {
+                        continue;
+                    }
+                    let _ = std::fs::copy(&path, en.join(name));
+                }
+            }
+        }
+    }
+    std::fs::write(en.join("zz-test-verbs.ftl"), "verb-find = SOEK\n").expect("write ftl");
+    let catalogue =
+        ff_i18n::Catalogue::load_identity_base(dir.path()).expect("test catalogue loads");
+    ff_i18n::set_catalogue(catalogue);
+}
+
+/// Overlay a single `(surface -> canonical)` alias row (carrying the `verb-find`
+/// localisation key) onto the given environment's table in the shell's alias
+/// store, so a full-shell test can simulate an active-locale alias without a
+/// TOML file on disk. Thin wrapper over the store's `overlay_row_for_test`.
+pub(crate) fn overlay_alias_row(
+    shell: &super::WorkbenchShell,
+    env: &str,
+    surface: &str,
+    canonical: &str,
+) {
+    let mut store = shell.i18n.alias_store.lock().expect("alias store lock");
+    store.overlay_row_for_test(env, surface, canonical);
+}
+
 /// Press Tab, run a frame, return the focused id (if any).
 pub(crate) fn tab_and_focus(
     harness: &mut egui_kittest::Harness<super::WorkbenchShell>,

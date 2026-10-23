@@ -360,6 +360,18 @@ pub struct WorkbenchShell {
     /// the Help Topic Registry, the Help Context panel, and the missing-topic
     /// tally (CR-NR-097).
     pub(super) help: state_groups::HelpState,
+    /// Localization runtime state (grouped sub-struct, see
+    /// [`state_groups::I18nState`]): the locale-overlaid per-environment alias
+    /// store, shared with the process-global reload slot (CR-NR-109).
+    ///
+    /// Validates: localization Requirement 11.2, 11.3
+    //
+    // `allow(dead_code)`: the store is seeded at construction and reloaded via
+    // the process-global slot; its READING consumers (the FEAT-002 resolver and
+    // the menu-kind render) land next, so the field is currently written-not-read
+    // (ahead-of-consumer, like `provider_registry`).
+    #[allow(dead_code)]
+    pub(super) i18n: state_groups::I18nState,
     /// Plugin Manager panel state.
     ///
     /// Validates: plugin-manager-ui Requirement 1.1

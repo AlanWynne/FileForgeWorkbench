@@ -125,6 +125,12 @@ fn main() -> anyhow::Result<()> {
                 .get_string(ff_config::keys::ui::LOCALE)
                 .unwrap_or_else(|_| "en".to_string());
             shell::help::reload_active_help_registry_for_locale(&help_locale);
+            // CR-NR-109 Req 11.2: re-seed + overlay the shell-owned locale alias
+            // store for the new locale, in place on the published Arc, so the
+            // menu-kind render and the resolver (FEAT-002) read the new locale's
+            // surfaces. A no-op until the shell publishes the store (startup
+            // order), mirroring the help reload above.
+            shell::alias_reader::reload_active_alias_store_for_locale(&help_locale);
         })
     };
 

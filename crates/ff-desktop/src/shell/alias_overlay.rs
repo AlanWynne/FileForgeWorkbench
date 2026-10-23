@@ -48,15 +48,12 @@
 //!
 //! See docs/specs/localization/{requirements,design}.md.
 
-// Task 4 ships the loader MECHANISM; its runtime consumer (the locale-switch
-// path that reads an on-disk catalogue and loads it into the live environment
-// tables) arrives in Phase 3 (Task 10). Until then these items are exercised by
-// unit tests only, so a non-test build sees them as unused -- mirror the
-// `#[allow(dead_code)]` already used for the ahead-of-consumer `CommandEnvironment`
-// trait and `EnvironmentKind::name` in `environment.rs`.
-#![allow(dead_code)]
-
 use super::environment::AliasTable;
+
+/// One KEYED overlay row: `(surface-UPPERCASED, canonical, localisation_key?)`
+/// (CR-NR-109, localization Req 11.1). Named so the keyed catalogue and the
+/// `AliasTable::apply_locale_overlay_keyed` signature stay readable.
+pub(crate) type KeyedAliasRow = (String, String, Option<String>);
 
 /// Recoverable overlay failure (NOT a panic): a within-environment alias
 /// collision. The loader rejects the catalogue FOR THAT ENVIRONMENT and retains
@@ -95,6 +92,14 @@ pub(crate) struct AliasCatalogue {
     /// Keyed by environment name; each value is the set of
     /// `(surface-UPPERCASED, canonical)` overlay rows for that environment.
     per_environment: Vec<(String, Vec<(String, String)>)>,
+    /// CR-NR-109: keyed by environment name; each value is the set of
+    /// `(surface-UPPERCASED, canonical, localisation_key?)` overlay rows for that
+    /// environment, as produced by the on-disk per-locale alias-catalogue reader
+    /// (`shell/alias_reader.rs`). Separate from `per_environment` so the
+    /// pre-CR-NR-109 keyless API and its tests are byte-for-byte unchanged; the
+    /// keyed rows load via `AliasTable::apply_locale_overlay_keyed` (localization
+    /// Req 11.1, 11.5).
+    per_environment_keyed: Vec<(String, Vec<KeyedAliasRow>)>,
 }
 
 impl AliasCatalogue {
@@ -106,6 +111,12 @@ impl AliasCatalogue {
     /// Add (or replace) the overlay row set for one environment. Rows are
     /// language-agnostic `(surface, canonical)` pairs with no locale tag
     /// (Req 5.4).
+    // KEYLESS catalogue API: the production on-disk reader uses the KEYED variants
+    // (`with_environment_keyed` / `keyed_rows_for` / `load_into_keyed`); this
+    // keyless trio backs the localization Req 5.1-5.6 fixture tests in this
+    // module, which exercise the overlay collision discipline without a
+    // localisation key. Retained as the parallel keyless path, not dead.
+    #[allow(dead_code)]
     pub(crate) fn with_environment(
         mut self,
         environment_name: impl Into<String>,
@@ -121,8 +132,41 @@ impl AliasCatalogue {
     }
 
     /// The overlay rows this catalogue carries for `environment_name`, if any.
+    // Keyless catalogue accessor; see `with_environment` -- backs the keyless
+    // Req 5.x fixture tests and `load_into`, paralleling `keyed_rows_for`.
+    #[allow(dead_code)]
     pub(crate) fn rows_for(&self, environment_name: &str) -> Option<&[(String, String)]> {
         self.per_environment
+            .iter()
+            .find(|(n, _)| n == environment_name)
+            .map(|(_, rows)| rows.as_slice())
+    }
+
+    /// CR-NR-109: add (or replace) the KEYED overlay row set for one environment,
+    /// each row `(surface, canonical, localisation_key?)` (localization Req 11.1,
+    /// 11.5). Used by the on-disk alias-catalogue reader.
+    pub(crate) fn with_environment_keyed(
+        mut self,
+        environment_name: impl Into<String>,
+        rows: Vec<KeyedAliasRow>,
+    ) -> Self {
+        let name = environment_name.into();
+        if let Some(slot) = self
+            .per_environment_keyed
+            .iter_mut()
+            .find(|(n, _)| *n == name)
+        {
+            slot.1 = rows;
+        } else {
+            self.per_environment_keyed.push((name, rows));
+        }
+        self
+    }
+
+    /// CR-NR-109: the KEYED overlay rows this catalogue carries for
+    /// `environment_name`, if any (localization Req 11.1, 11.5).
+    pub(crate) fn keyed_rows_for(&self, environment_name: &str) -> Option<&[KeyedAliasRow]> {
+        self.per_environment_keyed
             .iter()
             .find(|(n, _)| n == environment_name)
             .map(|(_, rows)| rows.as_slice())
@@ -138,6 +182,9 @@ impl AliasCatalogue {
     /// unchanged (`Ok`).
     ///
     /// Validates: localization Requirement 5.2, 5.3, 5.5, 5.6
+    // Keyless catalogue loader; see `with_environment` -- backs the keyless
+    // Req 5.x fixture tests, paralleling the production `load_into_keyed`.
+    #[allow(dead_code)]
     pub(crate) fn load_into(
         &self,
         environment_name: &str,
@@ -145,6 +192,25 @@ impl AliasCatalogue {
     ) -> Result<(), AliasOverlayError> {
         match self.rows_for(environment_name) {
             Some(rows) => table.apply_locale_overlay(environment_name, rows),
+            None => Ok(()),
+        }
+    }
+
+    /// CR-NR-109: load this catalogue's KEYED rows for `environment_name` INTO
+    /// `table` via `AliasTable::apply_locale_overlay_keyed`, carrying each row's
+    /// optional localisation key through to the entry (localization Req 11.1,
+    /// 11.5). Same per-environment collision discipline as [`load_into`]: a
+    /// within-environment collision rejects THIS environment's overlay and
+    /// retains its Identity_Base (Req 11.10). No keyed rows -> base unchanged.
+    ///
+    /// Validates: localization Requirement 11.1, 11.5, 11.10
+    pub(crate) fn load_into_keyed(
+        &self,
+        environment_name: &str,
+        table: &mut AliasTable,
+    ) -> Result<(), AliasOverlayError> {
+        match self.keyed_rows_for(environment_name) {
+            Some(rows) => table.apply_locale_overlay_keyed(environment_name, rows),
             None => Ok(()),
         }
     }

@@ -164,6 +164,26 @@ impl WorkbenchShell {
             .unwrap_or_else(|_| "en".to_string());
         let help_registry = super::help::build_help_registry_for_locale(&help_locale);
 
+        // Locale-aware alias store (CR-NR-109, localization Req 11.2, 11.3):
+        // seed identity rows for every FFCMD root (the built-in menu-option root
+        // commands) then overlay the active locale's on-disk alias DATA. The
+        // store is held behind an `Arc<Mutex<..>>` and published to the
+        // process-global reload slot so the existing `ui.locale` callback can
+        // re-seed+overlay it in place (mirroring the help-registry reload seam).
+        // With the default `en` and no `i18n/en/aliases/` tree this is
+        // identity-only and behaviour-neutral (Req 10.2).
+        let locale_alias_store = {
+            let roots = super::alias_reader::builtin_ffcmd_roots();
+            let root_refs: Vec<&str> = roots.iter().map(String::as_str).collect();
+            let store = super::alias_reader::LocaleAliasStore::seed_and_overlay_for_locale(
+                &root_refs,
+                &help_locale,
+            );
+            let shared = std::sync::Arc::new(std::sync::Mutex::new(store));
+            super::alias_reader::publish_active_alias_store(&shared);
+            shared
+        };
+
         // Notification channel -- Validates: notification-system Requirement 3.1, 3.3
         let (notification_tx, notification_rx) = std::sync::mpsc::sync_channel::<Notification>(64);
         let notification_queue =
@@ -315,6 +335,9 @@ impl WorkbenchShell {
                 ),
                 registry: help_registry,
                 missing_tally: std::collections::HashMap::new(),
+            },
+            i18n: state_groups::I18nState {
+                alias_store: locale_alias_store,
             },
             config_panel: ConfigPanelState::new(),
             plugin_manager_panel: PluginManagerPanelState::new(),

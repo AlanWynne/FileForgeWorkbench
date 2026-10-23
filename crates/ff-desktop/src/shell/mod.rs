@@ -35,6 +35,7 @@ pub(crate) use crate::scroll_amount::ScrollAmount;
 
 mod actions;
 mod alias_overlay;
+pub(crate) mod alias_reader;
 mod command_line_outcome;
 mod commands;
 mod commands_environment;
@@ -54,6 +55,7 @@ mod construct_provider;
 mod dispatch;
 mod dispatch_ffedit;
 mod environment;
+mod environment_contract;
 mod environment_ffedit;
 mod environment_registry;
 mod external_adapter;
@@ -64,6 +66,7 @@ mod helpers;
 pub(crate) mod i18n_bootstrap;
 mod keys_editor;
 mod kinds_editor;
+mod locale_resolver;
 mod mainframe_backend;
 mod menus_editor;
 mod mod_helpers;
@@ -131,6 +134,8 @@ mod tests_common;
 mod tests_crch061;
 #[cfg(test)]
 mod tests_focus;
+#[cfg(test)]
+mod tests_locale_menu;
 #[cfg(test)]
 mod tests_menu_workspace;
 #[cfg(test)]

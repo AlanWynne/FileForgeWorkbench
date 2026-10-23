@@ -143,6 +143,33 @@ pub(crate) struct PendingTabActions {
     pub return_to_pom: bool,
 }
 
+// === I18nState =======================================================
+// Localization runtime state owned by the shell (CR-NR-109). Currently holds the
+// locale-overlaid per-environment alias store, shared with the process-global
+// reload slot as an `Arc<Mutex<..>>` so a `ui.locale` change re-seeds+overlays it
+// in place and the shell (holding the SAME Arc) observes the swap -- mirroring the
+// help-registry reload seam (help.rs), adding NO new reload mechanism.
+
+/// Shell-owned localization runtime state (CR-NR-109). A grouped sub-struct, not
+/// a flat `WorkbenchShell` field (wiring-standard.md).
+///
+/// Validates: localization Requirement 11.2, 11.3
+#[derive(Debug, Default)]
+pub(crate) struct I18nState {
+    /// The locale-overlaid per-environment alias store (FFCMD + FFEDIT), seeded
+    /// at construction and re-populated on a `ui.locale` reload. Shared as an
+    /// `Arc<Mutex<..>>` with the process-global reload slot so the reload closure
+    /// updates the SAME store the shell reads from.
+    ///
+    /// Validates: localization Requirement 11.2, 11.3, 11.5
+    //
+    // Read by the CR-NR-109 FEAT-002 locale-aware resolver
+    // (`WorkbenchShell::resolve_locale_verb` / `menu_option_command_surfaces` in
+    // shell/locale_resolver.rs); seeded at construction and kept in sync via the
+    // process-global reload slot.
+    pub alias_store: std::sync::Arc<std::sync::Mutex<super::alias_reader::LocaleAliasStore>>,
+}
+
 // === FocusState ======================================================
 // Interior/menu focus anchors and the one-shot focus latches (CR-CH-023).
 

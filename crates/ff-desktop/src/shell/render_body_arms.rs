@@ -163,6 +163,15 @@ impl WorkbenchShell {
         // the active tab mutably (menu_calendar_colours borrows &self).
         let menu_cal = self.menu_colours();
         let calendar_offset = self.pom_calendar_offset;
+        // CR-NR-109 (localization Req 11.7): compute the per-option DISPLAYED
+        // command-column surfaces SHELL-side (where `&self` and the alias store
+        // are available), so the menu renderer stays free of shell coupling. Each
+        // surface is the active-locale alias surface for the option's ROOT command
+        // in the active environment's table, falling back to the raw root when no
+        // localised alias exists (Req 11.8). Selection still carries the ROOT
+        // (Req 11.9) -- these surfaces are display-only. At `en`/no overlay every
+        // surface equals its root, so the column is byte-identical (Req 10.2).
+        let command_surfaces = self.menu_option_command_surfaces();
         let active_idx = self.tabs.active_index();
         let mut calendar_nav = None;
         let mut first_interior = None;
@@ -179,6 +188,7 @@ impl WorkbenchShell {
                 ui,
                 calendar_offset,
                 menu_cal,
+                &command_surfaces,
             );
             if let Some(option) = result.selected {
                 self.pending_menu_option = Some(option);
