@@ -1,0 +1,17 @@
+# Afrikaans (af) command-alias catalogue for the FFCMD command environment
+# (CR-NR-109, localization Requirement 11, Task 11.7 -- proof-of-concept data).
+#
+# Each [[alias]] row maps a localised, typeable SURFACE form to the ROOT
+# (canonical) command verb, optionally carrying a localisation_key that resolves
+# the displayed surface through the ff-i18n catalogue (t(key)). The ROOT verb is
+# the dispatched and persisted identity (Requirement 11.9); the surface is a
+# display/typeable concern only. Loaded by shell/alias_reader.rs via the existing
+# apply_locale_overlay seam -- no new mechanism.
+#
+# POC scope: a single reviewed row (SOEK -> FIND). French/German alias DATA is
+# out of scope for this change (localization Task 10.2 / 10.3).
+
+[[alias]]
+surface = "SOEK"
+canonical = "FIND"
+localisation_key = "verb-find"
