@@ -99,6 +99,13 @@ pub(crate) fn is_shell_command(cmd: &str) -> bool {
 pub(crate) fn make_shell() -> super::WorkbenchShell {
     use ff_config::init;
     use ff_config::ConfigInitOptions;
+
+    // CR-NR-103 (Task 9): command-dispatch tests now assert on status/error
+    // messages that resolve through the ff_i18n seam. Install the English
+    // Identity_Base catalogue so t()/t_args() return real English text (not the
+    // key fallback), exactly as harness_shell() does for full-shell tests. The
+    // install is idempotent (swaps the process-wide catalogue).
+    super::i18n_bootstrap::install_catalogue_for_tests();
     use ff_core::WorkbenchApp;
     use ff_keys::HistoryStore;
     use ff_logging::LoggingStatus;
