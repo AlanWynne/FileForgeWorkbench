@@ -104,18 +104,23 @@ TDD applies: write the failing test first, then the minimum implementation, per
       status-bar Ln/Col/lines/CAPS/phase) are deferred to Task 9 by design.
       Agent-verified compile + ftl-dupe clean per area; OWNER runs the full gate.
 
-- [ ] 9. Convert the hard status/error messages (argument-bearing, verb-embedding)
-  - [ ] 9.1 Triage the `open_error` / ladder `format!` sites crate-by-crate,
+- [x] 9. Convert the hard status/error messages (argument-bearing, verb-embedding)
+  - [x] 9.1 Triage the `open_error` / ladder `format!` sites crate-by-crate,
         classifying each as user-facing-translatable vs internal-diagnostic.
         Satisfies Req 4.1.
-  - [ ] 9.2 Convert user-facing interpolated messages to Fluent entries with named
+  - [x] 9.2 Convert user-facing interpolated messages to Fluent entries with named
         placeables resolved via `t_args`. Satisfies Req 9.1.
-  - [ ] 9.3 Pass embedded command verbs as NON-translated placeable arguments
+  - [x] 9.3 Pass embedded command verbs as NON-translated placeable arguments
         (verb stays English); localise `thiserror`-sourced text at the display
         boundary. Satisfies Req 9.2, 9.3, 4.2.
-  - [ ] 9.4 Make the Catalogue_Lookup_Seam available to plugin-authored UI and
+  - [x] 9.4 Make the Catalogue_Lookup_Seam available to plugin-authored UI and
         route a plugin-authored command environment's aliases through the same
         per-environment Alias_Catalogue loader. Satisfies Req 8.1, 8.2, 8.3.
+    - DONE (merged to main at 210409f). Decisions D1 (verb baked for single-verb-
+      prefix messages), D2 (ProfileError/ShellError display-boundary keys, enums
+      unchanged), D3 (SCRM engine-report text deferred), D5 all approved. The
+      shell STATUS/ERROR messages resolve through t_args; the plugin seam is
+      proven by plugin_authored_environment_localises_through_the_same_alias_seam.
 
 ## Phase 3 -- Capstone: build out the other-language catalogue DATA (LAST)
 
@@ -125,17 +130,38 @@ TDD applies: write the failing test first, then the minimum implementation, per
     enough to translate against. It adds DATA only (per-locale `.ftl` message
     catalogues plus per-locale, per-environment alias catalogues); it introduces
     NO new mechanism.
-  - [ ] 10.1 Author the French (`fr`) Message_Catalogue (`i18n/fr/` `.ftl` files)
-        translating the populated English keys. Satisfies Req 2.2, 2.3.
+  - POC SCOPE (owner-approved): Afrikaans (`af`) is the hand-reviewed proof-of-
+    concept locale (owner reads Afrikaans); French (`fr`) and German (`de`) are
+    AI-DRAFTED and flagged "DRAFT -- pending native-speaker review" in every file
+    header, to be handed to native speakers later.
+  - [x] 10.0 Author the Afrikaans (`af`) Message_Catalogue (`i18n/af/`, 29 files,
+        full 464-key parity) as the reviewed POC locale. Dupe-clean, escapes/ASCII
+        clean. (Owner-added POC locale; not in the original task list.)
+  - [x] 10.1 Author the French (`fr`) Message_Catalogue (`i18n/fr/` `.ftl` files)
+        translating the populated English keys. 29 files, full 464-key parity,
+        dupe-clean, escapes/ASCII clean (ftl_locale_check + ftl_dupe_check). Satisfies Req 2.2, 2.3.
   - [ ] 10.2 Author the French per-locale, per-environment Alias_Catalogue
         (e.g. `i18n/fr/aliases/<environment>.toml`), loading into the existing
         per-environment `AliasTable` (both `FIND` and `CHERCHER` resolve to
         canonical `FIND`). Satisfies Req 5.1, 5.2, 5.3, 5.5.
+    - BLOCKED (needs decision): the in-memory overlay loader (AliasCatalogue::
+      load_into / AliasTable::apply_locale_overlay, Task 4) exists and is tested,
+      but there is NO on-disk reader that parses `i18n/<locale>/aliases/<env>.toml`
+      into an AliasCatalogue and wires it into environment construction. Authoring
+      the .toml data now would be dead data until that reader is built. The reader
+      is MECHANISM (needs the requirements gate + code + tests), not the light
+      DATA work this task scopes. Deferred pending owner direction.
   - [ ] 10.3 Author the German (`de`) Message_Catalogue (`i18n/de/`) and its
         per-environment Alias_Catalogue, same pattern as French. Satisfies Req
         2.2, 5.1, 5.3.
-  - [ ] 10.4 Add each new language to the `ui.locale` `allowed_values` list in the
-        `ff-config` schema so the locale is selectable. Satisfies Req 1.2.
-  - [ ] 10.5 Author per-locale help content directories (`help/fr/`, `help/de/`)
-        for the translated topics, with English fallback for untranslated topics.
-        Satisfies Req 6.1, 6.2.
+    - PARTIAL: the `de` Message_Catalogue is DONE (29 files, full 464-key parity,
+      dupe/escape/ASCII clean). The `de` alias catalogue is BLOCKED for the same
+      on-disk-reader reason as 10.2.
+  - [x] 10.4 Add each new language to the `ui.locale` `allowed_values` list in the
+        `ff-config` schema so the locale is selectable. `allowed_values` extended
+        to `["en","af","fr","de"]`; allowed_values test updated to loop the shipped
+        set and reject `"xx"`. Satisfies Req 1.2.
+  - [ ] 10.5 Author per-locale help content directories (`help/af/`, `help/fr/`,
+        `help/de/`) for the translated topics, with English fallback for
+        untranslated topics. The ff-help loader resolves `help/<locale>/` then the
+        English `help/` (Task 6, wired + tested). Satisfies Req 6.1, 6.2.
