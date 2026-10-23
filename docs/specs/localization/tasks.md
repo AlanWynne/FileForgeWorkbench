@@ -144,13 +144,9 @@ TDD applies: write the failing test first, then the minimum implementation, per
         (e.g. `i18n/fr/aliases/<environment>.toml`), loading into the existing
         per-environment `AliasTable` (both `FIND` and `CHERCHER` resolve to
         canonical `FIND`). Satisfies Req 5.1, 5.2, 5.3, 5.5.
-    - BLOCKED (needs decision): the in-memory overlay loader (AliasCatalogue::
-      load_into / AliasTable::apply_locale_overlay, Task 4) exists and is tested,
-      but there is NO on-disk reader that parses `i18n/<locale>/aliases/<env>.toml`
-      into an AliasCatalogue and wires it into environment construction. Authoring
-      the .toml data now would be dead data until that reader is built. The reader
-      is MECHANISM (needs the requirements gate + code + tests), not the light
-      DATA work this task scopes. Deferred pending owner direction.
+    - WAS BLOCKED (on-disk reader missing); the reader is now the gated mechanism
+      work of CR-NR-109 Task 11.2 below. Once Task 11.2 lands, this task is the
+      pure DATA authoring (the `fr` alias `.toml` files) it was always scoped to.
   - [ ] 10.3 Author the German (`de`) Message_Catalogue (`i18n/de/`) and its
         per-environment Alias_Catalogue, same pattern as French. Satisfies Req
         2.2, 5.1, 5.3.
@@ -171,3 +167,60 @@ TDD applies: write the failing test first, then the minimum implementation, per
       back to the English `help/` directory (Req 6.2). The remaining ~dozens of
       topics are left to the native-speaker translation pass, which the fallback
       supports first-class.
+
+## Phase 4 -- Locale-aware alias resolution + menu-kind options via localised aliases (CR-NR-109)
+
+Realises Requirement 11 (and the Req 4.2 / 7.3 display amendments). FRAMEWORK
+CHANGE (owner-confirmed): reshapes the `AliasTable` entry model and the
+menu-option display model; builds ON the single dispatch front door, the existing
+`AliasTable` seam, and the `ff_i18n::t()` seam (no new dispatcher / nav stack /
+persistence format / focus mechanism). TDD applies; each task writes the failing
+test first. Scoped `cargo check -p ff-desktop` / `cargo clippy -p ff-desktop` /
+`cargo fmt` for agents; the OWNER runs the full gate.
+
+- [x] 11. Locale-aware alias layer + menu-kind localised option rendering
+  - [x] 11.1 Grow the `AliasTable` entry to `(surface, canonical, localisation_key?)`
+        in `crates/ff-desktop/src/shell/environment.rs`. Keep `canonical_verb`
+        and `apply_locale_overlay`; default `localisation_key` to `None` in the
+        seed constructors so the English base is byte-identical. Add a
+        display-surface accessor that returns `ff_i18n::t(key)` when a
+        localisation key is present (active locale), else the raw surface.
+        Satisfies Req 11.1, 11.2; behaviour-neutral at `en` (Req 10.2).
+  - [x] 11.2 Build the on-disk alias-catalogue reader: parse
+        `i18n/<locale>/aliases/<environment>.toml` (`[[alias]]` rows carrying
+        surface / canonical / optional localisation_key) into an in-memory
+        `AliasCatalogue`, and load it into the corresponding environment's
+        `AliasTable` via the EXISTING `apply_locale_overlay` (its first
+        production caller). Wire it into environment construction and the
+        `ui.locale` reload callback. A within-environment collision is rejected
+        and the Identity_Base retained. Satisfies Req 11.5, 11.10; unblocks
+        Task 10.2 / 10.3 alias data.
+  - [x] 11.3 Make the synthesised identity rows explicit and editable: seed an
+        identity row (`surface == canonical`, `localisation_key = None`) for every
+        root command; an authored/overlaid row for the same canonical REPLACES
+        the synthesised default (persisted via the on-disk alias data). Prove the
+        Russian-root / English-surface override case. Satisfies Req 11.3, 11.4.
+  - [x] 11.4 Implement the unified locale-aware resolver `resolve_locale_verb(V, L)`
+        applying the Req 11.6 order (alias-table-for-L -> root -> root-table ->
+        unknown-command message), returning the ROOT command. Call it from BOTH
+        the command-line entry (`shell/dispatch.rs`, before `resolve_target`) and
+        the menu-selection entry. Dispatch the returned root through the UNCHANGED
+        front door; the root is what persists. Satisfies Req 11.6, 11.9, 10.3.
+  - [x] 11.5 Refactor the menu-kind render path: add
+        `i18n_keys::localised_option_command(environment, option, L)` returning
+        the active-locale alias surface for the option's root command (root/English
+        fallback), and call it in `menu_workspace/render.rs` where the command
+        column currently formats `option.command`. Selecting an option still
+        yields the ROOT `command`, fed through the unified resolver (11.4).
+        Applies to ALL menu kinds via the shared `render_menu_workspace`.
+        Satisfies Req 11.7, 11.8, 4.2-amended, 7.3-amended.
+  - [x] 11.6 Full-shell `egui_kittest` test: with a non-`en` locale + a loaded
+        alias catalogue, a menu option's command column shows the localised
+        surface and selecting it dispatches + records the ROOT command; with `en`
+        / no overlay the column shows the root verb unchanged (Req 10.2). Keep the
+        menu-kind first-Tab focus test green (workspace-conformance.md).
+        Satisfies Req 11.7, 11.9, 10.2.
+  - [x] 11.7 Author the Afrikaans (`af`) per-environment alias catalogue
+        (`i18n/af/aliases/<environment>.toml`) as the reviewed POC data, now that
+        the reader (11.2) exists. (French/German alias data follow as Task 10.2 /
+        10.3 DATA work.) Satisfies Req 5.1, 5.5, 11.1.
