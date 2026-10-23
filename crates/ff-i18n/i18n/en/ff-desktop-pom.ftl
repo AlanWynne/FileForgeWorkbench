@@ -19,3 +19,19 @@
 ff-desktop-pom-weekday-header = Su Mo Tu We Th Fr Sa
 ff-desktop-pom-time = Time . . . . : { $value }
 ff-desktop-pom-day-of-year = Day of year. :   { $value }
+
+# Calendar month names (B084): the header month name now localises via the
+# catalogue instead of the former hardcoded MONTH_NAMES array (localization
+# Req 4.1). Keys are zero-padded two-digit, 01 = January .. 12 = December.
+ff-desktop-pom-month-01 = January
+ff-desktop-pom-month-02 = February
+ff-desktop-pom-month-03 = March
+ff-desktop-pom-month-04 = April
+ff-desktop-pom-month-05 = May
+ff-desktop-pom-month-06 = June
+ff-desktop-pom-month-07 = July
+ff-desktop-pom-month-08 = August
+ff-desktop-pom-month-09 = September
+ff-desktop-pom-month-10 = October
+ff-desktop-pom-month-11 = November
+ff-desktop-pom-month-12 = December

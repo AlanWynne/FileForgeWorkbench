@@ -157,6 +157,10 @@ impl PomColours {
     }
 }
 
+// B084: the live calendar header now resolves month names via the i18n
+// catalogue (see `render_calendar`), so this English array is retained only as
+// reference data for the `format_calendar_header` fixed-width unit test.
+#[allow(dead_code)]
 const MONTH_NAMES: [&str; 12] = [
     "January",
     "February",
@@ -239,7 +243,14 @@ pub fn render_calendar(
         // buttons (CR-CH-023 replaces the former single click-region label, so
         // the buttons participate in egui-native Tab traversal and respond to
         // Enter/Space as well as mouse clicks).
-        let month_label = format!("{}  {}", MONTH_NAMES[(month - 1) as usize], year);
+        // B084: resolve the month name through the i18n catalogue (keys
+        // ff-desktop-pom-month-01 .. -12) instead of the former hardcoded
+        // English MONTH_NAMES index, so the header localises like the weekday /
+        // time / day-of-year lines (localization Req 4.1). The two-space gap
+        // before the year is preserved byte-for-byte.
+        let month_key = format!("ff-desktop-pom-month-{:02}", month);
+        let month_name = ff_i18n::t(&month_key);
+        let month_label = format!("{}  {}", month_name, year);
         ui.horizontal(|ui| {
             let prev = ui.add(
                 egui::Button::new(

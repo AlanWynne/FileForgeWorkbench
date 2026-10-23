@@ -235,3 +235,47 @@ fn seam_free_functions_resolve_against_the_installed_catalogue() {
     // A key missing everywhere falls back to the key itself (Req 3.3) via the seam.
     assert_eq!(crate::t("no-such-key"), "no-such-key");
 }
+
+// === Calendar month-name localisation (B084) =======================
+
+/// Validates: localization Requirement 4.1 -- the POM calendar month name is
+/// DATA resolved from the catalogue, so under a non-English overlay the month
+/// name localises (previously the header used a hardcoded English array, so
+/// October stayed "October" under af/fr/de -- B084). Loads the shipped overlay
+/// for each locale and asserts the month-name key resolves to the translated
+/// value, with English as the Identity_Base.
+#[test]
+fn calendar_month_names_localise_from_the_shipped_overlay() {
+    let root = shipped_i18n_root();
+
+    // English Identity_Base.
+    let en = Catalogue::load_identity_base(&root).expect("English base loads");
+    assert_eq!(en.resolve("ff-desktop-pom-month-10"), "October");
+    assert_eq!(en.resolve("ff-desktop-pom-month-01"), "January");
+
+    // Afrikaans -- the locale from the bug report: October must be Oktober.
+    let af = Catalogue::load_identity_base(&root)
+        .expect("base loads")
+        .load_overlay(&root, Locale::parse("af").expect("af"))
+        .expect("af overlay loads");
+    assert_eq!(af.resolve("ff-desktop-pom-month-10"), "Oktober");
+    assert_eq!(af.resolve("ff-desktop-pom-month-03"), "Maart");
+    assert_eq!(af.resolve("ff-desktop-pom-month-12"), "Desember");
+
+    // French (lowercase, accented via Fluent \u escape).
+    let fr = Catalogue::load_identity_base(&root)
+        .expect("base loads")
+        .load_overlay(&root, Locale::parse("fr").expect("fr"))
+        .expect("fr overlay loads");
+    assert_eq!(fr.resolve("ff-desktop-pom-month-10"), "octobre");
+    assert_eq!(fr.resolve("ff-desktop-pom-month-02"), "f\u{00e9}vrier");
+    assert_eq!(fr.resolve("ff-desktop-pom-month-08"), "ao\u{00fb}t");
+
+    // German (capitalised, umlaut via Fluent \u escape).
+    let de = Catalogue::load_identity_base(&root)
+        .expect("base loads")
+        .load_overlay(&root, Locale::parse("de").expect("de"))
+        .expect("de overlay loads");
+    assert_eq!(de.resolve("ff-desktop-pom-month-10"), "Oktober");
+    assert_eq!(de.resolve("ff-desktop-pom-month-03"), "M\u{00e4}rz");
+}
