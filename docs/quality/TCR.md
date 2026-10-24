@@ -3187,6 +3187,7 @@ New criteria for the mainframe dataset stack consolidation. dataset-ownership-mo
 | `ff-desktop` | ✅ | `shell::tests::full_shell_shift_tab_from_command_field_goes_to_menu_bar` | menu-workspace Req 15.9: Shift+Tab reverses the cycle -- the command-field reverse boundary (-> Menu_Bar) is harness-proven; interior reverse steps are egui-native |
 | `ff-desktop` | ✅ | `primary_option_menu::tests::calendar_prev_next_are_focusable_buttons` | menu-workspace Req 15.10: only the calendar prev/next buttons are focusable; day cells are not focus stops (day cells are plain labels) |
 | `ff-desktop` | ✅ | `menu_workspace::render::tests` (interior order derived from menu.options each frame) | menu-workspace Req 15.11: adding/removing/reordering options in the Menu_File changes the Tab order with no code change |
+| `ff-desktop` | ✅ | `primary_option_menu::calendar_header::tests::centered_header_is_constant_width_and_centered` | menu-workspace Req 15.12 (calendar-month-centering CR, CR-CH-063): calendar month+year is CENTERED in a constant-width field (width = longest localized month name over months 1..=12 + two-space gap + 4-digit year) so `<`/`>` sit in fixed columns for every month; focus/Tab contract (prev_id/next_id) unchanged. COVERED -- pure helper `centered_calendar_header` center-pads `"{month}  {year}"` to the locale-derived constant width (extra space on the right for odd remainders) and is wired into `render_calendar`; the unit test asserts constant char-width and balanced (within 1) padding across months of differing length (May/March/September). Reference formatter `format_calendar_header` + Req 14.41 left as-is by design. Agent verification compile-only/scoped; authoritative full-suite run is the owner's |
 | `ff-desktop` | ✅ | `shell::tests::key_label_bar_buttons_are_not_tab_focus_stops`, `menu_workspace::render::tests::menu_workspace_tab_visits_options_then_calendar` | automated-dialog-testing Req 14.9: egui_kittest harness validates chrome-not-focusable and the POM/menu-workspace interior order (options -> calendar) |
 
 ### CR-CH-024 -- Legacy theme consolidation + name-based THEME command
@@ -4024,3 +4025,38 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | ✅ | code review: SAVE routes FFEDIT -> owning CE -> `save_records` -> `DatasetAccess` unchanged; `MainframeEnvironment` not modified; `shell::tests_crch061::mainframe_save_resolves_same_session_catalog_dataset_rc0` exercises the one seam | command-environments Req 19.4: SAVE continues to ride the single CR-CH-053 Task 20/21 seam; no parallel path, no second dispatcher |
 | `ff-desktop` | ✅ | `shell::tests_crch061::host_tab_save_is_unchanged_and_does_not_reach_catalog_access` | command-environments Req 19.5: native/host (Delimited) tab SAVE unchanged and byte-identical; only a MAINFRAME-owned tab reaches the catalog-backed access |
 | `ff-idcams` | ✅ | `dataset_access::impl_catalog_tests::catalog_access_returns_not_found_for_absent_dsn` (true-miss NotFound at the access layer) + the ff-idcams round-trip genuine-miss case | command-environments Req 19.6: a genuinely absent DSN still surfaces NotFound with the existing non-zero rc; the fix turns a FALSE miss into a resolve, not masking a true miss |
+
+### Phase (find-search-split) -- CR-NR-110 (FIND=FFEDIT in-buffer; SEARCH=FFCMD canonical cross-backend; GREP alias; engine deferred)
+
+> Verb split: FIND is the FFEDIT (editor) in-buffer search verb; SEARCH is the FFCMD
+> (workbench) canonical ROOT verb for cross-backend multi-file search; GREP is an alias
+> surface for SEARCH recorded through the existing FFCMD AliasTable. The concrete SEARCH
+> engine and the mainframe DATASET traversal are DEFERRED pending CR-NR-105 (volume-model)
+> + dataset-catalog. Gate authored docs-first; NO code until approved.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | global-search Req 7.1: SEARCH is an FFCMD verb resolved through the single front door (`resolve_target`/`dispatch_command_target`); no second dispatcher |
+| `ff-desktop` | 🔴 | -- | global-search Req 7.2: SEARCH is the canonical ROOT verb; it dispatches, is recorded in history, and persisted; aliases record canonical SEARCH |
+| `ff-desktop` | 🔴 | -- | global-search Req 7.3: `SEARCH <string>` from any context activates cross-backend search and surfaces results in the Search Results Context |
+| `ff-desktop` | 🔴 | -- | global-search Req 7.4: SEARCH is NOT an FFEDIT verb; on an editor Context FFEDIT declines and FFCMD SEARCH runs (not editor FIND) |
+| `ff-desktop` | 🔴 | -- | global-search Req 7.5: existing GSEARCH/SEARCH activation seam remains valid; SEARCH is the canonical identifier for cross-backend search |
+| `ff-desktop` | 🔴 | -- | global-search Req 8.1: GREP is an alias surface for canonical SEARCH via the existing FFCMD AliasTable; not a separate handler |
+| `ff-desktop` | 🔴 | -- | global-search Req 8.2: `GREP <string>` resolves to SEARCH and takes the identical code path/result (behaviour-neutral alias) |
+| `ff-desktop` | 🔴 | -- | global-search Req 8.3: canonical SEARCH recorded/persisted when GREP typed (grep records SEARCH) |
+| `ff-desktop` | 🔴 | -- | global-search Req 8.4: GREP alias case-insensitive; load-time collision rejection as per existing FFCMD alias discipline |
+| `ff-global-search` | 🔴 | -- | global-search Req 9.1: SEARCH scope is a set of files spanning VFS backends via the VFS/catalog abstraction; no raw shell-out as primary mechanism |
+| `ff-desktop` | 🔴 | -- | global-search Req 9.2: multi-backend matches surfaced together in the one Search Results Context, grouped by file |
+| `ff-global-search` | 🔴 | -- | global-search Req 9.3: scope uses existing include/exclude controls where applicable; backend-specific dataset addressing is deferred engine work |
+| `ff-global-search` | 🔴 | -- | global-search Req 9.4: concrete Search_Engine (embedded grep for POSIX/NTFS) DEFERRED to a follow-on gate; this gate fixes only the contract |
+| `ff-global-search` | 🔴 | -- | global-search Req 9.5: mainframe DATASET traversal + record-search DEFERRED pending CR-NR-105 (volume-model) + dataset-catalog; dependency recorded |
+| `ff-find-and-replace` | 🔴 | -- | find-and-replace Req 22.1: FIND is the canonical FFEDIT in-buffer search verb (behaviour per Req 1-5); formalises existing behaviour |
+| `ff-find-and-replace` | 🔴 | -- | find-and-replace Req 22.2: FIND owned by FFEDIT; claimed at the active-environment step on an editor Context |
+| `ff-find-and-replace` | 🔴 | -- | find-and-replace Req 22.3: FIND is distinct from FFCMD SEARCH; FIND does not search multiple files; SEARCH is not the in-buffer search |
+| `ff-find-and-replace` | 🔴 | -- | find-and-replace Req 22.4: canonical verb recorded/persisted for in-buffer search is FIND; alias/localised surfaces resolve to canonical FIND |
+| `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.1: FIND owned by FFEDIT, means search within the current editor buffer (per-environment verb ownership) |
+| `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.2: SEARCH owned by FFCMD, means search across a set of files spanning VFS backends; results in Search Results Context |
+| `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.3: SEARCH is canonical root; GREP is an alias surface resolving to SEARCH via the existing FFCMD AliasTable |
+| `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.4: FIND and SEARCH remain distinct verbs in distinct environments; active-environment rule selects the right one |
+| `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.5: canonical verbs recorded/persisted are FIND and SEARCH (never an alias surface such as GREP) |
+| `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.6: decision-record only; no dispatch/nav/focus/persistence change; engine + mainframe traversal deferred (CR-NR-105 + dataset-catalog) |

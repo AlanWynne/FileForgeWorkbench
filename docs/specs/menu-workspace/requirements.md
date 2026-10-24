@@ -906,6 +906,31 @@ calendar"). Implements the shared model of menu-and-statusbar Requirement 16 for
     or reordering options by editing the Menu_File SHALL change the Tab order accordingly with
     no code change (consistent with Requirement 2.1c).
 
+12. WHEN the calendar header is rendered for any month (Requirement 15.7's `<` and `>`
+    buttons with the month+year content between them), THE renderer SHALL center the
+    month-name-plus-year content within a CONSTANT-WIDTH field so that the `<` button and the
+    `>` button occupy the SAME columns for every month of the year, and the position of `<`
+    and `>` SHALL NOT drift horizontally as the displayed month changes. The constant field
+    width SHALL be derived from the ACTIVE LOCALE's month names -- specifically the length of
+    the LONGEST localized month name over months 1..=12 (resolved through
+    `ff_i18n::t("ff-desktop-pom-month-{:02}")`, B084) plus a consistent two-space gap followed
+    by the four-digit year -- so the field is wide enough for every month in the active locale
+    and recomputes correctly when the locale changes. The two-space gap between the month name
+    and the year (established in Requirement 15.7's `{month}  {year}` label) SHALL be
+    preserved. Centering the content SHALL NOT change the focus/Tab contract: `<` and `>`
+    remain REAL focusable buttons with their existing `prev_id`/`next_id` identities and their
+    position in the interior Tab order (Requirements 15.5-15.10, CR-CH-023), and day cells
+    remain non-focusable (Requirement 15.10).
+
+    **Source:** owner ("The months should rather appear centered in the space provided with
+    the month scrolling buttons always in the same space"). The owner's padding sketch (fixed
+    space counts around each month name) is ILLUSTRATIVE of the centered result, not a literal
+    column spec; the authoritative rule is "centered in a constant-width field derived from the
+    active locale's longest month name". This criterion REFINES the layout of the header
+    introduced by Requirement 15.7/15.8 (the `<`/`>` buttons and the month/year label between
+    them); it does not alter the button count, their activation behaviour (15.8), or the Tab
+    order (15.5-15.10), which are unchanged.
+
 ---
 
 ### Requirement 16: Calendar Visibility and Fit (no off-screen phantom Tab stops)

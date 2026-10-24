@@ -6,6 +6,9 @@
 use chrono::{Datelike, Local, Timelike};
 use eframe::egui;
 
+mod calendar_header;
+pub use calendar_header::centered_calendar_header;
+
 // The POM option list and exit line are no longer defined here: the POM is a
 // data-driven Menu_Workspace backed by `menus/pom.toml`, rendered by the shared
 // `menu_workspace::render::render_menu_workspace` (menu-workspace Req 2.1c-2.1i,
@@ -250,7 +253,11 @@ pub fn render_calendar(
         // before the year is preserved byte-for-byte.
         let month_key = format!("ff-desktop-pom-month-{:02}", month);
         let month_name = ff_i18n::t(&month_key);
-        let month_label = format!("{}  {}", month_name, year);
+        // menu-workspace Req 15.12 (CR-CH-063): center the month+year in a
+        // constant-width monospace field so the `<` and `>` buttons below land
+        // in the SAME columns for every month. The field width is derived from
+        // the active locale's month names (B084), so this re-widens with locale.
+        let month_label = centered_calendar_header(&month_name, year);
         ui.horizontal(|ui| {
             let prev = ui.add(
                 egui::Button::new(
