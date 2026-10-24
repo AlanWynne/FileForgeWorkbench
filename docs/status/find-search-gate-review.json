@@ -1,0 +1,27 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "file": "docs/specs/global-search/requirements.md",
+      "location": "Introduction scope note (CR-NR-110)",
+      "problem": "The phrase 'Requirements 1 to 6 above define ...' sits in the Introduction, which physically precedes the Requirements section, so 'above' is slightly loose.",
+      "fix": "Drop the word 'above': 'Requirements 1 to 6 define the Search Results Context ...'."
+    },
+    {
+      "severity": "NIT",
+      "file": "docs/specs/global-search/requirements.md",
+      "location": "Requirement 7.5 vs Requirement 1.2",
+      "problem": "Req 7.5 and Req 1.2 both describe the GSEARCH/SEARCH activation seam; the relationship is stated so there is no contradiction, but the layering is not signposted at Req 1.2.",
+      "fix": "Add a one-line forward reference on Req 1.2 pointing to Req 7 (SEARCH as canonical identifier)."
+    },
+    {
+      "severity": "NIT",
+      "file": "docs/specs/find-and-replace/requirements.md",
+      "location": "Requirement 22.2",
+      "problem": "The citation 'command-environments Requirement 6.1/6.2a' is correct (Req 6 criteria 1 and 2a) but could be misread as a top-level Req 6.2a.",
+      "fix": "Write 'Requirement 6 (criteria 1 and 2a)' for clarity."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\docs\\status\\find-search-gate-review.md"
+}

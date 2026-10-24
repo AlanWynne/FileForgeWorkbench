@@ -539,3 +539,111 @@ async REDUCES but may not fully eliminate the exposure").
   prior run wf_df38cebc46b21acb (agent restart orphans a running workflow from its
   new session), and the decision to finish areas 6-20 inline. Pattern tried,
   result negative; escalate the wrapper fault as the root defect.
+
+## 9. Incident 2026-10-22 -- L10N Phase 4 FEAT-003 (inline agent): commit blocked by the `;` guard, then the channel wedged (swallowed output + stale-echo) so git state could not be confirmed
+
+Context: an INLINE (non-workflow) agent session authoring the FEAT-003 alias
+catalogues in the worktree `c:\workspace\apps\FileForgeWorkbench\.worktrees\l10n-phase4`
+(branch `feature/l10n-phase4`). All FEAT-003 WORK succeeded -- 6 alias TOML files
+authored, a collision unit test added, tasks.md updated -- and scoped verification
+was clean (see below). The failure was entirely at the COMMIT + git-state-confirm
+boundary, and it combined THREE already-documented families in one short span.
+
+### 9.1 Scoped verification succeeded (the work is good)
+Each run as its own clean non-interactive pwsh7 wrapper, redirecting to a log read
+back with the file tool (verify-by-effect, section 4.5/4.6). Results:
+- `cargo check -p ff-desktop *> tools\logs\feat003-check.log` -> log: "Finished
+  `dev` profile ... in 0.44s". Clean.
+- `cargo clippy -p ff-desktop --all-targets -- -D warnings *> ...clippy.log` ->
+  "Finished `dev` ...". Clean.
+- `cargo fmt -p ff-desktop -- --check *> ...fmt.log` -> empty log (no diff = pass).
+- the collision test, run via the compiled test binary directly to beat the
+  harness-output swallow:
+  `& 'target\debug\deps\ffwb-bb2c7aa8c8689a29.exe' within_environment_alias_surface_collision_is_rejected_and_identity_base_retained --nocapture --test-threads=1 *> ...test-direct.log`
+  -> log: "running 1 test ... ok. 1 passed; 0 failed". Full
+  `alias_catalogue_reader` filter -> "7 passed; 0 failed".
+NOTE on the test capture: `cargo test ... *> log` repeatedly produced a log that
+STOPPED at "Running unittests src\main.rs (target\debug\deps\ffwb-....exe)" with
+the pass/fail summary SWALLOWED (symptom 2.2). Invoking the compiled test exe
+DIRECTLY (child process, section 4.7) captured the summary reliably. This is a
+clean reproduction of "swallowed output on the harness, recovered via child
+process + log".
+
+### 9.2 FAMILY-1 swallowed output on the FIRST attempt of a command, cleared on a
+### byte-identical re-run
+`cargo check` / `cargo clippy` each did this: the FIRST invocation's log contained
+only the leading "Compiling ff-desktop ..." line (summary swallowed); re-running
+the IDENTICAL wrapped command produced the full "Finished ..." log. So a single
+command's result was ambiguous until re-run -- exactly symptom 2.2 + the
+"re-run to recover" coping behaviour. (The re-run is cheap because cargo is
+incremental; this is NOT the reflexive-retry anti-pattern of 2.1, it was a
+response to a genuinely empty log, not a phantom -1.)
+
+### 9.3 The commit was BLOCKED by the `;`-guard because the heredoc body contained
+### prose lines the guard read as command chaining
+Attempted the commit with a heredoc message:
+`git -C <worktree> commit -F - <<'MSG' ... MSG`
+The `pwsh-clean-output-guard` (section 4.3) hard-blocks ANY line containing `;`.
+The multi-line commit MESSAGE body contained semicolons (e.g. prose like
+"...the ROOT persists; ..." and "no within-env collision; no FFCMD surface..."),
+so the guard's blunt substring check matched a `;` INSIDE the message text and
+blocked the whole commit. The tool result rendered as `{}` (an empty/blocked
+return), which read as a cancellation. LESSON: the `;` guard cannot tell a command
+separator from a semicolon inside a quoted commit-message body or heredoc -- so a
+`git commit -F -` heredoc whose message uses normal punctuation is unrunnable.
+Use `git commit -m "<message with NO semicolons>"`, or write the message to a file
+with the file tool and `git commit -F <file>` (the file path has no `;`).
+
+### 9.4 Then the channel WEDGED: stale-echo (poisoned buffer) + swallowed output +
+### non-created logs, so git state could NOT be confirmed
+After the blocked commit, every attempt to read git state failed in a different
+way within a few calls:
+- `git -C <worktree> diff --cached --name-only` -> EMPTY output (swallowed, 2.2).
+- `git ... status --porcelain *> tools\logs\status.log` (and several variants) ->
+  the log file was NOT CREATED AT ALL on repeated tries (dead-episode-like, 2.3;
+  or the redirect target silently lost).
+- `New-Item -ItemType Directory ... tools\logs ...` -> the terminal ECHOED A STALE
+  COMMAND instead of mine: the Output showed
+  `cd "c:\workspace\...\l10n-phase4" ; C:\tools\powershell7\pwsh.exe ... "cargo test -p ff-desktop within_environment_alias_surface_collision_is_rejected_and_identity_base_retained *> tools\logs\loop-test.log"`
+  -- i.e. a leftover `cargo test` line from earlier in the session glued in front
+  of / in place of the `New-Item` I issued (symptom 2.5, poisoned PSReadLine
+  buffer bleeding a stale fragment; note the spurious leading `cd "..." ;` prefix
+  exactly as section 2.5 describes).
+- A `git log --oneline -6 *> tools\logs\gitlog.log` DID succeed once and read back
+  cleanly -- showing the branch tip at `1d10e13` with NO FEAT-001 (26b0737) /
+  FEAT-002 (0b66ac4) / FEAT-003 commit visible -- but subsequent `rev-parse` /
+  `status` / `status --porcelain=v1 --branch` redirects again produced no file and
+  no echo. So even the ONE reliable read could not be corroborated, and the git
+  state (did the branch really lack FEAT-001/002? did any earlier commit land?)
+  was left UNVERIFIED. The session was stopped here at the owner's direction.
+
+### 9.5 Net for this incident
+- WORK: complete and verified clean (6 alias files, collision test passing,
+  tasks.md updated). Left in the WORKING TREE, uncommitted. Nothing pushed,
+  merged, or reverted.
+- BLOCKERS, in order: (a) `;`-guard false-positive on the commit MESSAGE body
+  (new, actionable -- see 9.3 fix); (b) Family-1 swallow/dead-episode/stale-echo
+  wedge preventing git-state confirmation (sections 2.2/2.3/2.5, no in-session
+  fix); the assistant could not confirm whether the branch state matched the
+  brief's assumption that FEAT-001/002 were already committed.
+- ACTIONABLE follow-ups surfaced:
+  1. The `;` guard should ignore semicolons inside a quoted string / heredoc body
+     (or the commit convention must forbid `;` in messages and prefer
+     `-F <file>`). This is the one NEW, fixable finding here.
+  2. Re-confirm, in a reliable terminal, whether FEAT-001 (26b0737) and FEAT-002
+     (0b66ac4) are actually on `feature/l10n-phase4`; the one clean `git log` read
+     this session did NOT show them, which conflicts with the task brief and must
+     be reconciled BEFORE committing FEAT-003.
+  3. Underlying wrapper completion fault unchanged -- escalate per section 6.
+
+## Change log (appended)
+- 2026-10-22 -- Added section 9: L10N Phase 4 FEAT-003 inline-agent session. The
+  FEAT-003 work succeeded and verified clean, but the commit was first BLOCKED by
+  the `;`-guard matching semicolons inside the heredoc commit-MESSAGE body (new,
+  fixable finding: ignore `;` inside quoted strings/heredocs, or forbid `;` in
+  messages and use `git commit -F <file>`), then the channel wedged (swallowed
+  output, non-created log files, and a poisoned-buffer stale `cargo test` echo
+  glued over a `New-Item` command) so git state could not be confirmed. Recorded
+  the exact commands and the mangled/empty responses, the child-process recovery
+  for the swallowed test summary, and the unresolved question of whether FEAT-001/
+  FEAT-002 are actually on the branch (the one clean `git log` did not show them).

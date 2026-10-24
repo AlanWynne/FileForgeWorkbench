@@ -362,9 +362,30 @@ split.
    is present, THE displayed surface text for that alias SHALL be resolved through
    the EXISTING `ff-i18n` Catalogue_Lookup_Seam (`t(key)`, Requirement 3) against
    the active locale, adding NO new lookup mechanism.
-2. THE resolved localised string for an alias SHALL be BOTH the displayed surface
-   form AND a typeable surface form for that locale (one source of truth): what a
-   user sees for a verb is what the user can type to invoke it.
+2. THE resolved localised string for an alias SHALL be the displayed surface
+   form for that locale, AND SHALL be ACCEPTED as a typeable surface form for that
+   locale: what a user sees for a verb is a form the user can type to invoke it.
+   - AMENDED by CR-NR-109 (diacritic-insensitive input, owner-confirmed decision
+     to realise; see the input-accessibility amendment section and the new
+     resolver criteria 11.11-11.13 below). The original wording made the resolved
+     localised string the ONE AND ONLY typeable surface ("what a user sees is
+     exactly what the user must type"). On keyboards that cannot easily enter
+     accented letters (common in South Africa and generally), a localised surface
+     carrying diacritics (e.g. Afrikaans LEERS written with a circumflex) would be
+     the only typeable form and would LOCK OUT plain-keyboard users. The amendment
+     keeps DISPLAY CORRECTNESS (the displayed surface keeps full, correct
+     diacritics) but relaxes INPUT so the resolver also accepts the
+     diacritic-folded (plain-ASCII-foldable) form of the same surface. Two
+     explicit guarantees result: (a) DISPLAY CORRECTNESS -- the shown verb keeps
+     its correct accented spelling; (b) INPUT TOLERANCE -- the user MAY type the
+     plain-ASCII form and still resolve to the same root command. The displayed
+     localised string remains A typeable form; it is no longer the ONLY one.
+   - FLAG: this is a BEHAVIOUR CHANGE to the resolver. It does NOT change the
+     DISPLAY surface, the root command, or persistence (Requirement 10.3 / 11.9
+     unchanged). It is realised by a LATER GATED IMPLEMENTATION TASK (Phase 5,
+     Task 12 in tasks.md), not by this gate. The CR-NR-109 Phase 4 resolver
+     (Requirement 11.6) and its TCR rows describe the pre-amendment exact-match
+     behaviour; see the surfaced contradiction in the authoring summary.
 3. THE alias layer SHALL AUTO-SYNTHESISE an identity alias row for every root
    command (canonical -> itself), so the root command is always resolvable in
    whatever source language it was authored, WITHOUT requiring an author to hand-
@@ -393,6 +414,15 @@ split.
          1. WHEN found, THE resolver SHALL execute that root command;
          2. WHEN not found, THE resolver SHALL issue an appropriate unknown-command
             message.
+   - AMENDED by CR-NR-109 (diacritic-insensitive input). Each lookup step above
+     (both the locale-`L` alias-table lookup and the root-command-table lookup)
+     SHALL be performed under the diacritic-insensitive comparison defined in the
+     new Requirement 11.11, so a plain-ASCII-folded entry of a diacritic-bearing
+     surface still matches. The ORDER and the fall-through to the unknown-command
+     message are UNCHANGED; only the per-step comparison is folded. An exact
+     (byte-for-byte) match MUST continue to resolve (the fold is a superset of
+     exact matching), so this is behaviour-preserving for all existing ASCII and
+     exact-form input and only ADDS matches for the folded forms.
 7. A menu-kind Context (POM/Home, Settings, and user-defined menus rendered via
    the Workspace Kinds / menu model -- ALL menu kinds) SHALL reference a command
    ALIAS as each option (not a raw command string). AT render THE option SHALL
@@ -416,6 +446,47 @@ split.
     discipline (localization Requirement 5.6); the menu-kind render SHALL then
     fall back to the root/English surface for the affected options rather than
     failing to render.
+
+#### Acceptance Criteria -- Diacritic-insensitive input (CR-NR-109 input-accessibility amendment)
+
+The following criteria ADD diacritic-insensitive command matching as the baseline
+so that a user on a plain keyboard can type the ASCII-folded form of any localised
+verb. They AMEND the resolver behaviour of Requirement 11.2 and 11.6 (see those
+amendment notes). They are a BEHAVIOUR CHANGE to the resolver realised by a LATER
+GATED IMPLEMENTATION TASK (Phase 5, Task 12), not by this gate. The DISPLAY
+surface (Requirement 11.1, 11.7) and the root command / persistence
+(Requirement 10.3, 11.9) are UNCHANGED.
+
+11. THE resolver SHALL compare an entered verb `V` against each candidate surface
+    form under a DIACRITIC-INSENSITIVE FOLD defined as: Unicode NFD
+    normalisation, then removal of combining marks (Unicode category Mn), then an
+    ASCII case fold. A candidate matches `V` WHEN the fold of `V` equals the fold
+    of the candidate. THE fold SHALL be applied to BOTH sides of the comparison so
+    that an exact (unfolded) match is always ALSO a folded match (the fold is a
+    superset of exact matching). This makes the baseline cover EVERY localised
+    word without requiring any extra per-word data.
+    - Example: the Afrikaans display surface `LEERS` written with a circumflex
+      folds to `LEERS`; a user typing the plain-ASCII `LEERS` folds to the same
+      value and resolves to the same root command.
+
+12. WHERE two DISTINCT surface forms within the SAME environment+locale scope fold
+    to the SAME value (a fold collision -- two verbs that differ only by
+    diacritics or case), THE resolver SHALL PREFER an exact (unfolded) match when
+    one exists, and only fall back to a folded match when no exact match is
+    present. WHEN an entered `V` folds to a value shared by two or more candidates
+    and no exact match disambiguates it, THE resolver SHALL treat the input as
+    AMBIGUOUS and issue a diagnostic naming the colliding candidates rather than
+    silently resolving to one. This keeps the fold from masking a genuine two-verb
+    distinction.
+
+13. THE DISPLAY surface of an alias (Requirement 11.1, 11.7) SHALL retain its full
+    correct diacritics regardless of the input fold: the fold affects ONLY input
+    MATCHING, never what is rendered. WHERE a word genuinely needs a different
+    ASCII spelling (not merely a diacritic-stripped form), an author MAY ADD an
+    explicit additional ASCII alias surface row for the same root command (via the
+    existing per-locale alias DATA, Requirement 11.5); such an explicit ASCII
+    alias is OPTIONAL because diacritic-insensitive matching (Requirement 11.11)
+    already covers the diacritic-only case for every word without extra data.
 
 ---
 

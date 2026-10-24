@@ -454,7 +454,54 @@ The `HELP` primary command defined in `command-semantics` Requirement 7 routes t
 
 17.8. EVERY cross-reference link `[text](topic_key)` in the shipped content SHALL resolve to a `Topic_Key` that is present in the shipped set OR generated dynamically (index, function_keys); there SHALL be no dangling cross-references in shipped content. [CR-NR-097]
 
-17.9. THE shipped help content files SHALL contain only the characters permitted by the project documentation character-set rule (plain ASCII, with the Markdown exceptions that rule allows). [CR-NR-097]
+17.9. WHEN any `.help.md` file is shipped under the `help/` tree -- the English
+help base directly in the `help/` root AND every per-locale `help/<locale>/`
+subdirectory (e.g. `help/af/`, `help/fr/`, `help/de/`) -- THE shipped help
+content set MAY contain non-ASCII UTF-8 characters (accented letters and other
+script-correct glyphs) and SHALL be valid UTF-8. The project documentation
+character-set (ASCII) rule SHALL NOT apply to any file under the `help/` tree.
+[CR-NR-097, amended CR-NR-103 / CR-NR-109]
+  - AMENDED IN PLACE by CR-NR-103 / CR-NR-109 (ASCII policy scope, corrected).
+    The original wording applied the ASCII constraint to ALL shipped help files;
+    an earlier amendment loop then NARROWED it to only the English help base
+    while exempting per-locale subdirectories. BOTH framings are DISCARDED. The
+    corrected decision: the ENTIRE `help/` tree, English base INCLUDED, is exempt
+    from the project ASCII rule. Help files are RENDERED PRODUCT CONTENT for a
+    planned dedicated help viewer (a future feature that will display the help
+    markdown properly rendered and allow topic navigation); they are a DISTINCT
+    ARTIFACT CLASS from project documentation (docs/**) and from Rust source, so
+    the ASCII-only documentation rule -- which exists for authored project
+    documentation/markdown and for Rust source (literal pattern-matching tools;
+    prior non-ASCII issues in the Amazon Q prompt/terminal) -- does not apply to
+    them. No English-base-stays-ASCII clause is retained.
+
+17.9a. (SUBSUMED.) The earlier per-locale-only carve-out is now covered by the
+   whole-tree rule in Requirement 17.9 and carries no separate constraint. The
+   existing `help/af/index.help.md`, `help/fr/index.help.md`, and
+   `help/de/index.help.md` translated prose (localization Task 10.5) are
+   permitted by Requirement 17.9. [CR-NR-103 / CR-NR-109]
+
+17.9b. THE per-locale message catalogues (the `.ftl` DATA under `i18n/<locale>/`
+   for non-`en` locales, localization Requirement 2) and the per-locale,
+   per-environment alias-surface DATA (the `i18n/<locale>/aliases/<environment>.toml`
+   rows, localization Requirement 11.5) MAY contain non-ASCII UTF-8 translated
+   content and SHALL NOT be subject to the ASCII constraint; the English
+   Identity_Base catalogue (`i18n/en/`) and the Rust source that loads these
+   files REMAIN ASCII. [CR-NR-103 / CR-NR-109]
+
+17.9c. NOTE (realised): the former `shipped_content_files_are_ascii` test in
+   `crates/ff-help/tests/shipped_content_tests.rs` (which Validated this
+   Requirement 17.9 under the old all-ASCII wording) HAS ALREADY been relaxed to
+   match the amended whole-tree exemption. It is now
+   `shipped_content_files_are_valid_utf8`: it walks EVERY `.help.md` file under
+   the ENTIRE `help/` tree (English base in the `help/` root AND every
+   `help/<locale>/` subdirectory) and asserts each is valid UTF-8, with NO ASCII
+   assertion retained. Its `// Validates:` annotation now keys to this amended
+   Requirement 17.9. This matches the owner-requested ASCII-test fix (the
+   realisation of the Amendment 1 follow-on); the symbol
+   `shipped_content_files_are_ascii` no longer exists. The remaining gate work is
+   docs-only; the single ff-help TEST relaxation described here has landed.
+   [CR-NR-103 / CR-NR-109]
 
 ---
 

@@ -224,3 +224,101 @@ test first. Scoped `cargo check -p ff-desktop` / `cargo clippy -p ff-desktop` /
         (`i18n/af/aliases/<environment>.toml`) as the reviewed POC data, now that
         the reader (11.2) exists. (French/German alias data follow as Task 10.2 /
         10.3 DATA work.) Satisfies Req 5.1, 5.5, 11.1.
+
+## Phase 5 -- Diacritic-insensitive command input (CR-NR-109 input-accessibility amendment)
+
+Realises the amended Requirement 11.2 and 11.6 plus the new Requirements
+11.11-11.13 (diacritic-insensitive input matching). BEHAVIOUR CHANGE to the
+resolver (owner-confirmed): the DISPLAY surface keeps correct diacritics; the
+RESOLVER folds typed input (Unicode NFD -> strip combining marks -> ASCII case
+fold) so a plain-keyboard user may type the ASCII form of a diacritic-bearing
+verb and still reach the same root command. Builds ON the existing unified
+resolver (Task 11.4, `shell/locale_resolver.rs`) and the existing `AliasTable`
+lookup; adds NO new dispatcher / nav stack / persistence format. Exact matching
+stays a subset of folded matching, so all existing ASCII/exact input is
+behaviour-preserving. TDD applies; each task writes the failing test first.
+Scoped `cargo check -p ff-desktop` / `cargo clippy -p ff-desktop` / `cargo fmt`
+for agents; the OWNER runs the full gate.
+
+- [ ] 12. Fold typed command input diacritic-insensitively in the resolver
+  - [ ] 12.1 Add a `fold_for_match(s)` helper (Unicode NFD normalisation, strip
+        combining marks (category Mn), ASCII case fold) in the alias/resolver
+        layer and unit-test the fold (accented surface and plain-ASCII input fold
+        to the same value; ASCII-only input is unchanged). Satisfies Req 11.11.
+  - [ ] 12.2 Apply the fold to BOTH sides of each lookup step in
+        `resolve_locale_verb(V, L)` (the locale-`L` alias-table lookup and the
+        root-command-table lookup), preserving the Req 11.6 order and the
+        unknown-command fall-through; prove an exact match still resolves (fold is
+        a superset) so `en` / ASCII behaviour is unchanged (Req 10.2). Satisfies
+        Req 11.2-amended, 11.6-amended, 11.11.
+  - [ ] 12.3 Handle fold collisions: when two distinct surface forms in the same
+        environment+locale scope fold to the same value, prefer an exact match;
+        when an entered verb folds ambiguously with no exact disambiguation, issue
+        a diagnostic naming the colliding candidates rather than silently
+        resolving. Satisfies Req 11.12.
+  - [ ] 12.4 Confirm the DISPLAY surface is untouched by the fold (the fold
+        affects input matching only); keep the menu-kind render showing full
+        diacritics. Add the optional explicit-ASCII-alias path only where a word
+        needs a genuinely different ASCII spelling (data-only, no new mechanism).
+        Satisfies Req 11.13.
+  - [ ] 12.5 Full-shell `egui_kittest` test: with the `af` locale + alias
+        catalogue, typing the plain-ASCII form of a diacritic-bearing Afrikaans
+        verb resolves to and records the ROOT command, and the displayed surface
+        still shows the accented form; keep the menu-kind first-Tab focus test
+        green (workspace-conformance.md). Satisfies Req 11.2-amended, 11.13.
+
+## Phase 6 -- ASCII policy scope follow-on (CR-NR-103 / CR-NR-109 ASCII amendment)
+
+Realises the amended context-help Requirement 17.9 / 17.9c (ASCII policy exempts
+the WHOLE `help/` tree -- English base INCLUDED -- as rendered product content;
+per-locale and English help content both allowed non-ASCII UTF-8). The amendment
+itself is a docs change landed by this gate; the single ff-help TEST relaxation
+below has ALSO landed (owner-requested fix), and Task 14 is the
+data-already-satisfies note.
+
+- [x] 13. Remove/relax the ff-help ASCII test for the WHOLE help/ tree (context-help Req 17.9c)
+  - [x] 13.1 Changed `shipped_content_files_are_valid_utf8` (formerly
+        `shipped_content_files_are_ascii`) in
+        `crates/ff-help/tests/shipped_content_tests.rs` to REMOVE the ASCII
+        enforcement over the ENTIRE `help/` tree (the English base in the `help/`
+        ROOT directory AND every per-locale `help/<locale>/` subdirectory), not
+        merely narrow it to the English base. The test now walks every `.help.md`
+        file and asserts only valid UTF-8; the `// Validates:` annotation keys to
+        the amended whole-tree Requirement 17.9. Satisfies context-help Req 17.9
+        (amended whole-tree), 17.9c. (Unblocks the red cargo gate caused by B085.)
+    - NOTE: this is the SCOPED code/test change the amendment described; it is the
+      ONLY source/test change implied by Amendment 1 and it has LANDED (the
+      owner-requested ASCII-test fix: renamed test present, ASCII assertion
+      removed, fmt/clippy/build clean). The symbol `shipped_content_files_are_ascii`
+      no longer exists.
+- [x] 14. Confirm the existing per-locale help files satisfy the amended rule (context-help Req 17.9)
+  - NOTE (no code): `help/af/index.help.md`, `help/fr/index.help.md`, and
+    `help/de/index.help.md` already carry accented translated prose (localization
+    Task 10.5). Under the amended whole-tree Req 17.9 the entire `help/` tree
+    (English base included) is exempt from the ASCII rule, so these files are
+    CONFORMING as-is -- now literally proven by the passing
+    `shipped_content_files_are_valid_utf8` test; no edit to the translated files
+    is required. B085 is resolved by Task 13 (the test relaxation that has
+    landed), not by changing these files.
+
+## Phase 7 -- Author the Afrikaans menu-option alias DATA + catalogue keys (downstream DATA)
+
+Downstream DATA authoring that the Afrikaans menu surface needs end-to-end. The
+mechanism (Phase 4) exists; this is DATA only (no new mechanism).
+
+- [ ] 15. Author the `af` menu-option alias DATA + the verb-* catalogue keys (Req 11.5, 11.7, 11.8)
+  - [ ] 15.1 Author/extend the `af` per-environment alias DATA
+        (`i18n/af/aliases/<environment>.toml`) so every menu-kind option a POM /
+        Settings / user menu presents has an Afrikaans surface row mapping to its
+        root command (surface / canonical / optional localisation_key). Satisfies
+        Req 11.5, 11.7.
+  - [ ] 15.2 Author the matching `verb-*` message-catalogue keys in `i18n/af/`
+        (and the `i18n/en/` identity values, e.g. `verb-find = FIND` in en,
+        `verb-find = SOEK` in af) so each alias row's localisation key resolves
+        end-to-end; without the keys `t(key)` returns the key and the surface
+        correctly falls back to the root (Req 11.8). Satisfies Req 11.7, 11.8.
+  - [ ] 15.3 Author the diacritic-bearing Afrikaans surfaces with their full
+        correct accents (display correctness, Req 11.13); input tolerance for the
+        plain-ASCII forms is provided by the Phase 5 resolver fold (Task 12), so
+        no duplicate ASCII alias rows are needed except where a word needs a
+        genuinely different ASCII spelling. Satisfies Req 11.13.

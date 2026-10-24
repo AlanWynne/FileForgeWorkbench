@@ -973,6 +973,28 @@ Dependency chain: BV.1 -> BS.8 -> BS.9 -> BS.10 -> BS.11 -> BS.12 -> BS.13 -> BS
 - [ ] NR102.9 ffmdx Help/About surface; keybindings stay hardcoded (ff-keys deferred) (Task 10)
 - [ ] NR102.10 Cut-down surface boundary enforced; preserve existing behaviours; TCR update (Tasks 11-12)
 
+### Phase CR-NR-110 -- FIND vs SEARCH verb split (SEARCH = FFCMD canonical cross-backend; GREP alias; engine deferred)
+
+> Owner decision: FIND is the FFEDIT (editor) in-buffer search verb; SEARCH is the FFCMD
+> (workbench) CANONICAL ROOT verb for cross-backend multi-file string search spanning
+> mainframe/POSIX/NTFS via the VFS/catalog abstraction; GREP is an ALIAS surface for SEARCH
+> recorded through the EXISTING FFCMD AliasTable. SEARCH EXTENDS the global-search subsystem;
+> results surface in the existing Search Results Context. Builds ON the single dispatch front
+> door (`resolve_target`/`dispatch_command_target`); no second dispatcher / nav stack /
+> persistence format. The concrete SEARCH engine (embedded grep for POSIX/NTFS) and the
+> mainframe DATASET traversal/record-search are DEFERRED pending CR-NR-105 (volume-model) +
+> dataset-catalog. Gate authored docs-first (requirements/design/tasks + TCR + change-log);
+> implementation NOT started.
+> (Phase code uses the CR number to avoid collision with the existing two-letter codes.)
+
+- [ ] NR110.1 Register SEARCH as an FFCMD Function-target verb through the single front door (global-search Req 7.1-7.3, 7.5)
+- [ ] NR110.2 Ensure SEARCH is NOT an FFEDIT verb so the active-environment rule routes it to FFCMD, not editor FIND (global-search Req 7.4)
+- [ ] NR110.3 Record GREP as an alias for canonical SEARCH via the existing FFCMD AliasTable; persist canonical SEARCH (global-search Req 8.1-8.4)
+- [ ] NR110.4 Route SEARCH results into the existing Search Results Context; enumerate scope via the VFS/catalog abstraction (global-search Req 9.1-9.2)
+- [ ] NR110.5 Record the deferred engine + mainframe traversal (dependency on CR-NR-105 + dataset-catalog); no engine code this gate (global-search Req 9.3-9.5)
+  - DEFERRED: concrete engine + mainframe dataset record-search BLOCKED on CR-NR-105 volume-model + dataset-catalog finalisation
+- [ ] NR110.6 Record FIND = FFEDIT in-buffer search and the FIND/SEARCH split in find-and-replace + command-semantics (find-and-replace Req 22; command-semantics Req 12)
+
 ---
 
 ## Summary (superseded -- see final summary below)

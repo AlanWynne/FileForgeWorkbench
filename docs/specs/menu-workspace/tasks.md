@@ -825,3 +825,51 @@ menu-workspace obligation. Do NOT start until the gate is approved.
   - [x] 47.3 Detached_Workspace: `X`-at-visual-root / `=X` close the detached
           workspace via the same close path; exit when last.
     - Validates: menu-workspace Req 14.13-14.16; command-framework Req 10.2/10.14; startup-and-session Req 14.46
+
+## Phase (calendar-month-centering) -- center the calendar month+year in a constant-width field (Req 15.12)
+
+> CHANGE REQUEST. The POM calendar header month+year label is LEFT-aligned, so
+> the `>` button drifts horizontally as month names differ in length. Center the
+> month+year content in a constant-width field (width derived from the active
+> locale's longest month name) so `<` and `>` sit in fixed columns for every
+> month. Refines the Req 15.7/15.8 header; the `<`/`>` focusable buttons and the
+> `prev_id`/`next_id` Tab contract (CR-CH-023) are UNCHANGED. The dead_code
+> reference formatter `format_calendar_header` and its Req 14.41 test are LEFT
+> AS-IS (design decision: separate English ISPF reference vs locale-derived live
+> header). AGENT verification is COMPILE-ONLY (scoped `cargo check`/`clippy`/`fmt`
+> + the scoped new unit test where quick); the owner runs the full gate/suite.
+> Do NOT start until the gate is approved.
+
+- [ ] 48. Center the calendar month+year in a constant-width field
+  - [ ] 48.1 Write the failing unit test FIRST for a new pure helper
+          `centered_calendar_header(month_name, year) -> String` in
+          `primary_option_menu.rs`: assert that for all twelve localized month
+          names (`ff_i18n::t("ff-desktop-pom-month-{:02}")`, 1..=12) the produced
+          string has the SAME `.chars().count()` (constant field width), that the
+          content `"{month}  {year}"` is centered within that width (two-space gap
+          preserved; odd remainder padded on the right), and that the width equals
+          `max_localized_month_len + 2 + 4`. Confirm it FAILS (red) before the
+          helper exists.
+    - Validates: menu-workspace Requirement 15.12
+  - [ ] 48.2 Implement `centered_calendar_header`: compute field width from the
+          longest localized month name over months 1..=12 plus the two-space gap
+          plus the four-digit year; build `"{month}  {year}"`; center-pad to the
+          field width (extra space on the right for odd remainder). Pure function,
+          no `egui`; keep `primary_option_menu.rs` under 400 non-test lines
+          (extract rather than inline).
+    - Validates: menu-workspace Requirement 15.12
+  - [ ] 48.3 In `render_calendar` (the `ui.horizontal` header block ~lines
+          253-290), replace the `month_label` monospace label with
+          `centered_calendar_header(&month_name, year)`. Do NOT change the `<`/`>`
+          `egui::Button`s, their creation order, or the `prev_id`/`next_id`
+          capture; the focus/Tab contract (Req 15.5-15.10, CR-CH-023,
+          workspace-conformance.md) is unchanged.
+    - Validates: menu-workspace Requirement 15.12
+    - Note: `format_calendar_header` + its Req 14.41 test are LEFT AS-IS by design
+      decision (see design.md); do NOT modify them.
+  - [ ] 48.4 Compile-only verification (AGENT): scoped `cargo check -p ff-desktop`,
+          `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -- --check`, and
+          the scoped new unit test, each redirected to `tools/logs/` and read back.
+          Update the TCR row for menu-workspace Req 15.12 to its post-implementation
+          status. Hand off the full `cargo gate`/suite run to the owner.
+    - Covers: menu-workspace Requirement 15.12

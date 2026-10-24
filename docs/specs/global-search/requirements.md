@@ -11,11 +11,41 @@ Global Search is the most significant functional gap relative to comparable edit
 implemented as a new `ff-global-search` library crate plus a Search Results panel in
 `ff-desktop`. It reuses the existing `ff-find-and-replace` FindEngine for per-file matching.
 
+### Scope note -- SEARCH as the FFCMD canonical multi-file verb (CR-NR-110)
+
+CR-NR-110 draws a firm line between two string-search commands that live in two
+different Command Environments (see `docs/specs/command-environments/`):
+
+- FIND is an FFEDIT (editor) command -- it searches for a string WITHIN the current
+  editor buffer. Its behaviour is owned by `docs/specs/find-and-replace/`; it is NOT a
+  workbench/global verb.
+- SEARCH is the FFCMD (workbench) command this spec owns -- it searches for a string
+  across a SET OF FILES spanning ALL VFS backends (mainframe datasets, POSIX files,
+  NTFS files), routed through FFWB's own VFS / catalog abstraction, and surfaces results
+  in the existing Search Results Context.
+
+Requirements 1 to 6 above define the Search Results Context, its panel, background
+execution, result display, cross-file replace, and history. Requirements 7 to 9 (added
+by CR-NR-110) formalise SEARCH as the FFCMD CANONICAL ROOT verb, pin GREP as an alias
+surface for it, define the cross-backend search as a behaviour CONTRACT, and record what
+is DEFERRED. The earlier `GSEARCH`/`SEARCH` activation criterion (Requirement 1.2) is the
+activation seam; CR-NR-110 makes SEARCH the canonical identifier and GREP its alias, and
+makes the cross-backend scope explicit.
+
+The concrete internal search ENGINE (whether and how a grep engine is embedded for the
+POSIX/NTFS backends) and the mainframe DATASET traversal / record-search semantics are
+DEFERRED until the Volume Model (CR-NR-105) and the dataset-catalog resolution mechanisms
+are finalised. CR-NR-110 specifies the VERB SPLIT, the environment ownership, and the
+user-facing cross-backend CONTRACT -- NOT the engine. See Requirement 9 and the design
+Deferred section.
+
 **Source references:**
 - **WB** = Workbench Architecture Brief
 - **GAP** = Phase BQ gap-analysis.md section 3.3 (Workspace Search, High priority)
 - **EXEC** = Phase BQ executive-assessment.md Recommendation 3
 - **FFE** = find-and-replace spec (reuses FindEngine, SearchMode, FindRequest)
+- **CR-NR-110** = the FIND-vs-SEARCH verb split: FIND = FFEDIT in-buffer, SEARCH = FFCMD
+  cross-backend canonical root (GREP alias). Owner decision, this gate.
 
 ## Glossary
 
@@ -31,6 +61,18 @@ implemented as a new `ff-global-search` library crate plus a Search Results pane
   are applied to disk.
 - **Global_Replace**: A cross-file replace operation that applies a substitution to all
   or selected matches across multiple files.
+- **SEARCH_Verb**: The FFCMD canonical ROOT verb for cross-backend multi-file string
+  search. It is the identifier that dispatches, records, and persists; GREP is an alias
+  surface that resolves to it. [CR-NR-110]
+- **GREP_Alias**: An additional surface form (`grep`) that resolves to the canonical
+  SEARCH_Verb through the existing FFCMD AliasTable; it is command-line input convenience
+  only and carries no behaviour of its own. [CR-NR-110]
+- **VFS_Backend**: One of the storage backends reachable through FFWB's VFS / catalog
+  abstraction -- a mainframe catalog/dataset backend, a POSIX filesystem, or an NTFS
+  filesystem. SEARCH's scope is a set of files spanning these backends. [CR-NR-110]
+- **Search_Engine**: The internal mechanism that performs the byte/line matching for a
+  SEARCH across a backend (potentially an embedded grep engine for POSIX/NTFS). Its
+  concrete form is DEFERRED by CR-NR-110 pending CR-NR-105 and dataset-catalog. [CR-NR-110]
 
 ---
 
@@ -207,3 +249,127 @@ quickly re-run previous searches without retyping.
 3. WHEN the user selects a previous query from the history dropdown, THE search field
    SHALL be populated with that query and its associated options (case sensitivity, regex,
    include/exclude patterns).
+
+---
+
+### Requirement 7: SEARCH as the FFCMD Canonical Root Verb (CR-NR-110)
+
+**User Story:** As a workbench user, I want SEARCH to be the one canonical workbench
+command for finding a string across many files, resolved through the same single
+command-dispatch front door as every other workbench verb, so that it behaves
+consistently with the rest of the command system and is distinct from the editor's FIND.
+
+**Source:** CR-NR-110
+
+#### Acceptance Criteria
+
+1. THE SEARCH_Verb SHALL be an FFCMD (workbench) command, owned by the FFCMD base
+   environment, and SHALL be resolved through the single command-dispatch front door
+   (`resolve_target` / `dispatch_command_target`); it SHALL NOT introduce a second
+   dispatcher or a parallel command path.
+
+2. THE SEARCH_Verb SHALL be the CANONICAL ROOT verb for cross-backend multi-file string
+   search: it is the identifier that dispatches, is recorded in command history, and is
+   persisted. WHEN any alias surface (Requirement 8) is typed, THE recorded and persisted
+   verb SHALL be the canonical SEARCH, never the alias.
+
+3. WHEN the user types `SEARCH <string>` in the `Command ===>` field from any context, THE
+   workbench SHALL activate cross-backend search (Requirement 9) and surface results in the
+   Search Results Context (TabKind::SearchResults, Requirement 1).
+
+4. THE SEARCH_Verb SHALL NOT be an FFEDIT (editor-buffer) verb; the in-buffer string search
+   is the separate FIND command owned by `docs/specs/find-and-replace/`. WHEN an editor
+   Context is focused and the user types SEARCH, THE command SHALL still resolve to the
+   FFCMD cross-backend SEARCH (the active FFEDIT environment does not own SEARCH and declines
+   it, so the FFCMD base receives it), not to the editor's in-buffer FIND.
+
+5. THE existing `GSEARCH`/`SEARCH` activation seam (Requirement 1.2) SHALL remain valid:
+   SEARCH opens the Search Results Context, and this requirement makes SEARCH the canonical
+   identifier for cross-backend search rather than only a panel-open keyword.
+
+---
+
+### Requirement 8: GREP Alias Surface for SEARCH (CR-NR-110)
+
+**User Story:** As a user accustomed to grep, I want to type `grep <string>` and have it
+behave exactly like `SEARCH <string>`, so that a familiar name works without creating a
+second, divergent command.
+
+**Source:** CR-NR-110
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL provide `GREP` as an ALIAS surface for the canonical SEARCH_Verb,
+   recorded through the EXISTING FFCMD AliasTable alias mechanism (surface form -> canonical
+   verb); it SHALL NOT be a separate command with its own handler.
+
+2. WHEN the user types `GREP <string>` (case-insensitively), THE workbench SHALL resolve it
+   to the canonical SEARCH_Verb and take the IDENTICAL code path and produce the IDENTICAL
+   result as `SEARCH <string>` (the alias is behaviour-neutral).
+
+3. THE canonical SEARCH SHALL be what is recorded in command history and persisted when the
+   GREP alias is used (typing `grep` records/persists `SEARCH`), so saved state and macros
+   do not depend on the alias surface.
+
+4. THE GREP alias registration SHALL follow the same case-insensitive matching and
+   load-time collision discipline as the existing FFCMD alias entries; an alias that
+   collides with another FFCMD canonical verb or alias SHALL be rejected at load.
+
+---
+
+### Requirement 9: Cross-Backend Search Contract (CR-NR-110; engine deferred)
+
+**User Story:** As a user working across mainframe datasets and local files, I want SEARCH
+to look for my string across a set of files that may span mainframe, POSIX, and NTFS
+storage through FFWB's own file abstraction, so that one command covers all my files
+without my shelling out to an external tool.
+
+**Source:** CR-NR-110
+
+#### Acceptance Criteria
+
+1. THE SEARCH scope SHALL be a SET OF FILES that MAY span multiple VFS_Backends (mainframe
+   catalog/dataset, POSIX filesystem, NTFS filesystem), resolved through FFWB's own VFS /
+   catalog abstraction. SEARCH SHALL NOT be implemented as a raw shell-out to an external
+   process as its primary mechanism.
+
+2. WHEN a SEARCH spans multiple VFS_Backends, THE matches from all backends SHALL be
+   surfaced together in the one Search Results Context (Requirement 1, Requirement 4),
+   grouped by file as for any other global search.
+
+3. THE SEARCH scope SHALL be expressible using the existing scope and include/exclude
+   controls of the Search Results Context (Requirement 2) where those apply to a backend;
+   WHERE a backend (for example a mainframe catalog) requires backend-specific scope
+   addressing, that addressing is part of the DEFERRED engine work (criterion 9.5) and is
+   not specified by this gate.
+
+4. THE concrete internal Search_Engine -- whether and how a grep engine is embedded for the
+   POSIX/NTFS backends, and how per-backend matching is performed -- is DEFERRED and SHALL
+   be specified in a follow-on gate; this requirement fixes only the user-facing CONTRACT
+   (scope = a set of files across VFS backends; results in the Search Results Context).
+
+5. THE mainframe DATASET traversal and record-search semantics (how datasets are enumerated
+   and how records within a dataset are matched) are DEFERRED pending the Volume Model
+   (CR-NR-105, `docs/specs/volume-model/`) and the dataset-catalog resolution mechanisms
+   (`docs/specs/dataset-catalog/`); this gate SHALL NOT specify that traversal, and SHALL
+   record the dependency explicitly (see Out of Scope and the design Deferred section).
+
+---
+
+## Out of Scope (CR-NR-110)
+
+The following are explicitly DEFERRED by CR-NR-110 and are NOT delivered by this gate:
+
+- The concrete SEARCH internal engine: whether a grep engine (for example the `grep`/`ignore`
+  crate family already used by this spec's per-file scan) is embedded for the POSIX/NTFS
+  backends, and the per-backend matching implementation. Dependency: the follow-on engine
+  gate.
+- Mainframe DATASET traversal and record-level search semantics (dataset enumeration across
+  volumes, record framing, RECFM/LRECL-aware matching). Dependency: Volume Model (CR-NR-105,
+  `docs/specs/volume-model/`) AND dataset-catalog resolution (`docs/specs/dataset-catalog/`)
+  must be finalised first.
+- Any backend-specific scope-addressing syntax for datasets (criterion 9.3). It belongs with
+  the deferred engine/traversal work.
+
+CR-NR-110 delivers the VERB SPLIT (FIND = FFEDIT, SEARCH = FFCMD canonical, GREP alias), the
+environment ownership, the cross-backend CONTRACT, and the user-facing semantics only.

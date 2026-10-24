@@ -1259,8 +1259,19 @@ help/
 
 Content authoring is verified structurally, not by prose: a test asserts every
 `Topic_Key` promised by Requirement 17 is present after load, and that no
-cross-reference in shipped content is dangling (Req 17.8). Files are ASCII per the
-documentation character-set rule (Req 17.9).
+cross-reference in shipped content is dangling (Req 17.8).
+
+**Help content is rendered product content, not project documentation (amended
+CR-NR-103 / CR-NR-109).** The shipped `.help.md` files under the WHOLE `help/`
+tree -- the English base in the `help/` root AND every per-locale
+`help/<locale>/` subdirectory -- are RENDERED PRODUCT CONTENT for the planned
+dedicated help viewer (a future feature that will display the help markdown
+properly rendered and allow topic navigation). They are therefore a DISTINCT
+ARTIFACT CLASS from project documentation (docs/**) and from Rust source, and the
+project ASCII documentation character-set rule DOES NOT apply to any file under
+`help/`. Shipped help files MAY contain non-ASCII UTF-8 and SHALL be valid UTF-8
+(Req 17.9). This is the rationale for exempting the whole tree, English base
+included; the earlier narrower framing (English base stays ASCII) is discarded.
 
 ### D2. The shell owns ONE registry, loaded once at startup
 
@@ -1326,7 +1337,13 @@ and F1 stay out of command history and undo (Req 18.7), preserving Req 1.10 / 13
 ### D6. Testing delta
 
 - Content-set test (Req 17): load the shipped `help/`; assert every promised
-  `Topic_Key` is present; assert zero dangling cross-references; assert ASCII.
+  `Topic_Key` is present; assert zero dangling cross-references. The former
+  "assert ASCII" over the shipped set HAS BEEN REMOVED/RELAXED for the whole
+  `help/` tree (Req 17.9 amended, CR-NR-103 / CR-NR-109): the ASCII sub-assertion
+  is superseded, and the test is now `shipped_content_files_are_valid_utf8`,
+  walking the whole tree (English base included) and asserting only valid UTF-8.
+  This whole-tree UTF-8 test has LANDED (the former `shipped_content_files_are_ascii`
+  no longer exists).
 - Pipeline test (Req 18.1-18.4): a shell-level test that the registry is loaded
   once and reused, that a resolved file-based topic displays, that `index` /
   `feature:function_keys` generate-and-display, and that an unknown key shows the

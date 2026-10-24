@@ -479,8 +479,9 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
   - [ ] 16.3 Author `cmd:<NAME>` topics (Syntax/Description/Modifiers/Examples/See Also per Req 7.2) for the Req 17.3 command set, grouping aliases into one file
   - [ ] 16.4 Author `line:<CMD>` topics per Req 8.2 for the Req 8.3 families, plus the `line:index` summary table
   - [ ] 16.5 Author the `mode:*` topics (Req 17.5) and the first-tranche `feature:*` topics (Req 17.6, 17.7) including the macro API overview
-  - [ ] 16.6 Write a content-set test: load the shipped `help/`, assert every Req 17 Topic_Key is present, assert zero dangling cross-references (Req 17.8), assert ASCII (Req 17.9)
-  - Covers: Requirement 17 (17.1-17.9)
+  - [ ] 16.6 Write a content-set test: load the shipped `help/`, assert every Req 17 Topic_Key is present, assert zero dangling cross-references (Req 17.8), assert valid UTF-8 over the whole tree (Req 17.9 amended)
+    - NOTE: the ASCII assertion portion (Req 17.9) is SUPERSEDED by the CR-NR-103/109 whole-tree UTF-8 exemption, and that supersession has LANDED (Task 23 done): the test is now `shipped_content_files_are_valid_utf8`, which walks the entire `help/` tree and asserts valid UTF-8 with no ASCII assertion; the former `shipped_content_files_are_ascii` no longer exists. The present-topic and no-dangling-xref assertions (Req 17.2-17.8) are UNAFFECTED.
+  - Covers: Requirement 17 (17.1-17.8 present-topic / no-dangling-xref; AC 17.9 ASCII assertion SUPERSEDED by CR-NR-103/109 whole-tree exemption, realised as the valid-UTF-8 test -- see Task 23)
 
 - [x] 17. Wire the content pipeline and F1 display (Requirement 18)
   - [ ] 17.1 Add/confirm a thin `ff-help` entry that loads a directory into an `Arc<HelpTopicRegistry>` (reuse `ContentLoader`); add command-metadata topic registration
@@ -507,7 +508,7 @@ This is a **Wave 9 (Desktop Integration)** sub-project. It depends on `ff-comman
 | Req 17: Shipped Help Content Set | AC 17.6 | Task 16 |
 | Req 17: Shipped Help Content Set | AC 17.7 | Task 16 |
 | Req 17: Shipped Help Content Set | AC 17.8 | Task 16 |
-| Req 17: Shipped Help Content Set | AC 17.9 | Task 16 |
+| Req 17: Shipped Help Content Set | AC 17.9 (ASCII assertion SUPERSEDED by CR-NR-103/109 whole-tree exemption, realised as the valid-UTF-8 test; see Task 23 [done]) | Task 16 / Task 23 |
 | Req 18: Content Pipeline + F1 Display | AC 18.1 | Task 17 |
 | Req 18: Content Pipeline + F1 Display | AC 18.2 | Task 17 |
 | Req 18: Content Pipeline + F1 Display | AC 18.3 | Task 17 |
@@ -600,3 +601,20 @@ evaluation/decision) may proceed at the gate.
 | Req 20: Markdown-Rendered Help Content | AC 20.12 (bare Topic_Key / external unchanged) | Task 22.1 |
 | Req 20: Markdown-Rendered Help Content | AC 20.13 (heading-slug fallback) | Task 22.2 |
 | Req 20: Markdown-Rendered Help Content | AC 20.14 (graceful degradation) | Task 22.4 |
+
+---
+
+## CR-NR-103 / CR-NR-109 Tasks: Remove/Relax the Shipped-Content ASCII Test for the WHOLE help/ Tree (Requirement 17.9 amended)
+
+- [x] 23. (CR-NR-103 / CR-NR-109) Remove or relax the shipped-content ASCII enforcement for the entire help/ tree
+  - [x] 23.1 Changed `shipped_content_files_are_ascii` in `crates/ff-help/tests/shipped_content_tests.rs` to REMOVE the ASCII enforcement over the WHOLE `help/` tree (the English base directly in the `help/` ROOT directory AND every per-locale `help/<locale>/` subdirectory), not merely narrow it to the English base. The test is now `shipped_content_files_are_valid_utf8`, which walks every `.help.md` file (English base and per-locale) and asserts only valid UTF-8; the `// Validates:` annotation now keys to the amended whole-tree Requirement 17.9.
+    - Validates: Requirement 17.9 (amended, whole-tree exemption), 17.9c
+    - NOTE: realises the follow-on code/test change described by the amended Req 17.9c; resolves the B085 red gate. This single owner-requested `ff-help` TEST change has LANDED (renamed test present, ASCII assertion removed). Help files under the WHOLE tree, English base included, are rendered product content for the planned help viewer and are exempt from the ASCII rule; the existing `help/af/`, `help/fr/`, `help/de/` translated files already satisfy the amended rule -- now literally proven by the passing valid-UTF-8 test. This is the SAME change tracked as Phase 6 / Task 13 of `docs/specs/localization/tasks.md`; recorded here too because the test lives in `ff-help`.
+  - Covers: Requirement 17 (AC 17.9 amended whole-tree, 17.9c)
+
+### CR-NR-103 / CR-NR-109 Requirement Coverage Mapping
+
+| Requirement | Acceptance Criterion | Task |
+|-------------|---------------------|------|
+| Req 17: Shipped Help Content Set | AC 17.9 (amended, whole help/ tree exempt) | Task 23 |
+| Req 17: Shipped Help Content Set | AC 17.9c (test removed/relaxed for whole tree) | Task 23 |

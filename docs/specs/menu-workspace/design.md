@@ -1060,8 +1060,84 @@ optional legacy click-region MAY be retained for mouse users but MUST produce th
 change. Day cells remain non-focusable (Requirement 15.10) -- the calendar stays minimal pending
 a future redesign.
 
+### Calendar header: center the month+year in a constant-width field (Requirement 15.12)
+
+Problem being fixed: the live header (`primary_option_menu::render_calendar`, the
+`ui.horizontal` block around lines 253-290) builds the between-buttons label as
+`format!("{}  {}", month_name, year)` -- a LEFT-aligned string whose length varies with the
+month name (`May` vs `September`). Because the `>` button is laid out immediately after that
+label, `>` drifts horizontally from month to month. The `<` and `>` are already REAL focusable
+`egui::Button`s (CR-CH-023), so the fix is purely to the TEXT between them; the button widgets,
+their creation order, and their `prev_id`/`next_id` capture are untouched.
+
+Approach (chosen): render the month+year as a single MONOSPACE label whose string is
+CENTER-PADDED to a constant character width, with the `<` and `>` buttons unchanged on either
+side. All three widgets (`<`, label, `>`) are monospace (they already are in the current code),
+so equal character counts give equal pixel widths; a constant-width centered string therefore
+makes `<` end and `>` begin at fixed columns for every month. This is the smallest change that
+satisfies 15.12 and keeps the focusable-button contract intact. (Rejected alternative: using
+egui layout sizing -- `ui.allocate_space` / a fixed-width container -- to center a proportional
+label. That would also work pixel-wise but is harder to unit-test deterministically and does
+not match the existing byte-exact monospace header convention or the reference formatter; the
+monospace-string approach is testable as a pure function, consistent with the retained
+`format_calendar_header` reference.)
+
+Helper extraction: add a small PURE helper
+
+```
+fn centered_calendar_header(month_name: &str, year: i32) -> String
+```
+
+that (1) computes the field width `W = (max over months 1..=12 of
+ff_i18n::t("ff-desktop-pom-month-{:02}").chars().count()) + 2 (the two-space gap) + 4 (the
+four-digit year)`, i.e. the width of the longest localized `"{month}  {year}"` content; (2)
+builds the content `format!("{}  {}", month_name, year)`; and (3) center-pads that content to
+`W` characters (split any odd remainder with the extra space on the RIGHT, matching the owner's
+sketch where the right pad is >= the left pad). The width is derived from the ACTIVE LOCALE on
+each call via `ff_i18n::t`, so switching locale re-widens the field with no code change (B084,
+localization Req 4.1). `render_calendar` then renders `centered_calendar_header(&month_name,
+year)` as the monospace label between the `<` and `>` buttons in place of the current
+`month_label`. Width is measured in `chars().count()` (Unicode scalar values); the current
+month catalogue is ASCII and the gap/year are ASCII, so char count equals column count for every
+supported locale value today -- noted as an assumption to revisit only if a future locale
+introduces combining marks or full-width digits in month names.
+
+For English the longest month is `September` (9 chars), so `W = 9 + 2 + 4 = 15`; this matches
+the width the current `format_calendar_header` reference already encodes (`{:<9}` + two spaces +
+four-digit year), the difference being that the live helper CENTERS rather than left-pads and
+derives the 9 from the active locale rather than hardcoding it.
+
+Extracting the helper (rather than inlining the padding in `render_calendar`) keeps
+`primary_option_menu.rs` under the 400 non-test-line limit (rust-standards.md) and makes the
+centering a directly unit-testable pure function (one test asserts equal `.chars().count()`
+across all twelve months and that the content is centered), mirroring how the existing Req 14.41
+test exercises `format_calendar_header`.
+
+Focus/Tab contract: UNCHANGED. `centered_calendar_header` only changes the label string; the
+`<`/`>` `egui::Button`s, their `prev_id`/`next_id` capture, their `CalendarNav::Prev`/`Next`
+side effects, and their position in the interior Tab order (Requirements 15.5-15.10, CR-CH-023,
+workspace-conformance.md) are not touched. The existing full-shell egui_kittest Tab tests
+continue to assert the contract; no new focus wiring is introduced.
+
+Decision on the reference formatter `format_calendar_header` (Req 14.41): LEAVE IT AS-IS,
+including its Req 14.41 unit test and the `format_calendar_header("January", 2026) ==
+"<  January   2026  >"` assertion. Rationale: that `#[allow(dead_code)]` function is explicitly
+documented as a reference for the ISPF fixed-width column layout and is used ONLY by the Req
+14.41 fixed-width unit test; it is NOT called by `render_calendar` (CR-CH-023 already replaced
+the single-string header with three widgets). Its hardcoded English `{:<9}` width and the
+`MONTH_NAMES` reference array are English-only and LEFT-padded, a different (legacy, English
+reference) contract from the new locale-derived CENTERED live header. Updating it to center
+would (a) conflate the English ISPF reference with the i18n live behaviour, (b) break the stable
+Req 14.41 assertion for no functional gain (the function is dead code in the live path), and
+(c) drag the locale-derived width into a function whose whole purpose is a fixed English
+reference. The new `centered_calendar_header` is therefore a SEPARATE helper with its own test;
+`format_calendar_header` and Req 14.41 are untouched. This divergence (one left-padded English
+reference formatter + one locale-derived centered live formatter) is a deliberate, recorded
+decision, not an oversight.
+
 ### No new crate dependency
-Uses existing egui button/focus APIs and the existing calendar helpers.
+Uses existing egui button/focus APIs, the existing `ff_i18n::t` month keys, and the existing
+calendar helpers.
 ---
 
 ## Design Delta: Keyword-less menu-name resolution + Settings baseline reorder (Requirement 3.6, 11.11-11.12, 12.3, CR-CH-025)

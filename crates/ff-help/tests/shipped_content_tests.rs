@@ -2,7 +2,15 @@
 //!
 //! These validate the actual authored `.help.md` files under the repository
 //! `help/` directory: every promised Topic_Key is present, there are no dangling
-//! cross-references, and the files are ASCII.
+//! cross-references, and the files are valid UTF-8.
+//!
+//! Note (CR-NR-103 / CR-NR-109, Req 17.9 amended): help content is rendered
+//! product content for the help viewer, a distinct artifact class from project
+//! documentation and Rust source, so the whole `help/` tree (the English base
+//! included) is EXEMPT from the project ASCII character-set rule. Translated
+//! per-locale help (e.g. `help/af|fr|de/`) legitimately carries accented,
+//! script-correct glyphs. The remaining constraint is that every shipped file is
+//! valid UTF-8 so the viewer can render it.
 
 use std::path::PathBuf;
 
@@ -124,24 +132,22 @@ fn shipped_content_has_no_dangling_cross_references() {
     );
 }
 
-// Validates: Requirement 17.9 -- shipped content files are ASCII.
+// Validates: Requirement 17.9 (amended, CR-NR-103 / CR-NR-109) -- shipped help
+// content is rendered product content, EXEMPT from the ASCII rule (whole `help/`
+// tree, English base included); the remaining constraint is valid UTF-8.
 #[test]
-fn shipped_content_files_are_ascii() {
+fn shipped_content_files_are_valid_utf8() {
     let dir = shipped_help_dir();
     let mut offenders: Vec<String> = Vec::new();
     visit_help_files(&dir, &mut |path| {
         let bytes = std::fs::read(path).expect("read help file");
-        if let Some(pos) = bytes.iter().position(|b| !b.is_ascii()) {
-            offenders.push(format!(
-                "{} (first non-ASCII byte at {})",
-                path.display(),
-                pos
-            ));
+        if let Err(e) = std::str::from_utf8(&bytes) {
+            offenders.push(format!("{} (invalid UTF-8: {})", path.display(), e));
         }
     });
     assert!(
         offenders.is_empty(),
-        "shipped help files must be ASCII: {offenders:?}"
+        "shipped help files must be valid UTF-8: {offenders:?}"
     );
 }
 

@@ -79,3 +79,47 @@
   - Satisfies: Req 6.1, 6.2, 6.3
 - [x] 5.7 Write integration tests: search finds matches across multiple files, replace modifies files
   - Satisfies: Req 3.7, 5.4
+
+## Task 6. SEARCH as the FFCMD canonical root verb (CR-NR-110) (Req 7, 8)
+
+- [ ] 6.1 Register SEARCH as an FFCMD workbench verb resolved through the single front door
+  - Register a Command_Id so `resolve_target` returns a `CommandTarget::Function` for SEARCH;
+    the handler accepts the search string + options via `TargetParams`/`CommandParams`
+  - No bespoke command-ladder intercept; no second dispatcher
+  - Satisfies: Req 7.1, 7.2, 7.3
+  - Depends on: existing `resolve_target` / `dispatch_command_target` seam
+- [ ] 6.2 Ensure SEARCH is NOT an FFEDIT verb so the active-environment rule routes it to FFCMD
+  - Verify FFEDIT declines SEARCH (not in its alias seed) so an editor Context falls through
+    to FFCMD SEARCH, never the editor FIND
+  - Satisfies: Req 7.4
+- [ ] 6.3 Record GREP as an alias for canonical SEARCH via the existing FFCMD AliasTable
+  - Add the identity row `SEARCH -> SEARCH` and alias row `GREP -> SEARCH` to the FFCMD alias
+    seed in `shell/environment.rs` (same `AliasTable` type as `ffedit_english`)
+  - Case-insensitive match; load-time collision rejection as per the existing seed
+  - Satisfies: Req 8.1, 8.2, 8.4
+- [ ] 6.4 Record/persist the canonical SEARCH (never GREP) in command history and session
+  - Satisfies: Req 7.2, 8.3
+- [ ] 6.5 Write unit tests for the verb split and alias resolution
+  - `grep <string>` resolves to canonical SEARCH and matches `SEARCH <string>` behaviour
+  - SEARCH on an editor Context resolves to FFCMD cross-backend SEARCH, not editor FIND
+  - alias collision rejected at load
+  - Satisfies: Req 7.1, 7.2, 7.4, 8.1, 8.2, 8.4
+
+## Task 7. Cross-backend SEARCH contract (CR-NR-110; engine deferred) (Req 9)
+
+- [ ] 7.1 Route SEARCH results into the existing Search Results Context
+  - Reuse the existing `SearchEvent` streaming + `TabKind::SearchResults` panel; merge
+    matches from multiple backends grouped by file
+  - Satisfies: Req 9.2
+- [ ] 7.2 Enumerate the SEARCH scope through the VFS / catalog abstraction (not a raw shell-out)
+  - Scope = a set of files across VFS backends resolved via `ff-vfs` providers
+  - Satisfies: Req 9.1
+- [ ] 7.3 Record the deferred engine + mainframe traversal as a follow-on gate
+  - Document in design.md the dependency on CR-NR-105 (volume-model) + dataset-catalog
+  - No engine or dataset-traversal code is written under this gate
+  - Satisfies: Req 9.4, 9.5
+    - DEFERRED: concrete engine (embedded grep for POSIX/NTFS) and mainframe dataset
+      record-search are BLOCKED on CR-NR-105 volume-model + dataset-catalog finalisation
+- [ ] 7.4 Write a contract test asserting SEARCH scope spans backends and surfaces in the Context
+  - Behaviour-level test against the contract only (not the deferred engine)
+  - Satisfies: Req 9.1, 9.2

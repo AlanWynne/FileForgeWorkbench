@@ -1,0 +1,94 @@
+“System Display and Search Facility” is historically accurate, but it is not a particularly good description of what SDSF means to a user today. Your instinct is right.
+
+The key thing you may be underweighting is that SDSF is broader than simply a job queue viewer. A better conceptual description is:
+
+	SDSF is the z/OS operational console for monitoring and controlling jobs, spool output, and system activity.
+
+	Why “Display and Search Facility” feels wrong	
+
+	The name reflects SDSF's origins as a facility for displaying and searching system/spool information. Its role subsequently became much broader.
+
+	From an ISPF user's perspective, the important concepts are more like
+
+                       SDSF
+						|
+			+-----------+-----------+
+			|           |           |
+		  JOBS        OUTPUT      SYSTEM
+			|           |           |
+		 Running      SYSOUT      Address spaces
+		 Waiting      JES spool   System log
+		 Held         Job logs    Processes
+		 Completed
+			|
+		 CONTROL
+			|
+		 Hold / Release
+		 Cancel / Purge
+		 etc.
+
+	So “Job Queue Monitor” is closer, but still a little too narrow because SDSF exposes system-level operational information in addition to JES job queues.
+
+	What I would call it
+
+	For something like your FileForgeWorkbench, where you're reproducing the concept rather than IBM's historical terminology, I'd seriously consider:
+
+	Job & System Monitor
+
+	That's probably my favourite.
+
+	It immediately tells the user what is behind the menu item:
+
+	Job & System Monitor
+
+	with functions beneath it such as:
+
+	Jobs
+	├── Active
+	├── Waiting
+	├── Held
+	├── Completed
+	└── All Jobs
+	
+	Output
+	├── Job Output
+	├── Held Output
+	└── Spool
+	
+	System
+	├── Processes / Address Spaces
+	├── System Log
+	└── Resources
+
+	Other reasonable names would be:
+
+	Name	My viewJob Monitor	Very clear, but slightly too narrow
+	Job & System Monitor	Best general name
+	Job Operations	Good if FFWB emphasizes control
+	Job Management	Clear, but understates system monitoring
+	Workload Monitor	Sounds more like performance/workload management
+	Operations Console	Excellent broader abstraction
+	Batch Operations	Excellent if you deliberately limit it to batch/JES-like functionality
+	Job & Spool Manager	Very precise for JES-oriented functionality
+	For FFWB specifically
+
+	I'd separate the IBM compatibility terminology from the conceptual subsystem name.
+
+	For example:
+
+	Operations
+	│
+	├── Job Monitor
+	├── Spool
+	├── System Log
+	└── System Status
+
+	And internally you could regard the whole subsystem as:
+
+	FFWB Operations Console
+
+	Then an SDSF-compatible interface becomes one UI over that operations subsystem, rather than designing FFWB's architecture around something called “SDSF”.
+
+	That distinction could actually be quite important for FFWB. JES is the underlying job/spool machinery; SDSF is principally an operations interface onto that world. So if you're modelling the architecture, I wouldn't make SDSF itself the job-management engine. I'd make it a front-end/application over your job, spool and system-monitoring services.
+
+	In your FFWB terminology, Operations Console for the subsystem and Job Monitor for the main user-facing panel would be my choice.

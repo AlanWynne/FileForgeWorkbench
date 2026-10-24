@@ -171,6 +171,16 @@ localisation-aware and avoids re-touching new UI and merge collisions.
    Settings "Reset Bare" menu. Large footprint -- run in its OWN worktree, FIRST,
    while the UI panels are still quiet. Phase 3 (other-language DATA, L10N.5) stays
    the later capstone -- NOT in scope now.
+   - **CR-NR-109 (locale-aware alias resolution + menu-kind localised options)**
+     PENDING GATE (docs authored 2026-10-23; gate approval not yet given). FRAMEWORK
+     CHANGE (owner-confirmed direction): grows the `AliasTable` entry with a
+     localisation key + auto-synthesised editable identity rows, builds the on-disk
+     alias-catalogue reader (unblocks L10N Task 10.2), adds the unified
+     command-line/menu resolver, and renders menu-kind option VERBS via the active
+     locale (ALL menu kinds). Sequence AFTER this step's English-key extraction is
+     substantially done (there must be English keys to alias against); it is the
+     bridge from "descriptions localise" to "verbs display localised too". See
+     `docs/specs/localization/` Req 11 and change-log CR-NR-109.
 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
    ALTER actions via the single command path, volume picker in catalog creation,

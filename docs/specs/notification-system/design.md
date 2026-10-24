@@ -83,3 +83,24 @@ ff-desktop/src/
   tab_state.rs        -- add EventLog variant to TabKind
   session_manager.rs  -- persist EventLog tab
 ```
+
+---
+
+## Relationship to structured-messages (ff-message)
+
+See `docs/specs/structured-messages`. The notification system is the FIRST
+consumer of the new `ff-message` crate. A structured message (stable
+`{class, number}` identity + six-level severity + params) converts to the EXISTING
+`Notification` via an additive `Notification::from_structured(&StructuredMessage)`
+constructor path (defined in this `ff-desktop` notification module). It sets:
+
+- `level` from the severity-to-`NotificationLevel` mapping -- `Success` -> Success,
+  `Info` -> Info, `Warning` -> Warning, and `Error`/`Abort`/`Fatal` -> Error (the
+  four UI levels suffice because Abort/Fatal collapse visually into Error);
+- `title` from `render_title()` and `detail` from `render_detail()`, each resolved
+  to the active locale via `ff-i18n` at construction time.
+
+This is additive: the `Notification`, `NotificationQueue`, and `NotificationSender`
+signatures and the non-blocking drop-if-full semantics (Req 3.3) are UNCHANGED. The
+dependency direction is `ff-desktop` -> `ff-message` only; `ff-message` stays
+GUI-free and never depends on `ff-desktop`.

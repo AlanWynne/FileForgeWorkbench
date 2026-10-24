@@ -348,3 +348,25 @@ The command semantics engine is responsible for:
 11.12. THE chain parser SHALL split only at top-level separators that fall outside quoted strings and hex literals.
 
 11.13. THE chain executor SHALL treat `END` / RETURN as an ordinary chainable command dispatched through the normal pipeline (for example `END ; EDIT`), with no special-casing beyond normal dispatch.
+
+---
+
+### Requirement 12: FIND vs SEARCH Verb Split -- Environment Ownership [CR-NR-110]
+
+**User Story:** As a user and as a maintainer, I want a single authoritative record of which string-search verb belongs to which Command Environment, so that FIND (search the open file) and SEARCH (search across many files) never collide or drift, and GREP is understood as a surface alias for SEARCH.
+
+**Source:** CR-NR-110 (owner decision). This requirement RECORDS the cross-cutting verb-split decision; the in-buffer FIND behaviour is owned by `docs/specs/find-and-replace/` (Requirement 22) and the cross-backend SEARCH behaviour by `docs/specs/global-search/` (Requirements 7 to 9). The per-environment verb-ownership MODEL is `docs/specs/command-environments/` Requirement 2a; this requirement is the concrete FIND/SEARCH application of it.
+
+#### Acceptance Criteria
+
+12.1. THE FIND verb SHALL be owned by the FFEDIT (editor) Command_Environment and SHALL mean "search for a string within the current editor buffer"; this is a per-environment verb ownership consistent with command-environments Requirement 2a. [CR-NR-110]
+
+12.2. THE SEARCH verb SHALL be owned by the FFCMD (workbench) base environment and SHALL mean "search for a string across a set of files spanning VFS backends (mainframe/POSIX/NTFS)", surfacing results in the Search Results Context. [CR-NR-110]
+
+12.3. THE SEARCH verb SHALL be the CANONICAL ROOT verb for cross-backend multi-file search, and GREP SHALL be an ADDITIONAL ALIAS SURFACE that resolves to the canonical SEARCH through the existing FFCMD AliasTable mechanism (command-environments Requirement 6a); GREP SHALL NOT be a separate command. [CR-NR-110]
+
+12.4. FIND and SEARCH SHALL remain DISTINCT verbs in distinct environments: FIND SHALL NOT perform cross-file search, and SEARCH SHALL NOT be the in-buffer search; the active-environment rule (command-environments Requirement 3/5) selects FFEDIT.FIND on an editor Context and FFCMD.SEARCH from the base. [CR-NR-110]
+
+12.5. THE canonical verbs recorded and persisted SHALL be FIND and SEARCH respectively (never an alias surface such as GREP), consistent with command-environments Requirement 6a.2. [CR-NR-110]
+
+12.6. THIS requirement SHALL record the decision only; it SHALL NOT alter the dispatch, navigation, focus, or persistence framework seams. The concrete SEARCH engine and mainframe dataset traversal are DEFERRED by CR-NR-110 (global-search Requirement 9) pending CR-NR-105 (volume-model) and dataset-catalog. [CR-NR-110, framework-conformance.md]

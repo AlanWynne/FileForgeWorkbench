@@ -450,6 +450,22 @@ ff-logging ← platform-core ← plugin-architecture
 - `toml` -- config parsing (optional feature, for `from_toml`)
 - `dirs` -- platform-appropriate default directories
 
+### With `structured-messages` (ff-message) -- additive, sink UNTOUCHED
+
+See `docs/specs/structured-messages`. The new `ff-message` crate renders a
+structured message (stable `{class, number}` identity + severity + params) to a
+`String` at the log boundary and calls the EXISTING
+`ff_logging::log(level, module_path, &rendered)`. The message's six-level severity
+maps DOWN to `LogLevel` (Success/Info -> Info, Warning -> Warn, Error/Abort/Fatal
+-> Error). This is purely additive: the `ff-logging` public API, `LogRecord`, and
+all logging behaviour are UNCHANGED, and `ff-logging` does NOT depend on
+`ff-message`.
+
+PROPOSED (future, explicitly NOT in this spec's gate or the ff-message gate): the
+heavier "every log record carries a structured identity" model. That would be a
+framework change to this Wave-1 crate and requires a separate owner-confirmed
+gate; it is recorded here only as a possible future direction.
+
 ---
 
 ## 8. Configuration

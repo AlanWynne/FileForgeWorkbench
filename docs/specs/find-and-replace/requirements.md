@@ -6,6 +6,10 @@ This feature specifies the **Find and Replace Engine** for FileForgeWorkbench --
 
 The engine is **GUI-independent** -- it contains no rendering or UI framework dependencies. The search panel, highlight rendering, and keyboard shortcuts are concerns of separate UI and text-decoration specs. This crate provides the search algorithm, match state, replacement logic, and command integration.
 
+### FIND vs SEARCH (CR-NR-110)
+
+FIND (this spec) is the FFEDIT (editor) command that searches for a string WITHIN the current editor buffer. It is distinct from SEARCH, the FFCMD (workbench) command that searches for a string across a SET OF FILES spanning VFS backends (mainframe/POSIX/NTFS), owned by `docs/specs/global-search/` (Requirements 7 to 9). Requirement 22 below records this split; it formalises existing behaviour (FIND already lives in the FFEDIT alias seed) and does not change how FIND searches a buffer.
+
 This specification merges requirements from three primary sources:
 
 - **FileForgeEditor core-command-semantics** (Requirements 3–9): FIND with literal/REGEX/hex modes and NEXT/PREV/FIRST/LAST/ALL direction modifiers, TAGGED/EXCLUDED/VISIBLE/NONTAGGED scope filtering, bounds-aware column restriction, RFIND repeat, CHANGE with ALL/scope/column modifiers, RCHANGE repeat, EXCLUDE/SHOW/RESET find-state integration
@@ -465,5 +469,25 @@ path change.
 21.6 FOR a native (Delimited) document, the bytes produced by a CHANGE SHALL be identical to the pre-CR-CH-058 result (safety rule); FIND results and match positions SHALL be reported as document record/line numbers consistent with the index. [CR-CH-058]
 
 21.7 THE windowed FIND/CHANGE rework SHALL NOT change the shell command-dispatch, navigation-stack, focus-latch, or WorkspaceDescriptor-persistence framework seams; it slots a windowed indexer into the existing `CharacterIndexer`-based engine. [framework-conformance.md]
+
+---
+
+### Requirement 22: FIND is the FFEDIT In-Buffer Search Verb (FIND vs SEARCH split) [CR-NR-110]
+
+**User Story:** As a user, I want FIND to mean "search within the file I am editing" and SEARCH to mean "search across a set of files", so that the two string-search commands are unambiguous and each belongs to the environment where it makes sense.
+
+**Source:** CR-NR-110 (owner decision: FIND = FFEDIT in-buffer, SEARCH = FFCMD cross-backend). Cross-references `docs/specs/global-search/requirements.md` Requirements 7 to 9 (SEARCH) and `docs/specs/command-environments/requirements.md` Requirement 2a (per-environment verb ownership).
+
+**NOTE:** This requirement FORMALISES existing behaviour; it does not change how FIND searches a buffer. FIND already exists as an FFEDIT alias-seed verb (`AliasTable::ffedit_english` in `crates/ff-desktop/src/shell/environment.rs` seeds LOCATE/FIND/CHANGE/EXCLUDE/...), and the in-buffer FIND behaviour is specified by Requirements 1 to 5 of this spec. CR-NR-110 records the environment ownership and the distinction from SEARCH so the split is unambiguous.
+
+#### Acceptance Criteria
+
+22.1 THE FIND command SHALL be the canonical FFEDIT (editor) verb for searching a string WITHIN the current editor buffer; its in-buffer search behaviour is defined by Requirements 1 to 5 of this spec. [CR-NR-110]
+
+22.2 THE FIND command SHALL be owned by the FFEDIT Command_Environment (not a workbench/global verb); WHEN an editor Context is focused, FFEDIT SHALL claim FIND at the active-environment step, consistent with command-environments Requirement 6.1/6.2a. [CR-NR-110]
+
+22.3 THE FIND command SHALL be DISTINCT from the FFCMD SEARCH command: FIND searches the active buffer, while SEARCH (`docs/specs/global-search/` Requirements 7 to 9) searches across a set of files spanning VFS backends. FIND SHALL NOT be used to search multiple files, and SEARCH SHALL NOT be used as the in-buffer search. [CR-NR-110]
+
+22.4 THE canonical verb recorded and persisted for an in-buffer search SHALL be FIND (consistent with command-environments Requirement 6a.2); any localised or alias surface resolves to the canonical FIND. [CR-NR-110]
 
 ---
