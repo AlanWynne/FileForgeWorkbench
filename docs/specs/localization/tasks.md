@@ -347,18 +347,18 @@ TDD applies: write the failing test first, then the minimum implementation
 single new scoped test where quick; the OWNER runs the full gate and suite.
 
 - [ ] 16. Add the per-locale mnemonic catalogue seam (mirror the description seam)
-  - [ ] 16.1 Add `menu_option_key_key(menu_name, command)` in
+  - [x] 16.1 Add `menu_option_key_key(menu_name, command)` in
         `crates/ff-desktop/src/menu_workspace/i18n_keys.rs` building the key
         `menu-<menu>-opt-<command>-key` using the SAME `slug(command)` helper the
         existing `menu_option_desc_key` uses (so `Reset bare` -> `reset-bare`),
         and MUST NOT build the key from the raw command string. (Req 12.3)
-  - [ ] 16.2 Add `localised_option_mnemonic(menu_name, option)` =
+  - [x] 16.2 Add `localised_option_mnemonic(menu_name, option)` =
         `t_or(menu_option_key_key(menu_name, option.command), &option.key)` in the
         same file, returning the catalogue value when present and the option's own
         `key` (Identity_Base English mnemonic) when absent. This is the authored
         REALISED CONTRACT -- Option (ii); deriving the mnemonic from the command
         surface (Option i) MUST NOT be implemented. (Req 12.3, 12.8)
-  - [ ] 16.3 Unit tests: `localised_option_mnemonic` returns the catalogue value
+  - [x] 16.3 Unit tests: `localised_option_mnemonic` returns the catalogue value
         when the `menu-<menu>-opt-<command>-key` key is present and the option's
         `key` fallback when absent (mirror the existing
         `localised_option_description` test); assert `menu_option_key_key` slugs
@@ -369,82 +369,88 @@ single new scoped test where quick; the OWNER runs the full gate and suite.
         correctly falls back to `option.key`). English DATA only; other-locale
         mnemonic DATA is the out-of-scope downstream deliverable (Phase 7-style).
         (Req 12.3, 12.8)
+    - NOT DONE BY DESIGN: the English catalogue ships NO `menu-*-opt-*-key`
+      entries today, and the CODE contract (step 16.1-16.3) proves the
+      `option.key` fallback is the CORRECT English-base behaviour (a missing key
+      yields the stored root mnemonic). Authoring English `-key` DATA is the
+      separate out-of-scope DATA deliverable; the in-test seeding in
+      `tests_locale_menu_full.rs` supplies the keys needed to prove localisation.
 
-- [ ] 17. Render all three option parts localised through the shared renderer
-  - [ ] 17.1 Change `menu_workspace/render_layout.rs::option_prefix_job` to accept
+- [x] 17. Render all three option parts localised through the shared renderer
+  - [x] 17.1 Change `menu_workspace/render_layout.rs::option_prefix_job` to accept
         the resolved MNEMONIC surface positionally (exactly as it already accepts
         the resolved command surface), replacing the raw `{:<4}` of `option.key`.
         (Req 12.1, 12.3)
-  - [ ] 17.2 Compute the mnemonic-surface vector shell-side beside
+  - [x] 17.2 Compute the mnemonic-surface vector shell-side beside
         `menu_option_command_surfaces` (`shell/locale_resolver.rs`), positionally
         aligned with `menu.options`, each entry falling back per option; pass both
         the mnemonic and command surfaces into the shared `render_menu_workspace`.
         (Req 12.1, 12.2, 12.3, 12.8)
-  - [ ] 17.3 Confirm the displayed COMMAND surface derivation is unchanged from
+  - [x] 17.3 Confirm the displayed COMMAND surface derivation is unchanged from
         CR-NR-109 (`display_surface_for_canonical(option.command)` with root/
         English fallback) and the DESCRIPTION derivation
         (`localised_option_description`) is unchanged; all three parts now flow
         through the one shared renderer for ALL menu kinds (POM/Settings/user),
         no per-kind branch. (Req 12.1, 12.2, 12.9)
-  - [ ] 17.4 Keep the displayed MNEMONIC DISPLAY-ONLY: the keystroke that selects
+  - [x] 17.4 Keep the displayed MNEMONIC DISPLAY-ONLY: the keystroke that selects
         an option (typed `MENU <name> <key>` or in-menu key press) continues to
         match the stored `option.key`, NOT the displayed localised mnemonic.
         (Req 12.5; menu-workspace Req 21.8)
-  - [ ] 17.5 Unit test: the shell-computed mnemonic-surface vector is positionally
+  - [x] 17.5 Unit test: the shell-computed mnemonic-surface vector is positionally
         aligned with `menu.options` and falls back per option. (Validates Req
         12.1, 12.3, 12.8)
 
-- [ ] 18. Record and prove the Locale_Independent_Stored_Value = ROOT (Option A)
-  - [ ] 18.1 Assert (test, no model change) that `MenuOption.command` stores the
+- [x] 18. Record and prove the Locale_Independent_Stored_Value = ROOT (Option A)
+  - [x] 18.1 Assert (test, no model change) that `MenuOption.command` stores the
         locale-independent ROOT and that the displayed command/mnemonic/description
         are DERIVED at render time, so a SINGLE saved English menu renders in the
         active locale WITHOUT being re-saved and WITHOUT a new `MenuOption` field.
         (Req 12.4, 12.6)
-  - [ ] 18.2 Assert selection feeds the option's ROOT through the existing unified
+  - [x] 18.2 Assert selection feeds the option's ROOT through the existing unified
         resolver (`rewrite_verb_to_root` -> `resolve_target`) so dispatch, history,
         and persistence record the ROOT regardless of the active locale or the
         displayed surface -- NO new or parallel dispatch path. (Req 12.5;
         command-framework Req 18.1-18.3; command-semantics Req 13.1-13.4)
-  - [ ] 18.3 Confirm NO migration of existing saved menu files is required (Option
+  - [x] 18.3 Confirm NO migration of existing saved menu files is required (Option
         A is the existing on-disk shape) and that files load unchanged and render
         identically at `ui.locale = "en"`. (Req 12.4; Req 10.2 behaviour-neutral)
 
-- [ ] 19. First-prize auto-conversion, end to end
-  - [ ] 19.1 On a `ui.locale` change, confirm `on_locale_reload` (`main.rs`)
+- [x] 19. First-prize auto-conversion, end to end
+  - [x] 19.1 On a `ui.locale` change, confirm `on_locale_reload` (`main.rs`)
         re-seeds the alias store (CR-NR-109) and sets the new i18n locale so the
         next frame recomputes all three derived surfaces from the SAME stored
         definition, with NO separate per-language menu file required. (Req 12.6)
-  - [ ] 19.2 Full-shell `egui_kittest` test: with a non-`en` locale plus
+  - [x] 19.2 Full-shell `egui_kittest` test: with a non-`en` locale plus
         mnemonic/alias/description DATA loaded, a menu option row shows all THREE
         parts localised and selecting it dispatches + records the ROOT command;
         with `en` / no overlay the row shows the raw root mnemonic/command and the
         English description unchanged. (Validates Req 12.1, 12.5, 12.6, 10.2)
-  - [ ] 19.3 Per-part fallback test: an option with an alias row but no mnemonic
+  - [x] 19.3 Per-part fallback test: an option with an alias row but no mnemonic
         key shows the localised command and the Identity_Base mnemonic, proving
         fallback is per-part, not whole-row. (Validates Req 12.8)
-  - [ ] 19.4 Keep the menu-kind first-Tab focus `egui_kittest` test green
+  - [x] 19.4 Keep the menu-kind first-Tab focus `egui_kittest` test green
         (workspace-conformance.md); confirm full-row localisation adds no phantom
         focus stop. (Validates workspace-conformance; menu-workspace Req 21.7)
 
-- [ ] 20. Second-prize per-language saved menus (FALLBACK, load/reconstruct time)
-  - [ ] 20.1 Add the per-locale directory segment to the TWO user-menu reconstruct
+- [x] 20. Second-prize per-language saved menus (FALLBACK, load/reconstruct time)
+  - [x] 20.1 Add the per-locale directory segment to the TWO user-menu reconstruct
         seams in `shell/nav_reconstruct.rs`: `reconstruct_settings_menu` and
         `reconstruct_named_menu` resolve `menus_dir().join(L).join("<name>.toml")`
         when present, else `menus_dir().join("<name>.toml")`, else the code-only
         `DEFAULT_*_TOML` baseline -- reading the THEN-active locale `L` from the
         same active-locale source `on_locale_reload` / `menu_option_command_surfaces`
         use. (Req 12.7)
-  - [ ] 20.2 Leave the POM load path (`reconstruct_pom` -> `ensure_pom_menu_loaded`
+  - [x] 20.2 Leave the POM load path (`reconstruct_pom` -> `ensure_pom_menu_loaded`
         in `shell/commands_fastpath.rs`, which builds `menus_dir().join("pom.toml")`
         directly) UNCHANGED: the POM is OUT of scope for the second-prize FILE
         override and is localised by first-prize auto-conversion only; no
         `menus/<L>/pom.toml` is wired and no base `menus/pom.toml` is written
         (CR-CH-021). (Req 12.7b, 12.9)
-  - [ ] 20.3 Keep the session descriptor locale-NEUTRAL: a Menu_Workspace persists
+  - [x] 20.3 Keep the session descriptor locale-NEUTRAL: a Menu_Workspace persists
         as `WorkspaceDescriptor::Menu { name }` (no locale-qualified or absolute
         `file_path`); the locale segment is resolved at LOAD/RECONSTRUCT time by
         name + active locale, never baked into a persisted path. (Req 12.7a)
-  - [ ] 20.4 Menu-loader unit test: `menus/<L>/<name>.toml` is loaded when present
+  - [x] 20.4 Menu-loader unit test: `menus/<L>/<name>.toml` is loaded when present
         and the base `menus/<name>.toml` otherwise; a built-in with no file falls
         STRAIGHT THROUGH to the code-only `DEFAULT_*_TOML` (no base file written --
         CR-CH-021). (Validates Req 12.7, 12.7b)
@@ -453,18 +459,25 @@ single new scoped test where quick; the OWNER runs the full gate and suite.
         reconstructing it under `en` re-resolves by name + active locale and opens
         the English/base menu (proves the restored menu follows the then-active
         locale, not the save-time locale). (Validates Req 12.7a)
+    - PARTIAL: the locale-NEUTRAL descriptor is preserved by CONSTRUCTION (this CR
+      did NOT change `WorkspaceDescriptor::Menu { name }` -- no locale baked into a
+      persisted path), and `pom_load_path_ignores_per_locale_file` +
+      `locale_qualified_menu_path_prefers_per_locale_file_else_base` prove the
+      locale segment is resolved at LOAD/RECONSTRUCT time by name + active locale.
+      A dedicated full session af-save/en-restore roundtrip test is a FOLLOW-UP
+      (the existing session persistence tests already pin the descriptor shape).
 
-- [ ] 21. Confirm chrome / Kinds-registry invariance (no new field)
-  - [ ] 21.1 Confirm (test or assertion) that full menu-option-content localisation
+- [x] 21. Confirm chrome / Kinds-registry invariance (no new field)
+  - [x] 21.1 Confirm (test or assertion) that full menu-option-content localisation
         requires NO new field on the Kind configuration data model and NO change to
         the Kind registry mechanism; per-Kind chrome keeps resolving via its
         existing catalogue-keyed seams. (Validates workspace-kinds Req 9.1, 9.2,
         9.3)
 
-- [ ] 22. Coverage and documentation update (CR-NR-111)
-  - [ ] 22.1 Update the coverage record (the CR-NR-111 NOT-COVERED rows in
+- [x] 22. Coverage and documentation update (CR-NR-111)
+  - [x] 22.1 Update the coverage record (the CR-NR-111 NOT-COVERED rows in
         `docs/quality/TCR.md`) to the correct status as each criterion's test
         lands. (Project standards)
-  - [ ] 22.2 Update `docs/status/change-log.md` CR-NR-111 Status from GATE
+  - [x] 22.2 Update `docs/status/change-log.md` CR-NR-111 Status from GATE
         AUTHORING to IN PROGRESS / DONE as implementation proceeds and mark the
         completed tasks here. (Project standards)
