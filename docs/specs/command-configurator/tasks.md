@@ -212,60 +212,68 @@ AGENT verification per testing.md: `cargo check -p ff-desktop`, `cargo clippy -p
 ff-desktop -- -D warnings`, `cargo fmt -- --check`, and the SCOPED new tests where
 quick; the authoritative full suite/gate is the owner's manual run.
 
-- [ ] 8.1 Transient redesign state on `AliasEditorState` / `AliasRowEdit`
-  - [ ] 8.1.1 Add transient (non-persisted) state: `command_line: String`, `filter_ce: Option<AliasEnvironment>`, `filter_root: String` on `AliasEditorState`, and `act: String` (the line-command letter) on `AliasRowEdit`; add `localisation_key: String` to `AliasRowEdit` for the L18N column (defaults blank, round-trips via `UserAliasRowToml.localisation_key`)
+- [x] 8.1 Transient redesign state on `AliasEditorState` / `AliasRowEdit`
+  - [x] 8.1.1 Add transient (non-persisted) state: `command_line: String`, `filter_ce: Option<AliasEnvironment>`, `filter_root: String` on `AliasEditorState`, and `act: String` (the line-command letter) on `AliasRowEdit`; add `localisation_key: String` to `AliasRowEdit` for the L18N column (defaults blank, round-trips via `UserAliasRowToml.localisation_key`)
     - Validates: Requirement 5.13, 5.14, 5.15, 5.16
-  - [ ] 8.1.2 Write failing unit tests: new fields default empty/None; adding them does not change the persisted `UserAliasRowToml` serialisation of an otherwise-equal row (on-disk shape unchanged, Req 5.24)
+  - [x] 8.1.2 Write failing unit tests: new fields default empty/None; adding them does not change the persisted `UserAliasRowToml` serialisation of an otherwise-equal row (on-disk shape unchanged, Req 5.24)
     - Validates: Requirement 5.13, 5.24
 
-- [ ] 8.2 Line commands I / R / D and the deterministic apply pass
-  - [ ] 8.2.1 Write failing unit tests for `apply_pending_line_commands`: `I` inserts a blank `AliasRowEdit` after the source row; `R` inserts a field-copy of the source row after it; `D` removes the row; multiple pending commands apply by DESCENDING index with no index corruption; an unrecognised Act letter is cleared and ignored; each consumed Act field is cleared
+- [x] 8.2 Line commands I / R / D and the deterministic apply pass
+  - [x] 8.2.1 Write failing unit tests for `apply_pending_line_commands`: `I` inserts a blank `AliasRowEdit` after the source row; `R` inserts a field-copy of the source row after it; `D` removes the row; multiple pending commands apply by DESCENDING index with no index corruption; an unrecognised Act letter is cleared and ignored; each consumed Act field is cleared
     - Validates: Requirement 5.16, 5.22
-  - [ ] 8.2.2 Implement `apply_pending_line_commands` on the shell (descending-index pass, design 9.10.4) and the `AliasEditorAction::ApplyLineCommands` variant + its `apply_alias_editor_action` arm
+  - [x] 8.2.2 Implement `apply_pending_line_commands` on the shell (descending-index pass, design 9.10.4) and the `AliasEditorAction::ApplyLineCommands` variant + its `apply_alias_editor_action` arm
     - Validates: Requirement 5.16, 5.22
 
-- [ ] 8.3 The `Command ===>` primary command line
-  - [ ] 8.3.1 Write failing unit tests for the command-line parse: `SAVE` applies pending line commands then saves; `CANCEL`/`END` leaves via the Navigation_Stack; a bare Enter applies pending line commands only; (if adopted) `FILTER <ce> <root>` sets and `RESET` clears the filter; an unrecognised verb is a no-op beyond applying line commands
+- [x] 8.3 The `Command ===>` primary command line
+  - [x] 8.3.1 Write failing unit tests for the command-line parse: `SAVE` applies pending line commands then saves; `CANCEL`/`END` leaves via the Navigation_Stack; a bare Enter applies pending line commands only; (if adopted) `FILTER <ce> <root>` sets and `RESET` clears the filter; an unrecognised verb is a no-op beyond applying line commands
     - Validates: Requirement 5.14, 5.22
-  - [ ] 8.3.2 Implement the `AliasEditorAction::CommandLine(String)` variant, its render (the `Command ===>` field with stable id `alias_editor_command_line`, Enter -> action), and its `apply_alias_editor_action` arm ordering line-commands-before-primary-command (Req 5.22)
+  - [x] 8.3.2 Implement the `AliasEditorAction::CommandLine(String)` variant, its render (the `Command ===>` field with stable id `alias_editor_command_line`, Enter -> action), and its `apply_alias_editor_action` arm ordering line-commands-before-primary-command (Req 5.22)
     - Validates: Requirement 5.14, 5.22
 
-- [ ] 8.4 Cascading CE -> Root dropdowns (consume CR-CH-067)
-  - [ ] 8.4.1 Write failing unit tests: a row's Root options equal `EnvironmentRegistry::root_commands(row.environment.env_name())`; changing CE re-sources Root and clears/flags a now-invalid Root; a (CE, Root) pair chosen from the dropdowns satisfies `EnvironmentRegistry::contains_root(..)` (valid by construction, design 9.10.5)
+- [x] 8.4 Cascading CE -> Root dropdowns (consume CR-CH-067)
+  - [x] 8.4.1 Write failing unit tests: a row's Root options equal `EnvironmentRegistry::root_commands(row.environment.env_name())`; changing CE re-sources Root and clears/flags a now-invalid Root; a (CE, Root) pair chosen from the dropdowns satisfies `EnvironmentRegistry::contains_root(..)` (valid by construction, design 9.10.5)
     - Validates: Requirement 5.18
-  - [ ] 8.4.2 Implement the CE combo (registered CEs, v1 = `AliasEnvironment::ALL`) and the Root combo populated from the associated fn `EnvironmentRegistry::root_commands(env_name)`; on CE change clear/revalidate Root via `contains_root`
+  - [x] 8.4.2 Implement the CE combo (registered CEs, v1 = `AliasEnvironment::ALL`) and the Root combo populated from the associated fn `EnvironmentRegistry::root_commands(env_name)`; on CE change clear/revalidate Root via `contains_root`
     - Validates: Requirement 5.18
 
-- [ ] 8.5 The FILTER row (CE + Root only)
-  - [ ] 8.5.1 Write failing unit tests: empty filters list all rows; a CE filter restricts by environment; a Root filter restricts by canonical; CE+Root is an AND; ALIAS/Parameters are NOT filter inputs; filtering never mutates `rows`; a line command on a filtered-visible row targets the correct BACKING `rows` index (design 9.10.7)
+- [x] 8.5 The FILTER row (CE + Root only)
+  - [x] 8.5.1 Write failing unit tests: empty filters list all rows; a CE filter restricts by environment; a Root filter restricts by canonical; CE+Root is an AND; ALIAS/Parameters are NOT filter inputs; filtering never mutates `rows`; a line command on a filtered-visible row targets the correct BACKING `rows` index (design 9.10.7)
     - Validates: Requirement 5.15
-  - [ ] 8.5.2 Implement the FILTER row render (filter CE dropdown + filter Root dropdown sourced from `root_commands(filter_ce)`) and the display-only filtered row set; capture each displayed row's backing index for the line-command snapshot
+  - [x] 8.5.2 Implement the FILTER row render (filter CE dropdown + filter Root dropdown sourced from `root_commands(filter_ce)`) and the display-only filtered row set; capture each displayed row's backing index for the line-command snapshot
     - Validates: Requirement 5.15
 
-- [ ] 8.6 Column layout, scrollbar, and empty-store usability
-  - [ ] 8.6.1 Implement the column layout Act / CE / Root / L18N / ALIAS / Parameters (design 9.10.1, 9.10.2) inside a vertical ScrollArea with a right-hand scrollbar (Req 5.20); remove the footer Add/Delete buttons (superseded by I/D)
+- [x] 8.6 Column layout, scrollbar, and empty-store usability
+  - [x] 8.6.1 Implement the column layout Act / CE / Root / L18N / ALIAS / Parameters (design 9.10.1, 9.10.2) inside a vertical ScrollArea with a right-hand scrollbar (Req 5.20); remove the footer Add/Delete buttons (superseded by I/D)
     - Validates: Requirement 5.13, 5.20
-  - [ ] 8.6.2 Implement the empty-store affordance: always render the Command line + headings + FILTER row + at least one empty insertable row (a transient scratch blank row promoted into `rows` on edit/`I`), so the first alias is creatable with an absent/empty `user.toml` (design 9.10.6)
+  - [x] 8.6.2 Implement the empty-store affordance: always render the Command line + headings + FILTER row + at least one empty insertable row (a transient scratch blank row promoted into `rows` on edit/`I`), so the first alias is creatable with an absent/empty `user.toml` (design 9.10.6)
     - Validates: Requirement 5.17
 
-- [ ] 8.7 Focus / Tab reconciliation and the WorkspaceContext contract
-  - [ ] 8.7.1 Implement the `WorkspaceContext::render -> InteriorFocus` reporting so `first` = the FILTER row's first field (filter CE combo id captured fresh each frame) and `last` = the last data-row control (or the filter row when empty); keep stable salted per-row ids keyed by backing index; visual Tab order Command line -> FILTER row -> data-row cells (Act->CE->Root->L18N->ALIAS->Parameters) with no phantom stop (design 9.10.8)
+- [x] 8.7 Focus / Tab reconciliation and the WorkspaceContext contract
+  - [x] 8.7.1 Implement the `WorkspaceContext::render -> InteriorFocus` reporting so `first` = the FILTER row's first field (filter CE combo id captured fresh each frame) and `last` = the last data-row control (or the filter row when empty); keep stable salted per-row ids keyed by backing index; visual Tab order Command line -> FILTER row -> data-row cells (Act->CE->Root->L18N->ALIAS->Parameters) with no phantom stop (design 9.10.8)
     - Validates: Requirement 5.21, 5.23
-  - [ ] 8.7.2 Write the MANDATORY full-shell egui_kittest first-Tab test: open the Alias Editor, assert the first Tab from the `Command ===>` field lands EXACTLY on the FILTER row's first field (no phantom stop)
+  - [x] 8.7.2 Write the MANDATORY full-shell egui_kittest first-Tab test: open the Alias Editor, assert the first Tab from the `Command ===>` field lands EXACTLY on the FILTER row's first field (no phantom stop)
     - Validates: Requirement 5.23
 
-- [ ] 8.8 Full-shell regression test for the Add-visibility bug
-  - [ ] 8.8.1 Write the MANDATORY full-shell egui_kittest test (the test the add-row-bug findings identified as missing): with an EMPTY store, render the editor, type `I` into the always-present Act field, press Enter on the `Command ===>` line, and assert a VISIBLE editable data row appears whose ALIAS field renders and accepts typed input that persists into `rows[0].surface`
+- [x] 8.8 Full-shell regression test for the Add-visibility bug
+  - [x] 8.8.1 Write the MANDATORY full-shell egui_kittest test (the test the add-row-bug findings identified as missing): with an EMPTY store, render the editor, type `I` into the always-present Act field, press Enter on the `Command ===>` line, and assert a VISIBLE editable data row appears whose ALIAS field renders and accepts typed input that persists into `rows[0].surface`
     - Validates: Requirement 5.17
 
-- [ ] 8.9 Save wiring, L18N round-trip, and coverage bookkeeping
-  - [ ] 8.9.1 (Verification, no new logic) Confirm SAVE still routes through `save_user_aliases` -> `validate_user_alias_rows` -> `EnvironmentRegistry::contains_root` (CR-CH-067 save-side hook) plus the CR-NR-113 validations, surfaces the error inline, and leaves the file unchanged on failure (design 9.10.3, 9.10.9; Req 5.19)
+- [x] 8.9 Save wiring, L18N round-trip, and coverage bookkeeping
+  - [x] 8.9.1 (Verification, no new logic) Confirm SAVE still routes through `save_user_aliases` -> `validate_user_alias_rows` -> `EnvironmentRegistry::contains_root` (CR-CH-067 save-side hook) plus the CR-NR-113 validations, surfaces the error inline, and leaves the file unchanged on failure (design 9.10.3, 9.10.9; Req 5.19)
     - Validates: Requirement 5.19
-  - [ ] 8.9.4 Write a failing round-trip unit test for L18N persistence: an `AliasRowEdit` with a non-empty `localisation_key` passed through `validate_user_alias_rows` yields a `UserAliasRowToml` whose `localisation_key` carries that (trimmed) value, and re-parsing the serialised store re-renders the same L18N value (design 9.10.2; Req 5.13)
+  - [x] 8.9.4 Write a failing round-trip unit test for L18N persistence: an `AliasRowEdit` with a non-empty `localisation_key` passed through `validate_user_alias_rows` yields a `UserAliasRowToml` whose `localisation_key` carries that (trimmed) value, and re-parsing the serialised store re-renders the same L18N value (design 9.10.2; Req 5.13)
     - Validates: Requirement 5.13
-  - [ ] 8.9.5 Change the sole save path `validate_user_alias_rows` (`crates/ff-desktop/src/shell/alias_editor.rs`, ~line 241) to construct `UserAliasRowToml { ..., localisation_key: row.localisation_key.trim().to_string() }` instead of the hardcoded `String::new()`, so the L18N edit persists and the 8.9.4 round-trip test passes (no on-disk-shape change; Req 5.13, 5.24)
+  - [x] 8.9.5 Change the sole save path `validate_user_alias_rows` (`crates/ff-desktop/src/shell/alias_editor.rs`) to construct `UserAliasRowToml { ..., localisation_key: row.localisation_key.trim().to_string() }` instead of the hardcoded `String::new()`, so the L18N edit persists and the 8.9.4 round-trip test passes (no on-disk-shape change; Req 5.13, 5.24)
     - Validates: Requirement 5.13, 5.24
-  - [ ] 8.9.2 Update `docs/quality/TCR.md`: set the CR-CH-068 command-configurator Req 5.13-5.24 rows to their correct status as each test lands
+  - [x] 8.9.2 Update `docs/quality/TCR.md`: set the CR-CH-068 command-configurator Req 5.13-5.24 rows to their correct status as each test lands
     - Covers: Requirement 5.13-5.24
-  - [ ] 8.9.3 Record the five OPEN DECISIONS (R semantics; filter timing + CE+Root-only scope; primary-command set; per-environment no-shadow timing; v1 CE dropdown membership) as resolved per the owner's CONFIRM-step answers before closing Task 8
+  - [x] 8.9.3 Record the five OPEN DECISIONS (R semantics; filter timing + CE+Root-only scope; primary-command set; per-environment no-shadow timing; v1 CE dropdown membership) as resolved per the owner's CONFIRM-step answers before closing Task 8
     - Covers: Requirement 5.14, 5.15, 5.16, 5.18 (owner confirmation)
+
+### OPEN DECISIONS -- resolved (owner CONFIRM, CR-CH-068)
+
+1. R semantics = DUPLICATE the current row's field values into a new editable row (Req 5.16).
+2. Filter applied ON command/Enter (NOT live-as-you-type); filter scope = CE + Root ONLY (Req 5.15).
+3. v1 primary-command set = SAVE, CANCEL/END, FILTER, RESET (locale switch OUT of v1) (Req 5.14).
+4. Per-environment no-shadow reconciliation DEFERRED; the current `builtin_ffcmd_roots()` guard is retained (design 9.10.10b).
+5. v1 CE dropdown membership = `AliasEnvironment::ALL` (`ffcmd` / `ffedit`); full-registry enumeration is a deferred additive follow-up (Req 5.18).
