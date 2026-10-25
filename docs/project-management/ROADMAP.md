@@ -252,6 +252,29 @@ localisation-aware and avoids re-touching new UI and merge collisions.
      it. Governing plan: `docs/specs/menu-workspace/tasks.md` Phase
      (settings-alias-option) Task 50. See menu-workspace Req 12.3 (amended) + Req 22
      and change-log CR-CH-066.
+   - **CR-CH-067 (EnvironmentRegistry root-command enumeration + reject-with-WARNING
+     -at-load for invalid user alias roots -- Gate 1 foundation for the Alias Editor
+     redesign)** GATE AUTHORED / OWNER-CONFIRMED (additive framework change to
+     CR-CH-053; owner confirmed "Proceed..." + chose option 2 "Reject with warning,
+     continue to load"). Adds a READ-ONLY name-keyed query on the built
+     `EnvironmentRegistry` (Req 13): `root_commands(env)` returns an environment's
+     complete CANONICAL root set (FFCMD via `builtin_ffcmd_roots`, FFEDIT via
+     `canonical_verbs_owned` over `ffedit_english`), deterministic order, canonical
+     roots only (no alias surfaces); `contains_root(env, root)` is case-insensitive
+     and graceful for an unknown env/root. PLUS a data-integrity rule: a user alias
+     row (CR-NR-113 `user.toml`) whose root is not valid in its declared
+     environment is SKIPPED at load with a WARN and loading CONTINUES (mirrors the
+     existing no-shadow/collision skip-with-WARN in `apply_user_rows`; startup never
+     blocked, no valid row dropped); the same check is surfaced in
+     `validate_user_alias_rows` for Gate 2's save-side rejection. ADDITIVE / read-only
+     + one load-time skip branch: no second dispatcher, no second navigation stack,
+     no new persistence format, no reshape of a public framework type. This is the
+     FOUNDATION for Gate 2 (the Alias Editor redesign -- env->root dropdown cascade,
+     ISPF I/D line commands, filter, validated (environment, root) anchor), which is
+     NOT in scope. Governing plan: `docs/specs/command-environments/tasks.md` Phase
+     (cmdenv-root-enum) Tasks 27-29. See command-environments Req 20, change-log
+     CR-CH-067, command-configurator Req 5 (CR-NR-113, the future consumer), and
+     `.agents/tasks/command-env-enumeration/findings.md`.
 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
    ALTER actions via the single command path, volume picker in catalog creation,
