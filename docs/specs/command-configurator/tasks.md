@@ -140,57 +140,57 @@ source today). These subtasks carry a CR-NR-112-LANDED note. The NON-template
 subset (store path/load, surface+canonical+environment authoring, save, refresh,
 focus, scope) has no such dependency and may be built first.
 
-- [ ] 7.1 Define the User_Alias_Store location, format, and loader
-  - [ ] 7.1.1 Add a user alias store path under the workbench data dir (`<User_Data_Dir>/FileForgeWorkbench/aliases/user.toml`), locale-independent, separate from `i18n/<locale>/aliases/`
+- [x] 7.1 Define the User_Alias_Store location, format, and loader
+  - [x] 7.1.1 Add a user alias store path under the workbench data dir (`<User_Data_Dir>/FileForgeWorkbench/aliases/user.toml`), locale-independent, separate from `i18n/<locale>/aliases/`
     - Validates: Requirement 5.1
-  - [ ] 7.1.2 Add a User_Alias_Store LOAD path to `LocaleAliasStore` as a THIRD overlay on top of the identity base + per-locale overlay, reading the user file via the NEW `parse_user_alias_toml` / `UserAliasRowToml` (design 9.4, not the 3-field `parse_alias_toml`) and routing each row into its target environment's AliasTable (`environment` field, default `ffcmd`), reusing the collision-rejecting overlay seam; skip-with-WARN a row whose surface equals a reserved built-in root (a `builtin_ffcmd_roots()` member -- a NEW CR-NR-113 pre-pass invariant, NOT command-framework Req 8.10); on a cross-layer surface clash with the per-locale overlay, no-op when the root is the SAME and skip-with-WARN (per-locale wins) when the root DIFFERS. EXTEND the re-seed path (`reload_active_alias_store_for_locale` / `seed_and_overlay_for_locale`) so one re-seed re-applies BOTH the per-locale overlay AND the user-store overlay
+  - [x] 7.1.2 Add a User_Alias_Store LOAD path to `LocaleAliasStore` as a THIRD overlay on top of the identity base + per-locale overlay, reading the user file via the NEW `parse_user_alias_toml` / `UserAliasRowToml` (design 9.4, not the 3-field `parse_alias_toml`) and routing each row into its target environment's AliasTable (`environment` field, default `ffcmd`), reusing the collision-rejecting overlay seam; skip-with-WARN a row whose surface equals a reserved built-in root (a `builtin_ffcmd_roots()` member -- a NEW CR-NR-113 pre-pass invariant, NOT command-framework Req 8.10); on a cross-layer surface clash with the per-locale overlay, no-op when the root is the SAME and skip-with-WARN (per-locale wins) when the root DIFFERS. EXTEND the re-seed path (`reload_active_alias_store_for_locale` / `seed_and_overlay_for_locale`) so one re-seed re-applies BOTH the per-locale overlay AND the user-store overlay
     - Validates: Requirement 5.6, 5.7
-  - [ ] 7.1.3 Write failing unit tests: absent store -> empty + created on first save; a loaded user alias resolves through the resolver; an `environment = "ffedit"` row resolves in FFEDIT and a defaulted row in FFCMD; a built-in-root-shadowing row is skipped with a WARN; a cross-layer same-root clash is a no-op and a different-root clash keeps the per-locale surface
+  - [x] 7.1.3 Write failing unit tests: absent store -> empty + created on first save; a loaded user alias resolves through the resolver; an `environment = "ffedit"` row resolves in FFEDIT and a defaulted row in FFCMD; a built-in-root-shadowing row is skipped with a WARN; a cross-layer same-root clash is a no-op and a different-root clash keeps the per-locale surface
     - Validates: Requirement 5.1, 5.7
 
-- [ ] 7.2 Alias serialiser (rows -> TOML) -- CR-NR-112-LANDED for the `command_template` handling (design 9.0)
-  - [ ] 7.2.1 Write failing round-trip unit tests: a row with a template serialises to `[[alias]]` with `command_template` (CR-NR-112-LANDED); a pure verb row omits `command_template` and `localisation_key`; a non-default `environment` round-trips and `ffcmd` is the serialised/parsed default; serialise-then-parse THROUGH THE NEW `parse_user_alias_toml` / `UserAliasRowToml` (design 9.4) -- NOT the 3-field `parse_alias_toml`, which has no `environment` and would drop it -- yields the same rows
+- [x] 7.2 Alias serialiser (rows -> TOML) -- CR-NR-112-LANDED for the `command_template` handling (design 9.0)
+  - [x] 7.2.1 Write failing round-trip unit tests: a row with a template serialises to `[[alias]]` with `command_template` (CR-NR-112-LANDED); a pure verb row omits `command_template` and `localisation_key`; a non-default `environment` round-trips and `ffcmd` is the serialised/parsed default; serialise-then-parse THROUGH THE NEW `parse_user_alias_toml` / `UserAliasRowToml` (design 9.4) -- NOT the 3-field `parse_alias_toml`, which has no `environment` and would drop it -- yields the same rows
     - Validates: Requirement 5.1, 5.4
-  - [ ] 7.2.2 Implement the serialiser AND the matching user-store row type/parser (none exists today; `alias_reader.rs` only reads via the 3-field `parse_alias_toml`). Add a NEW `UserAliasRowToml` (`surface`, `canonical`, `#[serde(default)] environment`, optional `command_template`, optional `localisation_key`) + `parse_user_alias_toml`, leaving the existing `AliasRowToml` / `parse_alias_toml` UNCHANGED; the serialiser emits `surface`, `canonical`, the `environment` when not the `ffcmd` default, and `command_template` when non-empty (the template emit is CR-NR-112-LANDED-gated)
+  - [x] 7.2.2 Implement the serialiser AND the matching user-store row type/parser (none exists today; `alias_reader.rs` only reads via the 3-field `parse_alias_toml`). Add a NEW `UserAliasRowToml` (`surface`, `canonical`, `#[serde(default)] environment`, optional `command_template`, optional `localisation_key`) + `parse_user_alias_toml`, leaving the existing `AliasRowToml` / `parse_alias_toml` UNCHANGED; the serialiser emits `surface`, `canonical`, the `environment` when not the `ffcmd` default, and `command_template` when non-empty (the template emit is CR-NR-112-LANDED-gated)
     - Validates: Requirement 5.1, 5.4
 
-- [ ] 7.3 Alias Editor state, pure render, and WorkspaceContext impl
-  - [ ] 7.3.1 Add `AliasEditorState` + `AliasRowEdit` + `AliasEditorAction` (modelled on `MenusEditorAction`), held in a grouped shell sub-struct
+- [x] 7.3 Alias Editor state, pure render, and WorkspaceContext impl
+  - [x] 7.3.1 Add `AliasEditorState` + `AliasRowEdit` + `AliasEditorAction` (modelled on `MenusEditorAction`), held in a grouped shell sub-struct
     - Validates: Requirement 5.1, 5.3
-  - [ ] 7.3.2 Implement the pure `alias_editor_panel::render` returning an `AliasEditorAction`; apply per-field edits directly on the working copy (mirroring B054)
+  - [x] 7.3.2 Implement the pure `alias_editor_panel::render` returning an `AliasEditorAction`; apply per-field edits directly on the working copy (mirroring B054)
     - Validates: Requirement 5.3
-  - [ ] 7.3.3 Implement `WorkspaceContext for AliasEditorState` returning `InteriorFocus` with a stable first-control `egui::Id`; dispatch via the owned-panel swap in the central-panel arm
+  - [x] 7.3.3 Implement `WorkspaceContext for AliasEditorState` returning `InteriorFocus` with a stable first-control `egui::Id`; dispatch via the owned-panel swap in the central-panel arm
     - Validates: Requirement 5.10
 
-- [ ] 7.4 Shell-side effects: open, apply, save, refresh
-  - [ ] 7.4.1 Implement `open_alias_editor` (load rows, `navigate_to` a `CommandConfigurator` `editor = "aliases"` descriptor in place)
+- [x] 7.4 Shell-side effects: open, apply, save, refresh
+  - [x] 7.4.1 Implement `open_alias_editor` (load rows, `navigate_to` a `CommandConfigurator` `editor = "aliases"` descriptor in place)
     - Validates: Requirement 5.2, 5.9
-  - [ ] 7.4.2 Implement `apply_alias_editor_action` (AddRow / DeleteRow / Save)
+  - [x] 7.4.2 Implement `apply_alias_editor_action` (AddRow / DeleteRow / Save)
     - Validates: Requirement 5.3, 5.5
-  - [ ] 7.4.3 Implement `save_user_aliases`: validate (empty surface/canonical, within-SAME-environment surface->two-roots collision, built-in-root shadowing via `builtin_ffcmd_roots()`), leave the on-disk file unchanged on any validation/write failure, serialise, write, then refresh the live `LocaleAliasStore` in place via the EXTENDED `ACTIVE_ALIAS_STORE` reload seam (one re-seed re-applies BOTH the per-locale overlay AND the user-store overlay, 7.1.2)
+  - [x] 7.4.3 Implement `save_user_aliases`: validate (empty surface/canonical, within-SAME-environment surface->two-roots collision, built-in-root shadowing via `builtin_ffcmd_roots()`), leave the on-disk file unchanged on any validation/write failure, serialise, write, then refresh the live `LocaleAliasStore` in place via the EXTENDED `ACTIVE_ALIAS_STORE` reload seam (one re-seed re-applies BOTH the per-locale overlay AND the user-store overlay, 7.1.2)
     - Validates: Requirement 5.4, 5.5, 5.6, 5.7
-  - [ ] 7.4.4 Write failing unit tests for the save path: each validation rejection; file-unchanged-on-failure; a valid save writes the file and the live store resolves the new alias; after save-then-reload the live store STILL carries BOTH the per-locale overlay AND the new user alias (re-seed drops neither layer)
+  - [x] 7.4.4 Write failing unit tests for the save path: each validation rejection; file-unchanged-on-failure; a valid save writes the file and the live store resolves the new alias; after save-then-reload the live store STILL carries BOTH the per-locale overlay AND the new user alias (re-seed drops neither layer)
     - Validates: Requirement 5.4, 5.6
 
-- [ ] 7.5 Registration (configurator family, full sibling parity) and the open verb
+- [x] 7.5 Registration (configurator family, full sibling parity) and the open verb
   - NOTE: "no new WorkspaceKind" does NOT mean "no new TabKind" -- the Alias
     Editor needs the SAME wiring points as the Menus Editor (design 9.6), not
     only the descriptor arm.
-  - [ ] 7.5.1 Add the runtime `TabKind::AliasEditor` + `KindTag::AliasEditor` (`tab_state.rs`), the `BuiltinKind` mapping (`workspace_kind/mod.rs`), the `session_manager.rs` non-persist arms, and the tab constructor (`tab_state_ctors.rs`)
+  - [x] 7.5.1 Add the runtime `TabKind::AliasEditor` + `KindTag::AliasEditor` (`tab_state.rs`), the `BuiltinKind` mapping (`workspace_kind/mod.rs`), the `session_manager.rs` non-persist arms, and the tab constructor (`tab_state_ctors.rs`)
     - Validates: Requirement 5.2, 5.9
-  - [ ] 7.5.2 Add the `editor = "aliases"` descriptor arm in `shell/nav_stack.rs` (`descriptor_for_current_context`) and the reconstruct arm in `nav_reconstruct.rs` (`reconstruct_custom`); add the shell panel field for `AliasEditorState` in `construct.rs` and the dedicated central-panel render arm in `shell/render_body.rs` (mem::take -> `render_workspace_context` -> put back -> `apply_alias_editor_action`). No new WorkspaceKind, no new dispatcher, no new persistence format
+  - [x] 7.5.2 Add the `editor = "aliases"` descriptor arm in `shell/nav_stack.rs` (`descriptor_for_current_context`) and the reconstruct arm in `nav_reconstruct.rs` (`reconstruct_custom`); add the shell panel field for `AliasEditorState` in `construct.rs` and the dedicated central-panel render arm in `shell/render_body.rs` (mem::take -> `render_workspace_context` -> put back -> `apply_alias_editor_action`). No new WorkspaceKind, no new dispatcher, no new persistence format
     - Validates: Requirement 5.2, 5.9, 5.10
-  - [ ] 7.5.3 Register the `ALIASES` verb (classified as a `CustomWorkspace` target through the single front door) and/or a menu option; show `[ALIASES]` in the tab title; END/F3 returns via the Navigation_Stack
+  - [x] 7.5.3 Register the `ALIASES` verb (classified as a `CustomWorkspace` target through the single front door) and/or a menu option; show `[ALIASES]` in the tab title; END/F3 returns via the Navigation_Stack
     - Validates: Requirement 5.2, 5.9
 
-- [ ] 7.6 Full-shell tests and end-to-end expansion
-  - [ ] 7.6.1 Write the mandatory full-shell egui_kittest first-Tab test: first Tab from the command field lands on the reported first interior control (no phantom stop)
+- [x] 7.6 Full-shell tests and end-to-end expansion
+  - [x] 7.6.1 Write the mandatory full-shell egui_kittest first-Tab test: first Tab from the command field lands on the reported first interior control (no phantom stop)
     - Validates: Requirement 5.10
-  - [ ] 7.6.2 (CR-NR-112-LANDED) Write a full-shell behavioural test: author `ECOB`/`EDIT`/`FFWB.COBOL.MASTER(&1)` (environment `ffedit`) in the editor, Save, type `ecob helloW`, assert expansion to `EDIT FFWB.COBOL.MASTER(helloW)` (end-to-end with CR-NR-112; blocked until the CR-NR-112 template expansion is live, design 9.0)
+  - [x] 7.6.2 (CR-NR-112-LANDED) Write a full-shell behavioural test: author `ECOB`/`EDIT`/`FFWB.COBOL.MASTER(&1)` (environment `ffedit`) in the editor, Save, type `ecob helloW`, assert expansion to `EDIT FFWB.COBOL.MASTER(helloW)` (end-to-end with CR-NR-112; blocked until the CR-NR-112 template expansion is live, design 9.0)
     - Validates: Requirement 5.8
 
-- [ ] 7.7 Scope guard and coverage bookkeeping
-  - [ ] 7.7.1 (Verification, no code) Confirm the editor reads/writes ONLY the User_Alias_Store and never the per-locale `i18n/<locale>/aliases/` catalogues (CR-NR-111 non-overlap)
+- [x] 7.7 Scope guard and coverage bookkeeping
+  - [x] 7.7.1 (Verification, no code) Confirm the editor reads/writes ONLY the User_Alias_Store and never the per-locale `i18n/<locale>/aliases/` catalogues (CR-NR-111 non-overlap)
     - Covers: Requirement 5.11
-  - [ ] 7.7.2 Update `docs/quality/TCR.md`: set the CR-NR-113 command-configurator Req 5.1-5.12 rows to their correct status as each test lands
+  - [x] 7.7.2 Update `docs/quality/TCR.md`: set the CR-NR-113 command-configurator Req 5.1-5.12 rows to their correct status as each test lands
     - Covers: Requirement 5 (all criteria)
