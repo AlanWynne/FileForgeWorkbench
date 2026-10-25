@@ -1152,6 +1152,48 @@ fn full_shell_menus_editor_first_tab_focuses_menu_selector() {
     );
 }
 
+// Validates: command-configurator Req 5.10 (CR-NR-113, workspace-conformance) --
+// on the Alias Editor the FIRST Tab from the command field lands EXACTLY on the
+// reported first interior control (the "Add alias" button when the store is
+// empty), with no phantom/invisible focus stop before it. The Alias Editor
+// reports its first interior through the single WorkspaceContext::render ->
+// InteriorFocus path, so the shell can latch the command-field -> first-interior
+// jump.
+#[test]
+fn full_shell_alias_editor_first_tab_focuses_first_interior() {
+    use crate::tab_state::KindTag;
+    let mut harness = harness_shell();
+    // Open the Alias Editor via its command (same path as typing ALIASES).
+    harness.state_mut().dispatch_command_string("ALIASES");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor,
+        "ALIASES opens the Alias Editor Context"
+    );
+    // The editor reports a first interior control (the Add button when empty).
+    let first = harness.state().focus.first_interior_id;
+    assert!(
+        first.is_some(),
+        "Alias Editor must report a first interior control"
+    );
+    // Focus is on the command field on entry (Req 16.1a).
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(cmd_field_id()),
+        "command field holds focus on entering the Alias Editor"
+    );
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        first,
+        "first Tab must focus the reported first interior control, not a phantom stop"
+    );
+}
+
 // === B057: Theme Editor Tab lands on the selector combo (no phantom stop) ====
 
 // Validates: menu-and-statusbar Req 16.3 (B057, CR-CH-023) -- on the Theme

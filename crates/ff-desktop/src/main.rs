@@ -8,6 +8,7 @@
 //! launches the egui/eframe rendering window.
 
 mod about_dialog;
+mod alias_editor_panel;
 mod automation;
 mod batch;
 mod catalog_manager_dialog;

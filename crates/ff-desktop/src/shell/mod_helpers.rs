@@ -53,7 +53,8 @@ pub(crate) fn title_line_text(tab: &crate::tab_state::TabState) -> String {
         | TabKind::ThemeEditor
         | TabKind::MenusEditor
         | TabKind::KeysEditor
-        | TabKind::KindsEditor => {
+        | TabKind::KindsEditor
+        | TabKind::AliasEditor => {
             // CR-NR-090 B.1: the label for a system/panel Kind is the Kind's
             // compiled default title, NOT the cached `tab.title`. This fixes the
             // Catalog Explorer (FilesPanel -> [CATALOGS]) vs File Explorer

@@ -36,6 +36,10 @@ pub(crate) struct DirOverrides {
     pub workspace_kinds: Option<PathBuf>,
     /// Override for the screen-collections directory (CR-NR-098 Wave 3).
     pub scrm: Option<PathBuf>,
+    /// Override for the User_Alias_Store FILE (CR-NR-113). Points at an isolated
+    /// `user.toml` in tests so the Alias Editor never touches the developer's
+    /// real store.
+    pub user_aliases: Option<PathBuf>,
 }
 
 // === DetachSplitState ================================================

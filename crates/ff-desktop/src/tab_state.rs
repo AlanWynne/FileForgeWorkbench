@@ -78,6 +78,11 @@ pub enum KindTag {
     ///
     /// Validates: workspace-kinds Requirement 6 (CR-NR-090 B.4)
     KindsEditor,
+    /// In-app Alias editor Context (create/edit/delete/save command aliases into
+    /// the user-scoped alias store).
+    ///
+    /// Validates: command-configurator Requirement 5.2 (CR-NR-113)
+    AliasEditor,
     /// Context-sensitive Help Context -- displays the resolved help topic
     /// (F1 / HELP). Rendered via `HelpContextPanel` (a `WorkspaceContext`).
     ///
@@ -134,6 +139,8 @@ pub enum TabKind {
     KeysEditor,
     /// In-app Workspace Kinds editor Context.
     KindsEditor,
+    /// In-app Alias editor Context (CR-NR-113).
+    AliasEditor,
     /// Context-sensitive Help Context (F1 / HELP).
     HelpContext,
     /// Screen Collection Replay viewer Context (CAPTURE REPLAY).
@@ -160,6 +167,7 @@ impl TabKind {
             TabKind::MenusEditor => KindTag::MenusEditor,
             TabKind::KeysEditor => KindTag::KeysEditor,
             TabKind::KindsEditor => KindTag::KindsEditor,
+            TabKind::AliasEditor => KindTag::AliasEditor,
             TabKind::HelpContext => KindTag::HelpContext,
             TabKind::ScrmViewer => KindTag::ScrmViewer,
         }

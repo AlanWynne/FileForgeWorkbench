@@ -54,6 +54,7 @@ pub(super) fn context_name_for_kind(kind: KindTag) -> Option<&'static str> {
         KindTag::MenusEditor => Some("menus"),
         KindTag::KeysEditor => Some("keys"),
         KindTag::KindsEditor => Some("kinds"),
+        KindTag::AliasEditor => Some("aliases"),
         // The Help Context has no dedicated key-map context (CR-NR-097); F1/HELP
         // are handled by the shell HELP path, not a context key map.
         KindTag::HelpContext => None,

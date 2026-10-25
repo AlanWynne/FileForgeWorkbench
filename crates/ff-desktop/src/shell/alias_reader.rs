@@ -39,6 +39,11 @@ use super::alias_overlay::{AliasCatalogue, KeyedAliasRow};
 use super::environment::AliasTable;
 use super::environment_registry::{FFCMD_NAME, FFEDIT_NAME};
 
+/// CR-NR-113 User_Alias_Store overlay methods for [`LocaleAliasStore`], split
+/// into a child module so `alias_reader.rs` stays within the 400-line source
+/// limit (rust-standards.md). The `impl` block lives there; no behaviour change.
+mod alias_user_overlay;
+
 /// One `[[alias]]` row as deserialised from a per-environment TOML file.
 #[derive(Debug, Deserialize)]
 struct AliasRowToml {
@@ -218,12 +223,23 @@ impl LocaleAliasStore {
     /// `<root>/<locale>/aliases/`. A missing root (or missing `aliases/` dir)
     /// leaves the store identity-only (Req 10.2, graceful degradation).
     ///
-    /// Validates: localization Requirement 11.2, 11.5
+    /// CR-NR-113 (command-configurator Req 5.6): the re-seed is EXTENDED to ALSO
+    /// apply the User_Alias_Store overlay as a THIRD layer, so ONE re-seed
+    /// re-applies BOTH the per-locale overlay AND the user store -- a save (which
+    /// triggers a reload) never drops the per-locale aliases and the newly saved
+    /// user alias goes live without a restart.
+    ///
+    /// Validates: localization Requirement 11.2, 11.5; command-configurator Req 5.6
     pub(crate) fn seed_and_overlay_for_locale(ffcmd_roots: &[&str], locale: &str) -> Self {
         let mut store = Self::seed(ffcmd_roots);
         if let Some(root) = super::i18n_bootstrap::resolve_i18n_root() {
             let aliases_dir = root.join(locale).join("aliases");
             store.apply_overlay_from_dir(&aliases_dir);
+        }
+        // CR-NR-113: the user store is the THIRD overlay, on top of the identity
+        // base and the per-locale overlay (Req 5.7).
+        if let Some(path) = super::user_aliases::user_aliases_file() {
+            store.apply_user_overlay_from_file(&path);
         }
         store
     }
@@ -305,7 +321,7 @@ impl LocaleAliasStore {
     /// menu-option roots plus registered root verbs), read back from the FFCMD
     /// table's identity rows so a reload re-seeds with the SAME root set without
     /// the caller re-deriving it.
-    fn ffcmd_roots(&self) -> Vec<String> {
+    pub(crate) fn ffcmd_roots(&self) -> Vec<String> {
         self.table_for(FFCMD_NAME)
             .map(AliasTable::canonical_verbs_owned)
             .unwrap_or_default()

@@ -300,6 +300,7 @@ impl WorkbenchShell {
             menus_editor_panel: crate::menus_editor_panel::MenusEditorState::new(),
             keys_editor_panel: crate::keys_editor_panel::KeysEditorState::new(),
             kinds_editor_panel: crate::kinds_editor_panel::KindsEditorState::default(),
+            alias_editor_panel: crate::alias_editor_panel::AliasEditorState::new(),
             shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
             pending_external: None,
             files_panel: FilesPanelState::new(),

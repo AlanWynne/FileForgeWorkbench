@@ -231,6 +231,17 @@ impl TabState {
         base_tab!(id, TabKind::MenusEditor, "[MENUS]".to_string(), document)
     }
 
+    /// Create an Alias Editor tab.
+    ///
+    /// Validates: command-configurator Requirement 5.2 (CR-NR-113)
+    // Retained constructor, currently uncalled: the in-place navigate_to model
+    // transforms an existing tab rather than constructing a new Alias Editor tab
+    // (parity with the Theme/Menus editors above).
+    #[allow(dead_code)]
+    pub fn alias_editor(id: TabId, document: DocumentHandle) -> Self {
+        base_tab!(id, TabKind::AliasEditor, "[ALIASES]".to_string(), document)
+    }
+
     /// Create a Menu Workspace tab backed by a TOML file at `file_path`.
     ///
     /// Validates: menu-workspace Requirement 1.1, 1.7
