@@ -26,14 +26,11 @@
 //!
 //! See docs/specs/command-environments/{requirements,design}.md.
 
-//! The closed `EnvironmentKind` enum, the `environment_for_kind` match, and the
-//! `active_environment` derivation that lived here have been REPLACED by the
-//! built `EnvironmentRegistry` (see `environment_registry.rs`), which owns the
-//! set of environments by NAME and the kind-supplied active-name derivation
-//! (command-environments Requirement 13.1-13.4). This file now holds the
-//! per-environment `AliasTable`; the shared contract (`CommandEnvironment` +
-//! `EnvDispatchOutcome`) lives in `environment_contract.rs` and is re-exported
-//! here (CR-NR-109 split to keep this file under the 400-line rule).
+//! The former `EnvironmentKind` enum / `environment_for_kind` / `active_environment`
+//! derivation now live in the built `EnvironmentRegistry` (`environment_registry.rs`,
+//! command-environments Req 13.1-13.4). This file holds the per-environment
+//! `AliasTable`; the shared contract (`CommandEnvironment` + `EnvDispatchOutcome`)
+//! lives in `environment_contract.rs`, re-exported here (CR-NR-109 400-line split).
 
 /// One ALIAS TABLE entry: a surface form, the canonical (root) verb it resolves
 /// to, and an OPTIONAL localisation key (CR-NR-109, localization Requirement
@@ -56,6 +53,14 @@ pub(crate) struct AliasEntry {
     pub(crate) canonical: String,
     /// Optional `ff-i18n` key resolving the displayed surface per active locale.
     pub(crate) localisation_key: Option<String>,
+    /// CR-NR-112: OPTIONAL parameter template (e.g. `FFWB.COBOL.MASTER(&1)`).
+    /// `Some`+non-empty -> invoking the alias expands `canonical` + ` ` + the
+    /// substituted template into the ROOT command (Req 14.1/14.2); `None`/empty
+    /// is a pure verb alias, byte-identical to today (Req 14.6). Pre-resolution
+    /// form only; the ROOT stays the dispatched/persisted identity (Req 19.4).
+    ///
+    /// Validates: command-semantics Requirement 14.1
+    pub(crate) command_template: Option<String>,
 }
 
 impl AliasEntry {
@@ -162,6 +167,7 @@ impl AliasTable {
                 surface: surface.to_string(),
                 canonical: canonical.to_string(),
                 localisation_key: None,
+                command_template: None,
             });
         }
         Self { entries }
@@ -189,6 +195,7 @@ impl AliasTable {
                 surface: root.to_string(),
                 canonical: root.to_string(),
                 localisation_key: None,
+                command_template: None,
             });
         }
         Self { entries }
@@ -205,6 +212,19 @@ impl AliasTable {
             .iter()
             .find(|e| e.surface.eq_ignore_ascii_case(s))
             .map(|e| e.canonical.as_str())
+    }
+
+    /// Resolve a surface-form verb token to its FULL alias entry
+    /// (case-insensitive), or `None` when unowned. The CR-NR-112 pre-pass needs
+    /// the entry's `command_template`, not just its canonical verb.
+    /// `canonical_verb` is RETAINED for the verb-only/display callers.
+    ///
+    /// Validates: command-semantics Requirement 14.1
+    pub(crate) fn resolve_alias_entry(&self, surface: &str) -> Option<&AliasEntry> {
+        let s = surface.trim();
+        self.entries
+            .iter()
+            .find(|e| e.surface.eq_ignore_ascii_case(s))
     }
 
     /// The distinct canonical (root) verbs this table resolves to, as owned
@@ -276,9 +296,9 @@ impl AliasTable {
         // Delegate to the keyed form with no localisation key per row, so the two
         // entry points share ONE scratch-copy collision discipline (Req 5.6,
         // 11.10). Existing (surface, canonical) callers are unchanged.
-        let keyed: Vec<(String, String, Option<String>)> = rows
+        let keyed: Vec<super::alias_overlay::KeyedAliasRow> = rows
             .iter()
-            .map(|(s, c)| (s.clone(), c.clone(), None))
+            .map(|(s, c)| (s.clone(), c.clone(), None, None))
             .collect();
         self.apply_locale_overlay_keyed(environment_name, &keyed)
     }
@@ -313,8 +333,15 @@ impl AliasTable {
         // leaves `self` untouched (Identity_Base retained, Req 5.6). Only on full
         // success do we commit the scratch copy back.
         let mut scratch = self.entries.clone();
-        for (surface, canonical, key) in rows {
+        for (surface, canonical, key, template) in rows {
             let surface_trimmed = surface.trim();
+            // CR-NR-112: an empty/whitespace template deserialises/overlays to
+            // None (a pure verb alias), so the byte-identical legacy path is
+            // preserved (command-semantics Req 14.6).
+            let template = template
+                .as_ref()
+                .map(|t| t.trim().to_string())
+                .filter(|t| !t.is_empty());
             if let Some(pos) = scratch
                 .iter()
                 .position(|e| e.surface.eq_ignore_ascii_case(surface_trimmed))
@@ -329,11 +356,13 @@ impl AliasTable {
                 }
                 // Same canonical: an authored/overlaid row UPDATES the existing
                 // (possibly synthesised-identity) row rather than colliding
-                // (Req 11.4). Move it to the front and apply the new key, so a
-                // canonical lookup prefers the overlaid display surface.
+                // (Req 11.4). Move it to the front and apply the new key and
+                // template (CR-NR-112), so a canonical lookup prefers the
+                // overlaid display surface and the entry carries the template.
                 let mut updated = scratch.remove(pos);
                 updated.surface = surface_trimmed.to_string();
                 updated.localisation_key = key.clone();
+                updated.command_template = template;
                 scratch.insert(0, updated);
                 continue;
             }
@@ -343,6 +372,7 @@ impl AliasTable {
                     surface: surface_trimmed.to_string(),
                     canonical: canonical.clone(),
                     localisation_key: key.clone(),
+                    command_template: template,
                 },
             );
         }
@@ -438,6 +468,7 @@ mod tests {
             surface: "FIND".to_string(),
             canonical: "FIND".to_string(),
             localisation_key: Some("verb-find".to_string()),
+            command_template: None,
         };
         assert_eq!(
             keyed.display_surface(),
@@ -450,6 +481,7 @@ mod tests {
             surface: "CHANGE".to_string(),
             canonical: "CHANGE".to_string(),
             localisation_key: None,
+            command_template: None,
         };
         assert_eq!(
             plain.display_surface(),
@@ -467,6 +499,7 @@ mod tests {
                     "SOEK".to_string(),
                     "FIND".to_string(),
                     Some("verb-find".to_string()),
+                    None,
                 )],
             )
             .expect("keyed overlay applies");
@@ -516,6 +549,7 @@ mod tests {
                     "FIND".to_string(),
                     "NAYTI".to_string(),
                     Some("verb-find".to_string()),
+                    None,
                 )],
             )
             .expect("overlay row for a new surface of the same root applies");
@@ -555,6 +589,7 @@ mod tests {
                     "FIND".to_string(),
                     "FIND".to_string(),
                     Some("verb-find".to_string()),
+                    None,
                 )],
             )
             .expect("re-stating a surface with the same canonical must not collide");
@@ -577,6 +612,56 @@ mod tests {
         assert_eq!(t.canonical_verb("X"), Some("EXCLUDE")); // alias -> canonical
         assert_eq!(t.canonical_verb("INCLUDE"), Some("SHOW"));
         assert_eq!(t.canonical_verb("NOTAVERB"), None);
+    }
+
+    /// Validates: command-semantics Requirement 14.1 -- a seeded entry carries
+    /// `command_template = None` (a pure verb alias, back-compat), and
+    /// `resolve_alias_entry` returns the whole entry case-insensitively (None for
+    /// an unknown surface).
+    #[test]
+    fn resolve_alias_entry_returns_entry_with_template_field() {
+        let t = AliasTable::ffedit_english();
+        let entry = t
+            .resolve_alias_entry("find")
+            .expect("FIND resolves case-insensitively");
+        assert_eq!(entry.canonical, "FIND");
+        assert_eq!(
+            entry.command_template, None,
+            "a seeded entry is a pure verb alias (no template, Req 14.6)"
+        );
+        assert!(
+            t.resolve_alias_entry("NOTAVERB").is_none(),
+            "an unknown surface resolves to no entry"
+        );
+    }
+
+    /// Validates: command-semantics Requirement 14.1 -- a KEYED overlay row
+    /// carrying a parameter template produces an `AliasEntry` whose
+    /// `command_template` is `Some(...)`, while `canonical_verb` and
+    /// `resolve_alias_entry` still resolve the surface to its canonical.
+    #[test]
+    fn keyed_overlay_row_with_template_sets_command_template() {
+        let mut table = AliasTable::ffedit_english();
+        table
+            .apply_locale_overlay_keyed(
+                "FFEDIT",
+                &[(
+                    "ECOB".to_string(),
+                    "EDIT".to_string(),
+                    None,
+                    Some("FFWB.COBOL.MASTER(&1)".to_string()),
+                )],
+            )
+            .expect("keyed overlay with a template applies");
+        assert_eq!(table.canonical_verb("ECOB"), Some("EDIT"));
+        let entry = table
+            .resolve_alias_entry("ecob")
+            .expect("ECOB resolves case-insensitively");
+        assert_eq!(
+            entry.command_template.as_deref(),
+            Some("FFWB.COBOL.MASTER(&1)"),
+            "the overlaid entry carries the parameter template"
+        );
     }
 
     /// Validates: command-environments Requirement 2a.6, 5.1, 5.3 (E8 corrected

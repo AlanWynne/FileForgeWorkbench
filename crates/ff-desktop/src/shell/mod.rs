@@ -36,6 +36,7 @@ pub(crate) use crate::scroll_amount::ScrollAmount;
 mod actions;
 mod alias_overlay;
 pub(crate) mod alias_reader;
+mod alias_template;
 mod command_line_outcome;
 mod commands;
 mod commands_environment;
@@ -126,6 +127,8 @@ pub(crate) use helpers::config_value_to_toml_value;
 // Each module is a direct child of `shell` so every `super::` reference inside a
 // moved test still resolves to `shell`, unchanged. Shared helpers live in
 // `tests_common` and are glob-imported by each area module.
+#[cfg(test)]
+mod tests_alias_template;
 #[cfg(test)]
 mod tests_command;
 #[cfg(test)]

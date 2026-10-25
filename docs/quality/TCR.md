@@ -4069,3 +4069,31 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.4: FIND and SEARCH remain distinct verbs in distinct environments; active-environment rule selects the right one |
 | `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.5: canonical verbs recorded/persisted are FIND and SEARCH (never an alias surface such as GREP) |
 | `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.6: decision-record only; no dispatch/nav/focus/persistence change; engine + mainframe traversal deferred (CR-NR-105 + dataset-catalog) |
+
+### Phase (parameterised-aliases) -- CR-NR-112 (alias maps a verb to a ROOT command WITH a parameter template; &1..&N / &* positional substitution; single-pass; expansion in the existing pre-pass before resolve_target)
+
+> An alias entry gains a fourth part -- a parameter template string (e.g. `FFWB.COBOL.MASTER(&1)`).
+> Typing `ecob helloW` expands to `EDIT FFWB.COBOL.MASTER(helloW)` in the EXISTING
+> `rewrite_verb_to_root` pre-pass (before `resolve_target`) and flows through the one front door
+> unchanged. Substitution is pure text: unsupplied `&N` -> empty; surplus args appended when no `&*`.
+> Single-pass in v1 (forward-compatible depth-limit + visited-set guards documented). Templateless
+> entries are byte-identical to today. NO framework change.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🟢 | `resolve_alias_entry_returns_entry_with_template_field`, `reader_row_with_template_parses_to_some_verbatim` | command-semantics Req 14.1: alias entry carries FOUR parts -- root, alias name, optional localisation key, optional parameter template |
+| `ff-desktop` | 🟢 | `worked_example_single_positional` | command-semantics Req 14.2: a non-empty template expands to `root + space + substituted template`; literal template text preserved verbatim (`ecob helloW` -> `EDIT FFWB.COBOL.MASTER(helloW)`) |
+| `ff-desktop` | 🟢 | `rest_placeholder_takes_tokens_after_highest_positional_no_repeat`, `rest_placeholder_without_positional_takes_all_tokens`, `two_digit_positional_is_token_twelve` | command-semantics Req 14.3: `&N` -> Nth whitespace token (1-based); `&*` -> all remaining tokens space-joined |
+| `ff-desktop` | 🟢 | `unsupplied_positional_substitutes_empty`, `rewrite_verb_to_root_empty_arg_substitutes_empty` | command-semantics Req 14.4: an unsupplied `&N` substitutes EMPTY (no alias-layer error); `ecob` -> `EDIT FFWB.COBOL.MASTER()` |
+| `ff-desktop` | 🟢 | `surplus_tokens_are_appended_when_no_rest_placeholder`, `non_contiguous_template_does_not_reappend_lower_unreferenced_token` | command-semantics Req 14.5: surplus args beyond highest `&N` (no `&*`) are APPENDED space-separated; no token discarded |
+| `ff-desktop` | 🟢 | `reader_row_without_template_parses_to_none`, `rewrite_verb_to_root_templateless_alias_is_byte_identical` | command-semantics Req 14.6: absent/empty template -> byte-identical to today's pure verb rewrite (back-compat) |
+| `ff-desktop` | 🟢 | `rewrite_verb_to_root_is_single_pass` | command-semantics Req 14.7: single-pass -- expanded command is not re-fed through alias expansion |
+| `ff-desktop` | 🟢 | `alias_template_end_to_end_opens_expanded_edit_target` | command-semantics Req 14.8: pure text substitution, no alias-layer special-casing; parameterised alias == equivalent typed command (observable) |
+| `ff-desktop` | 🟢 | `alias_template_end_to_end_opens_expanded_edit_target` | command-semantics Req 14.9: worked example end-to-end -- `ecob helloW` opens `ffwb.cobol.master(helloW)` via existing EDIT routing |
+| `ff-desktop` | 🟢 | `tokenisation_is_whitespace_only` | command-semantics Req 14.10: argument tokenisation is whitespace split; quoted multi-word positional args out of scope |
+| `ff-desktop` | 🟢 | `alias_template_end_to_end_opens_expanded_edit_target`, `rewrite_verb_to_root_expands_parameterised_alias` | command-framework Req 19.1: parameterised alias expanded in the existing pre-pass BEFORE `resolve_target`; expanded string classified by the same single classifier -> identical `CommandTarget`/result |
+| `ff-desktop` | 🟢 | `rewrite_verb_to_root_leaves_non_alias_unchanged` | command-framework Req 19.2: STRING-to-STRING rewrite upstream of `resolve_target`; no second dispatcher/resolver; no `CommandTarget`/dispatch/nav change; params not routed through dispatch layer |
+| `ff-desktop` | 🟢 | `rewrite_verb_to_root_templateless_alias_is_byte_identical`, `reader_row_without_template_parses_to_none` | command-framework Req 19.3: a templateless alias is rewritten byte-identically; no behaviour change to non-template aliases or non-alias strings |
+| `ff-desktop` | 🟢 | `alias_template_end_to_end_opens_expanded_edit_target` | command-framework Req 19.4: the ROOT (expanded) command is what history/session record; alias surface + template are pre-resolution forms only |
+| `ff-desktop` | 🟢 | `rewrite_verb_to_root_is_single_pass` | command-framework Req 19.5: single-pass expansion (one alias level); future chaining bounded by depth-limit + visited-set as an additive change, not a new path |
+| `ff-desktop` | 🟢 | `alias_template_with_no_argument_expands_empty_and_routes` | command-framework Req 19.6: key-bound parameterised alias expands via the pre-pass (field merged first); menu-option-command arg supply OUT OF SCOPE (no field merge on click) |
