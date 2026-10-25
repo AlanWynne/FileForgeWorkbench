@@ -198,10 +198,11 @@ impl WorkbenchShell {
                     self.apply_kinds_editor_action(action);
                 }
                 TabKind::AliasEditor => {
-                    // Validates: command-configurator Req 5 (CR-NR-113); CR-NR-078
-                    // (framework). Owned-panel swap: render through the trait
-                    // (reports the first row's surface field / Add button interior
-                    // + honours the latch), then apply the stashed action.
+                    // Validates: command-configurator Req 5 (CR-NR-113 + the
+                    // CR-CH-068 ISPF redesign); CR-NR-078 (framework). Owned-panel
+                    // swap: render through the trait (reports the FILTER CE
+                    // dropdown as the first interior + honours the latch), then
+                    // apply the stashed action (ApplyLineCommands / CommandLine).
                     let mut panel = std::mem::take(&mut self.alias_editor_panel);
                     self.render_workspace_context(ctx, ui, &mut panel);
                     let action = std::mem::take(&mut panel.pending_action);

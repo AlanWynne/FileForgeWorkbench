@@ -6,7 +6,9 @@
 //! command layer (`shell/alias_editor.rs`). The panel itself never touches the
 //! filesystem.
 
+mod filter;
 mod render;
+mod rows;
 mod state;
 
 pub use state::{AliasEditorAction, AliasEditorState, AliasRowEdit};

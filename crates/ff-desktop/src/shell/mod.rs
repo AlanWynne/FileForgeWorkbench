@@ -35,6 +35,7 @@ pub(crate) use crate::scroll_amount::ScrollAmount;
 
 mod actions;
 mod alias_editor;
+mod alias_editor_line_commands;
 mod alias_overlay;
 pub(crate) mod alias_reader;
 mod alias_template;
@@ -59,7 +60,7 @@ mod dispatch_ffedit;
 mod environment;
 mod environment_contract;
 mod environment_ffedit;
-mod environment_registry;
+pub(crate) mod environment_registry;
 mod external_adapter;
 mod handlers;
 pub(crate) mod help;

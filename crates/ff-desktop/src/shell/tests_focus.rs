@@ -1152,10 +1152,10 @@ fn full_shell_menus_editor_first_tab_focuses_menu_selector() {
     );
 }
 
-// Validates: command-configurator Req 5.10 (CR-NR-113, workspace-conformance) --
-// on the Alias Editor the FIRST Tab from the command field lands EXACTLY on the
-// reported first interior control (the "Add alias" button when the store is
-// empty), with no phantom/invisible focus stop before it. The Alias Editor
+// Validates: command-configurator Req 5.23 (CR-CH-068, workspace-conformance) --
+// on the redesigned ISPF Alias Editor the FIRST Tab from the `Command ===>` field
+// lands EXACTLY on the reported first interior control (the FILTER row's filter CE
+// dropdown), with no phantom/invisible focus stop before it. The Alias Editor
 // reports its first interior through the single WorkspaceContext::render ->
 // InteriorFocus path, so the shell can latch the command-field -> first-interior
 // jump.
@@ -1173,11 +1173,11 @@ fn full_shell_alias_editor_first_tab_focuses_first_interior() {
         KindTag::AliasEditor,
         "ALIASES opens the Alias Editor Context"
     );
-    // The editor reports a first interior control (the Add button when empty).
+    // The editor reports a first interior control (the FILTER CE dropdown).
     let first = harness.state().focus.first_interior_id;
     assert!(
         first.is_some(),
-        "Alias Editor must report a first interior control"
+        "Alias Editor must report a first interior control (the FILTER CE dropdown)"
     );
     // Focus is on the command field on entry (Req 16.1a).
     assert_eq!(
@@ -1190,7 +1190,75 @@ fn full_shell_alias_editor_first_tab_focuses_first_interior() {
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
         first,
-        "first Tab must focus the reported first interior control, not a phantom stop"
+        "first Tab must focus the reported first interior control \
+         (the FILTER CE dropdown), not a phantom stop (Req 5.23)"
+    );
+}
+
+// Validates: command-configurator Req 5.17 (CR-CH-068) -- the empty-store
+// I-insert regression (the test the add-row-bug findings identified as missing).
+// With an EMPTY user store, the editor still renders an always-present insertable
+// Act field; typing `I` into it and pressing Enter on the `Command ===>` line
+// applies the batch and a VISIBLE editable data row appears whose ALIAS field
+// renders and accepts typed input that persists into rows[0].surface.
+#[test]
+fn full_shell_alias_editor_empty_store_i_insert_shows_editable_row() {
+    use crate::tab_state::KindTag;
+    // Isolate the user alias store at a path that does not exist (empty store).
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let mut harness = harness_shell();
+    harness.state_mut().dir_overrides.user_aliases =
+        Some(dir.path().join("aliases").join("user.toml"));
+    harness.state_mut().dispatch_command_string("ALIASES");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor
+    );
+    assert_eq!(
+        harness.state().alias_editor_panel.rows.len(),
+        0,
+        "the user store is empty (zero persisted rows)"
+    );
+    // The always-present scratch Act field has a stable id at backing index 0.
+    let act_id = egui::Id::new(("alias_act", 0usize));
+    harness.ctx.memory_mut(|m| m.request_focus(act_id));
+    harness.run();
+    harness
+        .input_mut()
+        .events
+        .push(egui::Event::Text("I".to_string()));
+    harness.run();
+    // Enter on the Command line applies the pending line commands.
+    let cmd_id = egui::Id::new("alias_editor_command_line");
+    harness.ctx.memory_mut(|m| m.request_focus(cmd_id));
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    harness.run();
+    // A visible editable data row now exists (the scratch I was promoted + the
+    // batch inserted a blank row). Type a surface into row 0's ALIAS field and
+    // assert it persists into rows[0].surface.
+    assert!(
+        !harness.state().alias_editor_panel.rows.is_empty(),
+        "an I line command on the empty-store scratch row creates a visible data row"
+    );
+    let surface_id = egui::Id::new(("alias_surface", 0usize));
+    harness.ctx.memory_mut(|m| m.request_focus(surface_id));
+    harness.run();
+    harness
+        .input_mut()
+        .events
+        .push(egui::Event::Text("Z".to_string()));
+    harness.run();
+    assert!(
+        harness.state().alias_editor_panel.rows[0]
+            .surface
+            .contains('Z'),
+        "the ALIAS field of the inserted row accepts typed input that persists; got {:?}",
+        harness.state().alias_editor_panel.rows[0].surface
     );
 }
 
