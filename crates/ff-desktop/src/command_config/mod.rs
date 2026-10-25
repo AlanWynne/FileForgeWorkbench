@@ -180,6 +180,7 @@ pub(crate) const BUILTIN_WORKSPACE_VERB_ROOTS: &[&str] = &[
     "SEARCH",
     "KINDS",
     "MENUS",
+    "ALIASES",
 ];
 
 /// Validates: command-framework Requirement 8.3 (stage 2), 8.4, 9.2, 9.7
@@ -264,6 +265,7 @@ pub(crate) fn builtin_workspace_target_for(input: &str) -> Option<CommandTarget>
         _ if is("GSEARCH") || is("SEARCH") => custom("search"),
         _ if is("KINDS") => custom("kinds"),
         _ if is("MENUS") => custom("menus"),
+        _ if is("ALIASES") => custom("aliases"),
         _ => None,
     }
 }

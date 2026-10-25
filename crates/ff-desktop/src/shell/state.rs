@@ -244,6 +244,8 @@ pub struct WorkbenchShell {
     pub(crate) keys_editor_panel: crate::keys_editor_panel::KeysEditorState,
     /// Kinds Editor Context state (workspace-kinds Req 6, CR-NR-090 B.4).
     pub(crate) kinds_editor_panel: crate::kinds_editor_panel::KindsEditorState,
+    /// Alias Editor Context state (command-configurator Req 5, CR-NR-113).
+    pub(crate) alias_editor_panel: crate::alias_editor_panel::AliasEditorState,
     /// Shell engine for external program execution (Detached / Captured).
     ///
     /// Backs the External Command_Target adapter: runs a program by name +

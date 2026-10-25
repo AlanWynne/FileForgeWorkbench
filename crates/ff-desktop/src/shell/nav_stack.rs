@@ -94,6 +94,11 @@ impl WorkbenchShell {
                 p.insert("editor".to_string(), DescriptorValue::from("kinds"));
                 p
             }),
+            KindTag::AliasEditor => custom(WorkspaceKind::CommandConfigurator, {
+                let mut p = DescriptorParams::new();
+                p.insert("editor".to_string(), DescriptorValue::from("aliases"));
+                p
+            }),
             // The Help Context is transient (CR-NR-097): it is not persisted as
             // its own descriptor. If a descriptor is ever requested for it (it
             // should not be, since session persistence skips it), map to the Home

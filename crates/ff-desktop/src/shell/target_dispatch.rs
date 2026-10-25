@@ -264,6 +264,10 @@ impl WorkbenchShell {
                         self.open_menus_editor();
                         self.open_error = None;
                     }
+                    "aliases" => {
+                        self.open_alias_editor();
+                        self.open_error = None;
+                    }
                     "theme_editor" => {
                         self.open_theme_editor();
                         self.open_error = None;

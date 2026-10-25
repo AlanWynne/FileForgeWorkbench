@@ -36,7 +36,8 @@ impl WorkbenchShell {
             | TabKind::ThemeEditor
             | TabKind::MenusEditor
             | TabKind::KeysEditor
-            | TabKind::KindsEditor => {
+            | TabKind::KindsEditor
+            | TabKind::AliasEditor => {
                 let name =
                     crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
                         .stable_name();
@@ -67,6 +68,7 @@ impl WorkbenchShell {
                 | KindTag::MenusEditor
                 | KindTag::KeysEditor
                 | KindTag::KindsEditor
+                | KindTag::AliasEditor
                 | KindTag::CommandConfigurator
                 | KindTag::FilesPanel
                 | KindTag::FileExplorerPanel

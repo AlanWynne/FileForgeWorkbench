@@ -34,6 +34,7 @@ pub(crate) use crate::scroll_amount::ScrollAmount;
 // against `default_menubar_menu()` instead.
 
 mod actions;
+mod alias_editor;
 mod alias_overlay;
 pub(crate) mod alias_reader;
 mod alias_template;
@@ -99,6 +100,7 @@ mod update_floating;
 mod update_input;
 mod update_keys;
 mod update_startup;
+pub(crate) mod user_aliases;
 pub(crate) mod workspace_context;
 mod workspace_io;
 

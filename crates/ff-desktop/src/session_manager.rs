@@ -101,6 +101,9 @@ fn descriptor_for_tab(
         KindTag::KeysEditor => None,
         // The Kinds Editor is likewise transient (CR-NR-090 B.4); not restored.
         KindTag::KindsEditor => None,
+        // The Alias Editor is likewise a transient editing Context (CR-NR-113);
+        // edits persist to the User_Alias_Store file, not as a restored tab.
+        KindTag::AliasEditor => None,
         // The Help Context is transient (CR-NR-097); F1/HELP reopen it on demand.
         KindTag::HelpContext => None,
         // Untitled buffers are not persisted (never were).
@@ -226,6 +229,7 @@ impl SessionManager {
                 | KindTag::MenusEditor
                 | KindTag::KeysEditor
                 | KindTag::KindsEditor
+                | KindTag::AliasEditor
                 | KindTag::HelpContext
                 | KindTag::ScrmViewer => None,
             }
@@ -286,6 +290,7 @@ impl SessionManager {
                 | KindTag::MenusEditor
                 | KindTag::KeysEditor
                 | KindTag::KindsEditor
+                | KindTag::AliasEditor
                 | KindTag::HelpContext
                 | KindTag::ScrmViewer => None,
             }

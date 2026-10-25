@@ -164,6 +164,9 @@ impl WorkbenchShell {
                     Some(DescriptorValue::String(e)) if e == "kinds" => {
                         self.set_active_tab_context(TabKind::KindsEditor, "[KINDS]")
                     }
+                    Some(DescriptorValue::String(e)) if e == "aliases" => {
+                        self.set_active_tab_context(TabKind::AliasEditor, "[ALIASES]")
+                    }
                     _ => self.set_active_tab_context(TabKind::CommandConfigurator, "[COMMANDS]"),
                 }
             }

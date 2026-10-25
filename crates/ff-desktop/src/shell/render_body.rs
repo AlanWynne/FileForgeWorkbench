@@ -197,6 +197,17 @@ impl WorkbenchShell {
                     self.kinds_editor_panel = panel;
                     self.apply_kinds_editor_action(action);
                 }
+                TabKind::AliasEditor => {
+                    // Validates: command-configurator Req 5 (CR-NR-113); CR-NR-078
+                    // (framework). Owned-panel swap: render through the trait
+                    // (reports the first row's surface field / Add button interior
+                    // + honours the latch), then apply the stashed action.
+                    let mut panel = std::mem::take(&mut self.alias_editor_panel);
+                    self.render_workspace_context(ctx, ui, &mut panel);
+                    let action = std::mem::take(&mut panel.pending_action);
+                    self.alias_editor_panel = panel;
+                    self.apply_alias_editor_action(action);
+                }
                 TabKind::CommandConfigurator => {
                     // Validates: command-configurator Requirement 2.2-2.6;
                     // CR-NR-078 WF.6 (framework). poll_reload the store first

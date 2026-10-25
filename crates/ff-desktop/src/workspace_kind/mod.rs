@@ -41,11 +41,12 @@ pub enum BuiltinKind {
     Menus,
     Keys,
     Kinds,
+    Aliases,
 }
 
 impl BuiltinKind {
     /// All built-in kinds (registry seeding + tests).
-    pub const ALL: [BuiltinKind; 15] = [
+    pub const ALL: [BuiltinKind; 16] = [
         BuiltinKind::Editor,
         BuiltinKind::Files,
         BuiltinKind::Catalogs,
@@ -61,6 +62,7 @@ impl BuiltinKind {
         BuiltinKind::Menus,
         BuiltinKind::Keys,
         BuiltinKind::Kinds,
+        BuiltinKind::Aliases,
     ];
 
     /// The stable name for this built-in kind (the id used for keymaps, keymap
@@ -82,6 +84,7 @@ impl BuiltinKind {
             BuiltinKind::Menus => "menus",
             BuiltinKind::Keys => "keys",
             BuiltinKind::Kinds => "kinds",
+            BuiltinKind::Aliases => "aliases",
         }
     }
 
@@ -112,6 +115,7 @@ impl BuiltinKind {
             BuiltinKind::Menus => "[MENUS]",
             BuiltinKind::Keys => "[KEYS]",
             BuiltinKind::Kinds => "[KINDS]",
+            BuiltinKind::Aliases => "[ALIASES]",
         }
     }
 
@@ -139,6 +143,7 @@ impl BuiltinKind {
             BuiltinKind::Menus => "Menu Editor",
             BuiltinKind::Keys => "Key Assignments Editor",
             BuiltinKind::Kinds => "Workspace Kinds Editor",
+            BuiltinKind::Aliases => "Alias Editor",
         }
     }
 
@@ -159,6 +164,7 @@ impl BuiltinKind {
             KindTag::MenusEditor => BuiltinKind::Menus,
             KindTag::KeysEditor => BuiltinKind::Keys,
             KindTag::KindsEditor => BuiltinKind::Kinds,
+            KindTag::AliasEditor => BuiltinKind::Aliases,
             KindTag::MenuWorkspace => {
                 if is_home {
                     BuiltinKind::Pom
