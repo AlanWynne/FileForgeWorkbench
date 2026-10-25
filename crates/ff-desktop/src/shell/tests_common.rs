@@ -391,6 +391,71 @@ pub(crate) fn install_verb_find_soek_catalogue() {
     ff_i18n::set_catalogue(catalogue);
 }
 
+/// Install a TEST catalogue (CR-NR-111) that, on top of a COPY of the shipped
+/// English base, defines the localised MENU-OPTION surfaces for a `FIND` option
+/// in a menu named `menu_name`: the mnemonic key `menu-<menu>-opt-find-key`, the
+/// description key `menu-<menu>-opt-find-desc`, and the command-surface key
+/// `verb-find`. `extra` lets a caller pass additional `key = value` lines (e.g.
+/// to seed a localised mnemonic WITHOUT a description, proving per-part
+/// fallback). Mirrors `install_verb_find_soek_catalogue` -- it copies the shipped
+/// English tree (skipping the shipped verbs catalogue to avoid a duplicate
+/// `verb-find`) so every unrelated label keeps resolving in the shared process.
+///
+/// This seeds the per-locale DATA IN-TEST (CR-NR-111 delivers the CODE contract
+/// only; authoring built-in DATA is a separate deliverable), exactly as the
+/// plan requires every proving test to do.
+///
+/// Validates: localization Requirement 12.1, 12.3, 12.6, 12.8 (test-support)
+pub(crate) fn install_find_menu_localised_catalogue(menu_name: &str, extra: &str) {
+    let shipped_root = super::i18n_bootstrap::resolve_i18n_root()
+        .expect("shipped i18n/ root must resolve for the CR-NR-111 test catalogue");
+    let shipped_en = shipped_root.join("en");
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let en = dir.path().join("en");
+    std::fs::create_dir_all(&en).expect("create en dir");
+    if let Ok(entries) = std::fs::read_dir(&shipped_en) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("ftl") {
+                if let Some(name) = path.file_name() {
+                    // Skip the shipped verbs catalogue (defines verb-find) to
+                    // avoid a Fluent duplicate-message error with our verb-find.
+                    if name.eq_ignore_ascii_case("ff-desktop-verbs.ftl") {
+                        continue;
+                    }
+                    let _ = std::fs::copy(&path, en.join(name));
+                }
+            }
+        }
+    }
+    // The localised surfaces for the FIND option in `menu_name`, plus any extra
+    // lines the caller supplies. verb-find = SOEK is the command-column surface
+    // (keyed by the alias row's display key); the mnemonic/description keys are
+    // the CR-NR-111 render-time derivations.
+    let ftl = format!(
+        "verb-find = SOEK\n\
+         menu-{menu_name}-opt-find-key = S\n\
+         menu-{menu_name}-opt-find-desc = Soek teks\n\
+         {extra}\n"
+    );
+    std::fs::write(en.join("zz-test-crnr111.ftl"), ftl).expect("write ftl");
+    let catalogue =
+        ff_i18n::Catalogue::load_identity_base(dir.path()).expect("test catalogue loads");
+    ff_i18n::set_catalogue(catalogue);
+}
+
+/// Install a TEST catalogue (CR-NR-111 per-part fallback) that seeds ONLY the
+/// command surface `verb-find = SOEK` for a `FIND` option, with NO mnemonic or
+/// description key for `menu_name`. Used to prove per-part fallback: the command
+/// localises, the mnemonic falls back to the stored `option.key`, and the
+/// description falls back to the parsed English prose -- never blank.
+///
+/// Validates: localization Requirement 12.8 (test-support)
+pub(crate) fn install_find_command_only_catalogue() {
+    install_verb_find_soek_catalogue();
+}
+
 /// Overlay a single `(surface -> canonical)` alias row (carrying the `verb-find`
 /// localisation key) onto the given environment's table in the shell's alias
 /// store, so a full-shell test can simulate an active-locale alias without a

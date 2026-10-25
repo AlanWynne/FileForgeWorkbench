@@ -71,6 +71,19 @@ pub(crate) fn menu_option_desc_key(menu_name: &str, command: &str) -> String {
     format!("menu-{}-opt-{}-desc", slug(menu_name), slug(command))
 }
 
+/// The catalogue key for one option's MNEMONIC (the key column):
+/// `menu-<menu-slug>-opt-<command-slug>-key`. Mirrors `menu_option_desc_key`
+/// exactly -- the key is slugged off the option's ROOT command (Option A storage
+/// shape), NOT off the raw mnemonic or a locale-dependent string, so the MATCH
+/// value is locale-independent while the resolved mnemonic is derived per-locale
+/// (CR-NR-111, localization Req 12.3). The `command` value is only an input to
+/// the key; it is never itself localised.
+///
+/// Validates: localization Requirement 12.3
+pub(crate) fn menu_option_key_key(menu_name: &str, command: &str) -> String {
+    format!("menu-{}-opt-{}-key", slug(menu_name), slug(command))
+}
+
 /// The localised one-line description for `option` in menu `menu_name`: the
 /// catalogue value when the key is present, else the parsed English prose
 /// (`option.description`). This is the single display helper both render sites
@@ -81,6 +94,23 @@ pub(crate) fn localised_option_description(menu_name: &str, option: &MenuOption)
     t_or(
         &menu_option_desc_key(menu_name, &option.command),
         &option.description,
+    )
+}
+
+/// The localised MNEMONIC (key-column display text) for `option` in menu
+/// `menu_name`: the active-locale catalogue value keyed on the option's ROOT
+/// command when present, else the parsed English `option.key` (CR-NR-111,
+/// localization Req 12.3, 12.8). This mirrors `localised_option_description`
+/// exactly -- the stored `option.key` is the per-part English fallback, and the
+/// catalogue value is a DISPLAY-only derivation keyed off the locale-independent
+/// ROOT command. Selection matching still uses the stored `option.key`, never
+/// this derived display text.
+///
+/// Validates: localization Requirement 12.3, 12.8
+pub(crate) fn localised_option_mnemonic(menu_name: &str, option: &MenuOption) -> String {
+    t_or(
+        &menu_option_key_key(menu_name, &option.command),
+        &option.key,
     )
 }
 
@@ -154,6 +184,39 @@ mod tests {
             menu_option_desc_key("pom", "Catalogs"),
             "menu-pom-opt-catalogs-desc"
         );
+    }
+
+    // Validates: localization Requirement 12.3 -- the mnemonic key is
+    // menu-<menu-slug>-opt-<command-slug>-key, slugged off the ROOT command
+    // IDENTICALLY to menu_option_desc_key (not off the raw mnemonic string).
+    #[test]
+    fn menu_option_key_key_builds_menu_opt_command_key() {
+        assert_eq!(
+            menu_option_key_key("settings", "Reset bare"),
+            "menu-settings-opt-reset-bare-key"
+        );
+        assert_eq!(
+            menu_option_key_key("pom", "Catalogs"),
+            "menu-pom-opt-catalogs-key"
+        );
+        // The slug matches the desc key's slug for the same command, differing
+        // only in the -key / -desc suffix (same slug() helper).
+        assert_eq!(
+            menu_option_key_key("settings", "Reset bare"),
+            menu_option_desc_key("settings", "Reset bare").replace("-desc", "-key")
+        );
+    }
+
+    // Validates: localization Requirement 12.3, 12.8 -- localised_option_mnemonic
+    // returns the parsed English option.key fallback when the key is absent (the
+    // seam returns the key = miss sentinel), mirroring the description seam.
+    #[test]
+    fn localised_mnemonic_falls_back_to_parsed_english_on_miss() {
+        let mut o = opt("Reset bare", "Reset to barebones");
+        o.key = "R".to_string();
+        // No catalogue installed -> seam returns the key => t_or falls back to
+        // the parsed English option.key ("R"), never blank (per-part fallback).
+        assert_eq!(localised_option_mnemonic("settings", &o), "R".to_string());
     }
 
     // Validates: Requirement 7.1 -- the slug collapses non-alphanumeric runs to

@@ -202,6 +202,40 @@ impl WorkbenchShell {
             })
             .collect()
     }
+
+    /// Compute the per-option DISPLAYED key-column (MNEMONIC) surfaces for the
+    /// ACTIVE Menu Workspace (CR-NR-111, localization Req 12.1, 12.3),
+    /// positionally aligned with the loaded menu's options. For each option the
+    /// mnemonic is the active-locale catalogue value keyed on the option's ROOT
+    /// command via `localised_option_mnemonic`, falling back per option to the
+    /// stored `option.key` when no localised mnemonic exists (Req 12.8). Returns
+    /// an empty Vec when the active tab is not a loaded Menu Workspace, so the
+    /// renderer falls back to the raw `option.key` for every row. At `en` / no
+    /// catalogue key every surface equals its `option.key`, so the column is
+    /// byte-identical to the pre-CR-NR-111 render (Req 10.2).
+    ///
+    /// The menu-name used to key the catalogue is derived EXACTLY as the renderer
+    /// derives it (`MenuWorkspaceState::menu_name_label`), so the key matches the
+    /// one `localised_option_description` resolves against. Reads only immutable
+    /// shell state and returns an owned Vec, so the caller can compute it before
+    /// taking the mutable tab borrow the renderer needs.
+    ///
+    /// Validates: localization Requirement 12.1, 12.3, 12.8
+    pub(super) fn menu_option_mnemonic_surfaces(&self) -> Vec<String> {
+        let Some(mw) = self.tabs.active_tab().kind.menu_workspace() else {
+            return Vec::new();
+        };
+        let Some(menu) = mw.menu.as_ref() else {
+            return Vec::new();
+        };
+        let menu_name = mw.menu_name_label().unwrap_or_default();
+        menu.options
+            .iter()
+            .map(|option| {
+                crate::menu_workspace::i18n_keys::localised_option_mnemonic(&menu_name, option)
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]

@@ -172,6 +172,13 @@ impl WorkbenchShell {
         // (Req 11.9) -- these surfaces are display-only. At `en`/no overlay every
         // surface equals its root, so the column is byte-identical (Req 10.2).
         let command_surfaces = self.menu_option_command_surfaces();
+        // CR-NR-111 (localization Req 12.1, 12.3): compute the per-option
+        // DISPLAYED key-column mnemonic surfaces SHELL-side alongside the command
+        // surfaces, each the active-locale mnemonic for the option's ROOT command,
+        // falling back per option to the stored option.key (Req 12.8). Selection
+        // still matches on option.key (Req 12.5) -- these are display-only. At
+        // `en`/no catalogue key every surface equals option.key (Req 10.2).
+        let mnemonic_surfaces = self.menu_option_mnemonic_surfaces();
         let active_idx = self.tabs.active_index();
         let mut calendar_nav = None;
         let mut first_interior = None;
@@ -189,6 +196,7 @@ impl WorkbenchShell {
                 calendar_offset,
                 menu_cal,
                 &command_surfaces,
+                &mnemonic_surfaces,
             );
             if let Some(option) = result.selected {
                 self.pending_menu_option = Some(option);

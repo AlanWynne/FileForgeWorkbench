@@ -61,12 +61,55 @@ impl WorkbenchShell {
         self.ensure_pom_menu_loaded();
     }
 
+    /// The active UI locale tag, read the SAME way `i18n_bootstrap` reads it:
+    /// `ui.locale` from the config handle, falling back to the English
+    /// Identity_Base tag when unset/unreadable (CR-NR-111, localization Req
+    /// 12.7, 12.7b). This is the segment used to look for a per-language saved
+    /// menu file at the user-menu reconstruct seams.
+    fn active_locale_tag(&self) -> String {
+        self.config_handle
+            .get_string(ff_config::keys::ui::LOCALE)
+            .unwrap_or_else(|_| ff_i18n::IDENTITY_BASE_TAG.to_string())
+    }
+
+    /// Resolve the saved-menu path for user menu `name` under `menus_dir`,
+    /// SECOND PRIZE (CR-NR-111, localization Req 12.7): the per-language file
+    /// `menus/<locale>/<name>.toml` when it exists, else the base
+    /// `menus/<name>.toml`. Both user-menu reconstruct seams share this ONE
+    /// helper so they carry the locale segment IDENTICALLY. When `ui.locale` is
+    /// the English Identity_Base (or no per-locale file exists) the base path is
+    /// returned exactly as before, so the `en` default stays behaviour-neutral
+    /// (Req 10.2). The POM is OUT of scope and does NOT call this (Req 12.7a).
+    ///
+    /// Validates: localization Requirement 12.7, 12.7b
+    fn locale_qualified_menu_path(
+        &self,
+        menus_dir: &std::path::Path,
+        name: &str,
+    ) -> std::path::PathBuf {
+        let base = menus_dir.join(format!("{name}.toml"));
+        let locale = self.active_locale_tag();
+        // The English Identity_Base never gets a per-locale directory; this keeps
+        // the en path byte-identical to the pre-CR-NR-111 behaviour.
+        if locale.eq_ignore_ascii_case(ff_i18n::IDENTITY_BASE_TAG) {
+            return base;
+        }
+        let localised = menus_dir.join(&locale).join(format!("{name}.toml"));
+        if localised.is_file() {
+            localised
+        } else {
+            base
+        }
+    }
+
     /// Reconstruct the Settings menu (Menu_Workspace backed by settings.toml,
     /// with the compiled fallback) on the active tab in place.
     fn reconstruct_settings_menu(&mut self) {
         let menus_dir = self.menus_dir();
         let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
-        let file_path = menus_dir.join("settings.toml");
+        // SECOND PRIZE (CR-NR-111 Req 12.7): prefer a per-language settings menu
+        // file when one exists, else the base file (unchanged at en).
+        let file_path = self.locale_qualified_menu_path(&menus_dir, "settings");
         let mut mw =
             crate::menu_workspace::MenuWorkspaceState::load_with_limits(&file_path, limits);
         if mw.menu.is_none() {
@@ -94,7 +137,9 @@ impl WorkbenchShell {
     fn reconstruct_named_menu(&mut self, name: &str) {
         let menus_dir = self.menus_dir();
         let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
-        let file_path = menus_dir.join(format!("{name}.toml"));
+        // SECOND PRIZE (CR-NR-111 Req 12.7): prefer a per-language file for this
+        // user menu when one exists, else the base file (unchanged at en).
+        let file_path = self.locale_qualified_menu_path(&menus_dir, name);
         let mw = crate::menu_workspace::MenuWorkspaceState::load_with_limits(&file_path, limits);
         let title = mw.tab_title();
         let tab = self.tabs.active_tab_mut();
@@ -181,5 +226,120 @@ impl WorkbenchShell {
                 self.set_active_tab_home();
             }
         }
+    }
+}
+
+// === Tests ==================================================================
+
+#[cfg(test)]
+mod tests {
+    use crate::shell::tests_common::make_shell;
+
+    /// Set the active UI locale on the shell's config handle (user layer).
+    fn set_locale(shell: &super::WorkbenchShell, tag: &str) {
+        shell
+            .config_handle
+            .set_user_value(
+                ff_config::keys::ui::LOCALE,
+                ff_config::ConfigValue::String(tag.to_string()),
+            )
+            .expect("set ui.locale");
+    }
+
+    // Validates: localization Requirement 12.7, 10.2 -- SECOND PRIZE user-menu
+    // path resolution: with ui.locale = en the base menus/<name>.toml is returned
+    // byte-identically to the pre-CR-NR-111 behaviour (no per-locale directory is
+    // ever consulted for the English Identity_Base).
+    #[test]
+    fn locale_qualified_menu_path_en_uses_base_file() {
+        let shell = make_shell();
+        set_locale(&shell, "en");
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let menus = dir.path().to_path_buf();
+        assert_eq!(
+            shell.locale_qualified_menu_path(&menus, "mymenu"),
+            menus.join("mymenu.toml"),
+            "at en the base path is used, never a per-locale directory (Req 10.2)"
+        );
+    }
+
+    // Validates: localization Requirement 12.7, 12.7b -- SECOND PRIZE: with a
+    // non-en locale AND a per-language file present, the locale-qualified path
+    // menus/<locale>/<name>.toml is returned; with the file ABSENT it falls back
+    // to the base menus/<name>.toml.
+    #[test]
+    fn locale_qualified_menu_path_prefers_per_locale_file_else_base() {
+        let shell = make_shell();
+        set_locale(&shell, "af");
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let menus = dir.path().to_path_buf();
+
+        // No per-locale file yet -> base path.
+        assert_eq!(
+            shell.locale_qualified_menu_path(&menus, "settings"),
+            menus.join("settings.toml"),
+            "with no per-locale file the base path is used (Req 12.7 fallback)"
+        );
+
+        // Create menus/af/settings.toml -> the per-locale path is now preferred.
+        let af_dir = menus.join("af");
+        std::fs::create_dir_all(&af_dir).expect("create af dir");
+        std::fs::write(af_dir.join("settings.toml"), "title = \"Instellings\"\n")
+            .expect("write af settings");
+        assert_eq!(
+            shell.locale_qualified_menu_path(&menus, "settings"),
+            af_dir.join("settings.toml"),
+            "a present per-language file is preferred (Req 12.7)"
+        );
+    }
+
+    // Validates: localization Requirement 12.7a -- the POM load path is OUT of
+    // scope for the second-prize FILE override: ensure_pom_menu_loaded builds
+    // menus_dir()/pom.toml directly and NEVER consults a per-locale directory.
+    // Even with a non-en locale AND a menus/<locale>/pom.toml present, the POM
+    // must load from the base pom.toml (the per-locale file is ignored for POM).
+    #[test]
+    fn pom_load_path_ignores_per_locale_file() {
+        let mut shell = make_shell();
+        set_locale(&shell, "af");
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let menus = dir.path().join("menus");
+        std::fs::create_dir_all(&menus).expect("create menus dir");
+        // Base POM with one option.
+        std::fs::write(
+            menus.join("pom.toml"),
+            "title = \"Base POM\"\nshow_calendar = false\n\
+             [[options]]\nkey = \"1\"\ncommand = \"CATALOGS\"\ndescription = \"Catalogs\"\n",
+        )
+        .expect("write base pom");
+        // A per-locale POM that must be IGNORED (Req 12.7a).
+        let af = menus.join("af");
+        std::fs::create_dir_all(&af).expect("create af dir");
+        std::fs::write(
+            af.join("pom.toml"),
+            "title = \"AF POM\"\nshow_calendar = false\n\
+             [[options]]\nkey = \"9\"\ncommand = \"ZZZ\"\ndescription = \"Afr\"\n",
+        )
+        .expect("write af pom");
+
+        shell.dir_overrides.menus = Some(menus.clone());
+        // Fresh Home tab, menu cleared, so ensure_pom_menu_loaded re-seeds.
+        shell.set_active_tab_home();
+
+        let mw = shell
+            .tabs
+            .active_tab()
+            .kind
+            .menu_workspace()
+            .expect("home is a menu workspace");
+        let menu = mw.menu.as_ref().expect("pom menu loaded");
+        assert_eq!(
+            menu.title, "Base POM",
+            "the POM must load the BASE pom.toml, never the per-locale file (Req 12.7a)"
+        );
+        assert_eq!(
+            menu.options[0].command, "CATALOGS",
+            "the POM options come from the base file, not the per-locale POM (Req 12.7a)"
+        );
     }
 }
