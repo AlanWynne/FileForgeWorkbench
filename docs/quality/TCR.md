@@ -4179,9 +4179,9 @@ suite PASS. -->
 | Crate | Status | Test | Criterion |
 |-------|--------|------|-----------|
 > CR-CH-066 tests WRITTEN; ff-desktop compiles clean + clippy `--all-targets -D warnings`
-> clean + `cargo fmt --check` clean (verified). The scoped test RUN did not complete
-> locally (shell runner wedged mid test-binary build); the authoritative pass is the
-> owner's full `cargo gate` run per the testing.md execution split.
+> clean + `cargo fmt --check` clean (agent-verified). Owner's full `cargo gate` run
+> (2026-10-25) CLEAN: 9962 run, 9962 passed, 0 failed -- the authoritative full-suite
+> PASS for these rows.
 
 | `ff-desktop` | ✅ | `menu_workspace::defaults::tests::{default_settings_toml_has_alias_editor_and_config_mnemonic_c, recovery_settings_menu_has_barebones_options, default_settings_toml_has_recovery_baseline_options}` | menu-workspace Req 22.1: Settings menu options in exact order/mnemonics `C` CONFIG, `A` ALIASES, `T` THEME, `M` MENUS, `K` KEYS, `W` KINDS (Core) then `R` RESET BARE (Recovery), with a group boundary |
 | `ff-desktop` | ✅ | `shell::tests_alias_editor::settings_alias_option_dispatches_aliases_verb` | menu-workspace Req 22.2: selecting `A` dispatches `ALIASES` through the single front door and opens the Alias Editor Context (CR-NR-113); no new verb/dispatcher |
