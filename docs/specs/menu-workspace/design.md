@@ -1978,3 +1978,95 @@ user-menu file-path derivation for the optional second-prize locale segment. No
 - `per_locale_saved_menu_loaded_when_present_else_base` -- the second-prize
   locale-segment file lookup.
 - Existing menu / selection / focus-conformance tests stay green.
+
+---
+
+## Design Delta: Settings menu gains the Alias Editor; Config mnemonic A -> C (Requirement 22, CR-CH-066)
+
+Content-only change to the compiled Settings Recovery_Baseline. The authoritative
+`DEFAULT_SETTINGS_TOML` in `menu_workspace/defaults.rs` is updated so Config's
+mnemonic becomes `C`, a new `A` -> `ALIASES` (Alias Editor) option is inserted in
+second position, and the previously-added `K` -> `KEYS` (CR-CH-029) and `W` ->
+`KINDS` options are retained. This supersedes the earlier "Section 3. Settings
+Recovery_Baseline reorder (Requirement 12.3)" snapshot above for the current
+option set. The final constant is:
+
+```toml
+title = "Settings"
+group_separator = "line"
+
+[[options]]
+key = "C"
+command = "CONFIG"
+description = "All settings -- browse every configuration key"
+group = "Core"
+
+[[options]]
+key = "A"
+command = "ALIASES"
+description = "Alias Editor -- create, edit and save command aliases"
+group = "Core"
+
+[[options]]
+key = "T"
+command = "THEME"
+description = "Theme editor -- copy, edit, save and select themes"
+group = "Core"
+
+[[options]]
+key = "M"
+command = "MENUS"
+description = "Menus editor -- create, change and save menus"
+group = "Core"
+
+[[options]]
+key = "K"
+command = "KEYS"
+description = "Keys -- the key assignments editor"
+group = "Core"
+
+[[options]]
+key = "W"
+command = "KINDS"
+description = "Workspace Kinds editor"
+group = "Core"
+
+[[options]]
+key = "R"
+command = "RESET BARE"
+description = "Reset to barebones -- archive config and start fresh"
+group = "Recovery"
+```
+
+Notes:
+
+- The `A` -> `ALIASES` row dispatches the `ALIASES` verb, which the single front
+  door classifies (`resolve_target` -> `builtin_workspace_target_for`) as a
+  `CustomWorkspace { CommandConfigurator, params: { editor = "aliases" } }` and
+  opens via `open_alias_editor` -> `navigate_to` in place (command-configurator
+  design Section 9, CR-NR-113). NO new verb, dispatcher, or Context is introduced
+  by this delta -- it only adds a menu row referencing the existing verb.
+- Moving Config to `C` frees `A` for the Alias Editor. This is a DELIBERATE
+  mnemonic reassignment (no existing users), not a regression.
+- Built-ins stay CODE-ONLY (CR-CH-021): this constant is never written to disk on
+  startup. `recovery_settings_menu()` continues to parse this single constant, so
+  it stays the single source of the Settings option list (Req 12.7).
+- Depends on CR-NR-113 for the `ALIASES` verb to resolve; until it lands, the
+  option behaves like a reserved-but-unavailable command (as `MENUS` did before
+  its editor shipped, Req 12.6).
+
+### Tests (CR-CH-066)
+
+- `default_settings_toml_has_alias_editor_and_config_mnemonic_c` -- the compiled
+  `DEFAULT_SETTINGS_TOML` parses to options in order `C`/`A`/`T`/`M`/`K`/`W`/`R`
+  with `A` -> `ALIASES` and `C` -> `CONFIG` (Req 22.1).
+- `recovery_settings_menu_has_alias_editor_option` -- `recovery_settings_menu()`
+  yields the Alias Editor option, confirming the single compiled source (Req 22.1,
+  22.5).
+- `settings_alias_option_dispatches_aliases_verb` -- selecting the `A` option
+  dispatches `ALIASES` through the single front door and opens the Alias Editor
+  Context (Req 22.2), reusing the CR-NR-113 open path.
+- `settings_config_option_dispatches_config` -- selecting the `C` option
+  dispatches `CONFIG` (Req 22.3).
+- `ensure_menus_dir_does_not_materialise_settings` (existing, retained) -- the
+  Settings menu is not written to disk (Req 22.4).

@@ -237,6 +237,21 @@ localisation-aware and avoids re-touching new UI and merge collisions.
      the template parts (Req 5.1/5.3/5.8) are gated until CR-NR-112 lands.
      Governing plan: `docs/specs/command-configurator/tasks.md` Task 7. See
      command-configurator Req 5 and change-log CR-NR-113.
+   - **CR-CH-066 (Alias Editor added to the Settings menu; Config mnemonic A -> C)**
+     GATE AUTHORED / OWNER-CONFIRMED (content-only; owner picked the final order).
+     Adds a NEW `A` -> Alias Editor option to the code-only built-in Settings menu
+     (`DEFAULT_SETTINGS_TOML` Recovery_Baseline) in SECOND position and moves
+     Config's mnemonic from `A` to `C`. Final order: `C` Config, `A` Alias Editor,
+     `T` Theme, `M` Menus, `K` Keys, `W` Kinds, `R` Reset bare. The `A` option
+     REUSES the CR-NR-113 `ALIASES` open path verbatim (single front door:
+     `resolve_target` -> `builtin_workspace_target_for` -> `open_alias_editor` ->
+     `navigate_to`); no new verb/dispatcher/Context. CONTENT-only change to a
+     never-written-to-disk built-in (CR-CH-021); the `A` -> `C` remap is a
+     DELIBERATE change (no existing users), not a regression. NOT a framework
+     change. DEPENDS on CR-NR-113 for the `ALIASES` verb -- sequence AFTER (or with)
+     it. Governing plan: `docs/specs/menu-workspace/tasks.md` Phase
+     (settings-alias-option) Task 50. See menu-workspace Req 12.3 (amended) + Req 22
+     and change-log CR-CH-066.
 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
    ALTER actions via the single command path, volume picker in catalog creation,

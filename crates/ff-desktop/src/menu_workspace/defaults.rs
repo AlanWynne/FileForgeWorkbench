@@ -64,18 +64,31 @@ show_in_menu_bar = false
 /// Req 12, CR-CH-021).
 ///
 /// CODE-ONLY barebones Settings: never written to disk. Fallback rendered when
-/// no valid user `menus/settings.toml` exists. Minimal set: the Theme editor,
-/// the Menus editor, and the browse-all-keys view -- enough to rebuild the rest.
+/// no valid user `menus/settings.toml` exists. Minimal set: the Config browser,
+/// the Alias editor, the Theme editor, the Menus editor, the Keys editor, the
+/// Kinds editor -- enough to rebuild the rest -- plus the RESET BARE recovery
+/// affordance.
 ///
-/// Validates: Requirement 12.1, 12.3, 12.7 (menu-workspace)
+/// CR-CH-066: Config moved from mnemonic `A` to `C` and a new `A` -> `Aliases`
+/// (Alias Editor, CR-NR-113) option was inserted in SECOND position. New order:
+/// `C` Config, `A` Aliases, `T` Theme, `M` Menus, `K` Keys, `W` Kinds (Core),
+/// then `R` Reset bare (Recovery).
+///
+/// Validates: Requirement 12.1, 12.3, 12.7, 22.1, 22.4, 22.5 (menu-workspace)
 pub const DEFAULT_SETTINGS_TOML: &str = r#"title = "Settings"
 show_calendar = false
 group_separator = "line"
 
 [[options]]
-key = "A"
+key = "C"
 command = "Config"
 description = "All settings -- browse every configuration key"
+group = "Core"
+
+[[options]]
+key = "A"
+command = "Aliases"
+description = "Alias editor -- create, edit and save command aliases"
 group = "Core"
 
 [[options]]
@@ -247,21 +260,30 @@ mod tests {
         assert_eq!(groups.len(), 1, "Recovery POM uses a single group");
     }
 
-    // Validates: Requirement 12.1, 12.3, 12.7 -- Recovery_Baseline Settings.
+    // Validates: Requirement 12.1, 12.3, 12.7, 22.1 -- Recovery_Baseline Settings.
     #[test]
     fn recovery_settings_menu_has_barebones_options() {
         let menu = recovery_settings_menu();
         let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
-        // CR-CH-025 + CR-CH-029 + CR-NR-090: ordered A Config / T Theme /
-        // M Menus / K Keys / W Kinds (group Core), then R Reset-to-barebones
-        // (group Recovery). Affordances dispatch via the menu option = command
-        // path; `K -> KEYS` opens the Keys Workspace (function-keys Req 22) and
-        // `W -> KINDS` opens the Workspace Kinds editor (workspace-kinds Req 6).
-        assert_eq!(keys, vec!["A", "T", "M", "K", "W", "R"]);
+        // CR-CH-025 + CR-CH-029 + CR-NR-090 + CR-CH-066: ordered C Config /
+        // A Aliases / T Theme / M Menus / K Keys / W Kinds (group Core), then
+        // R Reset-to-barebones (group Recovery). Affordances dispatch via the
+        // menu option = command path; `A -> ALIASES` opens the Alias Editor
+        // (CR-NR-113), `K -> KEYS` opens the Keys Workspace (function-keys Req 22),
+        // and `W -> KINDS` opens the Workspace Kinds editor (workspace-kinds Req 6).
+        assert_eq!(keys, vec!["C", "A", "T", "M", "K", "W", "R"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
         assert_eq!(
             commands,
-            vec!["Config", "Theme", "Menus", "Keys", "Kinds", "Reset bare"]
+            vec![
+                "Config",
+                "Aliases",
+                "Theme",
+                "Menus",
+                "Keys",
+                "Kinds",
+                "Reset bare"
+            ]
         );
     }
 
@@ -393,10 +415,10 @@ mod tests {
         );
     }
 
-    // Validates: Requirement 12.3 (menu-workspace, CR-CH-021) + CR-NR-075 task
-    // 24.9 -- Recovery_Baseline Settings: T Themes / M Menus / A All, plus the
-    // R RESET BARE affordance (dispatched via the menu-option = command path,
-    // configuration-system Req 19.7).
+    // Validates: Requirement 12.3, 22.1 (menu-workspace, CR-CH-021 + CR-CH-066)
+    // -- Recovery_Baseline Settings: C Config / A Aliases / T Theme / M Menus /
+    // K Keys / W Kinds (Core), plus the R RESET BARE affordance (dispatched via
+    // the menu-option = command path, configuration-system Req 19.7).
     #[test]
     fn default_settings_toml_has_recovery_baseline_options() {
         let val: toml::Value = toml::from_str(DEFAULT_SETTINGS_TOML).expect("valid TOML");
@@ -406,23 +428,32 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            6,
-            "Recovery_Baseline Settings: A/T/M/K/W + the RESET BARE affordance"
+            7,
+            "Recovery_Baseline Settings: C/A/T/M/K/W + the RESET BARE affordance"
         );
-        // CR-CH-025 + CR-CH-029 + CR-NR-090: ordered A CONFIG, T THEME, M MENUS,
-        // K KEYS, W KINDS (group Core), then R RESET BARE (group Recovery).
+        // CR-CH-025 + CR-CH-029 + CR-NR-090 + CR-CH-066: ordered C CONFIG,
+        // A ALIASES, T THEME, M MENUS, K KEYS, W KINDS (group Core), then R RESET
+        // BARE (group Recovery).
         let keys: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("key").and_then(|c| c.as_str()))
             .collect();
-        assert_eq!(keys, vec!["A", "T", "M", "K", "W", "R"]);
+        assert_eq!(keys, vec!["C", "A", "T", "M", "K", "W", "R"]);
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
         assert_eq!(
             commands,
-            vec!["Config", "Theme", "Menus", "Keys", "Kinds", "Reset bare"]
+            vec![
+                "Config",
+                "Aliases",
+                "Theme",
+                "Menus",
+                "Keys",
+                "Kinds",
+                "Reset bare"
+            ]
         );
         let groups: Vec<&str> = options
             .iter()
@@ -430,7 +461,54 @@ mod tests {
             .collect();
         assert_eq!(
             groups,
-            vec!["Core", "Core", "Core", "Core", "Core", "Recovery"]
+            vec!["Core", "Core", "Core", "Core", "Core", "Core", "Recovery"]
+        );
+    }
+
+    // Validates: menu-workspace Requirement 22.1, 22.5 (CR-CH-066) -- the
+    // compiled Settings Recovery_Baseline is the single source of the Settings
+    // option list and presents, in exact order with exact mnemonics, `C` CONFIG,
+    // `A` ALIASES (Alias Editor), `T` THEME, `M` MENUS, `K` KEYS, `W` KINDS
+    // (group Core), then `R` RESET BARE (group Recovery). Config's mnemonic is
+    // `C` (freed `A` for the Alias Editor) -- a deliberate change, no existing
+    // users.
+    #[test]
+    fn default_settings_toml_has_alias_editor_and_config_mnemonic_c() {
+        let menu = recovery_settings_menu();
+        let pairs: Vec<(&str, &str)> = menu
+            .options
+            .iter()
+            .map(|o| (o.key.as_str(), o.command.as_str()))
+            .collect();
+        assert_eq!(
+            pairs,
+            vec![
+                ("C", "Config"),
+                ("A", "Aliases"),
+                ("T", "Theme"),
+                ("M", "Menus"),
+                ("K", "Keys"),
+                ("W", "Kinds"),
+                ("R", "Reset bare"),
+            ],
+            "Settings must present C Config / A Aliases / T Theme / M Menus / \
+             K Keys / W Kinds / R Reset bare in that exact order (CR-CH-066)"
+        );
+        // Config is mnemonic C; A is the Alias Editor (ALIASES verb).
+        let config = menu
+            .options
+            .iter()
+            .find(|o| o.command.eq_ignore_ascii_case("Config"))
+            .expect("Config option present");
+        assert_eq!(config.key, "C", "Config must use mnemonic C (CR-CH-066)");
+        let alias = menu
+            .options
+            .iter()
+            .find(|o| o.key == "A")
+            .expect("A option present");
+        assert_eq!(
+            alias.command, "Aliases",
+            "the A option must dispatch the Aliases (ALIASES) verb (CR-NR-113)"
         );
     }
 

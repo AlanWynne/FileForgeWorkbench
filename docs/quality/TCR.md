@@ -4163,3 +4163,28 @@ suite PASS. -->
 | `ff-desktop` | 🟢 | `full_shell_alias_editor_first_tab_focuses_first_interior` | command-configurator Req 5.10: interior focus via the single `WorkspaceContext::render -> InteriorFocus` path; first Tab from command field lands on the first control (full-shell egui_kittest) |
 | `ff-desktop` | 🟢 | `save_writes_file_and_live_resolver_resolves_new_alias` (isolated user.toml temp path; the editor never reads/writes `i18n/<locale>/aliases/`) | command-configurator Req 5.11: v1 authors the User_Alias_Store ONLY; per-locale catalogues OUT OF SCOPE (no read/write; CR-NR-111 non-overlap) |
 | `ff-desktop` | 🟢 | `non_ascii_field_value_round_trips`, `pure_ffcmd_row_serialises_to_minimal_shape` | command-configurator Req 5.12: User_Alias_Store structural keys ASCII; alias field values are user data (any valid UTF-8) |
+
+### Phase (settings-alias-option) -- CR-CH-066 (Alias Editor added to the Settings menu; Config mnemonic A -> C)
+
+> Content-only change to the code-only built-in Settings menu (`DEFAULT_SETTINGS_TOML`
+> Recovery_Baseline, never written to disk, CR-CH-021). New order/mnemonics:
+> `C` Config, `A` Alias Editor, `T` Theme, `M` Menus, `K` Keys, `W` Kinds, `R` Reset bare.
+> The `A` -> Alias Editor option reuses the CR-NR-113 `ALIASES` open path verbatim
+> (single front door: `resolve_target` -> `builtin_workspace_target_for` ->
+> `open_alias_editor` -> `navigate_to`); no new verb/dispatcher/Context. The `A` -> `C`
+> remap for Config is a DELIBERATE change (no existing users), not a regression.
+> NOT a framework change. Gate authored docs-first; NO code until CR-NR-113 is available.
+> All rows NOT COVERED here; the implementation step flips them as tests land.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+> CR-CH-066 tests WRITTEN; ff-desktop compiles clean + clippy `--all-targets -D warnings`
+> clean + `cargo fmt --check` clean (agent-verified). Owner's full `cargo gate` run
+> (2026-10-25) CLEAN: 9962 run, 9962 passed, 0 failed -- the authoritative full-suite
+> PASS for these rows.
+
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::{default_settings_toml_has_alias_editor_and_config_mnemonic_c, recovery_settings_menu_has_barebones_options, default_settings_toml_has_recovery_baseline_options}` | menu-workspace Req 22.1: Settings menu options in exact order/mnemonics `C` CONFIG, `A` ALIASES, `T` THEME, `M` MENUS, `K` KEYS, `W` KINDS (Core) then `R` RESET BARE (Recovery), with a group boundary |
+| `ff-desktop` | ✅ | `shell::tests_alias_editor::settings_alias_option_dispatches_aliases_verb` | menu-workspace Req 22.2: selecting `A` dispatches `ALIASES` through the single front door and opens the Alias Editor Context (CR-NR-113); no new verb/dispatcher |
+| `ff-desktop` | ✅ | `shell::tests_nav::settings_config_option_dispatches_config` | menu-workspace Req 22.3: selecting `C` dispatches `CONFIG` (configuration-system Req 15), unchanged except for the mnemonic |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::ensure_menus_dir_does_not_materialise_built_in_menus` | menu-workspace Req 22.4: Settings menu remains a code-only built-in (`DEFAULT_SETTINGS_TOML` Recovery_Baseline), never written to disk on startup |
+| `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_settings_toml_has_alias_editor_and_config_mnemonic_c`, `shell::tests_nav::default_settings_toml_option_c_is_config_and_a_is_aliases` | menu-workspace Req 22.5: the `A` -> `C` remap + `A` Alias Editor insertion is a deliberate change (no existing users); the compiled Recovery_Baseline (Req 12.3) is the single source, no duplicate hardcoded list |
