@@ -546,3 +546,409 @@ OWNER-CONFIRM POINTS still open at the gate CONFIRM step (do not resolve silentl
 
 These are recorded for owner sign-off because they introduce a new user-writable
 store, a new resolver load order, and a new (additive) no-shadow invariant.
+
+---
+
+## 9.10 Alias Editor ISPF redesign (Requirement 5.13-5.24, CR-CH-068, Gate 2)
+
+### 9.10.0 What this redesign IS and is NOT
+
+The CR-NR-113 Alias Editor (Sections 9.1-9.9) shipped a FLAT free-text grid:
+each row is a `surface` / `canonical` / `environment-combo` / `command_template`
+set of text boxes, with a footer "Add alias" button and a per-row "Delete"
+button. The owner could not see rows or an obvious way to add the first one (the
+Add-visibility bug, `.agents/tasks/alias-editor-workspace/add-row-bug-findings.md`,
+whose root cause is a render-visibility / empty-store layout risk plus a likely
+stale running binary).
+
+CR-CH-068 REDESIGNS the UI/interaction model to the owner's ISPF mock. It is a
+PURE UI/interaction redesign over the EXISTING data layer (`user_aliases.rs`
+`UserAliasRowToml` + `parse_user_alias_toml` + `serialise_user_aliases`,
+Section 9.4) and the Gate 1 API (CR-CH-067 `EnvironmentRegistry::root_commands` /
+`contains_root`). It changes NO on-disk shape, NO dispatch front door, NO
+WorkspaceKind, NO navigation stack, NO session-persistence format, and NO
+focus-latch mechanism. The technology stack is fixed and unchanged: Rust in
+`ff-desktop`, serde + `toml`, egui + the `WorkspaceContext` framework; no new
+crate and no new dependency.
+
+The footer Add/Delete buttons of 9.3 are SUPERSEDED by ISPF line commands; the
+rest of 9.1-9.9 (store location, serialiser, load path, precedence, save
+validation, live refresh, registration, expansion delegation) is RETAINED
+verbatim. Where 9.10 and 9.1-9.9 differ, 9.10 governs the editor UI; everywhere
+else 9.1-9.9 is authoritative.
+
+### 9.10.1 The ISPF layout (the owner's mock)
+
+```
+FileForge Workbench Alias Editor
+Command ===> ________________________________________________________________
+Act CE       Root     L18N ALIAS        Parameters
+    ________ ________ __   ____________ ____________________________________   <- FILTER row
+I   FFCMD    EDIT     en   ECOB         FFWB.COBOL.MASTER(&1)                   <- data rows (filtered)
+    ________ ________ __   ____________ ____________________________________
+    ________ ________ __   ____________ ____________________________________
+```
+
+Top to bottom: a `Command ===>` primary command field; a column-heading row
+(Act / CE / Root / L18N / ALIAS / Parameters); a FILTER row immediately under the
+headings; then the data rows (the current aliases that match the filter), inside
+a vertically scrolling area with a scrollbar on the right.
+
+### 9.10.2 Column-to-model mapping (Req 5.13; on-disk shape UNCHANGED)
+
+| Column | Backing field (`UserAliasRowToml`) | Notes |
+|--------|------------------------------------|-------|
+| Act | (none -- transient UI only) | A per-row line-command letter; never persisted. |
+| CE | `environment` (`AliasEnvironment`) | Dropdown of registered CEs (9.10.5). |
+| Root | `canonical` | Dropdown from `root_commands(CE)` (9.10.5). |
+| L18N | `localisation_key` | Editable; defaults blank for a user shorthand; PERSISTS via `localisation_key` (round-trips, see DECISION below). |
+| ALIAS | `surface` | The typeable alias name. |
+| Parameters | `command_template` | CR-NR-112 template (`&1..&N` / `&*`). |
+
+The existing `AliasRowEdit` struct (`alias_editor_panel/state.rs`: `surface`,
+`canonical`, `environment`, `command_template`) ALREADY carries the backing
+fields; the redesign adds a transient `act: String` per row for the line-command
+letter, a `filter_ce: Option<AliasEnvironment>` + `filter_root: String` pair for
+the FILTER row, and a `command_line: String` for the `Command ===>` field --
+all on `AliasEditorState`, none persisted. `localisation_key` is NOT in
+`AliasRowEdit` today.
+
+DECISION (Req 5.13, review finding 1 -- option (a), L18N genuinely round-trips):
+add a `localisation_key: String` EDIT field to `AliasRowEdit` and render the L18N
+column as a narrow editable field that defaults blank. The L18N value PERSISTS via
+the existing `UserAliasRowToml.localisation_key` on-disk field (no on-disk-shape
+change -- the field already exists; Req 5.24 preserved). This requires a one-line
+change to the SOLE save path: `validate_user_alias_rows`
+(`crates/ff-desktop/src/shell/alias_editor.rs`, ~line 241) today constructs every
+`UserAliasRowToml` with `localisation_key: String::new()` HARDCODED, discarding any
+edited L18N value; it SHALL instead carry
+`localisation_key: row.localisation_key.trim().to_string()`. A round-trip unit test
+(a row with a non-empty L18N serialises and re-parses with that key) guards the
+change. Task 8.9 owns both the save-path edit and the round-trip test. Rationale
+for option (a) over a read-only L18N: the owner's mock explicitly shows an `en`
+value typed into the L18N column, so the column must accept and keep a value;
+because the backing on-disk field already exists, persisting it is in scope and is
+NOT a model change.
+
+### 9.10.3 The Command line (Req 5.14, 5.22)
+
+`AliasEditorState` gains `command_line: String`. The pure render draws the
+`Command ===>` field with a STABLE `egui::Id` (e.g.
+`egui::Id::new("alias_editor_command_line")`) and, on Enter (the field's
+`lost_focus()` + Enter key, mirroring the shell command line), returns a new
+`AliasEditorAction::CommandLine(String)` carrying the typed text. The shell
+`apply_alias_editor_action` parses it (case-insensitive verb):
+
+- `SAVE` -> first apply pending line commands (9.10.4), then `save_user_aliases`
+  (Section 9.4, unchanged).
+- `CANCEL` / `END` -> leave via the Navigation_Stack (the existing END/F3 path,
+  criterion 5.9 / Section 9.3). `CANCEL` discards the working copy; `END`
+  (RECOMMENDED) behaves as today's return.
+- `FILTER <ce> <root>` / `RESET` (RECOMMENDED, owner to confirm) -> set / clear
+  `filter_ce` + `filter_root`.
+- empty / unrecognised -> apply pending line commands only (ISPF: a bare Enter
+  on the command line applies pending line commands).
+
+This mirrors the Menus Editor command-handling shape (menu-workspace Req 13.1):
+a pure render returns an Action, the shell command layer performs the effect.
+
+### 9.10.4 Line commands I / R / D and the apply pass (Req 5.16, 5.22 -- the batch model)
+
+Each data row renders a small Act `TextEdit` bound to `row.act`. Typing a letter
+does NOT restructure the list mid-frame (that would fight egui's immediate-mode
+iteration and the Tab/focus contract). Instead the letters accumulate as PENDING
+state on the rows. The batch is applied when the user presses Enter on the
+`Command ===>` line (Req 5.16 / 5.22), via a dedicated
+`AliasEditorAction::ApplyLineCommands` emitted before/with the command-line
+parse, handled shell-side in a single deterministic pass:
+
+```
+fn apply_pending_line_commands(&mut self) {
+    // 1. Snapshot the Act letters (case-insensitive) with their row indices.
+    // 2. Process by DESCENDING row index so inserts/repeats/deletes do not
+    //    shift the indices of rows not yet processed:
+    //      D -> remove row i
+    //      I -> insert a blank AliasRowEdit AFTER row i
+    //      R -> insert a clone of row i (its field values) AFTER row i
+    // 3. Clear every Act field that was consumed.
+}
+```
+
+Descending-index processing is the concrete answer to Req 5.16's "apply
+deterministically": a delete at index 2 never invalidates a pending insert at
+index 5, and an insert-after never reorders an earlier pending command. An `I`
+yields a blank row (`AliasRowEdit::default()`); an `R` yields a `.clone()` of the
+source row's persisted fields with its Act cleared.
+
+EDGE CASES: an unrecognised Act letter is ignored and its field cleared (ISPF
+tolerates and clears stray line commands); an `I` or `R` on the last row inserts
+at the end; a `D` on a row that is the only row leaves zero rows but the
+empty-store affordance (9.10.6) still renders an insertable row.
+
+### 9.10.5 Cascading CE -> Root dropdowns (Req 5.18; consumes CR-CH-067)
+
+CE and Root become `egui::ComboBox` dropdowns (replacing the free-text Root field
+and extending the existing `AliasEnvironment` combo). The CE combo lists the
+registered environments. For v1 the editor offers the two user-addressable alias
+environments `AliasEnvironment::ALL` (`ffcmd`, `ffedit`) -- the same set the model
+supports today -- so the CE list is `["ffcmd", "ffedit"]`; a future expansion to
+the full registry membership is additive.
+
+The Root combo is populated by the Gate 1 associated function:
+
+```rust
+// ACTUAL implemented signature (associated fn, NOT a &self method):
+//   crates/ff-desktop/src/shell/environment_registry.rs
+//   pub(crate) fn root_commands(env_name: &str) -> Vec<String>
+let roots = EnvironmentRegistry::root_commands(row.environment.env_name());
+```
+
+`row.environment.env_name()` returns `"FFCMD"` / `"FFEDIT"` (the
+`user_aliases::AliasEnvironment::env_name` already defined). When the user changes
+`row.environment`, the render re-reads `root_commands` for the new CE on the next
+frame (immediate mode makes this automatic), and the shell clears/revalidates
+`row.canonical` if it is no longer in the new environment's root set
+(`EnvironmentRegistry::contains_root(row.environment.env_name(), &row.canonical)`).
+Because the Root combo offers ONLY `root_commands(CE)` entries, a chosen (CE, Root)
+pair is valid BY CONSTRUCTION -- the dropdown cannot produce a pair that
+`contains_root` would reject. The FILTER row's Root dropdown uses the same
+`root_commands(filter_ce)` source.
+
+`root_commands` is a cheap, deterministic, sorted list (CR-CH-067 Req 20.2); the
+render may call it each frame without caching, but a per-CE memoised cache on
+`AliasEditorState` is an acceptable optimisation if profiling shows cost.
+
+### 9.10.6 Empty-store usability (Req 5.17 -- the Add-visibility bug fix by redesign)
+
+The CR-NR-113 bug was that an empty store rendered column headings only, with the
+Add control in a footer that could be clipped below the viewport. The redesign
+removes the footer entirely. In the empty-store case the render ALWAYS draws the
+`Command ===>` line, the column headings, the FILTER row, AND at least one empty
+insertable data row (a blank `AliasRowEdit` rendered with an Act field). The
+user creates the first alias either by typing directly into that blank row's
+ALIAS/Root cells or by typing `I` in its Act field and pressing Enter. Because
+the blank row is part of the normal, always-rendered row list (not a
+footer-after-scroll-area widget), the empty-store layout is identical in
+structure to the non-empty layout and cannot be clipped out of view. The
+regression test (9.10.9) drives an `I` in the empty-store case and asserts a
+visible editable row appears.
+
+IMPLEMENTATION NOTE: the always-present blank row is a RENDER concern -- the
+working copy `rows` may be genuinely empty; the render inserts a transient
+"scratch" blank row for display when `rows.is_empty()`, and an edit/`I` on it
+promotes it into `rows`. This keeps "empty store = zero persisted rows" true while
+guaranteeing a visible insertion surface.
+
+### 9.10.7 The filter (Req 5.15)
+
+`AliasEditorState` gains `filter_ce: Option<AliasEnvironment>` and
+`filter_root: String`. The render computes the DISPLAYED row set as the subset of
+`rows` where `filter_ce.is_none() || row.environment == filter_ce` AND
+`filter_root.is_empty() || row.canonical.eq_ignore_ascii_case(filter_root)`.
+Filtering is DISPLAY-only -- it never mutates `rows`, so a filtered-out row is
+preserved and saved. The filter matches CE + Root ONLY (Req 5.15); ALIAS and
+Parameters are not filter inputs.
+
+DECISION (RECOMMENDED, owner to confirm at CONFIRM): the filter is applied on
+Enter / an explicit `FILTER`/`RESET` command rather than live-as-you-type, which
+avoids re-filtering the list on every keystroke and matches ISPF's
+command-driven filtering. Live-as-you-type is a trivial alternative (filter in
+the render directly from the filter-field bindings); the design picks
+applied-on-command for ISPF fidelity and defers to the owner.
+
+A subtle index concern: because line commands (9.10.4) operate on `rows` by
+index but the user sees the FILTERED subset, the Act field and its row must carry
+the row's index INTO `rows` (not the display position). The render iterates the
+filtered subset but captures each row's original `rows` index for the pending
+line-command snapshot, so a `D` on a visible row deletes the correct backing row.
+
+### 9.10.8 Focus / Tab reconciliation -- the hard problem (Req 5.21, 5.23)
+
+This is the novel design problem: ISPF line commands are "type a letter in a cell,
+apply on Enter", which must coexist with egui's immediate-mode widget model and
+the app's single `WorkspaceContext::render -> InteriorFocus` Tab/focus contract
+(workspace-conformance.md) WITHOUT a phantom Tab stop.
+
+The reconciliation has four concrete parts:
+
+1. **No mid-frame restructuring.** Line-command letters are PENDING state on the
+   rows (9.10.4); the row list is only restructured in the shell's apply pass
+   AFTER the frame, via the owned-panel swap (`mem::take` -> `render_workspace_context`
+   -> put back -> `apply_alias_editor_action`). The render therefore iterates a
+   stable `rows` for the whole frame -- egui assigns stable ids and the Tab ring
+   is well-defined within the frame. This is exactly the existing
+   `pending_action` discipline, extended with the new actions; it is NOT a new
+   mechanism.
+
+2. **Stable ids, visual Tab order.** Every control is created in visual order so
+   egui-native Tab traversal walks them in that order:
+   `Command ===>` (stable id `alias_editor_command_line`) -> FILTER row (filter CE
+   combo, filter Root combo) -> each data row's Act -> CE -> Root -> L18N ->
+   ALIAS -> Parameters. Each per-row control keeps a stable salted id keyed by the
+   row's backing index (e.g. `("alias_act", idx)`, `("alias_surface", idx)`),
+   mirroring the existing `surface_id(i)` pattern so ids do not collide across
+   rows.
+
+3. **First interior = the FILTER row's first field.** The `WorkspaceContext::render`
+   impl reports `InteriorFocus { first, last }` where `first` is the FILTER row's
+   first focusable control (the filter CE combo's response id, captured fresh each
+   frame -- a combo's id is captured from its `response.id`, per
+   workspace-conformance.md, because a combo id must round-trip through egui
+   focus), and `last` is the last data-row control (or the filter row when there
+   are no data rows). The `Command ===>` line is the ENTRY control (the shell's
+   command field analogue), so the first Tab FROM it lands on the FILTER row's
+   first field (Req 5.23) -- not a phantom stop. The mandatory full-shell
+   egui_kittest first-Tab test (9.10.9) asserts exactly this.
+
+4. **Primary command vs line command ordering.** Enter on the `Command ===>` line
+   emits `ApplyLineCommands` then `CommandLine(text)` (or a single combined action
+   the shell sequences), so pending Act codes are applied before `SAVE` runs
+   (Req 5.22). Focus after an apply returns to the `Command ===>` line (ISPF
+   convention), which the shell can request via egui's `request_focus` on the
+   command-line id after a structural change.
+
+WHY NOT a per-row "insert" button instead of an Act field: a per-row button ring
+would add N focus stops and diverge from the ISPF mental model the owner asked
+for; the Act text field is ONE focusable control per row that carries the line
+command, matching ISPF and keeping the Tab ring predictable.
+
+`AliasEditorState` therefore gains (all transient, none persisted): `command_line:
+String`, `filter_ce: Option<AliasEnvironment>`, `filter_root: String`, and a
+per-row `act: String` on `AliasRowEdit`. `first_interior_id` / `last_interior_id`
+remain the reported anchors; `first_interior_id` now tracks the FILTER row's first
+field rather than the first row's surface / the Add button.
+
+### 9.10.9 Testability (Req 5.17, 5.19, 5.23)
+
+- PURE unit tests on `apply_pending_line_commands`: `I` inserts a blank row after
+  the source; `R` inserts a field-copy after the source; `D` removes the row;
+  multiple pending commands apply deterministically (descending-index) without
+  index corruption; an unrecognised Act letter is cleared and ignored.
+- PURE unit tests on the filter: empty filters show all; a CE filter restricts by
+  environment; a Root filter restricts by canonical; CE+Root is an AND; ALIAS /
+  Parameters are NOT filter inputs; filtering never mutates `rows`.
+- PURE unit test on the CE->Root cascade: changing a row's CE re-sources the Root
+  options from `root_commands(new_CE)` and a now-invalid Root is cleared /
+  flagged; a (CE, Root) pair chosen from the dropdowns satisfies `contains_root`.
+- Save-path unit tests (EXISTING, retained): the `validate_user_alias_rows` ->
+  `contains_root` save-side hook rejects a root invalid in its declared
+  environment (Req 5.19); empty surface / empty root / within-environment
+  surface->two-roots / built-in-root shadow all rejected; file unchanged on
+  failure.
+- L18N round-trip unit test (Req 5.13, 9.10.2 DECISION): an `AliasRowEdit` with a
+  non-empty `localisation_key` passed through `validate_user_alias_rows` yields a
+  `UserAliasRowToml` carrying that trimmed value, and re-parsing the serialised
+  store re-renders it. This is the guard for the save-path change that stops
+  `localisation_key` being hardcoded empty (task 8.9.5).
+- MANDATORY full-shell egui_kittest first-Tab test (workspace-conformance.md,
+  Req 5.23): open the Alias Editor, assert the first Tab from the `Command ===>`
+  field lands EXACTLY on the FILTER row's FILTER CE dropdown (the one deterministic
+  first interior control; no phantom stop).
+- MANDATORY full-shell regression test for the Add-visibility bug (Req 5.17):
+  with an EMPTY store, render the editor, type `I` into the always-present Act
+  field, press Enter on the `Command ===>` line, and assert a VISIBLE editable
+  data row appears (its ALIAS field renders and accepts typed input that persists
+  into `rows[0].surface`). This is the test the add-row-bug findings report
+  identified as missing.
+
+### 9.10.10 Gate 1 carry-over notes resolved (CR-CH-067 -> CR-CH-068)
+
+Gate 1 (CR-CH-067) left two non-blocking notes for Gate 2:
+
+(a) **`&self`-vs-associated-fn doc drift.** Earlier narrative referred to
+`root_commands` / `contains_root` as instance methods. The ACTUAL implemented
+signatures are ASSOCIATED functions keyed by environment NAME on the
+`EnvironmentRegistry` type (verified in
+`crates/ff-desktop/src/shell/environment_registry.rs`):
+
+```rust
+pub(crate) fn root_commands(env_name: &str) -> Vec<String>
+pub(crate) fn contains_root(env_name: &str, root: &str) -> bool
+```
+
+They are called as `EnvironmentRegistry::root_commands("FFCMD")` /
+`EnvironmentRegistry::contains_root("FFEDIT", "FIND")`, NOT `registry.root_commands(..)`.
+This design and its tasks reference the associated-function form throughout
+(9.10.5, 9.10.9). RESOLVED.
+
+(b) **Per-environment no-shadow reconciliation.** The current no-shadow guard in
+`validate_user_alias_rows` rejects a surface that equals a member of
+`builtin_ffcmd_roots()` (an FFCMD-only reserved set), regardless of the row's
+declared environment. A fully per-environment no-shadow rule would instead reject
+a surface that equals a reserved root of the row's OWN environment (so an FFEDIT
+row's surface is checked against FFEDIT's roots, an FFCMD row's against FFCMD's).
+
+DECISION (RECOMMENDED, owner to confirm at CONFIRM): KEEP the current
+`builtin_ffcmd_roots()`-based guard for CR-CH-068 and treat full per-environment
+no-shadow reconciliation as a LATER follow-up, NOT in this redesign. Rationale:
+(1) the Gate 1 `contains_root` save-side hook already enforces that a row's ROOT
+is valid in its declared environment, which is the primary (environment, root)
+integrity Gate 2 needs; (2) the `builtin_ffcmd_roots()` guard is a superset
+safety net against shadowing the workbench base verbs (the highest-risk case);
+(3) making no-shadow per-environment touches the load-path skip-with-WARN and the
+save-path reject in lock-step and is better done as its own small gated change
+with its own tests, rather than riding along with a UI redesign. If the owner
+prefers per-environment no-shadow now, it is an additive change to
+`validate_user_alias_rows` + `apply_user_rows` using the SAME `root_commands(env)`
+data already available -- recorded here as the alternative.
+
+### 9.10.11 What is explicitly NOT changing
+
+- The on-disk `UserAliasRowToml` shape and the `user.toml` location (Section 9.1,
+  9.4). The redesign reads/writes the SAME file via the SAME
+  `parse_user_alias_toml` / `serialise_user_aliases`.
+- The single command-dispatch front door: `ALIASES` ->
+  `builtin_workspace_target_for` -> `custom("aliases")` ->
+  `dispatch_command_target` -> `open_alias_editor` (Section 9.6). The
+  `Command ===>` line inside the editor is the editor's OWN primary-command field
+  (like the Menus Editor's), NOT a second global dispatcher.
+- `WorkspaceKind::CommandConfigurator` + `editor = "aliases"`, the runtime
+  `TabKind::AliasEditor`, and all sibling-parity wiring (Section 9.6).
+- The per-tab Navigation_Stack return (Section 9.3), the `pending_action` /
+  owned-panel-swap effect pattern, and the single `WorkspaceContext` focus-latch
+  path (Section 9.3, 9.9).
+- The resolver load/precedence model, the live in-place refresh after save, and
+  the expansion/dispatch delegation to CR-NR-112 (Sections 9.5, 9.7).
+- v1 scope: the editor authors the User_Alias_Store ONLY; the per-locale
+  `i18n/<locale>/aliases/` catalogues remain out of scope (Req 5.11).
+
+### 9.10.12 Framework-conformance statement (CR-CH-068)
+
+The redesign builds ON the framework: one dispatch front door, one navigation
+stack, one `WorkspaceContext` focus-latch path, one persistence model, code-only
+built-ins. It consumes the CR-CH-067 additive read-only API. It reshapes NO core
+framework type (`CommandTarget`, `WorkspaceContext`, `InteriorFocus`,
+`WorkspaceDescriptor`, `KindConfig`, the `BackendEnvironment` store contract). By
+the framework-conformance definition this is NOT a framework change -- it is a
+UI/interaction redesign of one Context plus consumption of an already-approved
+additive API. No new owner-confirm framework item surfaces; the five OPEN
+DECISIONS (R semantics, filter timing + scope, primary-command set, per-environment
+no-shadow timing, v1 CE dropdown membership) are UI/scope choices recorded for the
+gate CONFIRM step, not framework changes.
+
+### 9.10.13 Responses to Gate 2 design review (design-review.md, iteration 2)
+
+The Gate 2 review returned CHANGES_REQUESTED (2 MEDIUM + 2 NIT). All four findings
+were ADDRESSED docs-only; none required a framework change.
+
+- Finding 1 (MEDIUM -- L18N save-path contradiction): ADDRESSED via review option
+  (a). The L18N column genuinely round-trips: `AliasRowEdit` gains an editable
+  `localisation_key` field (9.10.2 DECISION), and the sole save path
+  `validate_user_alias_rows` is changed to carry `row.localisation_key.trim()`
+  instead of the hardcoded `String::new()` (tasks 8.9.4 round-trip test + 8.9.5
+  save-path change). Because the on-disk `UserAliasRowToml.localisation_key` field
+  ALREADY exists, this is NOT an on-disk-shape change (Req 5.24 preserved). Chosen
+  over option (b) read-only because the owner's mock shows an editable `en` value.
+- Finding 2 (MEDIUM -- ambiguous first-interior target): ADDRESSED. Req 5.23 now
+  names EXACTLY ONE first interior control -- the FILTER row's filter CE dropdown
+  (its `response.id` captured fresh each frame) -- matching 9.10.8 part 3, so the
+  mandatory first-Tab egui_kittest asserts a single deterministic `egui::Id`. Tasks
+  8.7.1 / 8.7.2 already target the filter CE combo.
+- Finding 3 (NIT -- CE membership vs "registered command environments"): ADDRESSED.
+  Req 5.18 now notes v1 CE membership = the two user-addressable alias environments
+  (`AliasEnvironment::ALL`), with full-registry enumeration a deferred additive
+  follow-up; recorded as OPEN DECISION 5 in the gate-summary for owner confirm.
+  9.10.5 already scoped the v1 CE list to the two environments.
+- Finding 4 (NIT -- Tab-order prose): ADDRESSED. Req 5.21(c) reworded to separate
+  the FILTER row field set (filter CE -> filter Root) from each data row's field set
+  (Act -> CE -> Root -> L18N -> ALIAS -> Parameters).

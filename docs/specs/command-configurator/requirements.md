@@ -147,12 +147,31 @@ and reachable.
 
 ---
 
-### Requirement 5: Alias Editor Context -- create, edit, and save command aliases (CR-NR-113)
+### Requirement 5: Alias Editor Context -- create, edit, and save command aliases (CR-NR-113; ISPF redesign CR-CH-068)
+
+**REVISION NOTE (CR-CH-068, Gate 2).** Criteria 5.1-5.12 were authored under
+CR-NR-113 for a FLAT free-text editor (surface / root / environment / template
+text boxes plus a footer "Add alias" button). CR-CH-068 REDESIGNS the editor's
+UI/interaction model into an ISPF-style editor (a `Command ===>` primary command
+line, a CE/Root FILTER row, ISPF I/R/D line commands in a leading Act column,
+cascading CE->Root dropdowns consuming CR-CH-067, and a scrollbar). The following
+settled decisions REMAIN unchanged and are NOT contradicted: the on-disk
+`UserAliasRowToml` storage SHAPE (5.1), the single command-dispatch front door
+and `ALIASES` verb registration (5.2), the save-time validations (5.4), the
+in-place live refresh (5.6), the resolver load/precedence model (5.7), the
+expansion/dispatch delegation to CR-NR-112 (5.8), the per-tab Navigation_Stack
+return (5.9), the `WorkspaceContext` single focus-latch contract (5.10), the v1
+user-store-only scope (5.11), and the ASCII-keys/UTF-8-values posture (5.12).
+Where a criterion's UI mechanics change, the change is noted INLINE below (5.3 is
+superseded by the line-command model of 5.13-5.16; the footer Add button is
+superseded by the `I` line command). New criteria 5.13-5.24 cover the redesign.
 
 **User Story:** As a user, I want a screen inside FFWB where I can create, edit,
 and save command aliases -- including parameterised aliases like `ECOB` ->
-`EDIT FFWB.COBOL.MASTER(&1)` -- so that I can define my own shorthands without
-hand-editing TOML files.
+`EDIT FFWB.COBOL.MASTER(&1)` -- laid out like a mainframe/ISPF editor (a command
+line, a filter row, and I/R/D line commands) with the command environment and
+root command chosen from dropdowns, so that I can define my own shorthands
+without hand-editing TOML files and without mistyping an invalid root.
 
 **Source:** [CR-NR-113] (owner: "We need a workspace for creating and saving
 aliases", follow-up to CR-NR-112). Builds ON the 4-field alias record and the
@@ -208,7 +227,7 @@ analogous in INTENT to -- but mechanically distinct from -- Req 8.10.
 
 2. THE Alias_Editor SHALL be a Custom Workspace (Context) openable via a primary command (`ALIASES`) and bindable as a Command_Target, displaying the list of Alias_Definitions from the User_Alias_Store. The Context SHALL be registered the framework-conformant way (a `WorkspaceKind::CommandConfigurator` descriptor carrying `editor = "aliases"`, mirroring the Theme / Menus / Keys / Kinds editors); NO new WorkspaceKind and NO new dispatcher SHALL be introduced.
 
-3. THE Alias_Editor SHALL display, for each Alias_Definition, its alias name (surface), its root command (canonical), its target environment (`ffcmd` or `ffedit`), and its parameter template (when present), and SHALL provide an Add action (new row), a per-row Delete action (with confirmation), and per-field edit of the surface, the root command, the target environment, and the parameter template.
+3. THE Alias_Editor SHALL display, for each Alias_Definition, its alias name (surface), its root command (canonical), its target environment (`ffcmd` or `ffedit`), and its parameter template (when present), and SHALL provide a way to ADD a row, DELETE a row (with confirmation), and per-field edit of the surface, the root command, the target environment, and the parameter template. (REVISED by CR-CH-068: the ADD/DELETE actions are now the ISPF `I` / `D` line commands of criteria 5.13-5.16 rather than a footer "Add alias" button + a per-row Delete button; the per-field edit of CE and Root is now via dropdowns per 5.18. The OBSERVABLE capability -- add, delete, per-field edit -- is unchanged; only the interaction mechanism changes.)
 
 4. WHEN the user saves, THE Alias_Editor SHALL VALIDATE the working definitions -- rejecting (a) an empty surface, (b) an empty root command, (c) a surface that maps to two different roots within the SAME target environment in the store (the overlay's existing within-environment collision discipline), and (d) a surface that equals a reserved built-in root command (the set returned by `builtin_ffcmd_roots()`, a NEW CR-NR-113 pre-pass invariant -- see NO-SHADOW RULE PROVENANCE above, NOT command-framework Req 8.10) -- and, on success, serialise the rows and write the full User_Alias_Store back to disk; on validation failure it SHALL display the specific error and leave the file on disk UNCHANGED. The within-environment collision check (c) is scoped to collisions WITHIN the User_Alias_Store itself; a user surface that equals a per-locale overlay surface is governed by the load-time rule in Requirement 5.7 (SAME root = no-op; DIFFERENT root = the loader rejects the user row with a WARN and retains the per-locale surface), not by this save-time check.
 
@@ -227,3 +246,38 @@ analogous in INTENT to -- but mechanically distinct from -- Req 8.10.
 11. v1 SCOPE: THE Alias_Editor SHALL author the User_Alias_Store ONLY. Editing the per-locale localisation alias catalogues (`i18n/<locale>/aliases/`, CR-NR-109/111) SHALL be OUT OF SCOPE for this requirement, so the Alias_Editor SHALL NOT read from or write to the shipped per-locale catalogues (avoiding overlap with the in-flight CR-NR-111 gate).
 
 12. THE User_Alias_Store SHALL use only plain ASCII in its default/example content for the structural keys; alias field VALUES are user data and MAY be any valid UTF-8, consistent with the alias DATA posture (localization alias catalogues are localisation DATA).
+
+#### Acceptance Criteria -- ISPF redesign (CR-CH-068, Gate 2)
+
+The following criteria REDESIGN the Alias_Editor's UI/interaction model. They
+consume the CR-CH-067 `EnvironmentRegistry::root_commands(env_name)` /
+`contains_root(env_name, root)` associated functions (command-environments
+Requirement 20), follow the Menus Editor Context pattern (menu-workspace
+Requirement 13) for the command line + working-copy + validate-on-save flow, and
+preserve the `WorkspaceContext` focus contract (workspace-conformance.md). They do
+NOT change the on-disk `UserAliasRowToml` shape (5.1), the dispatch front door
+(5.2), the WorkspaceKind, or the v1 user-store-only scope (5.11).
+
+13. COLUMN LAYOUT. WHEN the Alias_Editor is rendered, THE Context SHALL present the alias list with columns in this left-to-right order: Act, CE (Command Environment), Root (root command), L18N (locale key), ALIAS (surface), Parameters (parameter template). THE column-to-model mapping SHALL be: Act = a transient per-row line-command field (NOT persisted); CE = `UserAliasRowToml.environment`; Root = `canonical`; L18N = `localisation_key` (blank for a language-independent user shorthand); ALIAS = `surface`; Parameters = `command_template`. THE L18N column SHALL be an editable field that PERSISTS: WHEN a non-empty L18N value is entered and the working copy is saved, THE saved `UserAliasRowToml.localisation_key` SHALL carry that value (trimmed), and re-loading the store SHALL render the same L18N value (a round-trip). This does NOT change the on-disk `UserAliasRowToml` shape (criterion 5.24): the `localisation_key` field already exists in the on-disk row; the editor merely stops discarding it. (The current save path `validate_user_alias_rows` hardcodes `localisation_key: String::new()`; criterion 5.13 requires that to carry the edited row value -- see design 9.10.2 and task 8.9.)
+
+14. COMMAND LINE. WHEN the Alias_Editor is rendered, THE Context SHALL present a `Command ===>` primary command field at the top (ISPF primary command line). THE field SHALL accept at least the primary commands `SAVE` (validate + write the working copy, criterion 5.4) and `CANCEL` / `END` (leave the editor via the per-tab Navigation_Stack, criterion 5.9). WHEN the user enters `SAVE` on the command line, THE Context SHALL first apply any pending line commands (criterion 5.16) and then perform the Save of criterion 5.4. THE command line SHALL ALSO accept `FILTER <ce> <root>` and `RESET` to set/clear the filter row of criterion 5.15. A locale switch is OUT of v1 scope. (CONFIRMED by owner, CR-CH-068 approval: v1 primary commands = SAVE, CANCEL/END, FILTER, RESET.)
+
+15. FILTER ROW. WHEN the Alias_Editor is rendered, THE Context SHALL present a FILTER ROW immediately below the column headings, into which the user MAY enter a CE and/or a Root. WHEN both filter fields are empty, THE Context SHALL list ALL aliases from the User_Alias_Store. WHEN a CE and/or Root filter is set, THE Context SHALL list ONLY the alias rows whose environment matches the CE filter (when set) AND whose root matches the Root filter (when set). THE filter SHALL match on CE and Root ONLY (NOT on ALIAS or Parameters). WHEN a CE is chosen in the FILTER row, THE Root filter's dropdown SHALL be constrained to that environment's root commands (`root_commands(selected_CE)`), consistent with criterion 5.18. THE filter SHALL be applied on the `FILTER` command / Enter (ISPF fidelity), NOT live-as-you-type. (CONFIRMED by owner, CR-CH-068 approval: applied-on-command, filter scope CE + Root only.)
+
+16. LINE COMMANDS (I / R / D). WHEN the user types a line command letter into a data row's Act field, THE Context SHALL recognise `I` (insert a new blank editable row), `R` (repeat -- duplicate the current row into a new editable row), and `D` (delete the row). THE pending line commands SHALL be APPLIED as a batch WHEN the user presses Enter on the `Command ===>` line (or activates an equivalent Apply/refresh action), consistent with ISPF semantics, after which each applied Act field SHALL be cleared. WHEN an `I` is applied, THE inserted row SHALL be blank (empty surface / root / template, default environment). WHEN an `R` is applied, THE new row SHALL be a copy of the source row's field values. WHEN multiple line commands are pending in one apply pass, THE Context SHALL apply them deterministically (RECOMMENDED: process by row position so that inserts/repeats/deletes do not corrupt one another's indices). (CR-CH-068 SUPERSEDES the CR-NR-113 footer "Add alias" button with the `I` line command and the per-row Delete button with the `D` line command.)
+
+17. EMPTY-STORE USABILITY. WHEN the User_Alias_Store is absent or empty (no rows), THE Alias_Editor SHALL still render the column headings and the FILTER row, AND SHALL present at least one empty insertable row (or an obvious, visible affordance to insert the first row, e.g. an `I` typed into an always-present Act field), so that the user can create the FIRST alias without hand-editing a file. (This is the explicit fix, by redesign, for the Add-visibility bug recorded in `.agents/tasks/alias-editor-workspace/add-row-bug-findings.md`.)
+
+18. CASCADING CE -> ROOT DROPDOWNS. WHEN a data row (or the filter row) renders its CE and Root fields, THE CE field SHALL be a dropdown listing the registered command environments, AND THE Root field SHALL be a dropdown populated by `EnvironmentRegistry::root_commands(selected_CE)` (CR-CH-067, command-environments Requirement 20.1). WHEN the user changes a row's CE selection, THE Context SHALL re-populate that row's Root dropdown from the new environment's `root_commands` AND SHALL clear or re-validate a Root that is no longer valid in the new environment. THE dropdowns SHALL enforce the validated (environment, root) anchor by CONSTRUCTION (a user can only pick a Root that `contains_root(selected_CE, root)` would accept). (v1 CE MEMBERSHIP, CONFIRMED by owner CR-CH-068 approval: for v1 the CE dropdown lists the two user-addressable alias environments `AliasEnvironment::ALL` = `ffcmd` / `ffedit`, the only environments the alias model can route a row into today; enumerating the FULL EnvironmentRegistry membership is a deferred, purely additive follow-up and NOT part of this redesign.)
+
+19. SAVE VALIDATION REUSE (CR-CH-067). WHEN the user saves, THE Alias_Editor SHALL validate each row's (environment, root) pair using `EnvironmentRegistry::contains_root(env_name, root)` (CR-CH-067, command-environments Requirement 20.8) via the existing `validate_user_alias_rows` save-side hook, IN ADDITION to the CR-NR-113 validations of criterion 5.4 (empty surface, empty root, within-same-environment surface->two-roots collision, no-shadow of a reserved built-in root). WHEN any validation fails, THE Context SHALL display the specific error inline on the `Command ===>`/error surface AND SHALL leave the on-disk file UNCHANGED (criterion 5.4). The load path already skips an invalid user row with a WARN (CR-CH-067, command-environments Requirement 20.7).
+
+20. SCROLLBAR. WHEN the number of listed (filtered) data rows exceeds the visible row area, THE Alias_Editor SHALL present a vertical scrollbar on the right so the user can scroll through the list, while the `Command ===>` line, the column headings, and the FILTER row remain usable.
+
+21. LINE-COMMAND FOCUS RECONCILIATION. THE Alias_Editor SHALL reconcile the ISPF Act-field line-command model with egui's immediate-mode widget model and the app's Tab/focus contract such that: (a) each row's Act field is an ordinary focusable control; (b) typing a line-command letter records a PENDING code without immediately restructuring the row list mid-frame (the batch is applied only on the criterion 5.16 Enter/apply); and (c) the Tab order flows `Command ===>` line -> FILTER row (filter CE dropdown -> filter Root dropdown) -> each data row (Act -> CE -> Root -> L18N -> ALIAS -> Parameters) with NO phantom stop (consistent with criterion 5.10 and criterion 5.23). The FILTER row carries ONLY the filter CE and filter Root fields (no Act / L18N / ALIAS / Parameters); the Act / L18N / ALIAS / Parameters field set belongs to each DATA row.
+
+22. PRIMARY-COMMAND / LINE-COMMAND PRECEDENCE. WHEN the user presses Enter on the `Command ===>` line with BOTH a primary command typed AND pending Act line commands, THE Context SHALL apply the pending line commands FIRST and THEN interpret the primary command (so e.g. `SAVE` saves the post-line-command working copy), consistent with ISPF primary-vs-line command ordering.
+
+23. FIRST-TAB FOCUS (MANDATORY). THE Alias_Editor SHALL report its interior focus through the single `WorkspaceContext::render -> InteriorFocus` path, with a STABLE `egui::Id` on the FIRST interior control, AND the FIRST Tab from the `Command ===>` field SHALL land EXACTLY on that first interior control, with NO phantom stop. THE first interior control SHALL be the FILTER row's filter CE dropdown (its `response.id` captured fresh each frame, per workspace-conformance.md), matching design 9.10.8 part 3. (This names exactly ONE deterministic target so the mandatory first-Tab test asserts a single `egui::Id`; the filter Root field is NOT the first interior control.) THIS SHALL be proven by a full-shell egui_kittest first-Tab test (workspace-conformance.md; a specialisation of criterion 5.10 for the redesigned layout).
+
+24. MODEL + FRAMEWORK UNCHANGED. THE CR-CH-068 redesign SHALL NOT change the on-disk `UserAliasRowToml` shape (criterion 5.1), the single command-dispatch front door and `ALIASES` verb registration (criterion 5.2), the `WorkspaceKind::CommandConfigurator` + `editor = "aliases"` descriptor, the per-tab Navigation_Stack return behaviour (criterion 5.9), the `pending_action` / owned-panel-swap effect pattern, or the v1 user-store-only scope (criterion 5.11). IT SHALL add NO second dispatcher and NO new session-persistence format.

@@ -4096,6 +4096,32 @@ suite PASS. -->
 | `ff-desktop` | ✅ | `shell::tests_alias_editor::load_skips_user_row_with_root_invalid_in_environment` | command-environments Req 20.7: user alias store load skips a row whose root is not a valid root of its declared environment (`contains_root == false`) with a WARN naming alias/root/environment, and CONTINUES; no valid row dropped, startup not blocked; mirrors the existing no-shadow/collision skip-with-WARN in `apply_user_rows` with those guards intact |
 | `ff-desktop` | ✅ | `shell::alias_editor::tests::validate_rejects_root_not_valid_in_declared_environment` + `validate_accepts_root_valid_in_declared_environment` | command-environments Req 20.8: the same `contains_root` validity check is surfaced in `validate_user_alias_rows` for save-side use (Gate 2 rejects at save); Gate 1 adds only the hook + the load-time skip-with-WARN |
 
+### Phase (alias-editor-redesign) -- CR-CH-068 (ISPF-style Alias Editor: Command line + CE/Root filter row + I/R/D line commands + cascading CE->Root dropdowns + scrollbar)
+
+> Gate 2 of 2 (Gate 1 = CR-CH-067). REDESIGN of the CR-NR-113 Alias Editor UI into
+> the owner's ISPF layout, consuming `EnvironmentRegistry::root_commands` /
+> `contains_root` (the ACTUAL associated-fn signatures). UI/interaction redesign
+> ONLY -- no on-disk-model / dispatch / WorkspaceKind / nav / persistence /
+> focus-latch change. Supersedes the footer-Add editor and resolves the
+> Add-visibility bug by redesign. Gate authored DOCS-FIRST; NO code until approved.
+> Criteria from docs/specs/command-configurator/requirements.md Req 5.13-5.24.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.13: columns Act/CE/Root/L18N/ALIAS/Parameters in order; mapping Act=transient, CE=`environment`, Root=`canonical`, L18N=`localisation_key`, ALIAS=`surface`, Parameters=`command_template` (on-disk shape unchanged) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.13 (L18N round-trip, review finding 1): an edited non-empty L18N value PERSISTS via `localisation_key` and re-loads -- `validate_user_alias_rows` carries `row.localisation_key.trim()` instead of hardcoding empty (task 8.9.4 test + 8.9.5 save-path change; no on-disk-shape change) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.14: a `Command ===>` primary command line accepts SAVE (apply pending line commands then save) and CANCEL/END (leave via the Navigation_Stack) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.15: a FILTER row under the headings filters by CE and/or Root ONLY (not ALIAS/Parameters); empty filters list all; filtering never mutates `rows` |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.16: Act-field line commands I (insert blank) / R (repeat=field-copy) / D (delete) applied as a deterministic batch on Command-line Enter; each applied Act field cleared |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.17: empty-store usability -- headings + FILTER row + at least one empty insertable row render when `user.toml` is absent/empty (the Add-visibility bug fix by redesign) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.18: CE and Root are cascading dropdowns (Root = `EnvironmentRegistry::root_commands(selected_CE)`); changing CE re-populates Root; the (env,root) anchor is valid by construction |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.19: SAVE validation reuses `EnvironmentRegistry::contains_root` via `validate_user_alias_rows` plus the CR-NR-113 validations; error surfaced inline; file unchanged on failure |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.20: a right-hand vertical scrollbar appears when filtered rows exceed the visible area; Command line / headings / FILTER row stay usable |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.21: ISPF line-command model reconciled with egui immediate mode -- pending Act codes applied post-frame (no mid-frame restructuring); Tab order Command line -> FILTER row -> data-row cells, no phantom stop |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.22: pending line commands applied BEFORE the primary command on Command-line Enter (ISPF ordering) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.23: MANDATORY full-shell egui_kittest first-Tab test -- first Tab from `Command ===>` lands EXACTLY on the FILTER row's FILTER CE dropdown (the one deterministic first interior control; no phantom stop) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.24: the redesign changes NO on-disk `UserAliasRowToml` shape, dispatch front door, WorkspaceKind, nav stack, persistence format, or focus-latch mechanism; no second dispatcher |
+
 ### Phase (find-search-split) -- CR-NR-110 (FIND=FFEDIT in-buffer; SEARCH=FFCMD canonical cross-backend; GREP alias; engine deferred)
 
 > Verb split: FIND is the FFEDIT (editor) in-buffer search verb; SEARCH is the FFCMD
