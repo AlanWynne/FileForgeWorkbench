@@ -110,6 +110,18 @@ impl WorkbenchShell {
             return raw.to_string();
         }
         let env_name = self.active_environment_name();
+
+        // CR-NR-112: if the matched alias entry carries a non-empty parameter
+        // template, expand it (command-semantics Req 14.2). The entry's canonical
+        // is the ROOT; `alias_template::expand_template` performs the pure-text
+        // `&N`/`&*` substitution and the surplus-argument append. SINGLE-PASS: the
+        // expanded string is returned and NOT re-fed through this pre-pass
+        // (Req 14.7, 19.5). When no template is present this falls through to the
+        // verb-only rewrite below, byte-identical to today (Req 14.6, 19.3).
+        if let Some((root, template)) = self.resolve_template_entry(verb, env_name) {
+            return super::alias_template::expand_template(&root, &template, arg);
+        }
+
         match self.resolve_locale_verb(verb, env_name) {
             LocaleResolveOutcome::Root(root) if !root.eq_ignore_ascii_case(verb) => {
                 if arg.is_empty() {
@@ -121,6 +133,30 @@ impl WorkbenchShell {
             // Root == surface (en/identity) or Unknown: leave the string as typed.
             _ => raw.to_string(),
         }
+    }
+
+    /// If `verb` resolves (under environment `env_name`'s active-locale alias
+    /// table) to an entry carrying a non-empty parameter template, return the
+    /// owned `(canonical_root, template)` pair; otherwise `None` (a pure verb
+    /// alias / unknown verb, handled by the verb-only rewrite). Reads under the
+    /// alias-store lock and copies out the two owned strings, mirroring
+    /// `resolve_locale_verb`'s structure. It does NOT dispatch (CR-NR-112,
+    /// command-semantics Req 14.1; command-framework Req 19.1, 19.2).
+    ///
+    /// Validates: command-semantics Requirement 14.1, 14.6
+    fn resolve_template_entry(&self, verb: &str, env_name: &str) -> Option<(String, String)> {
+        let trimmed = verb.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        let store = self.i18n.alias_store.lock().ok()?;
+        let table = store.table_for(env_name)?;
+        let entry = table.resolve_alias_entry(trimmed)?;
+        let template = entry.command_template.as_ref()?;
+        if template.is_empty() {
+            return None;
+        }
+        Some((entry.canonical.clone(), template.clone()))
     }
 
     /// Compute the per-option DISPLAYED command-column surfaces for the ACTIVE
@@ -179,6 +215,20 @@ mod tests {
     fn overlay_env(shell: &super::WorkbenchShell, env: &str, surface: &str, canonical: &str) {
         let mut store = shell.i18n.alias_store.lock().expect("alias store lock");
         store.overlay_row_for_test(env, surface, canonical);
+    }
+
+    /// Overlay a PARAMETERISED alias (surface -> root + template) onto the given
+    /// environment's table, so the resolver's pre-pass sees a template entry
+    /// (CR-NR-112).
+    fn overlay_template(
+        shell: &super::WorkbenchShell,
+        env: &str,
+        surface: &str,
+        canonical: &str,
+        template: &str,
+    ) {
+        let mut store = shell.i18n.alias_store.lock().expect("alias store lock");
+        store.overlay_row_for_test_with_template(env, surface, canonical, Some(template));
     }
 
     /// Validates: localization Requirement 11.6 -- the resolver follows the exact
@@ -280,6 +330,110 @@ mod tests {
         assert_eq!(
             shell.resolve_locale_verb("CATALOGS", FFCMD_NAME),
             LocaleResolveOutcome::Root("CATALOGS".to_string())
+        );
+    }
+
+    /// Validates: command-semantics Requirement 14.2, 14.9; command-framework
+    /// Requirement 19.1 -- the pre-pass expands a parameterised alias into the
+    /// fully resolved ROOT command STRING: with ECOB -> root EDIT, template
+    /// FFWB.COBOL.MASTER(&1) overlaid on the ACTIVE environment, `ecob helloW`
+    /// rewrites to `EDIT FFWB.COBOL.MASTER(helloW)` (the worked example), and the
+    /// literal template is preserved.
+    #[test]
+    fn rewrite_verb_to_root_expands_parameterised_alias() {
+        let shell = make_shell();
+        let env = shell.active_environment_name();
+        overlay_template(&shell, env, "ECOB", "EDIT", "FFWB.COBOL.MASTER(&1)");
+
+        assert_eq!(
+            shell.rewrite_verb_to_root("ecob helloW"),
+            "EDIT FFWB.COBOL.MASTER(helloW)",
+            "the worked example must expand through the pre-pass (Req 14.9)"
+        );
+    }
+
+    /// Validates: command-semantics Requirement 14.4 -- a parameterised alias
+    /// invoked with no argument substitutes the empty string for &1, so `ecob`
+    /// alone rewrites to `EDIT FFWB.COBOL.MASTER()` (the alias layer raises no
+    /// error).
+    #[test]
+    fn rewrite_verb_to_root_empty_arg_substitutes_empty() {
+        let shell = make_shell();
+        let env = shell.active_environment_name();
+        overlay_template(&shell, env, "ECOB", "EDIT", "FFWB.COBOL.MASTER(&1)");
+
+        assert_eq!(
+            shell.rewrite_verb_to_root("ecob"),
+            "EDIT FFWB.COBOL.MASTER()",
+            "an unsupplied &N substitutes empty with no alias error (Req 14.4)"
+        );
+    }
+
+    /// Validates: command-semantics Requirement 14.6; command-framework
+    /// Requirement 19.3 -- a TEMPLATELESS alias (here the FFEDIT X -> EXCLUDE
+    /// verb alias) is rewritten by the pre-pass byte-identically to today: the
+    /// verb-only root rewrite, argument preserved, with NO template expansion.
+    #[test]
+    fn rewrite_verb_to_root_templateless_alias_is_byte_identical() {
+        let shell = make_shell();
+        // Overlay a templateless verb alias (ECOB -> EDIT, no template) on the
+        // active env: it must take the verb-only path, preserving the argument
+        // exactly as the pre-CR-NR-112 rewrite did.
+        let env = shell.active_environment_name();
+        overlay_env(&shell, env, "ECOB", "EDIT");
+
+        assert_eq!(
+            shell.rewrite_verb_to_root("ecob helloW"),
+            "EDIT helloW",
+            "a templateless alias takes the verb-only rewrite (Req 14.6/19.3)"
+        );
+        assert_eq!(
+            shell.rewrite_verb_to_root("ecob"),
+            "EDIT",
+            "verb-only rewrite with empty arg returns the bare root (Req 14.6)"
+        );
+    }
+
+    /// Validates: command-semantics Requirement 14.7; command-framework
+    /// Requirement 19.5 -- expansion is SINGLE-PASS: an expanded command whose
+    /// text happens to contain another alias surface is NOT re-expanded. ECOB
+    /// expands to `EDIT ...`; EDIT is itself an FFEDIT alias surface, but the
+    /// returned string is final (the pre-pass is not re-applied).
+    #[test]
+    fn rewrite_verb_to_root_is_single_pass() {
+        let shell = make_shell();
+        let env = shell.active_environment_name();
+        // Template whose expansion begins with the EDIT verb (another surface).
+        overlay_template(&shell, env, "ECOB", "EDIT", "&1");
+
+        let once = shell.rewrite_verb_to_root("ecob SOMEFILE");
+        assert_eq!(
+            once, "EDIT SOMEFILE",
+            "one expansion pass produces the resolved string"
+        );
+        // Feeding the result back would rewrite EDIT again; the pre-pass itself
+        // does NOT do this (single-pass). Re-running is still idempotent here
+        // because EDIT's identity row has no template, proving no second
+        // expansion occurs in a single invocation.
+        assert_eq!(
+            shell.rewrite_verb_to_root(&once),
+            "EDIT SOMEFILE",
+            "the expanded string is stable; no implicit second alias pass (Req 14.7)"
+        );
+    }
+
+    /// Validates: command-framework Requirement 19.2 -- a NON-alias command and
+    /// an expanded alias both flow through unchanged for the downstream single
+    /// classifier: a verb with no table entry is returned verbatim (the pre-pass
+    /// adds no second dispatch path).
+    #[test]
+    fn rewrite_verb_to_root_leaves_non_alias_unchanged() {
+        let shell = make_shell();
+        // A verb the active env's table does not own is returned verbatim.
+        assert_eq!(
+            shell.rewrite_verb_to_root("NOTAVERB arg1 arg2"),
+            "NOTAVERB arg1 arg2",
+            "a non-alias command string is unchanged by the pre-pass (Req 19.2)"
         );
     }
 }

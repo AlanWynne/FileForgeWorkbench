@@ -49,6 +49,11 @@ struct AliasRowToml {
     /// Optional `ff-i18n` key resolving the displayed surface per locale.
     #[serde(default)]
     localisation_key: Option<String>,
+    /// CR-NR-112: optional parameter template (e.g. `FFWB.COBOL.MASTER(&1)`).
+    /// Absent/empty keeps today's pure verb-rewrite behaviour (Req 14.6). The
+    /// template VALUE is preserved verbatim (it is DATA, not ASCII-scoped).
+    #[serde(default)]
+    command_template: Option<String>,
 }
 
 /// The parsed content of one `aliases/<environment>.toml` file.
@@ -79,6 +84,12 @@ fn parse_alias_toml(text: &str) -> Result<Vec<KeyedAliasRow>, String> {
                 r.localisation_key
                     .map(|k| k.trim().to_string())
                     .filter(|k| !k.is_empty()),
+                // CR-NR-112: the template is preserved VERBATIM (data, not
+                // uppercased), with empty mapped to None so a blank/absent field
+                // keeps the pure verb-alias path (Req 14.1, 14.6).
+                r.command_template
+                    .map(|t| t.trim().to_string())
+                    .filter(|t| !t.is_empty()),
             )
         })
         .collect())
@@ -260,6 +271,21 @@ impl LocaleAliasStore {
         surface: &str,
         canonical: &str,
     ) {
+        self.overlay_row_for_test_with_template(environment_name, surface, canonical, None);
+    }
+
+    /// Test-only: like [`Self::overlay_row_for_test`] but with an explicit
+    /// optional parameter template (CR-NR-112), so a test can simulate an
+    /// active-locale PARAMETERISED alias without writing a TOML file. Panics on a
+    /// within-environment collision (a test authoring error).
+    #[cfg(test)]
+    pub(crate) fn overlay_row_for_test_with_template(
+        &mut self,
+        environment_name: &str,
+        surface: &str,
+        canonical: &str,
+        template: Option<&str>,
+    ) {
         if let Some((_, table)) = self.tables.iter_mut().find(|(n, _)| n == environment_name) {
             table
                 .apply_locale_overlay_keyed(
@@ -268,6 +294,7 @@ impl LocaleAliasStore {
                         surface.to_uppercase(),
                         canonical.to_uppercase(),
                         Some("verb-find".to_string()),
+                        template.map(str::to_string),
                     )],
                 )
                 .expect("test overlay row must not collide");
@@ -367,14 +394,15 @@ canonical = "CHANGE"
             .keyed_rows_for(FFEDIT_NAME)
             .expect("FFEDIT rows present");
         assert_eq!(rows.len(), 2);
-        // Keyed row preserved with its localisation key.
+        // Keyed row preserved with its localisation key (no template).
         assert!(rows.contains(&(
             "SOEK".to_string(),
             "FIND".to_string(),
-            Some("verb-find".to_string())
+            Some("verb-find".to_string()),
+            None
         )));
-        // Plain row has no key.
-        assert!(rows.contains(&("VERANDER".to_string(), "CHANGE".to_string(), None)));
+        // Plain row has no key and no template.
+        assert!(rows.contains(&("VERANDER".to_string(), "CHANGE".to_string(), None, None)));
 
         // Loading into the English base makes the localised surfaces resolve to
         // their root canonicals (one source of truth, Req 11.2).
@@ -386,6 +414,60 @@ canonical = "CHANGE"
         assert_eq!(table.canonical_verb("VERANDER"), Some("CHANGE"));
         // The base English verbs remain resolvable (overlay is a layer).
         assert_eq!(table.canonical_verb("FIND"), Some("FIND"));
+    }
+
+    /// Validates: command-semantics Requirement 14.6 -- a row WITHOUT a
+    /// `command_template` field parses to template `None` (back-compat: the
+    /// pre-CR-NR-112 schema deserialises byte-identically).
+    #[test]
+    fn reader_row_without_template_parses_to_none() {
+        let rows = parse_alias_toml(
+            r#"
+[[alias]]
+surface = "SOEK"
+canonical = "FIND"
+localisation_key = "verb-find"
+"#,
+        )
+        .expect("toml parses");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            (
+                "SOEK".to_string(),
+                "FIND".to_string(),
+                Some("verb-find".to_string()),
+                None
+            ),
+            "a templateless row deserialises to command_template = None (Req 14.6)"
+        );
+    }
+
+    /// Validates: command-semantics Requirement 14.1 -- a row WITH a
+    /// `command_template` parses to `Some(template)` with surface/canonical
+    /// uppercased and the template preserved VERBATIM (case and punctuation).
+    #[test]
+    fn reader_row_with_template_parses_to_some_verbatim() {
+        let rows = parse_alias_toml(
+            r#"
+[[alias]]
+surface = "ecob"
+canonical = "edit"
+command_template = "FFWB.COBOL.MASTER(&1)"
+"#,
+        )
+        .expect("toml parses");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            (
+                "ECOB".to_string(),
+                "EDIT".to_string(),
+                None,
+                Some("FFWB.COBOL.MASTER(&1)".to_string())
+            ),
+            "surface/canonical uppercase; template preserved verbatim (Req 14.1)"
+        );
     }
 
     /// Validates: localization Requirement 11.10 -- a surface mapping to two
@@ -503,7 +585,8 @@ canonical = "CATALOGS"
             rows.contains(&(
                 "SOEK".to_string(),
                 "FIND".to_string(),
-                Some("verb-find".to_string())
+                Some("verb-find".to_string()),
+                None
             )),
             "the POC ships the SOEK -> FIND row keyed verb-find, got {rows:?}"
         );
