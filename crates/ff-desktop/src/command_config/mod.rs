@@ -183,6 +183,70 @@ pub(crate) const BUILTIN_WORKSPACE_VERB_ROOTS: &[&str] = &[
     "ALIASES",
 ];
 
+/// The FFCMD root verbs handled by the `handle_command` LADDER
+/// (`shell/commands_ladder_{a,b,c}.rs`) rather than by the `resolve_target`
+/// classifier (`builtin_workspace_target_for`). These are genuine, user-typeable
+/// FFCMD root commands -- most importantly the file-open family EDIT / VIEW /
+/// BROWSE -- but they do NOT appear in [`BUILTIN_WORKSPACE_VERB_ROOTS`] (whose
+/// drift guard requires `builtin_workspace_target_for` to claim each entry, which
+/// the ladder verbs are not). CR-CH-067 unions this list into
+/// `builtin_ffcmd_roots()` so `EnvironmentRegistry::root_commands("FFCMD")` is the
+/// COMPLETE FFCMD canonical root set (Req 20.1) -- the foundation for the future
+/// "list the supported FFCMD commands" API.
+///
+/// Each entry is a top-level verb ROOT (argument forms such as `SPLIT DETACH`,
+/// `WORKSPACE OPEN`, `COMMAND TOP` are sub-forms of the root here). Pinned by a
+/// co-location comment to the ladder source; a drift-guard test asserts the
+/// file-open family stays present.
+///
+/// Ladder source (worktree crates/ff-desktop/src/shell/):
+///   - commands_ladder_a.rs: EXIT/QUIT/LOGOFF, EDIT, START, MENU, CLOSE, DOCK,
+///     PFSHOW, END, RETURN  (X and HELP are already built-in menu/verb roots)
+///   - commands_ladder_b.rs: COMMAND, SNAPSHOT, CAPTURE, RETRIEVE
+///     (RESET BARE is already a built-in menu root)
+///   - commands_ladder_c.rs: DETACH, SPLIT, UNSPLIT, FOCUS, SWAP, AUTONUM, NUM,
+///     SUBMIT, TIME, STATUS, CREATE, REPLACE, BROWSE, VIEW, COMPARE, WORKSPACE
+///
+/// Validates: command-environments Requirement 20.1
+pub(crate) const BUILTIN_FFCMD_LADDER_VERB_ROOTS: &[&str] = &[
+    // File-open family (the ECOB -> EDIT alias root lives here).
+    "EDIT",
+    "VIEW",
+    "BROWSE",
+    "COMPARE",
+    "CREATE",
+    "REPLACE",
+    // App / session lifecycle.
+    "EXIT",
+    "QUIT",
+    "LOGOFF",
+    // Workspace / navigation lifecycle.
+    "START",
+    "MENU",
+    "CLOSE",
+    "DOCK",
+    "END",
+    "RETURN",
+    "DETACH",
+    "SPLIT",
+    "UNSPLIT",
+    "FOCUS",
+    "SWAP",
+    "WORKSPACE",
+    // Command-line / display / history.
+    "PFSHOW",
+    "COMMAND",
+    "SNAPSHOT",
+    "CAPTURE",
+    "RETRIEVE",
+    "AUTONUM",
+    "NUM",
+    // Status / stubs.
+    "SUBMIT",
+    "TIME",
+    "STATUS",
+];
+
 /// Validates: command-framework Requirement 8.3 (stage 2), 8.4, 9.2, 9.7
 pub(crate) fn builtin_workspace_target_for(input: &str) -> Option<CommandTarget> {
     let trimmed = input.trim();
@@ -509,6 +573,28 @@ command_id = "file.save"
                 builtin_workspace_target_for(verb).is_some(),
                 "BUILTIN_WORKSPACE_VERB_ROOTS lists '{verb}' but the classifier \
                  does not claim it -- the list and the classifier have drifted"
+            );
+        }
+    }
+
+    // Validates: command-environments Requirement 20.1 (CR-CH-067) -- the ladder
+    // verb-root list is DISJOINT from the classifier list (these verbs are NOT
+    // claimed by `builtin_workspace_target_for`; they are handled by the
+    // handle_command ladder), and it carries the file-open family EDIT/VIEW/BROWSE
+    // that the FFCMD root set must include so an FFCMD alias to EDIT validates.
+    #[test]
+    fn builtin_ffcmd_ladder_verb_roots_are_disjoint_from_classifier_and_carry_file_open() {
+        for &verb in BUILTIN_FFCMD_LADDER_VERB_ROOTS {
+            assert!(
+                builtin_workspace_target_for(verb).is_none(),
+                "BUILTIN_FFCMD_LADDER_VERB_ROOTS lists '{verb}' but the classifier \
+                 ALSO claims it -- it belongs in BUILTIN_WORKSPACE_VERB_ROOTS instead"
+            );
+        }
+        for expected in ["EDIT", "VIEW", "BROWSE"] {
+            assert!(
+                BUILTIN_FFCMD_LADDER_VERB_ROOTS.contains(&expected),
+                "the FFCMD file-open family must include {expected}"
             );
         }
     }

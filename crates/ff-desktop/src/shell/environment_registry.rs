@@ -277,6 +277,66 @@ impl EnvironmentRegistry {
     pub(super) fn is_ffedit_active(&self, kind: KindTag, is_home: bool) -> bool {
         self.active_env(kind, is_home) == RegisteredEnv::FfEdit
     }
+
+    // === Root-command enumeration (CR-CH-067, Req 20) =======================
+
+    /// The canonical ROOT commands owned by the named environment, in a stable
+    /// (sorted), case-insensitively de-duplicated order. Canonical roots ONLY --
+    /// NOT localised alias SURFACES (Req 20.3): aliases are what a user AUTHORS
+    /// against a root (CR-NR-112 / CR-NR-113), so offering surfaces as root
+    /// choices would be circular. An unknown / non-enumerable environment name
+    /// (anything other than FFCMD or FFEDIT in phase 1 -- FFNAV / FFLINE / HOSTFS
+    /// / MAINFRAME) yields an EMPTY list, never a panic (Req 20.5).
+    ///
+    /// This is an ASSOCIATED function keyed by environment NAME rather than an
+    /// instance method: the two phase-1 root sets are STATIC, derivable data
+    /// (FFCMD from [`builtin_ffcmd_roots`], FFEDIT from
+    /// [`AliasTable::canonical_verbs_owned`] over [`AliasTable::ffedit_english`]),
+    /// so no registry instance state is needed, and the user-alias LOAD path
+    /// (`apply_user_rows`, which has no `EnvironmentRegistry` handle) can reach it
+    /// uniformly. It is name-keyed ON the registry type exactly as Req 20.1
+    /// requires -- NOT a method on a `CommandEnvironment` trait object, because the
+    /// FFCMD base IS `resolve_target` and is not such an object (Req 1.2) so a
+    /// trait-only method could not cover FFCMD without a shim.
+    ///
+    /// Validates: command-environments Requirement 20.1, 20.2, 20.3, 20.5
+    pub(crate) fn root_commands(env_name: &str) -> Vec<String> {
+        let mut roots: Vec<String> = if env_name.eq_ignore_ascii_case(FFCMD_NAME) {
+            // FFCMD: the built-in canonical roots (the two code-only built-in
+            // menus' option roots unioned with BUILTIN_WORKSPACE_VERB_ROOTS).
+            crate::shell::alias_reader::builtin_ffcmd_roots()
+        } else if env_name.eq_ignore_ascii_case(FFEDIT_NAME) {
+            // FFEDIT: the canonical editor verbs. The canonical roots are
+            // identical whether sourced from `ffedit_english()` or the live
+            // overlaid store (the locale overlay only adds SURFACES, never roots),
+            // so the cheaper fresh seed is used.
+            super::environment::AliasTable::ffedit_english().canonical_verbs_owned()
+        } else {
+            // Unknown / non-enumerable environment -> empty (Req 20.5).
+            Vec::new()
+        };
+        // Deterministic, case-insensitively de-duplicated order (Req 20.2). Both
+        // source collectors already de-duplicate case-insensitively; sorting makes
+        // the order unambiguously stable for repeated calls and the Gate 2
+        // dropdown, independent of either source's internal first-seen order.
+        roots.sort();
+        roots
+    }
+
+    /// True iff `root` (trimmed, case-insensitive) is a canonical root of the
+    /// named environment, using the SAME `eq_ignore_ascii_case` comparison the
+    /// existing verb resolution uses. False for an unknown environment name or an
+    /// unknown root, never panicking (Req 20.4, 20.5). This is the validation
+    /// primitive the user-alias LOAD skip-with-WARN (Req 20.7) and the save-side
+    /// hook (Req 20.8) share.
+    ///
+    /// Validates: command-environments Requirement 20.4, 20.5
+    pub(crate) fn contains_root(env_name: &str, root: &str) -> bool {
+        let r = root.trim();
+        Self::root_commands(env_name)
+            .iter()
+            .any(|c| c.eq_ignore_ascii_case(r))
+    }
 }
 
 // The real registered FFEDIT (editor) `CommandEnvironment` object --
@@ -398,6 +458,143 @@ mod tests {
         // Fallback to host_fs (non-record-capable) when no mainframe CE is built.
         assert!(!reg.backend_for(MAINFRAME_NAME).record_capable());
         assert!(!reg.backend_for(HOST_FS_NAME).record_capable());
+    }
+
+    // === Root-command enumeration tests (CR-CH-067, Req 20) ================
+
+    /// Validates: command-environments Requirement 20.1, 20.3 -- `root_commands`
+    /// for FFCMD returns the COMPLETE built-in canonical root set: the built-in
+    /// menu-option roots (CONFIG, THEME, FILES, CATALOGS, ...) unioned with
+    /// BUILTIN_WORKSPACE_VERB_ROOTS (COMMANDS, LOG, PLUGINS, MACROS, SEARCH,
+    /// GSEARCH, KINDS, MENUS, ALIASES, KEYS). A user-menu-only root (never in the
+    /// two code-only built-in menus nor the verb list) is intentionally EXCLUDED.
+    #[test]
+    fn root_commands_ffcmd_returns_complete_builtin_root_set() {
+        let roots = EnvironmentRegistry::root_commands(FFCMD_NAME);
+        for expected in [
+            // Menu-option + CustomWorkspace verb roots.
+            "CONFIG", "THEME", "FILES", "CATALOGS", "COMMANDS", "LOG", "PLUGINS", "MACROS",
+            "SEARCH", "GSEARCH", "KINDS", "MENUS", "ALIASES",
+            "KEYS", // Ladder-handled FFCMD roots (CR-CH-067), incl. the file-open family.
+            "EDIT", "VIEW", "BROWSE", "START", "RETURN", "SWAP",
+        ] {
+            assert!(
+                roots.iter().any(|r| r == expected),
+                "FFCMD roots must contain built-in root {expected}, got {roots:?}"
+            );
+        }
+        // A root reachable ONLY via a user menus/*.toml override is NOT a built-in
+        // canonical root and must not appear (the documented completeness posture).
+        assert!(
+            !roots.iter().any(|r| r.eq_ignore_ascii_case("USERONLYROOT")),
+            "a user-menu-only root must not be in the built-in canonical set"
+        );
+    }
+
+    /// Validates: command-environments Requirement 20.1 -- `root_commands` for
+    /// FFEDIT returns the canonical editor verbs sourced from
+    /// `AliasTable::ffedit_english().canonical_verbs_owned()`.
+    #[test]
+    fn root_commands_ffedit_returns_canonical_editor_verbs() {
+        let roots = EnvironmentRegistry::root_commands(FFEDIT_NAME);
+        for expected in [
+            "FIND", "CHANGE", "LOCATE", "SAVE", "SORT", "EXCLUDE", "SHOW",
+        ] {
+            assert!(
+                roots.iter().any(|r| r == expected),
+                "FFEDIT roots must contain editor verb {expected}, got {roots:?}"
+            );
+        }
+    }
+
+    /// Validates: command-environments Requirement 20.3 -- `root_commands` returns
+    /// CANONICAL roots ONLY, not localised alias SURFACES. X and INCLUDE are
+    /// FFEDIT alias surfaces whose canonicals are EXCLUDE and SHOW; they must NOT
+    /// appear as roots (offering a surface as a root choice would be circular).
+    #[test]
+    fn root_commands_ffedit_excludes_alias_surfaces() {
+        let roots = EnvironmentRegistry::root_commands(FFEDIT_NAME);
+        assert!(
+            roots.iter().any(|r| r == "EXCLUDE"),
+            "the canonical EXCLUDE is a root"
+        );
+        assert!(
+            roots.iter().any(|r| r == "SHOW"),
+            "the canonical SHOW is a root"
+        );
+        assert!(
+            !roots.iter().any(|r| r == "X"),
+            "the alias SURFACE X must NOT be a root, got {roots:?}"
+        );
+        assert!(
+            !roots.iter().any(|r| r == "INCLUDE"),
+            "the alias SURFACE INCLUDE must NOT be a root, got {roots:?}"
+        );
+    }
+
+    /// Validates: command-environments Requirement 20.2 -- `root_commands` is
+    /// DETERMINISTIC (stable sorted order) across repeated calls, and is
+    /// case-insensitively de-duplicated (no two entries differ only by case).
+    #[test]
+    fn root_commands_is_deterministic_and_deduplicated() {
+        let a = EnvironmentRegistry::root_commands(FFCMD_NAME);
+        let b = EnvironmentRegistry::root_commands(FFCMD_NAME);
+        assert_eq!(a, b, "repeated calls must return the same order");
+        let mut sorted = a.clone();
+        sorted.sort();
+        assert_eq!(a, sorted, "order must be the stable sorted order");
+        for i in 0..a.len() {
+            for j in (i + 1)..a.len() {
+                assert!(
+                    !a[i].eq_ignore_ascii_case(&a[j]),
+                    "roots must be case-insensitively de-duplicated: {} vs {}",
+                    a[i],
+                    a[j]
+                );
+            }
+        }
+    }
+
+    /// Validates: command-environments Requirement 20.5 -- an unknown /
+    /// non-enumerable environment name (FFNAV / FFLINE / HOSTFS / MAINFRAME or any
+    /// other) yields an EMPTY root list, never a panic.
+    #[test]
+    fn root_commands_unknown_environment_is_empty() {
+        assert!(EnvironmentRegistry::root_commands(FFNAV_NAME).is_empty());
+        assert!(EnvironmentRegistry::root_commands(HOST_FS_NAME).is_empty());
+        assert!(EnvironmentRegistry::root_commands(MAINFRAME_NAME).is_empty());
+        assert!(EnvironmentRegistry::root_commands("FFLINE").is_empty());
+        assert!(EnvironmentRegistry::root_commands("NOTANENV").is_empty());
+        assert!(EnvironmentRegistry::root_commands("").is_empty());
+    }
+
+    /// Validates: command-environments Requirement 20.4 -- `contains_root` is
+    /// case-insensitive and whitespace-trimming for a real root of a known
+    /// environment, in both source-case directions.
+    #[test]
+    fn contains_root_is_case_insensitive_and_trimmed() {
+        assert!(EnvironmentRegistry::contains_root(FFCMD_NAME, "CONFIG"));
+        assert!(EnvironmentRegistry::contains_root(FFCMD_NAME, "config"));
+        assert!(EnvironmentRegistry::contains_root(FFCMD_NAME, "  Config  "));
+        assert!(EnvironmentRegistry::contains_root(FFEDIT_NAME, "find"));
+        assert!(EnvironmentRegistry::contains_root(FFEDIT_NAME, "FIND"));
+    }
+
+    /// Validates: command-environments Requirement 20.4, 20.5 -- `contains_root`
+    /// is FALSE for a bogus root, for a known root in the WRONG environment, and
+    /// for any root of an unknown environment, never panicking.
+    #[test]
+    fn contains_root_false_for_bogus_or_unknown() {
+        assert!(!EnvironmentRegistry::contains_root(FFCMD_NAME, "NOTAROOT"));
+        // FIND is an FFEDIT root, not an FFCMD root.
+        assert!(!EnvironmentRegistry::contains_root(FFCMD_NAME, "FIND"));
+        // CONFIG is an FFCMD root, not an FFEDIT root.
+        assert!(!EnvironmentRegistry::contains_root(FFEDIT_NAME, "CONFIG"));
+        // X is an FFEDIT alias SURFACE, not a canonical root.
+        assert!(!EnvironmentRegistry::contains_root(FFEDIT_NAME, "X"));
+        // Unknown environment -> always false.
+        assert!(!EnvironmentRegistry::contains_root("NOTANENV", "CONFIG"));
+        assert!(!EnvironmentRegistry::contains_root(MAINFRAME_NAME, "FIND"));
     }
 
     /// Validates: command-environments Requirement 13.3, 5.1 -- the active-wins

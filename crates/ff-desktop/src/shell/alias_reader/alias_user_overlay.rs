@@ -73,6 +73,25 @@ impl LocaleAliasStore {
                 continue;
             }
             let env_name = row.environment.env_name();
+            // REJECT-WITH-WARNING-AT-LOAD (CR-CH-067, Req 20.7): a row whose root
+            // is NOT a valid canonical root of its declared environment is skipped
+            // with a WARN naming the offending alias / root / environment, and the
+            // load CONTINUES. A single invalid row never blocks startup nor drops
+            // any OTHER valid row. This runs AFTER the malformed-row and no-shadow
+            // guards and BEFORE the row is applied, mirroring their skip-with-WARN
+            // discipline; the existing guards stay intact.
+            if !super::super::environment_registry::EnvironmentRegistry::contains_root(
+                env_name, &canonical,
+            ) {
+                ff_logging::log_warn!(
+                    "[aliases] user alias '{}' names root '{}' which is not a valid root of \
+                     environment '{}' -- skipped",
+                    surface,
+                    canonical,
+                    env_name
+                );
+                continue;
+            }
             let template = if row.command_template.trim().is_empty() {
                 None
             } else {

@@ -4072,6 +4072,30 @@ suite PASS. -->
 | `ff-desktop` | ✅ | `shell::tests_crch061::host_tab_save_is_unchanged_and_does_not_reach_catalog_access` | command-environments Req 19.5: native/host (Delimited) tab SAVE unchanged and byte-identical; only a MAINFRAME-owned tab reaches the catalog-backed access |
 | `ff-idcams` | ✅ | `dataset_access::impl_catalog_tests::catalog_access_returns_not_found_for_absent_dsn` (true-miss NotFound at the access layer) + the ff-idcams round-trip genuine-miss case | command-environments Req 19.6: a genuinely absent DSN still surfaces NotFound with the existing non-zero rc; the fix turns a FALSE miss into a resolve, not masking a true miss |
 
+### Phase (cmdenv-root-enum) -- CR-CH-067 (EnvironmentRegistry root enumeration + reject-with-WARNING-at-load)
+
+> Gate 1 foundation for the Alias Editor redesign (Gate 2). ADDITIVE read-only
+> `root_commands` / `contains_root` query on the built EnvironmentRegistry + a
+> load-time skip-with-WARN for an invalid user alias root + a save-side validity
+> hook. PASS: owner's authoritative `cargo gate` (FULL, nextest, workspace) ran
+> fmt OK / clippy CLEAN / build OK / 6911 passed; the only failure was the
+> UNRELATED pre-existing flaky `ff-logging::thread_safety_tests::log_call_returns_within_1ms`
+> 1ms wall-clock latency test (a crate Gate 1 never touches), which PASSED on an
+> isolated re-run on an unloaded machine -- a machine-saturation flake, not a Gate
+> 1 regression. All ff-desktop Req 20.x tests passed. Criteria from
+> docs/specs/command-environments/requirements.md Req 20.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ | `shell::environment_registry::tests::root_commands_ffcmd_returns_complete_builtin_root_set` + `root_commands_ffedit_returns_canonical_editor_verbs` | command-environments Req 20.1: `EnvironmentRegistry::root_commands(env_name)` returns the environment's complete canonical root set (FFCMD via `builtin_ffcmd_roots` -- now unioned with `BUILTIN_FFCMD_LADDER_VERB_ROOTS` incl. the file-open family EDIT/VIEW/BROWSE; FFEDIT via `canonical_verbs_owned` over `ffedit_english`); a name-keyed registry query, not a CommandEnvironment trait method |
+| `ff-desktop` | ✅ | `shell::environment_registry::tests::root_commands_is_deterministic_and_deduplicated` | command-environments Req 20.2: `root_commands` result is deterministic (stable sorted order) and de-duplicated case-insensitively |
+| `ff-desktop` | ✅ | `shell::environment_registry::tests::root_commands_ffedit_excludes_alias_surfaces` | command-environments Req 20.3: `root_commands` returns canonical roots ONLY, not localised alias surfaces (X / INCLUDE excluded) |
+| `ff-desktop` | ✅ | `shell::environment_registry::tests::contains_root_is_case_insensitive_and_trimmed` | command-environments Req 20.4: `contains_root(env_name, root)` is case-insensitive (`eq_ignore_ascii_case`, the existing verb-resolution comparison), trims whitespace |
+| `ff-desktop` | ✅ | `shell::environment_registry::tests::root_commands_unknown_environment_is_empty` + `contains_root_false_for_bogus_or_unknown` | command-environments Req 20.5: unknown env_name or unknown root is graceful -- `root_commands` empty, `contains_root` false, never a panic |
+| `ff-desktop` | ✅ | code review: `root_commands`/`contains_root` are read-only associated fns with no call site in the dispatch/nav/persistence path (only the alias load/save seams) | command-environments Req 20.6: the query is additive and read-only; no change to dispatch / active-env derivation / front door / nav stack / persistence / CommandTarget |
+| `ff-desktop` | ✅ | `shell::tests_alias_editor::load_skips_user_row_with_root_invalid_in_environment` | command-environments Req 20.7: user alias store load skips a row whose root is not a valid root of its declared environment (`contains_root == false`) with a WARN naming alias/root/environment, and CONTINUES; no valid row dropped, startup not blocked; mirrors the existing no-shadow/collision skip-with-WARN in `apply_user_rows` with those guards intact |
+| `ff-desktop` | ✅ | `shell::alias_editor::tests::validate_rejects_root_not_valid_in_declared_environment` + `validate_accepts_root_valid_in_declared_environment` | command-environments Req 20.8: the same `contains_root` validity check is surfaced in `validate_user_alias_rows` for save-side use (Gate 2 rejects at save); Gate 1 adds only the hook + the load-time skip-with-WARN |
+
 ### Phase (find-search-split) -- CR-NR-110 (FIND=FFEDIT in-buffer; SEARCH=FFCMD canonical cross-backend; GREP alias; engine deferred)
 
 > Verb split: FIND is the FFEDIT (editor) in-buffer search verb; SEARCH is the FFCMD
