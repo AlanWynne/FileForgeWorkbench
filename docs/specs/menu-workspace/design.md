@@ -1808,3 +1808,173 @@ carves it out explicitly and Req 14.15 names it as the sole exception.
 Closing a Detached_Workspace by `X`-at-root or `=X` uses the same
 close-workspace-or-exit path as a docked Workspace (menu-and-statusbar Req
 18.3/18.11), per Req 14.16.
+
+---
+
+## Design Delta: Full menu-option localisation -- mnemonic + command alias + description (CR-NR-111)
+
+Design delta to the menu-render model. The GOVERNING design is
+`localization/design.md` ("Menu Kinds localise FULLY", CR-NR-111, Requirement 12);
+this delta records the render-model pieces this spec owns (the `MenuOption` model,
+the shared renderer, and `option_prefix_job`). It builds ON the CR-NR-109 command
+-column localisation already documented in `localization/design.md` (Requirement
+11, part 5). NOT a framework change: the stored shape and the dispatch path are
+unchanged (see the localization delta's framework-conformance statement).
+
+### Stored `MenuOption` shape is UNCHANGED (crux decision: store the ROOT)
+
+A saved menu option keeps its existing three-field shape: `key` (the mnemonic),
+`command` (the ROOT command string, locale-independent), `description` (English
+Identity_Base). The CR-NR-111 crux -- what the "command" field stores so a single
+saved menu auto-converts -- is settled as the ROOT command (Option A), which is
+exactly today's shape (`defaults.rs`, `MenuOption.command`). No `MenuOption` field
+is added and no existing saved menu is migrated (full justification and the
+rejected key-storing Option B are in `localization/design.md`).
+
+### Three localised surfaces, derived at render time
+
+Today the shared renderer localises only the DESCRIPTION
+(`i18n_keys::localised_option_description`) and -- since CR-NR-109 -- the COMMAND
+column (via the `command_surfaces: &[String]` parameter supplied by the shell's
+`menu_option_command_surfaces`). The MNEMONIC (`option.key`) is still painted RAW
+(`{:<4}` of `option.key` in `render_layout.rs::option_prefix_job`). CR-NR-111
+adds the mnemonic as a third derived surface:
+
+- New `i18n_keys` helpers mirroring the description seam:
+  `menu_option_key_key(menu_name, command)` builds
+  `menu-<menu>-opt-<command>-key`, and `localised_option_mnemonic(menu_name,
+  option)` = `t_or(key, &option.key)` (catalogue value when present, else the raw
+  `option.key` as the Identity_Base fallback). Keyed by menu + ROOT command (not
+  by the raw mnemonic) so the key is stable across locales, matching the
+  description seam's keying.
+  - SLUG CONVENTION (MANDATORY -- the two keys MUST be constructed identically):
+    `menu_option_key_key` uses the SAME `slug(command)` helper that
+    `menu_option_desc_key` already uses (verified: `menu_option_desc_key` calls
+    `slug(command)` in `menu_workspace/i18n_keys.rs`, which lower-cases, collapses
+    runs of non-alphanumeric characters to a single `-`, and trims leading/trailing
+    `-`). So for the Settings "Reset bare" root, the mnemonic key is
+    `menu-settings-opt-reset-bare-key`, exactly paralleling the description key
+    `menu-settings-opt-reset-bare-desc`. A coder MUST NOT build the key from the
+    raw command string (which would yield a divergent
+    `menu-settings-opt-Reset bare-key`); both keys slug the command the same way.
+- REALISED CONTRACT (authoritative, matches `localization/design.md`): the
+  per-locale mnemonic source IS this `menu-<menu>-opt-<command>-key` catalogue key
+  (Option ii). Req 12.8's "no mnemonic source" means this key is absent at the
+  active locale, and the fallback is the stored `option.key`. Deriving the
+  mnemonic from the localised command surface (Option i) is REJECTED and MUST NOT
+  be implemented.
+- The shell computes a `mnemonic_surfaces: &[String]` vector positionally aligned
+  with `menu.options`, exactly as it already computes `command_surfaces`, and
+  passes both into `render_menu_workspace`.
+- `render_layout.rs::option_prefix_job` is changed to take the resolved mnemonic
+  surface (positionally) instead of reading `option.key` raw, formatting it in the
+  existing `{:<4}` mnemonic column. The command column already takes its surface
+  positionally; the two columns are now symmetric.
+
+### Mnemonic DISPLAY vs key MATCH are separate (preserves Req 1/19)
+
+Localising the DISPLAYED mnemonic does NOT change which keystroke selects an
+option. The `MENU <name> <key>` chained-key selection and any in-menu key press
+continue to match against the stored `option.key` (menu-workspace Req 1 key
+format, Req 19 one-selection-path). The localised mnemonic is a display surface
+only; the stored `key` remains the match token and the dispatched option still
+carries the ROOT `command`. This is pinned as an acceptance criterion
+(menu-workspace Req 21.8): displayed mnemonic is display-only; the stored `key` is
+the selection token. (Making a locale's displayed mnemonic also typeable would be
+an additional key-match alias, out of this gate's scope -- see localization Req 12
+Out of Scope.) The full-shell test below asserts this: selecting a row whose
+displayed mnemonic is localised still matches on the stored `key` and dispatches
+the ROOT command.
+
+### Applies to ALL menu kinds, one path
+
+Because every menu kind (POM, Settings, user menus) renders through the one shared
+`render_menu_workspace` and selects through the one `activate_menu_option` path
+(Req 2.1, Req 19), the three-surface localisation and the ROOT-dispatch are
+uniform across all menu kinds with no per-kind special-casing (Req 12.9).
+
+### Second-prize per-locale saved menu (load-time, optional)
+
+For the owner's second-prize fallback, the user-menu file lookup that derives
+`MenuWorkspaceState.file_path` gains a locale segment: for menu `<name>` at active
+locale `L`, resolve `menus/<L>/<name>.toml` when it exists, else the base
+`menus/<name>.toml`, else (built-in) the code-only `DEFAULT_*_TOML`. This mirrors
+the help loader's per-locale directory resolution (one directory-fallback pattern
+in the product), adds no new menu mechanism, keeps built-ins code-only (never
+written to disk), and composes with first-prize derivation (a per-locale file's
+options still store roots and still auto-convert their columns). First prize (one
+auto-converting definition) is preferred; this is the explicit fallback.
+
+RESOLUTION TIME vs SESSION PERSISTENCE (MANDATORY -- Req 12.7a). The locale
+segment is applied at menu LOAD / RECONSTRUCT time, keyed by the menu NAME + the
+active locale; it is NEVER baked into a persisted path. A Menu_Workspace already
+persists as a locale-NEUTRAL `WorkspaceDescriptor::Menu { name }` (the menu NAME,
+not an absolute or locale-qualified path -- startup-and-session Req 21, CR-CH-012,
+and the SUPERSEDED Section 10 note above).
+
+RESOLUTION SITES (the complete set -- enumerated, not "one site"). The locale
+segment is applied by the user-authored menu reconstruct-by-name seams in
+`shell/nav_reconstruct.rs`. There are TWO such seams, and both MUST carry the
+segment identically:
+- `reconstruct_settings_menu` (the Settings menu), and
+- `reconstruct_named_menu` (every user-defined named menu),
+which today build `self.menus_dir().join("<name>.toml")` and become
+`menus_dir().join(L).join("<name>.toml")` when that exists, else
+`menus_dir().join("<name>.toml")`, else the code-only baseline, re-reading the
+THEN-active locale on every reconstruct. `MenuWorkspaceState.file_path` is thus a
+DERIVED, transient value (name + active locale at load), not a persisted key.
+Consequence the gate requires: a session saved under `af` and restored under `en`
+re-resolves to the English/base menu -- the restored menu follows the then-active
+locale, never the save-time locale.
+
+THE POM / HOME CONTEXT IS OUT OF SCOPE FOR THE SECOND-PRIZE FILE OVERRIDE
+(deliberate). The POM does NOT reconstruct through either seam above:
+`reconstruct_pom` calls `ensure_pom_menu_loaded` (`shell/commands_fastpath.rs`),
+a distinct load path that builds `menus_dir().join("pom.toml")` directly. That
+path is INTENTIONALLY left unchanged and the second-prize locale segment is NOT
+wired into it. The POM is localised by FIRST-PRIZE auto-conversion ONLY, which is
+sufficient for Req 12.9 ("all menu kinds"): a code-only built-in localises in full
+from its stored roots + per-locale alias/mnemonic/description DATA with NO
+per-locale FILE. Wiring `ensure_pom_menu_loaded` for a `menus/<L>/pom.toml` would
+provide no behaviour first prize does not already give, and writing a base
+`menus/pom.toml` so a locale file could sit beside it is forbidden under
+CR-CH-021. So the optional second-prize FILE override is scoped to the two
+user-authored reconstruct seams; the POM is covered by first prize.
+
+SECOND PRIZE FOR A BUILT-IN (POM / Settings) -- CR-CH-021 preserved (Req 12.7b).
+A built-in has no base `menus/<name>.toml` on disk (built-ins are code-only;
+`ensure_menus_dir` only creates the empty directory and never writes a built-in
+file). So for a built-in the order is EXACTLY: `menus/<L>/<name>.toml` IF the user
+authored one, otherwise fall STRAIGHT THROUGH to the code-only `DEFAULT_*_TOML`
+baseline. No base file is ever written so a locale file can sit beside it (that
+would violate CR-CH-021 and is forbidden). A built-in needs NO per-locale file to
+localise -- first-prize auto-conversion already localises the code-only built-in
+from its stored roots + per-locale DATA; a `menus/<L>/pom.toml` is only a
+power-user override for a different option SET/ordering per locale.
+
+### Files touched (implementation, when built)
+
+`menu_workspace/i18n_keys.rs` (add `menu_option_key_key` /
+`localised_option_mnemonic`), `menu_workspace/render.rs` and
+`menu_workspace/render_layout.rs` (`option_prefix_job` takes the mnemonic surface;
+`render_menu_workspace` gains the `mnemonic_surfaces` parameter),
+`shell/locale_resolver.rs` (compute the mnemonic-surface vector beside the command
+surfaces), `shell/render_body_arms.rs` (pass both surface vectors), and the
+user-menu file-path derivation for the optional second-prize locale segment. No
+`MenuOption` field change; no new crate.
+
+### Tests
+
+- `localised_option_mnemonic_uses_catalogue_then_falls_back_to_key` -- catalogue
+  value when the `menu-<menu>-opt-<command>-key` key is present, raw `option.key`
+  otherwise (mirrors the existing description-localisation test).
+- `mnemonic_surfaces_align_positionally_with_options` -- the shell-computed
+  mnemonic vector is index-aligned with `menu.options` and falls back per option.
+- `full_shell_localised_menu_row_shows_all_three_surfaces` -- with a non-`en`
+  locale and mnemonic/alias/description DATA, a menu row shows localised mnemonic,
+  command, and description; selecting it dispatches/records the ROOT command.
+- `en_menu_row_is_behaviour_neutral` -- with `en` / no overlay the row shows the
+  raw root mnemonic/command/English description unchanged (Req 10.2).
+- `per_locale_saved_menu_loaded_when_present_else_base` -- the second-prize
+  locale-segment file lookup.
+- Existing menu / selection / focus-conformance tests stay green.

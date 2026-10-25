@@ -370,3 +370,85 @@ The command semantics engine is responsible for:
 12.5. THE canonical verbs recorded and persisted SHALL be FIND and SEARCH respectively (never an alias surface such as GREP), consistent with command-environments Requirement 6a.2. [CR-NR-110]
 
 12.6. THIS requirement SHALL record the decision only; it SHALL NOT alter the dispatch, navigation, focus, or persistence framework seams. The concrete SEARCH engine and mainframe dataset traversal are DEFERRED by CR-NR-110 (global-search Requirement 9) pending CR-NR-105 (volume-model) and dataset-catalog. [CR-NR-110, framework-conformance.md]
+
+---
+
+### Requirement 13: Localised-surface command resolution is behaviour-preserving for routing (CR-NR-111)
+
+**User Story:** As a maintainer, I want a command entered or selected as a
+localised alias surface to resolve to its root command and execute exactly as the
+root verb does, so that full menu-Kind localisation does not change command
+semantics.
+
+**Source:** CR-NR-111 (owner: "this should not affect how commands are routed through the sytem?"). This requirement RECORDS the routing-invariance decision for full menu-Kind localisation; the alias/resolver mechanism is owned by `docs/specs/localization/` Requirement 11, the full menu-option localisation by `docs/specs/localization/` Requirement 12 and `docs/specs/menu-workspace/` Requirement 21, and the single-classifier routing by `docs/specs/command-framework/` Requirement 18. Builds ON the command pipeline (Requirement 1) and case-insensitive command names (Requirement 3).
+
+#### Acceptance Criteria
+
+13.1. WHEN a verb is entered or selected as an active-locale ALIAS SURFACE of a root command, THE command pipeline SHALL resolve it to the ROOT command and execute that root command, producing a result IDENTICAL to entering the root verb directly; the localised surface SHALL be a pre-resolution DISPLAY/INPUT form only. [CR-NR-111]
+
+13.2. THE resolution of a localised surface to its root SHALL occur through the EXISTING alias layer and single classifier (localization Requirement 11.6, command-framework Requirement 18.1) at the normalize/resolve stage of the pipeline (Requirement 1), adding NO new pipeline stage and NO parallel resolver. [CR-NR-111]
+
+13.3. THE value RECORDED and PERSISTED (command history, descriptors) SHALL be the ROOT command, never the localised alias surface, regardless of the active locale (localization Requirement 10.3, 11.9; command-framework Requirement 18.3). [CR-NR-111]
+
+13.4. A LOCALE CHANGE SHALL NOT alter which root command a given menu option or entered surface resolves to, nor the command's semantics, scope, or effect; only the displayed/typeable surface changes (localization Requirement 12.5). [CR-NR-111]
+
+13.5. THIS requirement SHALL record the decision only; it SHALL NOT alter the dispatch, navigation, focus, or persistence framework seams. [CR-NR-111, framework-conformance.md]
+
+---
+
+### Requirement 14: Parameterised command aliases -- positional substitution into a root-command template (CR-NR-112)
+
+**User Story:** As a user, I want to define a command alias that maps a short verb
+to a ROOT command WITH PARAMETERS, so that typing `ecob helloW` expands to
+`EDIT ffwb.cobol.master(helloW)` and then runs exactly as if I had typed the
+fully resolved command, giving me a general shorthand (not just a localisation
+alias).
+
+**Source:** CR-NR-112 (owner messages index 4-5). Extends the existing alias layer
+(localization Requirement 11, command-framework Requirement 9 Command Arguments)
+with a parameter template and positional substitution. The resolution-and-routing
+invariant is recorded in command-framework Requirement 19; the alias DATA format
+is cross-referenced to `docs/specs/localization/` (the alias-surface owner) and
+does NOT contradict CR-NR-111 Requirement 12. Builds ON the primary command parser
+(Requirement 3) and the single front door (command-framework Requirement 8).
+
+#### Glossary additions
+
+- **Parameter_Template**: an optional STRING field on an alias entry (e.g.
+  `FFWB.COBOL.MASTER(&1)`) that, together with the alias's ROOT verb, defines the
+  fully resolved command produced when the alias is invoked. An alias with no
+  template (absent or empty) is a pure verb alias (today's behaviour).
+- **Positional_Placeholder**: `&N` where `N` is a positive decimal integer (1-based),
+  referring to the Nth whitespace-delimited token of the alias invocation's
+  argument string. `&*` is the Rest_Placeholder.
+- **Rest_Placeholder**: `&*`, which substitutes the argument tokens AFTER the
+  highest referenced Positional_Placeholder (`&N`) in the template, joined by
+  single spaces, at its position. When the template references no `&N`, `&*`
+  substitutes all argument tokens. This "after the highest referenced positional"
+  rule means a template mixing `&1` and `&*` does NOT repeat tokens: `&1` takes
+  the first token and `&*` takes the rest. [CR-NR-112, owner-confirmed]
+- **Alias_Invocation_Argument**: the trimmed remainder of the typed line after the
+  alias verb (command-framework Requirement 9.1), tokenised for substitution by
+  whitespace (`split_whitespace`), consistent with the single front-door split.
+
+#### Acceptance Criteria
+
+14.1. EACH alias entry SHALL carry FOUR parts: a ROOT command (the canonical verb), an ALIAS name (the typeable/displayed surface, e.g. `ECOB`), an optional LOCALISATION KEY (the existing display key), and an optional PARAMETER TEMPLATE string (e.g. `FFWB.COBOL.MASTER(&1)`). [CR-NR-112]
+
+14.2. WHEN an alias that carries a non-empty Parameter_Template is invoked, THE command engine SHALL produce the fully resolved command by concatenating the alias's ROOT verb, a single space, and the template after substituting its placeholders, so `ECOB` (root `EDIT`, template `FFWB.COBOL.MASTER(&1)`) invoked as `ecob helloW` SHALL produce `EDIT FFWB.COBOL.MASTER(helloW)` -- and literal template text other than `&N`/`&*` SHALL be preserved verbatim. [CR-NR-112]
+
+14.3. WHEN substituting placeholders, THE command engine SHALL replace each `&N` with the Nth whitespace-delimited token of the Alias_Invocation_Argument (1-based), and SHALL replace `&*` with the argument tokens AFTER the highest referenced `&N` (joined by single spaces); when the template references no `&N`, `&*` SHALL be replaced with all argument tokens. This "after the highest referenced positional" rule ensures a template mixing `&1` and `&*` does NOT repeat tokens (`&1` takes the first token, `&*` takes the remainder). [CR-NR-112, owner-confirmed]
+
+14.4. WHEN a referenced `&N` has no corresponding argument token (fewer tokens were supplied than the template references), THE command engine SHALL substitute the EMPTY string for that `&N` and SHALL NOT raise an alias-layer error, so that `ecob` typed with no argument produces `EDIT FFWB.COBOL.MASTER()` and the resolved EDIT command owns whatever an empty parenthesised argument means. [CR-NR-112]
+
+14.5. WHEN the Alias_Invocation_Argument contains MORE tokens than the highest `&N` referenced by the template AND the template contains NO `&*`, THE command engine SHALL APPEND the tokens AFTER the highest referenced `&N` (as a space-separated string, preceded by a single space) to the expanded command, reusing the existing residual-argument pass-through, so no token beyond the highest referenced positional is silently discarded. RECORDED LIMITATION: the append keys off the highest REFERENCED index, so a template that references a non-contiguous subset of positions (e.g. only `&2`, skipping `&1`) will NOT re-append the lower unreferenced tokens (here `&1`); authoring a template that skips a lower positional while expecting the skipped token to survive is out of scope for this version. [CR-NR-112]
+
+14.6. WHEN an alias entry has an ABSENT or EMPTY Parameter_Template, THE command engine SHALL behave EXACTLY as the current pure verb alias does (rewrite the verb to its root and preserve the original argument string unchanged), so existing verb-only aliases and the English/identity case are byte-identical and unaffected. [CR-NR-112]
+
+14.7. ALIAS EXPANSION SHALL be SINGLE-PASS in this version: the fully resolved command produced by expanding one alias SHALL NOT be re-fed through alias expansion, so an alias whose template verb or substituted text happens to match another alias surface SHALL NOT trigger a second expansion. [CR-NR-112]
+
+14.8. THE substitution SHALL be pure text substitution with NO command-specific special-casing in the alias layer: after expansion, the resolved command string SHALL be dispatched through the existing single front door exactly as a typed command (command-framework Requirement 19), so a parameterised alias and the equivalent fully typed command SHALL produce an IDENTICAL observable result. [CR-NR-112]
+
+14.9. WHEN the worked example is exercised -- an alias `ECOB` with ROOT `EDIT` and template `FFWB.COBOL.MASTER(&1)` -- typing `ecob helloW` SHALL resolve to `EDIT FFWB.COBOL.MASTER(helloW)` and open `ffwb.cobol.master(helloW)` in an editor through the EXISTING EDIT routing (command-semantics Requirement 9.10, command-framework Requirement 8), with no new dispatch path. [CR-NR-112]
+
+14.10. THE argument tokenisation for `&N`/`&*` SHALL be whitespace splitting of the Alias_Invocation_Argument (the single split the front door provides, command-framework Requirement 9.1); quoted multi-word positional arguments are NOT in scope for this version (a `&N` is one whitespace-delimited token). [CR-NR-112]

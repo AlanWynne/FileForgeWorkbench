@@ -1401,7 +1401,7 @@ Rename + retire only. NO new split feature.
 bindings and the tab context-menu "Move to Other View" affordance all route through the same command
 path. No UI affordance bypasses the command layer.
 
-### Testing
+### Testing (DETACH slice)
 
 - `shell/commands.rs` unit tests: `detach_command_sets_detach_pending`,
   `split_detach_alias_still_detaches`, `bare_split_no_longer_detaches`,
@@ -1528,3 +1528,55 @@ reports the expected centered display title, plus a unit test on
 `BuiltinKind::display_title()`. The existing first-Tab focus tests remain green
 (interior focus unchanged), proving the in-body title removal did not shift the
 first interior control.
+
+---
+
+## Design Delta: Menu row chrome localises fully -- mnemonic, command, description (Requirement 20, CR-NR-111)
+
+Design delta to Section 3 (Menu Model / Menu-Command integration, Requirement 2)
+and Section 10 (Tab Window Chrome, Requirement 17). The GOVERNING design is
+`localization/design.md` ("Menu Kinds localise FULLY", CR-NR-111, Requirement 12);
+the render-model mechanics are in `menu-workspace/design.md` (CR-NR-111 delta).
+This delta records only what this spec owns: the guarantee that full-row
+localisation does NOT add or change any dispatch path.
+
+### Change
+
+When a menu is rendered at active locale `L`, all three observable parts of each
+menu row -- the MNEMONIC, the COMMAND surface, and the DESCRIPTION -- follow `L`
+(Req 20.1). The COMMAND surface and MNEMONIC each fall back PER PART to the
+Identity_Base/root English value when `L` provides no localised data, so every row
+stays complete and selectable (Req 20.2). This extends the existing
+description-only localisation to the whole row.
+
+### Dispatch is unchanged (Requirement 2 preserved)
+
+The single load-bearing guarantee this spec owns: selecting a menu row whose
+surface is localised invokes the SAME registered command through the SAME single
+dispatch path as the un-localised row (Req 20.3; command-framework Req 2). The
+displayed localised verb is resolved BACK to the registered ROOT command by the
+existing `rewrite_verb_to_root` -> `resolve_target` pre-pass that already runs for
+both the command line and menu selection (localization Req 11.6). Full-row
+localisation therefore adds NO dispatch path, changes NO routing, and alters NO
+recorded value -- the menu remains a dumb dispatcher of the ROOT command
+(menu-workspace Req 19). Not a framework change.
+
+### Preserved
+
+- Every menu item still binds to a `CommandId`/root command (Req 2); only the
+  DISPLAYED surface is locale-aware.
+- The mnemonic DISPLAY is localised but the key MATCH still uses the stored
+  `option.key`, so which keystroke selects a row is unchanged
+  (menu-workspace CR-NR-111 delta).
+- Title_Line / Tab_Header chrome (Req 17) is a separate concern and localises via
+  its own menu-title catalogue key; this delta adds no Title_Line change.
+- No `ff-menu-statusbar` API change; the render-surface derivation is in
+  `ff-desktop` (`menu_workspace` + `shell/locale_resolver.rs`).
+
+### Testing
+
+Covered by the full-shell `egui_kittest` assertions in the `menu-workspace`
+CR-NR-111 delta (a localised row shows all three surfaces; selecting it dispatches
+and records the ROOT command; `en` is behaviour-neutral). No additional
+`ff-menu-statusbar`-level test is required because this spec owns no new code path
+for the change.

@@ -612,3 +612,27 @@ Do NOT start until the gate is approved.
           expected centered display title; existing first-Tab focus tests stay green
           (interior focus unchanged after in-body title removal). Update TCR.
     - Validates: menu-and-statusbar Requirement 17.12, 17.13, 17.14
+
+---
+
+## Phase (menu-kind-localisation) -- Menu row chrome localises fully (CR-NR-111, Requirement 20)
+
+CR-NR-111 full menu-row localisation (mnemonic + command + description) is
+IMPLEMENTED by the governing plan in `docs/specs/localization/tasks.md`
+Phase 8 (Tasks 16-22), which owns the shared `render_menu_workspace` changes.
+menu-and-statusbar Requirement 20 adds ONLY the guarantee that full-row
+localisation changes NO dispatch path (command-framework Requirement 2
+preserved); it introduces no menu-and-statusbar-specific code task.
+
+- [ ] 38. Menu row chrome localises fully -- no new dispatch path (Req 20.1-20.3)
+  - [ ] 38.1 (Verification, no new mechanism) Confirm the shared renderer draws all
+          THREE localised row parts (mnemonic / command surface / description) per
+          active locale with per-part Identity_Base fallback, via localization
+          Phase 8 Tasks 17.1-17.3. (Covers Req 20.1, 20.2)
+  - [ ] 38.2 (Verification) Confirm selecting a localised row invokes the SAME
+          registered command through the SAME single dispatch path as the
+          un-localised row (the `rewrite_verb_to_root` -> `resolve_target` pre-pass),
+          proven by the localization Phase 8 full-shell test (Task 19.2). (Covers
+          Req 20.3; command-framework Req 2)
+  - [ ] 38.3 Update `docs/quality/TCR.md`: set the CR-NR-111 menu-and-statusbar
+          Req 20.1-20.3 rows to their correct status. (Project standards)

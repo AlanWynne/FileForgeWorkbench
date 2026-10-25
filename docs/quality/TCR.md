@@ -3860,6 +3860,43 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-desktop` | 🔴 | -- | localization Req 11.12 (CR-NR-109 amend): fold-collision handling -- prefer an exact match when present; an ambiguous folded input with no exact disambiguation issues a diagnostic naming the colliding candidates (no silent resolution) (Phase 5 Task 12.3) |
 | `ff-desktop` | 🔴 | -- | localization Req 11.13 (CR-NR-109 amend): DISPLAY surface keeps full correct diacritics regardless of the input fold (fold affects input matching only); optional explicit ASCII alias row only where a genuinely different ASCII spelling is needed (Phase 5 Task 12.4-12.5) |
 
+### CR-NR-111 -- Menu Kinds localise FULLY: mnemonic + command alias + description (gate authored; NOT COVERED)
+
+<!-- CR-NR-111: the DELTA on top of CR-NR-109. Adds full menu-option localisation
+(mnemonic + command surface + description), the Locale_Independent_Stored_Value =
+ROOT decision (Option A, no model change / no migration), first-prize
+auto-conversion, second-prize per-language saved menus, and per-part fallback.
+NOT a framework change (the rewrite_verb_to_root -> resolve_target pre-pass already
+delivers routing invariance). Governing plan: docs/specs/localization/tasks.md
+Phase 8 (Tasks 16-22). ALL rows NOT COVERED (gate authored; no code yet). Agents
+compile-verify + run scoped tests; the owner's full gate run is the authoritative
+suite PASS. -->
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 | -- | localization Req 12.1 (CR-NR-111): all THREE option parts (mnemonic + command surface + description) derive against the active locale `L`, so a locale change re-localises the whole option row, not the description alone (Phase 8 Task 17.1-17.3) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.2 (CR-NR-111): displayed COMMAND surface is the active-locale alias via the existing alias layer, root/English fallback (unchanged from CR-NR-109) (Phase 8 Task 17.3) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.3 (CR-NR-111): MNEMONIC localised from a per-locale source -- REALISED as the `menu-<menu>-opt-<command>-key` catalogue key resolved by `localised_option_mnemonic` = `t_or(key, &option.key)` (Option ii; Option i rejected); `option.key` fallback when absent (Phase 8 Task 16) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.4 (CR-NR-111): saved command is the Locale_Independent_Stored_Value = the ROOT (Option A); one saved menu renders in any locale without re-saving; surfaces DERIVED at render time; no new `MenuOption` field (Phase 8 Task 18) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.5 (CR-NR-111): a displayed/selected localised verb resolves to the ROOT via the EXISTING single resolver; full localisation adds NO new/parallel dispatch path (Phase 8 Task 18.2) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.6 (CR-NR-111): FIRST-PRIZE auto-conversion -- a once-authored menu renders in the active locale from the same stored definition, no per-language file required (Phase 8 Task 19) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.7 (CR-NR-111): SECOND-PRIZE per-language saved menus supported as a FALLBACK -- `menus/<L>/<name>.toml` resolved at load/reconstruct time, else the base definition (Phase 8 Task 20) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.7a (CR-NR-111): second-prize locale segment resolved at LOAD/RECONSTRUCT time by name + active locale; session persists the locale-NEUTRAL `WorkspaceDescriptor::Menu { name }`; af-save/en-restore re-resolves to English (Phase 8 Task 20.3, 20.5) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.7b (CR-NR-111): second-prize for a BUILT-IN resolves `menus/<L>/<name>.toml` if authored else falls STRAIGHT THROUGH to code-only `DEFAULT_*_TOML`; no base file written (CR-CH-021) (Phase 8 Task 20.2, 20.4) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.8 (CR-NR-111): PER-PART, PER-OPTION fallback to Identity_Base/root for any missing part; a menu NEVER renders a blank/unselectable option (the "not consistently Afrikaans" fix) (Phase 8 Task 19.3) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.9 (CR-NR-111): full localisation applies to ALL menu kinds (POM/Settings/user) via the one shared `render_menu_workspace`, no per-kind branch (Phase 8 Task 17.3) |
+| `ff-desktop` | 🔴 | -- | localization Req 12.10 (CR-NR-111): NO new Workspace-Kinds-registry field; option content localises via catalogues/alias layer, chrome via its existing seams (Phase 8 Task 21) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 21.1-21.3 (CR-NR-111): each option renders mnemonic/command/description per active locale through the shared renderer (Phase 8 Task 17; menu-workspace Task 49.1-49.2) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 21.4-21.5 (CR-NR-111): selection resolves to the ROOT via the single Option_Dispatch_Path + the localised-alias -> root pre-pass; stored `command` stays locale-independent/persisted identity (menu-workspace Task 49.4) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 21.6 (CR-NR-111): per-part fallback -- never a blank/unselectable option (menu-workspace Task 49.5) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 21.7 (CR-NR-111): uniform across POM/Settings/user via the single shared renderer, no POM-specific branch; first-Tab focus test stays green (menu-workspace Task 49.6) |
+| `ff-desktop` | 🔴 | -- | menu-workspace Req 21.8 (CR-NR-111): displayed localised MNEMONIC is DISPLAY-ONLY; the selecting keystroke still matches the stored `option.key` (menu-workspace Task 49.3) |
+| `ff-desktop` | 🔴 | -- | menu-and-statusbar Req 20.1-20.2 (CR-NR-111): menu-row mnemonic/command/description follow `L` with per-part Identity_Base fallback (menu-and-statusbar Task 38.1) |
+| `ff-desktop` | 🔴 | -- | menu-and-statusbar Req 20.3 (CR-NR-111): selecting a localised row invokes the SAME registered command through the SAME single dispatch path; no routing change (menu-and-statusbar Task 38.2) |
+| `ff-desktop` | 🔴 | -- | command-framework Req 18.1-18.3 (CR-NR-111): a localised option verb translates to the ROOT via the existing pre-pass then classifies through the SAME `resolve_target`; identical `CommandTarget`; no second dispatcher; ROOT recorded/persisted (command-framework Task 31) |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 13.1-13.5 (CR-NR-111): localised surface is a pre-resolution DISPLAY/INPUT form only; resolves to ROOT through the existing pipeline, no new stage/parallel resolver; decision record, no framework-seam change (command-semantics Task 29) |
+| `ff-desktop` | 🔴 | -- | workspace-kinds Req 9.1-9.3 (CR-NR-111): full menu-option-content localisation needs NO new Kind-config field / Kind-registry change; per-Kind chrome localises via its existing seams with Identity_Base fallback (localization Phase 8 Task 21) |
+
 ### CR-CH-056 -- egui-native theme model (theme-and-appearance Req 23/24/25; reworded 13/18/20)
 
 > egui-native theme rework: chrome `egui::Style` (via egui's own serde) + retained
@@ -4069,3 +4106,60 @@ coverage and confirm the shell behaviour is unchanged after the move.
 | `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.4: FIND and SEARCH remain distinct verbs in distinct environments; active-environment rule selects the right one |
 | `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.5: canonical verbs recorded/persisted are FIND and SEARCH (never an alias surface such as GREP) |
 | `ff-cmd-semantics` | 🔴 | -- | command-semantics Req 12.6: decision-record only; no dispatch/nav/focus/persistence change; engine + mainframe traversal deferred (CR-NR-105 + dataset-catalog) |
+
+### Phase (parameterised-aliases) -- CR-NR-112 (alias maps a verb to a ROOT command WITH a parameter template; &1..&N / &* positional substitution; single-pass; expansion in the existing pre-pass before resolve_target)
+
+> An alias entry gains a fourth part -- a parameter template string (e.g. `FFWB.COBOL.MASTER(&1)`).
+> Typing `ecob helloW` expands to `EDIT FFWB.COBOL.MASTER(helloW)` in the EXISTING
+> `rewrite_verb_to_root` pre-pass (before `resolve_target`) and flows through the one front door
+> unchanged. Substitution is pure text: unsupplied `&N` -> empty; surplus args appended when no `&*`.
+> Single-pass in v1 (forward-compatible depth-limit + visited-set guards documented). Templateless
+> entries are byte-identical to today. NO framework change. Gate authored docs-first; NO code until approved.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.1: alias entry carries FOUR parts -- root, alias name, optional localisation key, optional parameter template |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.2: a non-empty template expands to `root + space + substituted template`; literal template text preserved verbatim (`ecob helloW` -> `EDIT FFWB.COBOL.MASTER(helloW)`) |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.3: `&N` -> Nth whitespace token (1-based); `&*` -> all remaining tokens space-joined |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.4: an unsupplied `&N` substitutes EMPTY (no alias-layer error); `ecob` -> `EDIT FFWB.COBOL.MASTER()` |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.5: surplus args beyond highest `&N` (no `&*`) are APPENDED space-separated; no token discarded |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.6: absent/empty template -> byte-identical to today's pure verb rewrite (back-compat) |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.7: single-pass -- expanded command is not re-fed through alias expansion |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.8: pure text substitution, no alias-layer special-casing; parameterised alias == equivalent typed command (observable) |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.9: worked example end-to-end -- `ecob helloW` opens `ffwb.cobol.master(helloW)` via existing EDIT routing |
+| `ff-desktop` | 🔴 | -- | command-semantics Req 14.10: argument tokenisation is whitespace split; quoted multi-word positional args out of scope |
+| `ff-desktop` | 🔴 | -- | command-framework Req 19.1: parameterised alias expanded in the existing pre-pass BEFORE `resolve_target`; expanded string classified by the same single classifier -> identical `CommandTarget`/result |
+| `ff-desktop` | 🔴 | -- | command-framework Req 19.2: STRING-to-STRING rewrite upstream of `resolve_target`; no second dispatcher/resolver; no `CommandTarget`/dispatch/nav change; params not routed through dispatch layer |
+| `ff-desktop` | 🔴 | -- | command-framework Req 19.3: a templateless alias is rewritten byte-identically; no behaviour change to non-template aliases or non-alias strings |
+| `ff-desktop` | 🔴 | -- | command-framework Req 19.4: the ROOT (expanded) command is what history/session record; alias surface + template are pre-resolution forms only |
+| `ff-desktop` | 🔴 | -- | command-framework Req 19.5: single-pass expansion (one alias level); future chaining bounded by depth-limit + visited-set as an additive change, not a new path |
+| `ff-desktop` | 🔴 | -- | command-framework Req 19.6: key-bound parameterised alias expands via the pre-pass (field merged first); menu-option-command arg supply OUT OF SCOPE (no field merge on click) |
+
+### Phase (alias-editor-workspace) -- CR-NR-113 (Alias Editor Context: create/edit/SAVE command aliases into a user-scoped alias store; modelled on the Menus Editor)
+
+> A new Custom Workspace Context (configurator family, `WorkspaceKind::CommandConfigurator`
+> with `editor = "aliases"`) lists, adds, edits, deletes, and SAVES command aliases -- including
+> CR-NR-112 parameterised aliases -- into a NEW user-scoped, locale-independent alias store
+> (`<User_Data_Dir>/FileForgeWorkbench/aliases/user.toml`), SEPARATE from the per-locale
+> `i18n/<locale>/aliases/` catalogues. Save validates (empty fields, within-SAME-environment surface->two-roots
+> collision, built-in-root shadowing via builtin_ffcmd_roots() -- a NEW CR-NR-113 pre-pass invariant, NOT Req 8.10),
+> serialises (NEW serialiser), writes, and refreshes the live `LocaleAliasStore` in place via the EXTENDED reload
+> seam (one re-seed re-applies BOTH the per-locale overlay AND the user-store overlay). Rows carry a per-row
+> environment selector (ffcmd/ffedit) routing them into the right AliasTable. v1 edits the user store ONLY (no
+> CR-NR-111 overlap). HARD build-order dependency on CR-NR-112 for the template parts (5.1/5.3/5.8). NOT a framework
+> change; the one new mechanism is the user store + its resolver load path. Gate authored docs-first; NO code until approved.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.1: User_Alias_Store is a user-data-dir TOML, locale-independent, separate from `i18n/<locale>/aliases/`; rows carry surface/canonical/optional environment (ffcmd default)/localisation_key/command_template; absent -> empty + created on first save |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.2: Alias Editor is a Custom Workspace opened by `ALIASES` / bindable; registered as `CommandConfigurator` + `editor = "aliases"`; no new Kind/dispatcher |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.3: lists each definition (surface, root, environment, template); Add row, per-row Delete, per-field edit of surface/root/environment/template |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.4: Save validates (a) empty surface, (b) empty canonical, (c) within-SAME-environment surface->two-roots collision, (d) built-in-root shadowing via builtin_ffcmd_roots() [NEW invariant, not Req 8.10] then serialises + writes; on failure on-disk file unchanged |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.5: delete removes the row from the working copy and, on save, writes the file without it |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.6: after save, the live `LocaleAliasStore` is refreshed in place via the EXTENDED ACTIVE_ALIAS_STORE reload seam (one re-seed re-applies BOTH per-locale overlay AND user-store overlay); alias resolves immediately, no restart, neither layer dropped |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.7: resolver loads the user store as a THIRD overlay routed per-row to ffcmd/ffedit; resolves through the existing pre-pass; no user alias equals a builtin_ffcmd_roots() root (NEW invariant); cross-layer clash: same-root no-op, different-root per-locale wins (skip-with-WARN) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.8: a parameterised alias authored in the editor expands/dispatches per CR-NR-112 (no new expansion/dispatch behaviour) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.9: tab title `[ALIASES]`; END/F3 returns via the per-tab Navigation_Stack (Menus Editor parity) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.10: interior focus via the single `WorkspaceContext::render -> InteriorFocus` path; first Tab from command field lands on the first control (full-shell egui_kittest) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.11: v1 authors the User_Alias_Store ONLY; per-locale catalogues OUT OF SCOPE (no read/write; CR-NR-111 non-overlap) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.12: User_Alias_Store structural keys ASCII; alias field values are user data (any valid UTF-8) |

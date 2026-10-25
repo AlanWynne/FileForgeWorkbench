@@ -181,6 +181,62 @@ localisation-aware and avoids re-touching new UI and merge collisions.
      substantially done (there must be English keys to alias against); it is the
      bridge from "descriptions localise" to "verbs display localised too". See
      `docs/specs/localization/` Req 11 and change-log CR-NR-109.
+   - **CR-NR-111 (menu Kinds localise FULLY -- mnemonic + command alias +
+     description)** GATE AUTHORED (requirements + design + tasks written
+     2026-10-xx; owner approval pending at the gate CONFIRM step). The DELTA on top
+     of CR-NR-109: localises the remaining raw part (the MNEMONIC) via a new
+     catalogue key mirroring the description seam, settles the saved-command shape
+     as the ROOT (Locale_Independent_Stored_Value, Option A -- no model change / no
+     migration), and makes FIRST-PRIZE auto-conversion, SECOND-PRIZE per-language
+     saved menus, and per-part fallback explicit (the fix for "not consistently
+     Afrikaans"). NOT a framework change (the `rewrite_verb_to_root` ->
+     `resolve_target` pre-pass already delivers routing invariance on both seams);
+     NO new dispatcher / nav stack / persistence format / Kinds-registry field.
+     Sequence AFTER CR-NR-109 (it builds on the locale-aware alias layer + resolver).
+     Governing plan: `docs/specs/localization/tasks.md` Phase 8 (Tasks 16-22). See
+     `docs/specs/localization/` Req 12 and change-log CR-NR-111.
+   - **CR-NR-112 (parameterised command aliases -- verb -> ROOT command WITH a
+     parameter template; `&1..&N` / `&*` positional substitution)** GATE AUTHORING
+     (requirements + design + tasks written; owner approval pending). Extends the
+     SAME `AliasTable` as CR-NR-109/111 with an additive `command_template` field:
+     `ecob helloW` expands to `EDIT FFWB.COBOL.MASTER(helloW)` in the EXISTING
+     `rewrite_verb_to_root` pre-pass (before `resolve_target`), then routes through
+     the one front door unchanged. Pure text substitution (empty-sub for missing
+     `&N`, surplus args appended when no `&*`), SINGLE-PASS in v1 (depth-limit +
+     visited-set guards documented as the forward-compatible chaining path),
+     templateless entries byte-identical. A general user-facing shorthand, NOT just
+     localisation. Menu-option argument supply OUT OF SCOPE (no field merge on
+     click). NOT a framework change. Coexists with CR-NR-111 (template on the alias
+     entry, not the menu option; no double-expansion). Can run in PARALLEL with the
+     CR-NR-111 gate; both touch the alias layer, so coordinate the `AliasEntry` /
+     `AliasRowToml` edits. Governing plan: `docs/specs/command-framework/tasks.md`
+     + `docs/specs/command-semantics/tasks.md` Phase (parameterised-aliases). See
+     command-framework Req 19, command-semantics Req 14, and change-log CR-NR-112.
+   - **CR-NR-113 (Alias Editor Workspace Context -- create/edit/SAVE aliases)**
+     GATE AUTHORING (requirements + design + tasks written; owner approval
+     pending). The AUTHORING + PERSISTENCE surface for CR-NR-112: a new Custom
+     Workspace Context (configurator family, `WorkspaceKind::CommandConfigurator`
+     with `editor = "aliases"`, modelled on the Menus Editor) that lists, adds,
+     edits, deletes, and SAVES command aliases into a NEW user-scoped,
+     locale-independent alias store (`<User_Data_Dir>/FileForgeWorkbench/aliases/user.toml`),
+     SEPARATE from the per-locale `i18n/<locale>/aliases/` catalogues. New pieces:
+     an alias serialiser (none exists -- the alias layer is read-only today) and a
+     user-store load path on `LocaleAliasStore` (a THIRD overlay, per-row
+     `environment` routing to ffcmd/ffedit) with a built-in-root shadowing guard
+     (a NEW CR-NR-113 pre-pass invariant grounded on `builtin_ffcmd_roots()`, NOT
+     inherited from command-framework Req 8.10) + a live in-place refresh via the
+     EXTENDED reload seam (one re-seed re-applies BOTH the per-locale overlay AND
+     the user-store overlay). Full sibling-parity wiring like the Menus Editor (a
+     new runtime `TabKind`/`KindTag`, BuiltinKind mapping, non-persist arms, ctor,
+     render_body arm, panel field -- "no new WorkspaceKind" does NOT mean "no new
+     TabKind"). v1 edits the USER store ONLY (no CR-NR-111 overlap). NOT a
+     framework change; the one new mechanism is the user store + its resolver load
+     path (three owner-confirm points parked for CONFIRM: store path/shape incl.
+     the environment field; precedence + no-shadow rule; v1 scope). HARD
+     build-order dependency on CR-NR-112 (it authors CR-NR-112's 4-field record):
+     the template parts (Req 5.1/5.3/5.8) are gated until CR-NR-112 lands.
+     Governing plan: `docs/specs/command-configurator/tasks.md` Task 7. See
+     command-configurator Req 5 and change-log CR-NR-113.
 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
    ALTER actions via the single command path, volume picker in catalog creation,

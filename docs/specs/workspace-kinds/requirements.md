@@ -480,3 +480,40 @@ workspace kind." Builds on Requirement 5 (per-Kind profile attributes), CR-CH-04
     the Kind of THAT instance (resolved through the same per-window / per-region
     command context used for all commands, CR-CH-036 / CR-NR-094), consistent with
     where any other command typed there acts.
+
+<!-- ===================== CR-NR-111 (full menu-Kind localisation) ===================== -->
+
+### Requirement 9: Menu-Kind option content localises without a Kinds-registry change (CR-NR-111)
+
+**User Story:** As a maintainer, I want a menu Kind's fully localised option
+content (mnemonic + command alias + description) to be a Menu_Workspace concern,
+so that full menu localisation does not add a new field to the Workspace Kinds
+chrome registry.
+
+**Source:** [CR-NR-111]. Builds ON Requirement 3 (tab title / Title_Line derived
+from the Kind config) and Requirement 4 (per-Kind menu bar / key list). Governed
+in detail by localization Requirement 12 and menu-workspace Requirement 21.
+
+**Note:** The per-Kind CHROME (title, menu bar, key list, profile) and the menu
+OPTION CONTENT (mnemonic / command alias / description) are distinct concerns. The
+chrome localises via its own existing seams (the Title_Line from the Kind config,
+the catalogue-keyed title); the option content localises via the catalogues and
+the alias layer at render time. This requirement records that the full
+option-content localisation of CR-NR-111 adds NO new Kinds-registry field.
+
+#### Acceptance Criteria
+
+1. THE full localisation of a menu Kind's OPTION content -- mnemonic, displayed
+   command alias, and description (localization Requirement 12, menu-workspace
+   Requirement 21) -- SHALL be realised by the Menu_Workspace render path and the
+   catalogues/alias layer, and SHALL NOT require any new field on the Kind
+   configuration data model (Requirement 1) or any change to the Kind registry
+   mechanism (Requirement 2).
+2. THE per-Kind CHROME (tab title, Title_Line, menu bar, key list, profile)
+   localisation SHALL continue to resolve from the Kind config via its existing
+   seams (Requirement 3, Requirement 4); a locale change SHALL re-resolve the
+   displayed chrome text without altering the Kind's stable configuration values.
+3. WHEN the active locale provides no localised chrome text for a Kind, THE
+   displayed chrome SHALL fall back to the Identity_Base/root value (localization
+   Requirement 3.2), consistent with the per-part menu-option fallback
+   (localization Requirement 12.8), so a Kind always renders complete chrome.

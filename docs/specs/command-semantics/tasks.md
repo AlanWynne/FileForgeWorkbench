@@ -438,3 +438,58 @@ This is a **Wave 5 (Command Engine)** sub-project. It depends on `ff-command` (c
     - Covers: Requirement 11.10
   - [ ] 28.7 Update `docs/quality/TCR.md`: set the CR-NR-057 command-semantics Req 11 rows to their correct status
     - Covers: Requirement 11 (all criteria)
+
+---
+
+## Phase (menu-kind-localisation) -- Localised-surface command resolution is behaviour-preserving (CR-NR-111, Requirement 13)
+
+Requirement 13 RECORDS the decision that a localised DISPLAY/INPUT surface is a
+pre-resolution form only: the command pipeline resolves it to the ROOT through
+the EXISTING resolver, adding NO new pipeline stage and NO parallel resolver, and
+the ROOT remains the recorded identity. This is a decision record (the mechanism
+is already wired by CR-NR-109); there is NO new implementation task.
+
+- [ ] 29. Localised-surface resolution behaviour-preserving for routing (Req 13.1-13.5)
+  - [ ] 29.1 (Verification, no code) Confirm via the localization Phase 8 full-shell
+          test (`docs/specs/localization/tasks.md` Task 19.2) that a localised
+          surface resolves to the same ROOT as the English form, with no new pipeline
+          stage or parallel resolver and no change to dispatch/navigation/focus/
+          persistence seams. (Covers Req 13.1-13.5)
+  - [ ] 29.2 Update `docs/quality/TCR.md`: set the CR-NR-111 command-semantics
+          Req 13.1-13.5 rows to their correct status. (Project standards)
+---
+## Phase (parameterised-aliases) -- Parameter template + positional substitution (CR-NR-112, Requirement 14)
+Requirement 14 extends the alias record with a parameter template and defines the
+`&1..&N` / `&*` substitution algorithm, the empty-sub rule, extra-arg append,
+single-pass expansion, and back-compat for templateless entries. The routing
+invariant (expansion in the existing pre-pass before `resolve_target`) is
+command-framework Requirement 19 and is tasked there. Implement the algorithm and
+the record/loader here; follow TDD (write the failing test first).
+
+- [ ] 30. Extend the alias record with a parameter template (Req 14.1, 14.6)
+  - [ ] 30.1 Add `command_template: Option<String>` to `AliasEntry` in `shell/environment.rs`; keep existing constructors/seeds producing `None`
+    - Validates: command-semantics Requirement 14.1, 14.6
+  - [ ] 30.2 Add a `#[serde(default)]` `command_template` field to `AliasRowToml` in `shell/alias_reader.rs` and preserve it through `parse_alias_toml`
+    - Validates: command-semantics Requirement 14.1, 14.6
+  - [ ] 30.3 Add a template-aware entry lookup to `AliasTable` (return the matched `AliasEntry`, not just the canonical verb) without changing `canonical_verb` callers
+    - Validates: command-semantics Requirement 14.1
+  - [ ] 30.4 Write failing loader round-trip unit tests: a row WITH a template deserialises to `Some(template)`; a row WITHOUT deserialises to `None` (back-compat)
+    - Validates: command-semantics Requirement 14.6
+
+- [ ] 31. Implement the substitution algorithm `expand_template` (Req 14.2-14.5, 14.7, 14.8, 14.10)
+  - [ ] 31.1 Write failing pure unit tests FIRST covering: `&1` substitution (`ecob helloW` -> `EDIT FFWB.COBOL.MASTER(helloW)`); empty arg -> empty substitution (`ecob` -> `EDIT FFWB.COBOL.MASTER()`); surplus-arg append with no `&*` (`ecob a b` -> `... (a) b`); `&*` = all remaining tokens; two-digit `&12`; a bare `&` and literal parentheses copied verbatim; a templateless path byte-identical to today
+    - Validates: command-semantics Requirement 14.2, 14.3, 14.4, 14.5, 14.8, 14.10
+  - [ ] 31.2 Implement `expand_template(root, template, arg)` per the design algorithm (left-to-right scan, longest-digit-run `&N`, `&*` rest, empty-sub, extra-arg append), tokenising the argument via `split_whitespace`
+    - Validates: command-semantics Requirement 14.2, 14.3, 14.4, 14.5, 14.10
+  - [ ] 31.3 Confirm single-pass: `expand_template` returns a plain string and is never re-invoked on its own output (no loop); add a test asserting an expansion whose root matches another alias surface is NOT re-expanded
+    - Validates: command-semantics Requirement 14.7
+
+- [ ] 32. Document the language-independent alias placement and the quoting limitation (Req 14.10)
+  - [ ] 32.1 Record in the spec that a pure-shorthand alias lives in the base/identity `aliases/<env>.toml` with no `localisation_key`, available in all locales via the base fallback (no new neutral locale)
+    - Covers: command-semantics Requirement 14.1
+  - [ ] 32.2 Record the quoting limitation (a `&N` is one whitespace-delimited token; quoted multi-word positional args out of scope)
+    - Covers: command-semantics Requirement 14.10
+
+- [ ] 33. Coverage bookkeeping (CR-NR-112)
+  - [ ] 33.1 Update `docs/quality/TCR.md`: set the CR-NR-112 command-semantics Req 14.1-14.10 rows to their correct status as each test lands
+    - Covers: command-semantics Requirement 14 (all criteria)

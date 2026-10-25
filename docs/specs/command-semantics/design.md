@@ -1285,3 +1285,194 @@ path and clamped/defaulted on invalid input consistent with Requirement 6.2.
 A line with no top-level separator yields a one-element chain and flows through
 `execute_command_line` exactly as today (Requirement 11.7), so existing behaviour
 and tests are unaffected.
+
+---
+
+## Section: Parameterised Command Aliases (Requirement 14, CR-NR-112)
+
+This section specifies the substitution algorithm that turns a parameterised
+alias invocation into a fully resolved ROOT command string. It is a design delta
+to the alias layer (owned by `ff-desktop` `shell/environment.rs` +
+`shell/locale_resolver.rs`) and the primary parser (Requirement 3). The routing
+invariant -- that the expanded string flows through the single front door
+unchanged -- is specified in command-framework Requirement 19 and detailed in that
+spec's companion design section; this section owns the GRAMMAR and the SUBSTITUTION
+RULES. The technology stack is fixed: Rust in the existing `ff-desktop` crate,
+serde + `toml` for the DATA, no new crate and no new dependency.
+
+### The extended alias record and its TOML form
+
+Today an alias entry is `(surface, canonical, localisation_key)`:
+
+```rust
+// crates/ff-desktop/src/shell/environment.rs (existing)
+pub(crate) struct AliasEntry {
+    pub(crate) surface: String,            // UPPERCASED typeable/displayed surface
+    pub(crate) canonical: String,          // the root (canonical) verb
+    pub(crate) localisation_key: Option<String>,
+}
+```
+
+CR-NR-112 adds ONE additive field -- the parameter template:
+
+```rust
+// Validates: command-semantics Requirement 14.1, 14.6
+pub(crate) struct AliasEntry {
+    pub(crate) surface: String,
+    pub(crate) canonical: String,
+    pub(crate) localisation_key: Option<String>,
+    /// Optional parameter template, e.g. "FFWB.COBOL.MASTER(&1)". None/empty =
+    /// pure verb alias (today's behaviour, byte-identical).
+    pub(crate) command_template: Option<String>,
+}
+```
+
+The on-disk per-locale TOML (`i18n/<locale>/aliases/<env>.toml`,
+`AliasRowToml` in `shell/alias_reader.rs`) gains a matching `#[serde(default)]`
+field so every existing file deserialises unchanged:
+
+```toml
+# Existing verb-only row -- unchanged, command_template absent (-> None):
+[[alias]]
+surface = "SOEK"
+canonical = "FIND"
+localisation_key = "verb-find"
+
+# New parameterised row:
+[[alias]]
+surface = "ECOB"
+canonical = "EDIT"
+command_template = "FFWB.COBOL.MASTER(&1)"
+# localisation_key optional; absent for a pure-shorthand (language-independent) alias
+```
+
+Back-compat (Requirement 14.6): an absent or empty `command_template`
+deserialises to `None`, and the lookup path treats `None`/empty identically to
+today's pure verb rewrite. The template field is DATA, out of ASCII scope, but the
+Rust that loads it is in scope and stays ASCII.
+
+#### Language-independent (pure-shorthand) aliases
+
+The owner's example `ECOB` is a pure shorthand with no localisation intent. It
+still fits the per-locale file surface: it is authored in the BASE/neutral locale
+catalogue (the `en` / identity `aliases/<env>.toml`, which is the default table
+when no overlay applies) with `localisation_key` ABSENT. Because the base table is
+the fallback for every locale (localization Requirement 3.2, 11.8), a pure
+shorthand defined once in the base file is available in all locales without a
+per-locale copy. A locale MAY override the SURFACE (e.g. a localised alias name)
+while reusing the same canonical + template; it is not required to. No neutral
+"extra" locale is introduced -- the existing base/identity catalogue is the home
+for language-independent aliases.
+
+### Substitution grammar
+
+Placeholders inside a `command_template` (Requirement 14.3):
+
+- `&N` -- `&` followed by one or more decimal digits forming a positive integer N
+  (1-based). Substituted with the Nth token of the Alias_Invocation_Argument.
+- `&*` -- `&` followed by `*`. Substituted with the argument tokens AFTER the
+  highest referenced `&N` in the template, space-joined. When the template
+  references no `&N`, `&*` substitutes ALL argument tokens. This
+  "after the highest referenced positional" rule (owner-confirmed) means mixing
+  `&1` and `&*` does NOT repeat tokens.
+- Any other character (including a bare `&` not followed by a digit or `*`, and
+  the literal parentheses/dots of `FFWB.COBOL.MASTER(...)`) is LITERAL and copied
+  verbatim. Scanning is left-to-right, longest-digit-run for `&N` (so `&12` is
+  token 12, not token 1 followed by `2`).
+
+### Tokenisation of the invocation argument
+
+The Alias_Invocation_Argument is the trimmed remainder after the alias verb --
+the SAME single-whitespace split the front door already performs
+(`helpers::split_verb_arg`, command-framework Requirement 9.1). For substitution
+the argument string is tokenised by `str::split_whitespace` (Requirement 14.10):
+
+- `ecob helloW` -> verb `ECOB`, argument `helloW` -> tokens `["helloW"]`,
+  so `&1` = `helloW`.
+- `ecob a b c` -> tokens `["a","b","c"]`, so `&1`=`a`, `&2`=`b`, `&3`=`c`;
+  in a template referencing `&1` as its highest positional, `&*`=`b c` (the
+  tokens after the highest referenced `&N`); in a template referencing no `&N`,
+  `&*`=`a b c`.
+
+Quoted multi-word positional args are explicitly NOT in scope: the front-door
+split is not quote-aware at this layer, so a `&N` is exactly one whitespace token
+(Requirement 14.10). This is a recorded limitation, not a defect.
+
+### The substitution algorithm
+
+```
+expand_template(root: &str, template: &str, arg: &str) -> String:
+    tokens = arg.split_whitespace().collect()   // Vec<&str>, may be empty
+    // Pre-scan: find the highest referenced positional across the WHOLE template,
+    // so &* resolves to "tokens after the highest referenced &N" regardless of
+    // where &* appears textually (14.3, owner-confirmed).
+    highest = max referenced &N in template (0 if none)
+    has_rest = template contains "&*"
+    out = String::new()
+    i = 0
+    while i < template.len():
+        if template[i] == '&' and template[i+1] == '*':
+            // Rest_Placeholder (14.3): tokens after the highest referenced &N.
+            // When highest == 0 (no &N referenced), this is ALL tokens.
+            if tokens.len() > highest:
+                out.push_str(tokens[highest..].join(" "))
+            i += 2
+        else if template[i] == '&' and template[i+1].is_ascii_digit():
+            (n, width) = read_decimal(template, i+1)   // longest digit run
+            if n >= 1 and n <= tokens.len():
+                out.push_str(tokens[n-1])        // positional (14.3)
+            // else: substitute EMPTY string (14.4) -- push nothing
+            i += 1 + width
+        else:
+            out.push(template[i]); i += 1        // literal (14.2)
+    // Extra-arg append (14.5): only when NO &* consumed the rest. Appends the
+    // tokens AFTER the highest REFERENCED positional; tokens below an unreferenced
+    // lower index are NOT re-appended (recorded limitation, 14.5).
+    if not has_rest and tokens.len() > highest:
+        surplus = tokens[highest..].join(" ")
+        out.push(' '); out.push_str(surplus)
+    return format!("{root} {out}")
+```
+
+Worked examples (Requirement 14.2, 14.4, 14.5, 14.9):
+
+| Invocation | root | template | tokens | Expanded |
+|------------|------|----------|--------|----------|
+| `ecob helloW` | EDIT | `FFWB.COBOL.MASTER(&1)` | `[helloW]` | `EDIT FFWB.COBOL.MASTER(helloW)` |
+| `ecob` | EDIT | `FFWB.COBOL.MASTER(&1)` | `[]` | `EDIT FFWB.COBOL.MASTER()` |
+| `ecob a b` | EDIT | `FFWB.COBOL.MASTER(&1)` | `[a,b]` | `EDIT FFWB.COBOL.MASTER(a) b` |
+| `mv a b c` | MOVE | `&1 TO &*` (hypothetical) | `[a,b,c]` | `MOVE a TO b c` (`&1`=`a`, `&*`=tokens after `&1` = `b c`) |
+
+Note on the last row: `&*` is defined (owner-confirmed) as the tokens AFTER the
+highest referenced `&N` in the template, NOT all remaining tokens. With `&1 TO &*`
+and `[a,b,c]`, the highest referenced positional is `&1`, so `&1`=`a` and
+`&*`=`b c`, giving `MOVE a TO b c` with NO token repetition. When a template
+references no `&N`, `&*` substitutes all argument tokens. This makes `&1 ... &*`
+a natural "first token, then the rest" idiom (pure text substitution still, no
+command-specific special-casing, Requirement 14.8).
+
+### Where it slots into the pre-pass (single-pass)
+
+`rewrite_verb_to_root` (`shell/locale_resolver.rs`) is extended: after resolving
+the surface to its alias ENTRY, if the entry has a non-empty `command_template`,
+the function returns `expand_template(root, template, arg)` INSTEAD of the current
+`format!("{root} {arg}")`; otherwise it returns today's verb-only result
+(Requirement 14.6). The extension is SINGLE-PASS (Requirement 14.7): the expanded
+string is returned to the caller (`dispatch.rs` / `commands_menu.rs`) and is NOT
+re-submitted to `rewrite_verb_to_root`. There is no loop, so no recursion bound is
+needed in v1; the forward-compatible guards (a depth limit and a visited-alias set)
+are documented in the command-framework design section as the additive path to a
+future chaining CR.
+
+### Testability
+
+- PURE unit tests on `expand_template`: each row of the table above; empty arg;
+  surplus-append with and without `&*`; `&12` two-digit index; a bare `&` literal;
+  a template with no placeholders (literal copy). Deterministic, no I/O.
+- Back-compat unit test: a `None`/empty template yields the exact current
+  `rewrite_verb_to_root` output for the same surface+arg.
+- A loader round-trip test: a TOML row with and without `command_template`
+  deserialises to the expected `AliasEntry` (field present -> Some, absent -> None).
+- The full-shell behavioural assertion (typed `ecob helloW` opens
+  `ffwb.cobol.master(helloW)`) is an `egui_kittest` integration test that belongs
+  with the `ff-desktop` shell (command-framework design section owns that test).

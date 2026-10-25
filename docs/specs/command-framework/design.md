@@ -2260,3 +2260,187 @@ Mechanism 1 (single front door): the `=` step and all three reroutes land on
 intercept outside the seam. Mechanism 3 (per-tab Navigation_Stack): `X`/`=X`/END/
 RETURN operate on the ACTIVE tab's `nav_stack`; no second stack. Public framework
 types are unchanged, so this is NOT a framework change beyond approving CR-CH-052.
+
+---
+
+## Section: Parameterised Alias Expansion in the Pre-Pass (Requirement 19, CR-NR-112)
+
+Design delta to the alias pre-pass (`rewrite_verb_to_root` in
+`shell/locale_resolver.rs`) and the single front door
+(`dispatch_command_string`). It PAIRS with command-semantics Requirement 14's
+design section, which owns the substitution GRAMMAR and the extended alias RECORD;
+this section owns the PLACEMENT (where expansion slots in), the PROOF that routing
+stays on one path, the single-pass decision with its forward-compatible guards,
+the verified menu-composition finding, and the CR-NR-111 coexistence. The stack is
+fixed: Rust in `ff-desktop`, no new crate, no new dispatcher. This is NOT a
+framework change (see the explicit statement at the end).
+
+### Grounded call sites (from the investigation)
+
+The verb-to-root rewrite is a STRING-to-STRING pre-pass with exactly ONE
+implementation and exactly TWO call sites, both BEFORE `resolve_target`:
+
+- `rewrite_verb_to_root(&self, raw: &str) -> String` -- `shell/locale_resolver.rs`.
+  Today: splits `raw` via `helpers::split_verb_arg` into `(verb, arg)`, resolves
+  the verb to its root via `AliasTable::canonical_verb`, returns `root` (arg
+  empty) or `format!("{root} {arg}")` (arg preserved) when the root differs, else
+  `raw` unchanged.
+- Call site 1 -- typed front door, `shell/dispatch.rs` inside
+  `dispatch_command_string`: `let raw = self.rewrite_verb_to_root(raw);` runs
+  AFTER the `=` strip and BEFORE `run_command_prelude` and
+  `ff_command::resolve_target(raw, &resolver)`.
+- Call site 2 -- menu-option selection, `shell/commands_menu.rs` inside
+  `activate_menu_option`: `let root_command = self.rewrite_verb_to_root(command);`
+  runs before `resolve_and_dispatch_command`.
+
+### Placement -- extend the one pre-pass, change nothing downstream
+
+`canonical_verb` is widened (or a sibling `resolve_alias_entry`) so the pre-pass
+can see the matched `AliasEntry`, not just its canonical verb. The rewrite becomes:
+
+```
+rewrite_verb_to_root(raw):
+    (verb, arg) = split_verb_arg(raw)
+    entry = alias_table.entry_for(verb)         // was: canonical_verb(verb)
+    match entry:
+        Some(e) if e.command_template non-empty:
+            return expand_template(e.canonical, e.template, arg)   // Req 14 algorithm
+        Some(e) if e.canonical != verb:
+            return if arg.is_empty() { e.canonical }
+                   else { format!("{} {}", e.canonical, arg) }     // today's verb-only path
+        _:
+            return raw                                             // unchanged
+    // single-pass: the returned string is NOT re-fed to rewrite_verb_to_root
+```
+
+The expanded STRING is returned to the SAME callers, which continue to the SAME
+`resolve_target` -> `dispatch_command_target` path. Nothing downstream of the
+pre-pass is touched.
+
+### Proof routing stays on the single path
+
+The worked example expands to `EDIT FFWB.COBOL.MASTER(helloW)`. That string
+re-enters the existing flow exactly where a typed `EDIT ...` would: the front
+door's `(verb, arg)` split yields verb `EDIT`, arg `FFWB.COBOL.MASTER(helloW)`
+(the first-whitespace split keeps the parenthesised member token intact), and the
+EXISTING EDIT ladder arm (`commands_ladder_a.rs`) forwards `rest` as the `path`
+param to `file.open` -- the investigation confirms EDIT is handled by that ladder
+arm precisely because the `Function` dispatch arm carries no params. So the alias
+layer must NOT try to route params; it produces the STRING and the established
+EDIT handling consumes it (Requirement 19.2). `resolve_target`,
+`dispatch_command_target`, `CommandTarget`, and the navigation stack are
+unchanged (Requirement 19.1-19.2).
+
+### Single-pass decision and the forward-compatible guards
+
+v1 is SINGLE-PASS (Requirement 19.5, command-semantics Requirement 14.7): the
+pre-pass runs once per seam and its output is not re-submitted, so the alias
+whose template verb (`EDIT`) or substituted text matches another alias surface
+does NOT trigger a second expansion. This is the owner's decision ("we should not
+support chains") and is the simplest safe rule.
+
+The design is forward-compatible for a LATER chaining CR without a redesign. If
+chaining is ever enabled, it becomes a bounded fixpoint loop around the SAME
+pre-pass with the two standard guards:
+
+- **Max expansion DEPTH limit** (e.g. 10): stop after N expansions and return the
+  current string (or an error), so a runaway expansion cannot loop forever.
+- **VISITED-SET of alias surfaces** seen during ONE expansion: before expanding an
+  alias, check its surface is not already in the set; if it is, a cycle
+  (`a -> b -> a`) is detected and expansion stops. This catches cycles the depth
+  limit alone would only bound, not diagnose.
+
+Enabling chaining is an ADDITIVE change to this pre-pass (wrap the single call in
+the guarded loop); it introduces NO new dispatch path. It is explicitly a
+SEPARATE gated decision, not part of CR-NR-112.
+
+### Menu-composition finding (verified)
+
+The owner recalled "whatever is on the command line is appended to the command
+executed". The investigation verified this is TRUE only on the FUNCTION-KEY seam
+(`dispatch_key_command`, `target_dispatch.rs`, merges
+`format!("{} {}", command, field)`), NOT on a menu-option CLICK
+(`activate_menu_option` dispatches the option's own command alone) and not needed
+for a TYPED alias (the whole line is what the pre-pass expands). Consequences:
+
+- The core worked example (`ecob helloW` typed) is fully served by the pre-pass,
+  independent of any residue behaviour.
+- A KEY-bound parameterised alias is served: the field is merged into the command
+  string BEFORE the pre-pass runs, so the pre-pass sees `ECOB helloW` and
+  template-expands it exactly like the typed path (Requirement 19.6).
+- A parameterised alias used as a MENU OPTION's `command` receives NO command-line
+  argument today. Feeding the command-line field into `activate_menu_option` would
+  be a NEW mechanism; it is OUT OF SCOPE for CR-NR-112 and would need separate
+  owner confirmation (Requirement 19.6). This is the honest answer to the owner's
+  "achievable without extra effort" -- true for typed and key, not for menu-option
+  clicks. CONSEQUENCE: if a menu option's stored `command` IS a template-alias
+  surface, the pre-pass expands it with an EMPTY argument list, so every `&N`
+  substitutes to the empty string (command-semantics Requirement 14.4; e.g.
+  `FFWB.COBOL.MASTER(&1)` -> `EDIT FFWB.COBOL.MASTER()`). Menu options are
+  therefore not expected to store template-alias surfaces; doing so is author
+  error, not a supported argument-supply path (Requirement 19.6).
+
+### Coexistence with CR-NR-111 (no double-expansion)
+
+CR-NR-111 stores the ROOT command on a menu option and derives its localised
+display SURFACE at render time (`display_surface_for_canonical`); it never expands
+a template and introduces no parameters. The parameter TEMPLATE belongs to the
+ALIAS ENTRY, not the `MenuOption`. The two are different axes on different code
+paths:
+
+- RENDER path (CR-NR-111): root -> localised display surface. Read-only, no
+  template expansion.
+- EXECUTION path (CR-NR-112): alias surface -> canonical identity -> template
+  expansion, once per seam in the pre-pass.
+
+They cannot compound. A localised alias surface that is ALSO a parameter alias
+resolves surface -> canonical FIRST (existing CR-NR-109/111 behaviour), THEN
+expands that canonical's template. Because the template is keyed on the alias
+entry (one entry per canonical), this is a single deterministic lookup, not a
+chain. This cross-references `docs/specs/localization/` Requirement 12 and
+command-framework Requirement 18 without contradicting them: CR-NR-111's routing
+invariant (root is the recorded identity, no new dispatcher) is PRESERVED --
+CR-NR-112's expanded ROOT string is what history/session record (Requirement
+19.4).
+
+### Files touched (implementation, when built)
+
+`shell/environment.rs` (`AliasEntry` gains `command_template: Option<String>`;
+`AliasTable` gains a template-aware entry lookup), `shell/alias_reader.rs`
+(`AliasRowToml` gains a `#[serde(default)]` `command_template` field; the parser
+preserves it), `shell/locale_resolver.rs` (`rewrite_verb_to_root` performs
+`expand_template` for template entries, verb-only path unchanged). The two call
+sites `shell/dispatch.rs` and `shell/commands_menu.rs` are UNCHANGED in shape. No
+`ff-command` API change. No new crate.
+
+### Tests
+
+- `expand_template` pure unit tests (owned by the command-semantics design
+  section): worked-example rows, empty arg, surplus append, `&*`, two-digit index,
+  literal copy.
+- `rewrite_verb_to_root_template_entry_expands` -- a template entry yields the
+  fully expanded string; a non-template entry yields today's output byte-identical
+  (Requirement 19.3).
+- `full_shell_ecob_opens_edit_with_member` -- an `egui_kittest` `build_eframe`
+  test: seed an `ECOB` alias (root `EDIT`, template `FFWB.COBOL.MASTER(&1)`), type
+  `ecob helloW` in the command field, press Enter, assert the resolved command is
+  `EDIT FFWB.COBOL.MASTER(helloW)` and an editor opens for
+  `ffwb.cobol.master(helloW)` -- proving typed expansion routes through the one
+  front door (Requirement 19.1).
+- `full_shell_key_bound_parameterised_alias_expands` -- with `ECOB` bound to a key
+  and `helloW` in the field, pressing the key merges then expands identically
+  (Requirement 19.6).
+- A back-compat sweep: existing alias/menu/localisation tests stay green (no
+  template rows -> no behaviour change).
+
+### Explicit framework-conformance statement
+
+NO framework change is required. The expansion is a STRING-to-STRING rewrite in
+the EXISTING pre-pass seam, strictly upstream of `resolve_target`. It adds no
+second dispatcher, no parallel resolver, no change to `CommandTarget` /
+`resolve_target` / `dispatch_command_target` / the navigation stack / the
+session-persistence model, and does not move alias logic inside `resolve_target`.
+The only type change is an ADDITIVE, `#[serde(default)]` field on a `ff-desktop`
+internal alias struct, which is not a public framework type. Template expansion is
+fully expressible in the established pre-pass (the worked example proves it), so
+the design does NOT need to stop and flag a framework change.

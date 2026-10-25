@@ -391,6 +391,429 @@ exactly as today (Req 10.2 behaviour-neutral).
   records the root). With `en` / no overlay the column shows the root verb
   unchanged (Req 10.2).
 
+## Menu Kinds localise FULLY -- mnemonic + command alias + description (CR-NR-111, Requirement 12)
+
+CR-NR-111 is the DELTA on top of CR-NR-109 (Requirement 11). CR-NR-109 already
+made the alias layer locale-aware, rendered a menu option's displayed COMMAND
+surface through that layer, and wired the unified localised-alias -> root resolver
+for both the command line and menu selection. Requirement 12 extends FULL
+localisation to the remaining observable parts of a menu option (the MNEMONIC and
+the DESCRIPTION alongside the COMMAND), settles the stored-command shape that lets
+a SINGLE saved menu auto-convert to the active locale, and makes the
+no-localised-data fallback and the per-language saved-menu fallback explicit.
+
+This section is the GOVERNING design for the owner's "menu-kinds localisation
+redesign"; menu-workspace/design.md and menu-and-statusbar/design.md carry the
+render-side and chrome-side deltas that build on it.
+
+### Not a framework change (grounded in the investigation)
+
+CR-NR-109 was an owner-confirmed framework change because it reshaped the
+`AliasTable` entry model and the menu-option display model. CR-NR-111 reshapes
+NEITHER: the alias-entry model (`surface`, `canonical`, `localisation_key?`) and
+the unified resolver already exist and already satisfy the owner's "this should
+not affect how commands are routed." The investigation
+(`.agents/tasks/menu-kind-localisation/findings.md`, "Framework-delta question")
+established, with code references, that:
+
+- `ff_command::resolve_target` does NOT itself consult the alias table (its
+  `TargetResolver` trait has no alias lookup), BUT the shell ALREADY translates a
+  localised alias to its root BEFORE calling `resolve_target`, via a single
+  pre-pass `rewrite_verb_to_root` -> `AliasTable::canonical_verb`
+  (`shell/locale_resolver.rs`) run on BOTH seams
+  (`dispatch_command_string`, `activate_menu_option`). End to end a localised
+  alias already resolves to the root with routing unchanged (the ROOT is
+  dispatched and persisted).
+
+Therefore CR-NR-111 adds NO new dispatcher, NO parallel resolver, NO new
+persistence format, and NO Workspace-Kinds-registry change. It is NOT a framework
+change and needs no further owner confirmation beyond the CR-NR-111 requirements
+gate. Moving the alias lookup INSIDE `resolve_target` WOULD be a framework change
+(reshaping the `TargetResolver` contract / adding an alias dependency to the
+dispatch classifier) and is explicitly REJECTED here: the established pre-pass
+seam already delivers the behaviour, so there is nothing to confirm. The remaining
+work is (a) a MNEMONIC localisation seam mirroring the existing description seam,
+and (b) a formal statement of the stored-command shape (settled below) -- both
+NON-framework, building on CR-NR-109.
+
+### The crux: what a saved menu stores for the "command" field -- DECISION
+
+Two options were analysed for what a saved menu option persists so that
+first-prize auto-conversion works (one saved definition renders in whatever locale
+is active):
+
+- **Option A -- store the ROOT command** (locale-independent). The displayed
+  alias is DERIVED at render time from the per-locale alias surface for that root;
+  the root is also exactly what the pre-pass resolver returns and what dispatch /
+  history / session persist.
+- **Option B -- store a LOCALISATION KEY.** Both the displayed alias and the root
+  are derived at render/dispatch time by resolving the key.
+
+**DECISION: Option A -- store the ROOT command.** Justification:
+
+1. **First-prize auto-conversion only works cleanly with a locale-INDEPENDENT
+   stored value, and the ROOT is that value.** The alias DATA is keyed by root
+   (canonical) -> localised surface + optional localisation key
+   (`AliasTable`, `i18n/<locale>/aliases/<env>.toml`); the root is the join key
+   shared across EVERY menu that references that command. Storing the root lets
+   the render path derive the active-locale surface via
+   `display_surface_for_canonical(option.command)` with NO change to the saved
+   file. A saved English menu already renders localised the moment the active
+   locale has alias rows -- this IS the owner's first prize.
+
+2. **It is the shape saved menus ALREADY use** (`MenuOption.command` is the root
+   English string on disk and in the built-in `DEFAULT_*_TOML` constants), so the
+   decision requires NO migration of existing saved menus (see Back-compat below)
+   and NO new `MenuOption` field.
+
+3. **It satisfies Requirement 10.3 / 11.9 directly** (the root is the
+   recorded/persisted identity). Option B would persist a localisation key as the
+   "command", which only satisfies 11.9 if the key still resolves to a stable
+   root -- an indirection that buys nothing over storing the root itself, while
+   DUPLICATING per-menu what the per-locale alias catalogue already holds once per
+   locale and REQUIRING a new `MenuOption` field plus a key->root resolution step
+   on the dispatch path.
+
+4. **It keeps the saved menu locale-neutral.** A menu that stored a localised
+   surface (or a locale-pinned key) would render wrong under a different locale,
+   defeating auto-conversion. The root is stable across all locales; the surface
+   is derived. This is the Locale_Independent_Stored_Value the requirement names
+   (Req 12.4): it is the ROOT command.
+
+Option B is recorded as considered-and-rejected, not an open question.
+
+### Displayed alias derivation (COMMAND part, Req 12.1/12.2)
+
+Unchanged from CR-NR-109. At render time the menu path resolves the option's
+DISPLAYED command verb from the option's stored ROOT via
+`AliasTable::display_surface_for_canonical(option.command)` for the active locale
+(the alias row's `localisation_key` -> `ff_i18n::t(key)` resolution), computed
+shell-side in `menu_option_command_surfaces` (`shell/locale_resolver.rs`) and
+passed positionally into the shared renderer as `command_surfaces`
+(`menu_workspace/render.rs`). When the active locale provides no alias row for the
+root, the surface falls back to the raw root string (Identity_Base, Req 3.2,
+11.8). Selection feeds the option's ROOT through the unified pre-pass resolver, so
+the displayed-vs-dispatched split holds (Req 12.5).
+
+### Mnemonic localisation (MNEMONIC part, Req 12.3) -- new seam, mirrors the description seam
+
+Today the mnemonic (`MenuOption.key`) is rendered RAW (`{:<4}` of `option.key` in
+`render_layout.rs::option_prefix_job`) and has NO per-locale source anywhere. This
+is the one genuinely new seam CR-NR-111 adds. The requirement fixes only the
+observable contract (the mnemonic HAS a per-locale source and a defined
+Identity_Base fallback); the source shape is this design's decision.
+
+Two candidate sources were considered:
+
+- **(i) Derive the mnemonic from the localised command surface** (e.g. first
+  non-space character of the active-locale alias surface).
+- **(ii) A dedicated per-locale mnemonic value**, authored in the catalogue
+  mirroring the description seam.
+
+**DECISION: Option (ii) -- a dedicated per-locale mnemonic catalogue key, mirroring
+the existing description seam.** Justification: the description already localises
+via a catalogue key (`i18n_keys::menu_option_desc_key(menu_name, command)` ->
+`menu-<menu>-opt-<command>-desc`, resolved by
+`localised_option_description` = `t_or(key, &option.description)`). Mirroring that
+seam with a sibling key -- `menu_option_key_key(menu_name, command)` ->
+`menu-<menu>-opt-<command>-key`, resolved by a new
+`localised_option_mnemonic(menu_name, option)` = `t_or(key, &option.key)` -- keeps
+the mnemonic INDEPENDENTLY authorable (a locale's mnemonic need not be a substring
+of its command verb; ISPF-style mnemonics are often digits like `0 1 2 3` that
+bear no relation to the verb), diagnosable (a missing key logs a WARN and falls
+back), and consistent with the one localisation mechanism already in place.
+Option (i) is rejected: deriving the mnemonic FROM the localised surface couples
+two independent columns, breaks for digit mnemonics, and would silently shift the
+mnemonic whenever a translator edits the verb surface.
+
+Keyed by menu + ROOT command (not by the raw `key`) so the key is stable across
+locales and matches the description seam's keying. The fallback value is the
+option's own `key` string (the Identity_Base English mnemonic), so an option is
+always keyable even with no locale data (Req 12.3, 12.8).
+
+REALISED CONTRACT (authoritative -- a coder MUST implement this and MUST NOT pick
+the rejected option). The per-locale mnemonic SOURCE that Req 12.3 defers to
+design, and the "no mnemonic source" case in Req 12.8, are BOTH realised as the
+`menu-<menu>-opt-<command>-key` catalogue key resolved by
+`localised_option_mnemonic(menu_name, option)` = `t_or(key, &option.key)` (Option
+ii). "No mnemonic source at locale `L`" means precisely "that catalogue key is
+absent at `L`", and the fallback is the option's stored `option.key`. Deriving the
+mnemonic from the localised command surface (Option i) is REJECTED and MUST NOT be
+implemented. (The menu-workspace CR-NR-111 delta repeats this one-line contract so
+the two documents cannot diverge.)
+
+`render_layout.rs::option_prefix_job` is changed to accept the resolved mnemonic
+surface (positionally, exactly as it already accepts the resolved command surface)
+rather than reading `option.key` raw; the shell computes the mnemonic surfaces
+beside the command surfaces and passes both into the shared renderer. NOTE: the
+mnemonic displayed for the user and the KEY used to MATCH a typed `MENU <name>
+<key>` selection or an in-menu key press are separate concerns -- the match
+continues to use the stored `option.key` (menu-workspace Req 1/19), so localising
+the DISPLAYED mnemonic does not change which keystroke selects the option. If a
+locale's displayed mnemonic should also be typeable, that is authored as an
+additional key-match alias and is OUT of this gate's scope (noted under Out of
+Scope in the requirements).
+
+### First-prize auto-conversion, end to end (Req 12.6)
+
+With Option A (stored root) plus the per-locale alias + description + mnemonic
+DATA, a menu Kind authored/saved once renders fully in the active locale from the
+SAME stored definition:
+
+1. The saved option stores `{ key = "<root mnemonic>", command = "<ROOT>",
+   description = "<English fallback>" }` (unchanged on-disk shape).
+2. On a `ui.locale` change, `on_locale_reload` (`main.rs`) re-seeds the alias
+   store (CR-NR-109) and sets the new i18n locale.
+3. On the next frame the shared renderer receives, positionally per option:
+   the localised mnemonic surface (`localised_option_mnemonic`), the localised
+   command surface (`display_surface_for_canonical`), and the localised
+   description (`localised_option_description`) -- all three for the active
+   locale, each falling back per part to the Identity_Base.
+4. Selection feeds the ROOT through the unified resolver; dispatch and
+   persistence are unchanged.
+
+No separate per-language menu file is required (Req 12.6). This applies to ALL
+menu kinds because every menu renders through the one shared
+`render_menu_workspace` (POM, Settings, user menus -- Req 12.9, menu-workspace
+Req 2.1); no per-kind special-casing.
+
+### Second-prize per-language saved menus (Req 12.7) -- FALLBACK
+
+Supported as a fallback for a user who prefers to maintain a distinct saved menu
+definition per locale rather than rely on auto-conversion. The mechanism reuses
+the EXISTING menu-name resolution and the per-locale directory convention already
+used for help content and alias DATA: for a menu named `<name>` at active locale
+`L`, the menu loader resolves a locale-qualified definition if one exists before
+falling back to the base definition.
+
+- RESOLUTION ORDER (chosen to mirror the help loader's per-locale directory
+  resolution, localization Req 6.2, so there is one directory-fallback pattern in
+  the product): resolve `menus/<L>/<name>.toml` (a per-locale saved menu) when it
+  exists; otherwise fall back to the base `menus/<name>.toml`; otherwise (for a
+  built-in) the code-only `DEFAULT_*_TOML` Identity_Base. This adds a locale
+  segment to the EXISTING user-menu file lookup (`MenuWorkspaceState.file_path`
+  derivation); it does NOT introduce a new menu mechanism or a second dispatcher,
+  and built-in menus remain code-only and are NEVER written to disk (CR-CH-021).
+
+- RESOLUTION TIME AND PERSISTENCE (the load-vs-persist contract -- MANDATORY, Req
+  12.7a). The locale segment is resolved at menu LOAD / RECONSTRUCT time, keyed by
+  the menu NAME plus the active locale -- NOT baked into a persisted path. A
+  Menu_Workspace persists in the session as a locale-NEUTRAL
+  `WorkspaceDescriptor::Menu { name }` (the menu NAME, e.g. `pom`/`settings`/a user
+  name), exactly as it does today (startup-and-session Req 21, CR-CH-012); the
+  session NEVER stores a locale-qualified or absolute `file_path`.
+- RESOLUTION SITES (the complete set -- enumerated, not "one site"). On restore /
+  reconstruct, the user-authored menu load paths in `shell/nav_reconstruct.rs`
+  apply the locale segment. There are TWO such reconstruct-by-name seams, and both
+  MUST carry the segment identically:
+  - `reconstruct_settings_menu` (the Settings menu), and
+  - `reconstruct_named_menu` (every user-defined named menu),
+  which today build `self.menus_dir().join("<name>.toml")` and become
+  `menus_dir().join(L).join("<name>.toml")` when that exists, else
+  `menus_dir().join("<name>.toml")`, else the code-only baseline -- re-reading the
+  THEN-active locale `L` each time.
+- THE POM / HOME CONTEXT IS OUT OF SCOPE FOR THE SECOND-PRIZE FILE OVERRIDE
+  (deliberate, consistent with CR-CH-021). The POM does NOT reconstruct through
+  either seam above: `reconstruct_pom` calls `ensure_pom_menu_loaded`
+  (`shell/commands_fastpath.rs`), a distinct load path that builds
+  `menus_dir().join("pom.toml")` directly. That path is INTENTIONALLY left
+  unchanged -- the POM is localised by FIRST-PRIZE auto-conversion ONLY. A code-only
+  built-in needs no per-locale FILE (its stored roots render localised via the
+  per-locale alias/mnemonic/description DATA), so the optional second-prize FILE
+  override (`menus/<L>/pom.toml`) is not wired for the POM and would have no
+  effect; writing a base `menus/pom.toml` to let a locale file sit beside it is
+  forbidden under CR-CH-021. This keeps full localisation applying to ALL menu
+  kinds (Req 12.9) via first prize, while scoping the OPTIONAL second-prize FILE
+  override to the two user-authored reconstruct seams. The
+  `MenuWorkspaceState.file_path` that results at either reconstruct seam is a
+  derived, transient field computed from name + active locale at load, not a
+  persisted key.
+- Consequence (the behaviour the gate requires): a session SAVED under locale `af`
+  and RESTORED after the user has switched back to `en` re-resolves against `en`
+  and shows the English/base menu, because the descriptor carried only the name;
+  it is never pinned to the save-time locale.
+- A per-locale saved menu is still subject to first-prize derivation for any part
+  it does not itself translate: its options still store ROOT commands, so its
+  command column still auto-converts; the per-locale file is the user's override
+  for cases where they want a wholly different option SET or ordering per locale,
+  not a substitute for the alias layer.
+
+- SECOND PRIZE FOR A BUILT-IN MENU (POM / Settings) -- CR-CH-021 preserved (Req
+  12.7b). A built-in has NO base `menus/<name>.toml` on disk normally: built-ins
+  are code-only `DEFAULT_*_TOML` constants and `ensure_menus_dir` only creates the
+  empty directory (it never writes a built-in file --
+  `menu_workspace/defaults.rs`). The second-prize path for a built-in is therefore
+  EXACTLY: resolve `menus/<L>/<name>.toml` IF the user authored one, otherwise fall
+  STRAIGHT THROUGH to the code-only `DEFAULT_*_TOML` Identity_Base. No base
+  `menus/<name>.toml` is ever written to let a locale file "sit beside" it -- doing
+  so would violate CR-CH-021, and is explicitly forbidden here. In practice a
+  built-in needs NO per-locale file at all: FIRST-PRIZE auto-conversion already
+  localises the code-only built-in in full (its stored roots render localised via
+  the per-locale alias/mnemonic/description DATA), so authoring a
+  `menus/<L>/pom.toml` is a rare power-user override for a wholly different option
+  SET/ordering per locale, not the normal way to localise a built-in.
+
+First prize (a single auto-converting definition) is PREFERRED; second prize is
+the explicit fallback the owner asked for. Both coexist because they compose: the
+per-locale file selection happens at menu LOAD (by name + active locale), the
+three-part surface derivation happens at RENDER, and dispatch is the same resolver
+for both.
+
+### Behaviour when no localised data exists (Req 12.8) -- per-part, per-option
+
+The fallback is PER PART and PER OPTION, never whole-row or whole-menu:
+
+- No alias row for the root at locale `L` -> command column shows the raw ROOT
+  string (Identity_Base).
+- No `menu-<menu>-opt-<command>-key` catalogue entry at `L` -> mnemonic shows the
+  option's own `key` (Identity_Base English mnemonic).
+- No `menu-<menu>-opt-<command>-desc` catalogue entry at `L` -> description shows
+  the option's parsed English `description`.
+- No per-locale saved menu for `L` -> the base definition is used.
+
+A menu NEVER renders a blank, missing, or unselectable option because a locale
+lacks data; each missing part independently falls back to its Identity_Base value
+while the other parts may still be localised. This is the explicit fix for the
+reported "the application is not consistently Afrikaans" inconsistency: an absent
+`af` surface yields the English surface for THAT part only, never an empty or
+broken row. The practical reason a localised POM still shows English today is
+MISSING DATA (no `af` alias/mnemonic/description rows for the built-in roots), not
+a code gap -- authoring that DATA is a separate gated deliverable (Out of Scope
+here).
+
+### Migration / back-compat for existing saved menus
+
+Because the DECISION keeps the EXISTING stored shape (Option A = ROOT command),
+there is NO migration of existing saved menu files:
+
+- Every menu already on disk stores the root English command in `MenuOption.command`
+  and an English mnemonic/description. Under CR-NR-111 these files load unchanged
+  and render identically under `ui.locale = "en"` (behaviour-neutral, Req 10.2).
+- When the active locale has alias/mnemonic/description DATA for those roots, the
+  SAME unmodified file auto-converts -- which is precisely first prize. An old
+  file gains localisation for free as the per-locale DATA is authored; it is never
+  rewritten.
+- The ONLY new on-disk artefacts are the per-locale DATA
+  (`i18n/<locale>/aliases/<env>.toml`, the `menu-*-key` / `menu-*-desc` `.ftl`
+  entries) and, for the optional second-prize path, a `menus/<L>/<name>.toml` a
+  user chooses to create. None of these touch an existing `menus/<name>.toml`.
+- A hypothetical menu authored under a mistaken "store the localised surface"
+  assumption would still DISPATCH correctly (the resolver maps any surface back to
+  the root) but would be locale-pinned in its display; such a file is not produced
+  by this product and no migration path is specified for it beyond the standing
+  advice to store roots.
+
+### Framework-conformance statement (CR-NR-111)
+
+This delta changes NO framework mechanism. It builds ON the single command
+dispatch (the unchanged `rewrite_verb_to_root` -> `resolve_target` pre-pass), the
+code-only built-in menus (CR-CH-021, never written to disk), menus as CONTENT via
+the shared `render_menu_workspace`, and the existing i18n catalogue + per-locale
+alias DATA seams. It adds one new catalogue key family (the mnemonic key) that
+mirrors the existing description key, and one locale segment in the user-menu file
+lookup for the optional second-prize path. The ROOT command remains the stored,
+dispatched, and persisted identity (Req 10.3, 11.9). With `ui.locale = "en"`
+every menu renders exactly as today (Req 10.2).
+
+### Testability (CR-NR-111)
+
+- `i18n_keys` unit tests: `localised_option_mnemonic` returns the catalogue value
+  when the `menu-<menu>-opt-<command>-key` key is present and the option's `key`
+  fallback when absent (mirrors the existing `localised_option_description` test).
+- Shell unit test: the mnemonic-surface vector computed beside
+  `menu_option_command_surfaces` is positionally aligned with `menu.options` and
+  falls back per option.
+- Full-shell `egui_kittest`: with a non-`en` locale and mnemonic/alias/description
+  DATA loaded, a menu option row shows all three localised; selecting it
+  dispatches and records the ROOT command. With `en` / no overlay, the row shows
+  the raw root mnemonic/command/English description unchanged (Req 10.2).
+- Menu-loader unit test (second prize): `menus/<L>/<name>.toml` is loaded when
+  present and the base `menus/<name>.toml` otherwise; a built-in with no file
+  falls back to the code-only `DEFAULT_*_TOML` (no base file written -- CR-CH-021).
+- Second-prize persistence test (Req 12.7a): a session persisted under locale `af`
+  carries the locale-NEUTRAL `WorkspaceDescriptor::Menu { name }`; reconstructing
+  it under `en` re-resolves by name + active locale and opens the English/base
+  menu, proving the restored menu follows the then-active locale and is NOT pinned
+  to the save-time locale.
+- Per-part fallback test: an option with an alias row but no mnemonic key shows
+  the localised command and the Identity_Base mnemonic, proving fallback is
+  per-part, not whole-row (Req 12.8).
+
+## Review responses -- CR-NR-111 design review (iteration 2)
+
+This section records how the design-review findings
+(`.agents/tasks/menu-kind-localisation/design-review.json`, verdict
+CHANGES_REQUESTED: 3 MEDIUM, 2 NIT) were resolved. All findings are ADDRESSED.
+
+- **Finding 1 (MEDIUM -- second-prize locale segment vs session persistence):
+  ADDRESSED.** The second-prize sections of this file and of
+  `menu-workspace/design.md` now state explicitly that the locale segment is
+  resolved at menu LOAD / RECONSTRUCT time keyed by menu NAME + active locale, that
+  the session persists the locale-NEUTRAL `WorkspaceDescriptor::Menu { name }` (not
+  a locale-qualified or absolute `file_path`), and that the reconstruct-by-name
+  seam (`shell/nav_reconstruct.rs`: `reconstruct_named_menu` /
+  `reconstruct_settings_menu` + `menus_dir()`) is the single site that applies the
+  locale segment. A session saved under `af` and restored under `en` re-resolves to
+  the English/base menu. A persistence test was added to Testability, and
+  requirements Req 12.7a (localization) / Req 12.7 (menu-workspace) back it.
+- **Finding 2 (MEDIUM -- second-prize path for a BUILT-IN risks CR-CH-021):
+  ADDRESSED.** Both second-prize sections now state that a built-in resolves
+  `menus/<L>/<name>.toml` only if the user authored one, otherwise falls STRAIGHT
+  THROUGH to the code-only `DEFAULT_*_TOML` baseline, that no base file is ever
+  written to let a locale file sit beside it (forbidden under CR-CH-021), and that
+  a built-in needs NO per-locale file because first-prize auto-conversion localises
+  the code-only built-in from its roots + per-locale DATA. Recorded as Req 12.7b.
+- **Finding 3 (MEDIUM -- Req 12.8 wording does not pin the catalogue-key design):
+  ADDRESSED.** A single authoritative REALISED CONTRACT statement was added to the
+  mnemonic decision here and mirrored in the menu-workspace delta: the per-locale
+  mnemonic source IS the `menu-<menu>-opt-<command>-key` catalogue key (Option ii)
+  resolved by `localised_option_mnemonic` = `t_or(key, &option.key)`; "no mnemonic
+  source" means that key is absent; deriving the mnemonic from the command surface
+  (Option i) is REJECTED and MUST NOT be implemented.
+- **Finding 4 (NIT -- mnemonic DISPLAY vs key MATCH asymmetry as a criterion):
+  ADDRESSED.** A new acceptance criterion menu-workspace Req 21.8 states the
+  displayed mnemonic is display-only and the stored `key` remains the selection
+  token; the menu-workspace design delta now cross-references it and the full-shell
+  test asserts it. The localised-mnemonic-is-typeable case stays out of scope with
+  a forward reference to localization Req 12 Out of Scope.
+- **Finding 5 (NIT -- missing `design-files.md` handoff):
+  ADDRESSED.** `.agents/tasks/menu-kind-localisation/design-files.md` now lists
+  every design.md and requirements.md touched, so a future reviewer need not
+  recover the set from git.
+
+## Review responses -- CR-NR-111 design review (iteration 3)
+
+This section records how the later design-review findings
+(`.agents/tasks/menu-kind-localisation/design-review.json`, verdict
+CHANGES_REQUESTED: 1 MEDIUM, 2 NIT) were resolved. All findings are ADDRESSED.
+
+- **Finding 1 (MEDIUM -- second-prize locale-segment site omits the POM load
+  path): ADDRESSED by option (b).** Verified against source: the POM reconstructs
+  via `reconstruct_pom` -> `ensure_pom_menu_loaded` (`shell/commands_fastpath.rs`),
+  which builds `menus_dir().join("pom.toml")` directly -- NOT through
+  `reconstruct_named_menu` / `reconstruct_settings_menu`. The second-prize sections
+  of this file and of `menu-workspace/design.md` now state EXPLICITLY that the POM
+  is OUT of scope for the optional second-prize FILE override and is localised by
+  first-prize auto-conversion only (consistent with CR-CH-021: a code-only built-in
+  needs no per-locale file), so `ensure_pom_menu_loaded` is intentionally left
+  unchanged and a `menus/<L>/pom.toml` is not wired. This removes the apparent
+  contradiction with Req 12.9's "all menu kinds": full localisation still applies
+  to every menu kind via first prize, while the OPTIONAL second-prize FILE override
+  is scoped to the two user-authored reconstruct seams.
+- **Finding 2 (NIT -- "the ONE site" wording overstated): ADDRESSED.** Both
+  second-prize sections now use a "RESOLUTION SITES (the complete set --
+  enumerated, not 'one site')" heading that names the TWO user-menu reconstruct
+  seams (`reconstruct_settings_menu`, `reconstruct_named_menu`) as the sites that
+  carry the locale segment, and explicitly lists `ensure_pom_menu_loaded` (the
+  POM's third load path) as out of scope. No "one site" claim remains.
+- **Finding 3 (NIT -- mnemonic catalogue-key slug convention not restated in the
+  implementable delta): ADDRESSED.** The menu-workspace CR-NR-111 delta now states
+  that `menu_option_key_key` uses the SAME `slug(command)` helper as
+  `menu_option_desc_key` (verified: `menu_option_desc_key` calls `slug(command)` in
+  `menu_workspace/i18n_keys.rs`), giving `menu-settings-opt-reset-bare-key` to
+  parallel `menu-settings-opt-reset-bare-desc`, and forbids building the key from
+  the raw command string.
+
 ## Relationship to structured-messages (ff-message)
 
 See `docs/specs/structured-messages`. The new `ff-message` crate DEPENDS ON

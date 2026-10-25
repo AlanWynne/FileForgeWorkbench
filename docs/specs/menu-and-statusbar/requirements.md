@@ -610,3 +610,37 @@ or view content side-by-side independently.
 12. WHEN the screen is split (Slice 2), a key/command SHALL move keyboard focus between the two regions. [ISPF-3.2] *(Deferred to Slice 2 per 19.11; the inert PF9-swaps-split-focus remnant is retired in Slice 1. PF9/`SWAP` retains its tab/workspace-switcher role.)*
 13. WHEN the screen is split (Slice 2), EACH region SHALL operate independently with its own scroll position and cursor state. [ISPF-3.3] *(Deferred to Slice 2 per 19.11.)*
 14. WHEN END (PF3) is pressed while the screen is split (Slice 2), THE system SHALL unsplit, restoring the single-region view. [ISPF-3.4] *(Deferred to Slice 2 per 19.11; the inert `UNSPLIT` command is retired in Slice 1.)*
+
+---
+
+### Requirement 20: Menu row chrome localises fully -- mnemonic, command, and description follow the active locale (CR-NR-111)
+
+**User Story:** As a localized-install user, I want a menu's rendered rows -- the
+mnemonic character, the command verb, and the description -- to all appear in my
+active language, so a menu is not English-with-a-translated-description.
+
+**Source:** [CR-NR-111]. Builds ON Requirement 2 (Menu-Command integration -- every
+menu item invokes a registered command through the framework) and Requirement 17
+(Tab window chrome: Title_Line + Command_Line). Governed in detail by localization
+Requirement 12 and menu-workspace Requirement 21; stated here because the menu-row
+chrome is a menu-and-statusbar concern.
+
+**Note:** This localises only the DISPLAYED menu-row surface. The command a menu
+item invokes (Requirement 2) is unchanged: the displayed localised verb resolves
+back to the same registered root command through the single dispatch path.
+
+#### Acceptance Criteria
+
+1. WHEN a menu is rendered at active locale `L`, THE displayed MNEMONIC, COMMAND
+   surface, and DESCRIPTION of each menu row SHALL each follow `L` (localization
+   Requirement 12.1), so a locale change re-localises the whole row rather than the
+   description alone.
+2. THE localised COMMAND surface and localised MNEMONIC SHALL each fall back PER
+   PART to the Identity_Base/root English value when `L` provides no localised
+   data, so every menu row remains complete and selectable (localization
+   Requirement 12.8).
+3. SELECTING a menu row whose surface is localised SHALL invoke the SAME registered
+   command through the SAME single dispatch path as the un-localised row
+   (Requirement 2; command-framework Requirement 2), so full-row localisation
+   SHALL NOT add or change any dispatch path and SHALL NOT alter how the command is
+   routed or recorded.

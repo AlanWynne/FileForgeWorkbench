@@ -890,3 +890,49 @@ menu-workspace obligation. Do NOT start until the gate is approved.
       PSReadLine/capture quirk, terminal-discipline.md), so the scoped `clippy`/
       `fmt`/unit-test runs could not all be re-captured here; the code compiles
       clean and the fix is a pure, self-contained helper + one call-site swap.
+
+---
+
+## Phase (menu-kind-localisation) -- Options render mnemonic/command/description per active locale (CR-NR-111, Requirement 21)
+
+CR-NR-111 extends FULL localisation to every observable part of a menu option.
+The render-path implementation (the new mnemonic seam, the shared-renderer change
+that draws all three localised parts, and the first-/second-prize mechanics) is
+owned by the governing plan in `docs/specs/localization/tasks.md` Phase 8
+(Tasks 16-22). The tasks below are the menu-workspace-specific slices of that
+plan, cross-referenced so this spec's criteria trace to their work; they are the
+SAME code and MUST NOT be implemented twice.
+
+NOT a framework change (the `rewrite_verb_to_root` -> `resolve_target` pre-pass
+already delivers routing invariance); the ROOT `command` stays the
+stored/dispatched/persisted identity. Built-in menus stay code-only (CR-CH-021).
+TDD applies; agents compile-verify SCOPED and run the single new scoped test; the
+OWNER runs the full gate.
+
+- [ ] 49. Options render mnemonic + command + description per active locale
+  - [ ] 49.1 Mnemonic seam: add `menu_option_key_key` /
+          `localised_option_mnemonic` in `menu_workspace/i18n_keys.rs` (mirrors the
+          description seam; `t_or(key, &option.key)` fallback). Realises
+          localization Phase 8 Task 16. (Req 21.1, 21.3)
+  - [ ] 49.2 Shared renderer: `render_layout.rs::option_prefix_job` accepts the
+          resolved mnemonic surface positionally (replacing raw `option.key`); the
+          shell passes mnemonic + command surfaces into `render_menu_workspace`;
+          the description continues via `localised_option_description`. Realises
+          localization Phase 8 Task 17. (Req 21.1, 21.2, 21.3, 21.7)
+  - [ ] 49.3 Displayed MNEMONIC is DISPLAY-ONLY: option selection by typed
+          `MENU <name> <key>` or in-menu key press still matches the stored
+          `option.key`, never the displayed localised mnemonic. (Req 21.8)
+  - [ ] 49.4 Stored `command` stays the Locale_Independent_Stored_Value (ROOT);
+          selection resolves to the ROOT via the existing single Option_Dispatch_Path
+          + the localised-alias -> root pre-pass, so routing is observably identical
+          to the un-localised option. Realises localization Phase 8 Task 18.
+          (Req 21.4, 21.5)
+  - [ ] 49.5 Per-part fallback: a missing locale surface for any part falls back to
+          the Identity_Base/root value; a menu NEVER renders a blank or
+          unselectable option. (Req 21.6)
+  - [ ] 49.6 Full-shell `egui_kittest` (localization Phase 8 Task 19.2/19.4):
+          all three parts localise; selection dispatches + records the ROOT; the
+          first-Tab focus test stays green (no phantom stop). (Validates Req 21.1,
+          21.4, 21.7, 21.8)
+  - [ ] 49.7 Update `docs/quality/TCR.md`: set the CR-NR-111 menu-workspace
+          Req 21.1-21.8 rows to their correct status. (Project standards)

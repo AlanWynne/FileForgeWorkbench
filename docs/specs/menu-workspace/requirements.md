@@ -1493,3 +1493,65 @@ and centered, and drops the duplicate.
     favour of this standardised themed heading. Non-menu Title_Lines keep their
     existing themed left-aligned rendering (menu-and-statusbar Requirement 17.7/17.8,
     21.5).
+
+---
+
+### Requirement 21: Menu options render mnemonic, command, and description per active locale (CR-NR-111)
+
+**User Story:** As a localized-install user, I want each menu option's mnemonic,
+displayed command, and description to all appear in my active language, so that a
+menu is consistently localised rather than English with only a translated
+description.
+
+**Source:** [CR-NR-111]. Builds ON Requirement 1 (the `key` / `command` /
+`description` option model), Requirement 19 (the one Option-Selection path), and
+localization Requirement 11 + 12. The ROOT command stays the dispatched/persisted
+identity; this requirement localises only the DISPLAYED Menu_Option_Surface and
+keeps routing unchanged.
+
+**Note:** Today a menu option's `description` re-localises at render time, and
+(per CR-NR-109) the displayed `command` column renders the active-locale alias of
+the option's root command; the `key` mnemonic still renders raw. This requirement
+makes all three parts localise and makes routing invariance explicit. It changes
+NO option behaviour and introduces NO new dispatch path.
+
+#### Acceptance Criteria
+
+1. WHEN a Menu_Workspace renders an option at active locale `L`, THE option's
+   displayed MNEMONIC, COMMAND surface, and DESCRIPTION SHALL each be resolved
+   against `L` (localization Requirement 12.1), so changing the locale
+   re-localises the whole option row, not the description alone.
+2. THE displayed COMMAND surface SHALL be the option's active-locale alias
+   resolved via the existing alias layer (localization Requirement 11.7), falling
+   back to the Identity_Base/root English surface when `L` provides no alias.
+3. THE displayed MNEMONIC SHALL be resolved from a per-locale source, falling back
+   to the option's Identity_Base/root `key` when `L` provides none, so the option
+   is always keyable (localization Requirement 12.3). The concrete per-locale
+   mnemonic source is a DESIGN decision; this criterion fixes the observable
+   contract and fallback only.
+4. WHEN an option is SELECTED by any Option_Selection means (Requirement 19.1),
+   THE verb dispatched SHALL resolve to the option's ROOT command through the
+   SAME single Option_Dispatch_Path and the existing localised-alias -> root
+   pre-pass (localization Requirement 11.6, 12.5), so localising the
+   Menu_Option_Surface SHALL NOT add or change any dispatch path and SHALL be
+   observably identical in routing to selecting the un-localised option.
+5. THE option's stored `command` value SHALL remain a locale-independent value
+   (localization Requirement 12.4) and SHALL remain the recorded/persisted
+   identity (Requirement 10; localization Requirement 10.3), so ONE saved menu
+   definition renders correctly in any active locale (first-prize auto-conversion)
+   without being re-saved.
+6. WHEN `L` provides no localised surface for a part of an option, THE
+   Menu_Workspace SHALL fall back PER PART to the Identity_Base/root value and
+   SHALL still render a complete, selectable option; a menu SHALL NEVER render a
+   blank or unselectable option for lack of locale data (localization
+   Requirement 12.8).
+7. THIS full-localisation behaviour SHALL apply uniformly to the POM, the Settings
+   menu, and user menus (localization Requirement 12.9), via the single shared
+   renderer, with no POM-specific branch.
+8. THE displayed localised MNEMONIC SHALL be DISPLAY-ONLY: it SHALL NOT change
+   which keystroke selects an option. WHEN an option is selected by a typed
+   `MENU <name> <key>` chained key or an in-menu key press, THE match SHALL use
+   the option's stored `key` (Requirement 1 key format, Requirement 19
+   one-selection-path), NOT the displayed localised mnemonic. (Making a locale's
+   displayed mnemonic ALSO typeable would be an additional key-match alias and is
+   OUT of this requirement's scope -- see Out of Scope.)

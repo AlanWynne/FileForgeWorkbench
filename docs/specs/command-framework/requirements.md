@@ -743,3 +743,76 @@ applied to the keyboard, and the generalisation that resolves the scattered inli
    (slice 2) the new buffer commands (CUT, PASTE, SELECT ALL, COPY unification)
    and REDO (a new feature -- no redo stack exists today), with the clipboard
    backed by the `ff-clipboard` crate. REDO coordinates with undo-redo-transactions.
+
+---
+
+### Requirement 18: A localised menu-option verb resolves through the single classifier -- no new path (CR-NR-111)
+
+**User Story:** As a maintainer, I want a menu option whose displayed verb is in
+the active locale to resolve to its root command through the SAME single
+classifier as the typed command line, so that full menu localisation adds no
+second dispatch path.
+
+**Source:** [CR-NR-111]. Builds ON Requirement 8 (Unified Command Target +
+`resolve_target`), Requirement 14 (Selection-equals-command), and Requirement 15
+(the typed line resolves through the single classifier). Governed by localization
+Requirement 11 (the locale-aware alias layer + unified resolver) and Requirement 12
+(full menu-Kind localisation).
+
+**Note:** This requirement records the routing invariant for CR-NR-111. The
+localised-alias -> root translation already exists as a pre-pass
+(`rewrite_verb_to_root` -> `AliasTable::canonical_verb`) that runs BEFORE
+`resolve_target` on both the command-line and menu-selection seams
+(localization Requirement 11.6); CR-NR-111 adds no new path and does not move the
+alias lookup inside `resolve_target`.
+
+#### Acceptance Criteria
+
+1. WHEN a menu option is selected (or its displayed localised verb is typed), THE
+   workbench SHALL translate the active-locale alias surface to the ROOT command
+   via the EXISTING pre-pass that runs before `resolve_target`, then classify the
+   ROOT through the SAME single `resolve_target` classifier used for every typed
+   command (Requirement 15), so a localised option and its un-localised equivalent
+   produce an IDENTICAL `CommandTarget` and observable result.
+2. THE full menu-option localisation of CR-NR-111 SHALL add NO second dispatcher,
+   NO parallel resolver, and NO change to `CommandTarget` / `resolve_target` / the
+   navigation stack; it is alias-surface -> root -> the existing front door
+   (Requirement 8, Requirement 14.3, Requirement 17.7).
+3. THE ROOT (canonical) command SHALL remain the value recorded in command history
+   and persisted (Requirement 7; localization Requirement 10.3), regardless of the
+   active locale or the alias surface displayed/typed, so a locale change SHALL NOT
+   alter which root command an option resolves to.
+
+---
+
+### Requirement 19: Parameterised alias expansion runs in the existing pre-pass before resolve_target -- routing unchanged (CR-NR-112)
+
+**User Story:** As a maintainer, I want an alias that expands a verb into a ROOT
+command WITH PARAMETERS to be expanded to a full command STRING in the SAME
+pre-pass that already rewrites a verb to its root, so that the expanded command
+flows through the one `resolve_target` classifier unchanged and parameterised
+aliases add no second dispatch path.
+
+**Source:** [CR-NR-112]. Builds ON Requirement 8 (Unified Command Target +
+`resolve_target`), Requirement 9 (Command Arguments -- the verb/argument split),
+Requirement 15 (the typed line resolves through the single classifier), and
+Requirement 18 (the localised-alias -> root pre-pass). The substitution grammar
+and the 4-field alias record are specified in command-semantics Requirement 14;
+the alias DATA format is cross-referenced to `docs/specs/localization/`.
+
+**Note:** The verb-to-root translation already exists as a STRING-to-STRING
+pre-pass (`rewrite_verb_to_root` -> `AliasTable::canonical_verb` in
+`shell/locale_resolver.rs`) that runs BEFORE `resolve_target` on BOTH the typed
+command line (`shell/dispatch.rs`) and menu selection (`shell/commands_menu.rs`).
+CR-NR-112 EXTENDS that pre-pass to emit a full resolved command STRING for alias
+entries that carry a parameter template; it adds no new path and does not move the
+alias lookup inside `resolve_target`. No framework change is required.
+
+#### Acceptance Criteria
+
+1. WHEN a typed command line (or a key-merged command line, Requirement 9.8) begins with an alias that carries a parameter template, THE workbench SHALL expand it to the fully resolved ROOT command STRING in the EXISTING pre-pass that runs BEFORE `resolve_target`, then classify that resolved STRING through the SAME single `resolve_target` classifier used for every typed command (Requirement 15), so the expanded alias and the equivalent fully typed command produce an IDENTICAL `CommandTarget` and observable result.
+2. THE parameterised-alias expansion SHALL be a STRING-to-STRING rewrite strictly upstream of `resolve_target`; it SHALL add NO second dispatcher, NO parallel resolver, and NO change to `CommandTarget` / `resolve_target` / `dispatch_command_target` / the navigation stack. The alias layer SHALL NOT route parameters through the dispatch layer -- it produces the resolved STRING and lets the existing handler (e.g. the EDIT ladder arm, which forwards its argument as the `path` param) consume it (Requirement 8, Requirement 9.2).
+3. A verb alias with NO parameter template SHALL be rewritten by the pre-pass byte-identically to today (Requirement 18; localization Requirement 11.6): the template extension SHALL NOT change the behaviour of any existing non-template alias, nor of a command string that uses no alias.
+4. THE ROOT (canonical) command string -- as resolved and dispatched -- SHALL remain the value recorded in command history and persisted (Requirement 7); the alias surface and template SHALL be pre-resolution forms only, never the recorded identity.
+5. ALIAS EXPANSION SHALL be SINGLE-PASS (command-semantics Requirement 14.7): the pre-pass SHALL expand at most ONE alias level per invocation and SHALL NOT re-feed the expanded string through alias expansion. (A future chaining capability, if gated separately, SHALL bound recursion with an explicit maximum expansion depth and a visited-alias set; enabling it SHALL be an additive change to this pre-pass, not a new dispatch path.)
+6. WHERE the command-line residue IS merged before the pre-pass (the function-key seam, Requirement 9.8, which merges the field as the command's argument), a key-bound parameterised alias SHALL be expanded by the pre-pass identically to the typed path. A parameterised alias used as a MENU OPTION's command (whose activation does NOT merge the command-line field) SHALL be OUT OF SCOPE for CR-NR-112 argument supply; routing the command-line field into menu-option activation would be a new mechanism requiring separate owner confirmation and SHALL NOT be introduced by this requirement. CONSEQUENCE (recorded): because menu-option activation supplies no arguments, a menu option whose stored `command` IS a template-alias surface SHALL expand with an EMPTY argument list, so every `&N` substitutes to the empty string per command-semantics Requirement 14.4 (e.g. a `FFWB.COBOL.MASTER(&1)` template yields `EDIT FFWB.COBOL.MASTER()`). Menu options are therefore NOT expected to store template-alias surfaces; doing so is author error, not a supported argument-supply path. [CR-NR-112, owner-confirmed]

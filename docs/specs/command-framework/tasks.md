@@ -660,3 +660,57 @@ macro. Command-level contract; no dispatch-mechanism change. TDD, scoped checks.
   - [x] 30.2 Update `docs/quality/TCR.md`: set the CR-CH-052 command-framework Req 10
           rows to their correct status.
     - Covers: Requirement 10.2 (revised), 10.14
+
+---
+
+## Phase (menu-kind-localisation) -- Localised option verb resolves through the single classifier (CR-NR-111, Requirement 18)
+
+Requirement 18 RECORDS the routing invariant for full menu-Kind localisation: a
+localised option verb resolves through the EXISTING `rewrite_verb_to_root` ->
+`resolve_target` pre-pass, adding NO second dispatcher and NO change to
+`CommandTarget` / `resolve_target`. This mechanism is ALREADY wired (CR-NR-109,
+localization Requirement 11.6) and CR-NR-111 adds no new path, so there is NO new
+implementation task here -- only verification and coverage bookkeeping.
+
+- [ ] 31. Localised option verb resolves through the single classifier (Req 18.1-18.3)
+  - [ ] 31.1 (Verification, no code) Confirm via the localization Phase 8 full-shell
+          test (`docs/specs/localization/tasks.md` Task 19.2) that a localised option
+          and its un-localised equivalent produce an IDENTICAL `CommandTarget` and
+          that the ROOT is what history/session record, with no second dispatcher.
+          (Covers Req 18.1, 18.2, 18.3)
+  - [ ] 31.2 Update `docs/quality/TCR.md`: set the CR-NR-111 command-framework
+          Req 18.1-18.3 rows to their correct status. (Project standards)
+---
+## Phase (parameterised-aliases) -- Expansion in the pre-pass before resolve_target; routing unchanged (CR-NR-112, Requirement 19)
+Requirement 19 fixes the routing invariant: a parameterised alias is expanded to
+a full command STRING in the EXISTING `rewrite_verb_to_root` pre-pass (before
+`resolve_target`), and the expanded string flows through the one front door
+unchanged. The substitution algorithm and alias record live in command-semantics
+Requirement 14 (tasked there); this phase wires the pre-pass and proves routing.
+Follow TDD; keep every touched file under 400 non-test lines.
+
+- [ ] 32. Wire template expansion into the pre-pass (Req 19.1-19.3)
+  - [ ] 32.1 Extend `rewrite_verb_to_root` (`shell/locale_resolver.rs`) to call `expand_template` for an alias entry that carries a non-empty template, and keep the verb-only path byte-identical for templateless entries
+    - Validates: command-framework Requirement 19.1, 19.3
+  - [ ] 32.2 Write a failing unit test: a template entry yields the fully expanded string from the pre-pass; a non-template entry yields today's exact output for the same surface+arg
+    - Validates: command-framework Requirement 19.3
+  - [ ] 32.3 Confirm the two call sites (`shell/dispatch.rs`, `shell/commands_menu.rs`) are UNCHANGED in shape and that the expanded string continues to `resolve_target` -> `dispatch_command_target` with no new branch
+    - Validates: command-framework Requirement 19.1, 19.2
+
+- [ ] 33. Prove the expanded string routes through the single front door (Req 19.1, 19.2, 19.4)
+  - [ ] 33.1 Write a failing full-shell `egui_kittest` `build_eframe` test `full_shell_ecob_opens_edit_with_member`: seed `ECOB` (root `EDIT`, template `FFWB.COBOL.MASTER(&1)`), type `ecob helloW`, Enter; assert the resolved command is `EDIT FFWB.COBOL.MASTER(helloW)` and an editor opens for `ffwb.cobol.master(helloW)` via the existing EDIT routing
+    - Validates: command-framework Requirement 19.1, 19.2
+  - [ ] 33.2 Assert the ROOT (expanded) command string is what command history records (not the alias surface/template)
+    - Validates: command-framework Requirement 19.4
+
+- [ ] 34. Single-pass guard and the key-bound path (Req 19.5, 19.6)
+  - [ ] 34.1 Add a test asserting expansion is single-pass: an expanded string whose verb matches another alias surface is NOT re-expanded by the pre-pass
+    - Validates: command-framework Requirement 19.5
+  - [ ] 34.2 Write a full-shell test `full_shell_key_bound_parameterised_alias_expands`: with `ECOB` bound to a key and `helloW` in the field, pressing the key merges the field then the pre-pass expands identically to the typed path
+    - Validates: command-framework Requirement 19.6
+  - [ ] 34.3 (Documentation, no code) Record that a parameterised alias used as a MENU OPTION'S command is OUT OF SCOPE for argument supply (no field merge on menu-option click); routing the field in would be a separate owner-confirmed mechanism
+    - Covers: command-framework Requirement 19.6
+
+- [ ] 35. Coverage bookkeeping (CR-NR-112)
+  - [ ] 35.1 Update `docs/quality/TCR.md`: set the CR-NR-112 command-framework Req 19.1-19.6 rows to their correct status as each test lands
+    - Covers: command-framework Requirement 19 (all criteria)

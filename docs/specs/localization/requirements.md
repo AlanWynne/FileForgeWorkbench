@@ -490,6 +490,107 @@ surface (Requirement 11.1, 11.7) and the root command / persistence
 
 ---
 
+### Requirement 12: Menu Kinds localise FULLY -- mnemonic + command alias + description follow the active locale (CR-NR-111)
+
+**User Story:** As a user in a localized install, I want a whole menu Kind -- its
+option mnemonics, its displayed command verbs, AND its descriptions -- to appear
+in my active language, so that selecting `af` does not leave a POM that is English
+except for the description column.
+
+This requirement is the DELTA on top of Requirement 11 (CR-NR-109). Requirement 11
+already (a) made the alias layer locale-aware, (b) rendered a menu option's
+displayed COMMAND surface via its active-locale alias, and (c) wired the unified
+localised-alias -> root resolver for both the command line and menu selection.
+Requirement 12 extends FULL localisation to the remaining observable parts of a
+menu option, settles the observable storage contract that makes a single saved
+menu auto-convert, and makes the no-localised-surface fallback and the
+per-language saved-menu fallback explicit. It builds ON Requirement 11, the
+existing per-environment `AliasTable`, the single command-dispatch front door, and
+the code-only built-in menus (CR-CH-021). It adds NO second dispatcher, NO parallel
+resolver, NO new persistence format, and NO Workspace-Kinds-registry change (menus
+are CONTENT, not mechanism). The ROOT (canonical) command remains the stable
+identifier used for dispatch and persistence (Requirement 10.3, 11.9 unchanged).
+
+#### Glossary additions
+
+- **Menu_Option_Surface**: the three observable, localisable parts of a rendered
+  menu option -- the MNEMONIC (the displayed form of the option's `key`), the
+  COMMAND surface (the displayed/typeable active-locale alias of the option's root
+  command, Requirement 11.7), and the DESCRIPTION (Requirement 7). "Localise
+  fully" means all three follow the active locale, with per-part fallback.
+- **Locale_Independent_Stored_Value**: the value a saved menu option stores for
+  its command so that the option can be rendered CORRECTLY in ANY active locale
+  without re-saving the menu -- a value that does not itself encode a single
+  locale's surface form (the design settles whether this is the root command or a
+  localisation key; this requirement states only the observable contract).
+
+#### Acceptance Criteria
+
+1. WHEN a menu Kind is rendered at active locale `L`, THE Menu_Workspace SHALL
+   derive ALL THREE parts of each option's Menu_Option_Surface -- the mnemonic,
+   the displayed command alias, and the description -- against `L`, so that a
+   locale change re-localises the WHOLE option row, not the description alone
+   (this AMENDS the observed behaviour where only the description re-localised).
+2. THE displayed COMMAND surface of a menu option SHALL be the option's
+   active-locale alias resolved through the existing alias layer (Requirement 11.1,
+   11.7), falling back to the Identity_Base/root English surface when the active
+   locale provides no alias (Requirement 3.2, 11.8).
+3. THE MNEMONIC of a menu option SHALL be localisable from a PER-LOCALE SOURCE
+   (not rendered raw): WHEN the active locale provides a localised mnemonic for an
+   option, THE Menu_Workspace SHALL display that localised mnemonic; WHEN it does
+   not, THE Menu_Workspace SHALL fall back to the option's Identity_Base/root
+   mnemonic so the option is always keyable. (The concrete source -- a dedicated
+   per-locale mnemonic value versus a mnemonic derived from the localised command
+   alias -- is a DESIGN decision; this criterion fixes only the observable
+   contract that the mnemonic has a per-locale source and a defined fallback.)
+4. THE saved form of a menu option's command SHALL be a Locale_Independent_Stored_Value:
+   a SINGLE saved menu definition SHALL render correctly in ANY active locale
+   WITHOUT being re-saved, so the stored value MUST NOT encode one locale's surface
+   form. THE displayed command alias, mnemonic, and description SHALL be DERIVED
+   from that stored value plus the active-locale catalogues/alias data at render
+   time (this is the observable contract first-prize auto-conversion requires;
+   Requirement 10.3 and 11.9 -- the root stays the persisted identity -- are
+   unchanged).
+5. WHEN a menu option is displayed or SELECTED at any active locale, THE verb that
+   is dispatched SHALL resolve back to the option's ROOT command through the
+   EXISTING single resolver (Requirement 11.6: the `rewrite_verb_to_root` ->
+   `AliasTable::canonical_verb` pre-pass that runs before `ff_command::resolve_target`,
+   identical for the command line and menu selection), so FULL localisation of the
+   Menu_Option_Surface SHALL NOT change how commands are routed, dispatched, or
+   persisted. NO new or parallel dispatch path SHALL be introduced.
+6. FIRST-PRIZE auto-conversion SHALL be the primary behaviour: a menu Kind
+   authored or saved once (e.g. in English) SHALL, when the active locale changes
+   to a locale that provides the relevant alias/description/mnemonic data, render
+   its options in THAT locale from the SAME stored definition, with NO separate
+   per-language menu file required.
+7. SECOND-PRIZE per-language saved menus SHALL be supported as a FALLBACK: WHERE a
+   user chooses to maintain a saved menu definition PER LOCALE (rather than rely on
+   auto-conversion), THE Menu_Workspace SHALL render the saved definition that
+   matches the active locale when one exists, falling back to the Identity_Base
+   definition otherwise. (This is the owner's "second prize"; first prize -- a
+   single auto-converting definition, criteria 4 and 6 -- is preferred.)
+8. WHEN the active locale provides NO localised surface for an option (no alias
+   row, no mnemonic source, and/or no description key, and no per-language saved
+   menu for that locale), THE Menu_Workspace SHALL fall back, PER PART and PER
+   OPTION, to the Identity_Base/root English value for the missing part(s) and
+   SHALL still render a complete, selectable option set. A menu SHALL NEVER render
+   a blank, missing, or unselectable option because a locale lacks data; the
+   fallback SHALL be predictable and per-option (this is the explicit fix for the
+   reported "the application is not consistently Afrikaans" inconsistency -- an
+   absent `af` surface yields the English surface for that part, never an empty or
+   broken row).
+9. THE full menu-Kind localisation SHALL apply to ALL menu kinds -- the POM/Home
+   Context, the Settings menu, and user-defined menus rendered via the Workspace
+   Kinds / menu model (Requirement 11.7) -- not to the POM alone.
+10. THE full menu-Kind localisation SHALL require NO change to the Workspace Kinds
+    registry chrome mechanism (per-Kind title / menu-bar / key-list / profile):
+    menu OPTION content (mnemonic / command alias / description) is a
+    Menu_Workspace concern localised via the catalogues and alias layer, while the
+    per-Kind chrome localises via its own existing seams; this requirement adds no
+    new Kinds-registry field.
+
+---
+
 ## Out of Scope (this gate)
 
 - The full per-crate extraction of all existing hardcoded string literals in one
@@ -502,3 +603,10 @@ surface (Requirement 11.1, 11.7) and the root command / persistence
   LOADS alias DATA into the existing `AliasTable`.
 - Right-to-left layout, locale-specific number/date formatting beyond Fluent's
   built-in plural/gender handling, and font coverage for non-Latin scripts.
+- (CR-NR-111) Authoring the per-locale alias/mnemonic/description DATA rows for the
+  built-in menu-option roots (e.g. the `af` surfaces for Settings/Catalogs/Files/
+  Help/X and the Settings-menu roots). Requirement 12 specifies the CODE contract
+  (full localisation, derived surfaces, per-part fallback); the per-locale menu
+  DATA is a separate gated DATA deliverable (localization DATA, out of ASCII
+  scope). Until that data exists, Requirement 12.8 fallback yields the English
+  surface for the missing parts.
