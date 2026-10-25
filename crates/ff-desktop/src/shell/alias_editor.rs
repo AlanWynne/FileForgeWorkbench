@@ -64,10 +64,12 @@ impl WorkbenchShell {
             Ok(rows) => rows
                 .into_iter()
                 .map(|r| AliasRowEdit {
+                    act: String::new(),
                     surface: r.surface,
                     canonical: r.canonical,
                     environment: r.environment,
                     command_template: r.command_template,
+                    localisation_key: r.localisation_key,
                 })
                 .collect(),
             Err(_) => Vec::new(),
@@ -76,23 +78,18 @@ impl WorkbenchShell {
 
     /// Apply an [`AliasEditorAction`] produced by the Alias Editor render.
     ///
-    /// Validates: command-configurator Requirement 5.3, 5.5
+    /// Per-field edits (surface / root / environment / template / L18N / act) are
+    /// applied DIRECTLY by the render on the mutable working rows, so they do not
+    /// appear as actions here -- only the line-command batch and the primary
+    /// command do (Req 5.14, 5.16, 5.22).
+    ///
+    /// Validates: command-configurator Requirement 5.14, 5.16, 5.22
     pub(super) fn apply_alias_editor_action(&mut self, action: AliasEditorAction) {
         use AliasEditorAction as A;
         match action {
             A::None => {}
-            // Note: per-field edits (surface/root/environment/template) are
-            // applied DIRECTLY by the render on the mutable working rows, so they
-            // do not appear as actions here -- only structural changes do.
-            A::AddRow => {
-                self.alias_editor_panel.rows.push(AliasRowEdit::default());
-            }
-            A::DeleteRow(index) => {
-                if index < self.alias_editor_panel.rows.len() {
-                    self.alias_editor_panel.rows.remove(index);
-                }
-            }
-            A::Save => self.save_user_aliases(),
+            A::ApplyLineCommands => self.apply_pending_line_commands(),
+            A::CommandLine(text) => self.apply_alias_command_line(&text),
         }
     }
 
@@ -103,7 +100,7 @@ impl WorkbenchShell {
     /// without a restart (Req 5.6).
     ///
     /// Validates: command-configurator Requirement 5.4, 5.5, 5.6
-    fn save_user_aliases(&mut self) {
+    pub(super) fn save_user_aliases(&mut self) {
         let rows = self.alias_editor_panel.rows.clone();
         let toml_rows = match validate_user_alias_rows(&rows) {
             Ok(rows) => rows,
@@ -238,7 +235,9 @@ fn validate_user_alias_rows(rows: &[AliasRowEdit]) -> Result<Vec<UserAliasRowTom
             canonical,
             environment: row.environment,
             command_template: row.command_template.trim().to_string(),
-            localisation_key: String::new(),
+            // L18N round-trip (Req 5.13, design 9.10.2 DECISION): carry the edited
+            // locale key instead of hardcoding empty, so the column persists.
+            localisation_key: row.localisation_key.trim().to_string(),
         });
     }
     Ok(out)
@@ -256,6 +255,7 @@ mod tests {
             canonical: canonical.to_string(),
             environment: env,
             command_template: template.to_string(),
+            ..Default::default()
         }
     }
 
@@ -363,5 +363,31 @@ mod tests {
         assert_eq!(out[0].surface, "ECOB");
         assert_eq!(out[0].canonical, "EDIT");
         assert_eq!(out[0].command_template, "FFWB.COBOL.MASTER(&1)");
+    }
+
+    // Validates: command-configurator Requirement 5.13 -- an edited non-empty
+    // L18N (localisation_key) value PERSISTS: validate_user_alias_rows carries the
+    // trimmed value into the UserAliasRowToml (instead of hardcoding empty), and a
+    // serialise + re-parse round-trips the same L18N value (design 9.10.2).
+    #[test]
+    fn l18n_value_round_trips_through_validate_and_serialise() {
+        let mut r = row(
+            "ECOB",
+            "EDIT",
+            AliasEnvironment::Ffcmd,
+            "FFWB.COBOL.MASTER(&1)",
+        );
+        r.localisation_key = "  en  ".to_string();
+        let out = validate_user_alias_rows(std::slice::from_ref(&r)).expect("valid");
+        assert_eq!(
+            out[0].localisation_key, "en",
+            "the trimmed L18N value is carried into the serialisable row"
+        );
+        let text = serialise_user_aliases(&out).expect("serialises");
+        let back = user_aliases::parse_user_alias_toml(&text).expect("parses back");
+        assert_eq!(
+            back[0].localisation_key, "en",
+            "the L18N value re-renders through a full serialise + parse round-trip"
+        );
     }
 }

@@ -111,7 +111,7 @@ pub(super) struct EnvironmentEntry {
 /// [`super::environment::CommandEnvironment`] trait (which borrows
 /// `&mut WorkbenchShell`), keeping the registry a pure data/lookup structure
 /// (Req 13.7).
-pub(super) struct EnvironmentRegistry {
+pub(crate) struct EnvironmentRegistry {
     entries: Vec<EnvironmentEntry>,
     /// The resolved host-FS BACKEND Command Environment (CR-CH-053 Task 21):
     /// `ff-ce-host-fs` picks NTFS on Windows / POSIX elsewhere, registered here

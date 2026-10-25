@@ -24,7 +24,14 @@ fn row(surface: &str, canonical: &str, env: AliasEnvironment, template: &str) ->
         canonical: canonical.to_string(),
         environment: env,
         command_template: template.to_string(),
+        ..Default::default()
     }
+}
+
+/// Run a `Command ===>` SAVE (the redesign's save path): apply pending line
+/// commands then validate + write (Req 5.14, 5.22).
+fn save(shell: &mut WorkbenchShell) {
+    shell.apply_alias_editor_action(AliasEditorAction::CommandLine("SAVE".to_string()));
 }
 
 // Validates: command-configurator Requirement 5.2 -- the ALIASES verb opens the
@@ -106,18 +113,24 @@ fn alias_editor_end_returns_to_opener_via_nav_stack() {
     );
 }
 
-// Validates: command-configurator Requirement 5.3, 5.5 -- Add appends a blank
-// row and Delete removes a row from the working copy.
+// Validates: command-configurator Requirement 5.16 -- the ISPF line commands
+// supersede the footer Add/Delete: an `I` Act on a row inserts a blank row and a
+// `D` Act deletes a row when the batch is applied (CR-CH-068).
 #[test]
-fn add_and_delete_mutate_the_working_copy() {
+fn line_commands_insert_and_delete_the_working_copy() {
     let mut shell = make_shell();
     let _dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
     assert_eq!(shell.alias_editor_panel.rows.len(), 0);
-    shell.apply_alias_editor_action(AliasEditorAction::AddRow);
-    shell.apply_alias_editor_action(AliasEditorAction::AddRow);
+    // Seed one row, mark it I, apply -> two rows.
+    let mut r = row("ECOB", "EDIT", AliasEnvironment::Ffcmd, "");
+    r.act = "I".to_string();
+    shell.alias_editor_panel.rows = vec![r];
+    shell.apply_alias_editor_action(AliasEditorAction::ApplyLineCommands);
     assert_eq!(shell.alias_editor_panel.rows.len(), 2);
-    shell.apply_alias_editor_action(AliasEditorAction::DeleteRow(0));
+    // Mark row 0 D, apply -> one row.
+    shell.alias_editor_panel.rows[0].act = "D".to_string();
+    shell.apply_alias_editor_action(AliasEditorAction::ApplyLineCommands);
     assert_eq!(shell.alias_editor_panel.rows.len(), 1);
 }
 
@@ -131,7 +144,7 @@ fn save_writes_file_and_live_resolver_resolves_new_alias() {
     shell.dispatch_command_string("ALIASES");
     // Author an FFCMD shorthand GG -> GSEARCH.
     shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
-    shell.apply_alias_editor_action(AliasEditorAction::Save);
+    save(&mut shell);
     assert!(
         shell.alias_editor_panel.error.is_none(),
         "a valid save has no error: {:?}",
@@ -159,7 +172,7 @@ fn refresh_keeps_base_layer_and_adds_user_layer() {
     let _dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
     shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
-    shell.apply_alias_editor_action(AliasEditorAction::Save);
+    save(&mut shell);
     use super::locale_resolver::LocaleResolveOutcome;
     // Base layer retained: a built-in FFCMD root still self-resolves.
     assert_eq!(
@@ -189,7 +202,7 @@ fn user_rows_route_into_their_target_environment() {
         row("SOEK", "FIND", AliasEnvironment::Ffedit, ""),
         row("GG", "GSEARCH", AliasEnvironment::Ffcmd, ""),
     ];
-    shell.apply_alias_editor_action(AliasEditorAction::Save);
+    save(&mut shell);
     assert!(shell.alias_editor_panel.error.is_none());
     use super::locale_resolver::LocaleResolveOutcome;
     // SOEK resolves in FFEDIT (its target environment)...
@@ -308,12 +321,12 @@ fn save_validation_failure_leaves_file_unchanged() {
     shell.dispatch_command_string("ALIASES");
     // First, a valid save establishes a known file.
     shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
-    shell.apply_alias_editor_action(AliasEditorAction::Save);
+    save(&mut shell);
     let path = dir.path().join("aliases").join("user.toml");
     let before = std::fs::read_to_string(&path).expect("file written");
     // Now author an invalid set (CONFIG shadows a built-in root) and Save.
     shell.alias_editor_panel.rows = vec![row("CONFIG", "EDIT", AliasEnvironment::Ffcmd, "")];
-    shell.apply_alias_editor_action(AliasEditorAction::Save);
+    save(&mut shell);
     assert!(
         shell.alias_editor_panel.error.is_some(),
         "an invalid save surfaces an error"
@@ -346,7 +359,7 @@ fn parameterised_alias_authored_in_editor_expands_end_to_end() {
         AliasEnvironment::Ffcmd
     };
     shell.alias_editor_panel.rows = vec![row("ECOB", "EDIT", environment, "FFWB.COBOL.MASTER(&1)")];
-    shell.apply_alias_editor_action(AliasEditorAction::Save);
+    save(&mut shell);
     assert!(shell.alias_editor_panel.error.is_none());
     // The authored parameterised alias expands through the EXISTING CR-NR-112
     // pre-pass (no new behaviour): `ecob helloW` -> `EDIT FFWB.COBOL.MASTER(helloW)`.
