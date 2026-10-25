@@ -600,20 +600,28 @@ to rebuild or recover my configuration, instead of being locked out.
    Default_Menu_Bar (Requirement 17.2).
 3. THE Recovery_Baseline Settings menu SHALL contain exactly these options, in
    order (REVISED by CR-CH-025 -- reordered, regrouped, and repointed; REVISED
-   again by CR-CH-029 -- added the `K` -> `KEYS` option):
-   group `Core` -- `A` -> `CONFIG` (All settings -- browse every configuration
-   key), `T` -> `THEME` (Theme editor -- copy, edit, save and select themes),
-   `M` -> `MENUS` (Menus editor -- create, change and save menus), `K` -> `KEYS`
-   (Keys -- the Key assignments editor, function-keys-and-history Requirement 22);
-   then group `Recovery` -- `R` -> `RESET BARE` (Reset to barebones -- archive
-   config and start fresh). NOTES: (a) the former `A` -> `A` opaque command is
-   replaced by `A` -> `CONFIG` (configuration-system Requirement 15; the flat
-   config-key browser is now the first-class `CONFIG` command); (b) `T` -> `THEME`
+   again by CR-CH-029 -- added the `K` -> `KEYS` option; REVISED again by
+   CR-CH-066 -- Config's mnemonic moved `A` -> `C` and a new `A` -> Alias Editor
+   option inserted in SECOND position):
+   group `Core` -- `C` -> `CONFIG` (All settings -- browse every configuration
+   key), `A` -> `ALIASES` (Alias Editor -- create, edit and save command aliases,
+   command-configurator Requirement 5 / CR-NR-113), `T` -> `THEME` (Theme editor
+   -- copy, edit, save and select themes), `M` -> `MENUS` (Menus editor -- create,
+   change and save menus), `K` -> `KEYS` (Keys -- the Key assignments editor,
+   function-keys-and-history Requirement 22), `W` -> `KINDS` (Workspace Kinds
+   editor); then group `Recovery` -- `R` -> `RESET BARE` (Reset to barebones --
+   archive config and start fresh). NOTES: (a) the former `A` -> `A` opaque
+   command is replaced by `CONFIG` (configuration-system Requirement 15; the flat
+   config-key browser is the first-class `CONFIG` command), and under CR-CH-066
+   its mnemonic is `C` (freeing `A` for the Alias Editor); (b) `T` -> `THEME`
    corrects the stale `THEMES` (removed by CR-CH-024); (c) `K` -> `KEYS` opens the
-   Keys Workspace (CR-CH-029); (d) the two groups render with a
-   boundary between them (Requirement 2.4). Built-ins remain code-only
-   (Requirement 4.1); a user may Save this menu via the Menus Editor to obtain an
-   editable `menus/settings.toml` override.
+   Keys Workspace (CR-CH-029); (d) `A` -> `ALIASES` opens the Alias Editor Context
+   (CR-NR-113) through the single command-dispatch front door; (e) the mnemonic
+   reassignment `A` -> `C` for Config is a DELIBERATE CR-CH-066 change (there are
+   no existing users), NOT a regression; (f) the two groups render with a boundary
+   between them (Requirement 2.4). Built-ins remain code-only (Requirement 4.1); a
+   user may Save this menu via the Menus Editor to obtain an editable
+   `menus/settings.toml` override.
 4. WHEN a user Menu_File for the POM or Settings is ABSENT, THE workbench SHALL
    render the corresponding Recovery_Baseline (the compiled built-in), without a
    load error, so the menu always has its options.
@@ -1555,3 +1563,50 @@ NO option behaviour and introduces NO new dispatch path.
    one-selection-path), NOT the displayed localised mnemonic. (Making a locale's
    displayed mnemonic ALSO typeable would be an additional key-match alias and is
    OUT of this requirement's scope -- see Out of Scope.)
+
+---
+
+### Requirement 22: Settings menu includes the Alias Editor; Config uses mnemonic C (CR-CH-066)
+
+**User Story:** As a user, I want the Settings menu to offer an Alias Editor
+option so that I can reach the alias-authoring Context from the menu, with Config
+remaining reachable too, and I want the menu's mnemonics to stay clear and
+unambiguous.
+
+**Source:** [CR-CH-066]; owner ("Now we need to add the alias editor to the
+setting menu ... i think we should change to: C Config, A Alias Editor, T Theme,
+M Menus, K Keys, W Kinds, R Reset bare"; "We will go with the C Config - A Alias
+Editor - T Theme - M Menus - K Keys - W Kinds - R Reset bare"). Builds ON
+Requirement 12 (Recovery_Baseline Settings menu), Requirement 19 (the one
+Option-Selection path), CR-CH-021 (code-only built-in menus), and CR-NR-113
+(command-configurator Requirement 5 -- the Alias Editor Context + the `ALIASES`
+verb). Refines Requirement 12 criterion 12.3 for the Settings menu.
+
+#### Acceptance Criteria
+
+1. THE Settings menu SHALL present its options in exactly this order and with
+   exactly these mnemonics: `C` -> `CONFIG`, `A` -> `ALIASES` (Alias Editor),
+   `T` -> `THEME`, `M` -> `MENUS`, `K` -> `KEYS`, `W` -> `KINDS`, then `R` ->
+   `RESET BARE`. The first six options form the `Core` group and `R` -> `RESET
+   BARE` forms the `Recovery` group, rendered with a boundary between the two
+   groups (Requirement 2.4).
+2. WHEN the Settings menu option with mnemonic `A` is selected by any
+   Option_Selection means (Requirement 19.1), THE shell SHALL open the Alias
+   Editor Context (command-configurator Requirement 5 / CR-NR-113) by dispatching
+   the `ALIASES` verb through the SAME single command-dispatch front door
+   (`resolve_target` -> `builtin_workspace_target_for` -> `open_alias_editor` ->
+   `navigate_to`), introducing NO new verb and NO new dispatcher.
+3. WHEN the Settings menu option with mnemonic `C` is selected, THE shell SHALL
+   open the Config Context by dispatching the `CONFIG` command
+   (configuration-system Requirement 15), unchanged in behaviour from the prior
+   `A` -> `CONFIG` option except for the mnemonic.
+4. THE Settings menu SHALL remain a code-only built-in (Requirement 4.1,
+   CR-CH-021): its default content SHALL live only in the compiled
+   `DEFAULT_SETTINGS_TOML` Recovery_Baseline and SHALL NEVER be written to disk on
+   startup; a user MAY still Save it via the Menus Editor to obtain an editable
+   `menus/settings.toml` override.
+5. THE mnemonic reassignment of Config from `A` to `C`, and the insertion of
+   `A` -> Alias Editor in second position, SHALL be a DELIBERATE change (there are
+   no existing users), NOT a regression; the compiled Recovery_Baseline
+   (Requirement 12.3) SHALL be the single source of this option list, with no
+   duplicate hardcoded list elsewhere (Requirement 12.7).

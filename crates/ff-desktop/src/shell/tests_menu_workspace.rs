@@ -104,7 +104,8 @@ fn menu_bar_peek_of_settings_returns_settings_menu_options() {
         !peeked.is_empty(),
         "peeking SETTINGS must return the Settings menu's options"
     );
-    // The compiled Settings baseline has A Config / T Theme / M Menus / K Keys / R.
+    // The compiled Settings baseline has C Config / A Aliases / T Theme /
+    // M Menus / K Keys / W Kinds / R Reset bare (CR-CH-066).
     let cmds: Vec<&str> = peeked.iter().map(|o| o.command.as_str()).collect();
     assert!(
         cmds.contains(&"Theme") && cmds.contains(&"Config"),

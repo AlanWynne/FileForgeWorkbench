@@ -43,6 +43,32 @@ fn aliases_verb_opens_the_alias_editor_context() {
     assert_eq!(shell.tabs.active_tab().title, "[ALIASES]");
 }
 
+// Validates: menu-workspace Requirement 22.2 (CR-CH-066) -- selecting the
+// Settings option with mnemonic `A` dispatches the `ALIASES` verb through the
+// SAME single command-dispatch front door and opens the Alias Editor Context
+// (CR-NR-113), introducing no new verb and no new dispatcher. Selection goes
+// through the single Option-Selection path (the active Settings Menu_Workspace
+// resolves the option key to its command).
+#[test]
+fn settings_alias_option_dispatches_aliases_verb() {
+    let mut shell = make_shell();
+    let _dir = point_user_aliases_at_temp(&mut shell);
+    shell.handle_command("SETTINGS");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::MenuWorkspace,
+        "SETTINGS opens the Settings Menu_Workspace"
+    );
+    // Select the `A` option by its key (same path as a click / typed Option_Key).
+    shell.handle_command("A");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor,
+        "selecting Settings option A must open the Alias Editor Context (CR-NR-113)"
+    );
+    assert_eq!(shell.tabs.active_tab().title, "[ALIASES]");
+}
+
 // Validates: command-configurator Requirement 5.2, 5.9 -- the tab title is
 // [ALIASES] and END returns via the per-tab Navigation_Stack to the opener
 // (parity with the Menus Editor).

@@ -742,25 +742,55 @@ fn settings_menu_end_returns_to_pom() {
     assert!(shell.tabs.active_tab().is_home);
 }
 
-// Validates: menu-workspace Req 12.3 (CR-CH-025) -- the default settings.toml
-// option A carries the `CONFIG` command (opens the flat config-key browser),
-// replacing the former opaque `A` command.
+// Validates: menu-workspace Req 22.1, 22.5 (CR-CH-066) -- the default
+// settings.toml option `C` carries the `CONFIG` command (the flat config-key
+// browser) and option `A` carries the `ALIASES` verb (the Alias Editor). Config
+// moved from mnemonic `A` to `C`, freeing `A` for the Alias Editor.
 #[test]
-fn default_settings_toml_option_a_command_is_config() {
+fn default_settings_toml_option_c_is_config_and_a_is_aliases() {
     use crate::menu_workspace::loader::load_menu_file;
     use std::io::Write;
     let mut f = tempfile::NamedTempFile::new().expect("tempfile");
     f.write_all(crate::menu_workspace::defaults::DEFAULT_SETTINGS_TOML.as_bytes())
         .expect("write");
     let menu = load_menu_file(f.path()).expect("valid settings.toml");
+    let opt_c = menu
+        .options
+        .iter()
+        .find(|o| o.key == "C")
+        .expect("option C present");
+    assert_eq!(
+        opt_c.command, "Config",
+        "option C must dispatch Config (the flat config-key browser)"
+    );
     let opt_a = menu
         .options
         .iter()
         .find(|o| o.key == "A")
         .expect("option A present");
     assert_eq!(
-        opt_a.command, "Config",
-        "option A must dispatch Config (the flat config-key browser)"
+        opt_a.command, "Aliases",
+        "option A must dispatch Aliases (the Alias Editor, CR-NR-113)"
+    );
+}
+
+// Validates: menu-workspace Req 22.3 (CR-CH-066) -- selecting the Settings
+// option with mnemonic `C` dispatches `CONFIG` and opens the Config Context,
+// unchanged in behaviour from the prior `A` -> `CONFIG` option except for the
+// mnemonic. Selection goes through the single Option-Selection path (the active
+// Settings Menu_Workspace resolves the option key to its command).
+#[test]
+fn settings_config_option_dispatches_config() {
+    use crate::tab_state::KindTag;
+    let mut shell = make_shell();
+    shell.handle_command("SETTINGS");
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
+    // Select the `C` option by its key (same path as a click / typed Option_Key).
+    shell.handle_command("C");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
+        "selecting Settings option C must open the Config Context"
     );
 }
 

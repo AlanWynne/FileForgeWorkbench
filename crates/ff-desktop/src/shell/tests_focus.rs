@@ -1559,11 +1559,11 @@ fn full_shell_settings_tab_walks_options_only_no_calendar_stops() {
         "Tab walk must reach the reported last interior option in Settings"
     );
     // Req 16.4 authoritative guarantee: the reported interior contract holds
-    // options only. Settings has four options, so first != last and both are
+    // options only. Settings has multiple options, so first != last and both are
     // option ids -- there are no calendar `<`/`>` ids in the contract.
     assert_ne!(
         first, last,
-        "Settings (4 options, calendar off) reports distinct option first/last -- no calendar ids in the contract"
+        "Settings (multiple options, calendar off) reports distinct option first/last -- no calendar ids in the contract"
     );
 }
 

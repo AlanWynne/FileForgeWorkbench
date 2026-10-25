@@ -936,3 +936,32 @@ OWNER runs the full gate.
           21.4, 21.7, 21.8)
   - [ ] 49.7 Update `docs/quality/TCR.md`: set the CR-NR-111 menu-workspace
           Req 21.1-21.8 rows to their correct status. (Project standards)
+
+## Phase (settings-alias-option) -- CR-CH-066: Alias Editor in the Settings menu + Config mnemonic A -> C
+
+Content-only change to the compiled Settings Recovery_Baseline (`DEFAULT_SETTINGS_TOML`).
+Depends on CR-NR-113 for the `ALIASES` verb + Alias Editor Context; sequence AFTER
+(or together with) CR-NR-113. TDD applies; agents compile-verify SCOPED and run the
+single new scoped test; the OWNER runs the full gate.
+
+- [x] 50. Add the Alias Editor option to the Settings menu and remap Config to mnemonic C
+  - [x] 50.1 Update `DEFAULT_SETTINGS_TOML` in `menu_workspace/defaults.rs` to the
+          new order/mnemonics: `C` -> `CONFIG`, `A` -> `ALIASES`, `T` -> `THEME`,
+          `M` -> `MENUS`, `K` -> `KEYS`, `W` -> `KINDS` (group `Core`), then `R` ->
+          `RESET BARE` (group `Recovery`). Keep it code-only (never written to disk).
+          (Req 22.1, 22.4, 22.5)
+  - [x] 50.2 Add/adjust the Recovery_Baseline test
+          `default_settings_toml_has_alias_editor_and_config_mnemonic_c` asserting the
+          compiled constant parses to the exact ordered option set with `A` -> `ALIASES`
+          and `C` -> `CONFIG`. (Validates Req 22.1, 22.5)
+  - [x] 50.3 Add `settings_alias_option_dispatches_aliases_verb`: selecting the `A`
+          option dispatches `ALIASES` through the single front door and opens the
+          Alias Editor Context (reusing the CR-NR-113 open path). (Validates Req 22.2)
+  - [x] 50.4 Add `settings_config_option_dispatches_config`: selecting the `C` option
+          dispatches `CONFIG`. (Validates Req 22.3)
+  - [x] 50.5 Confirm the Settings menu is still not materialised to disk
+          (existing `ensure_menus_dir_does_not_materialise_settings`-style coverage).
+          (Validates Req 22.4)
+  - [x] 50.6 Update `docs/quality/TCR.md`: flip the CR-CH-066 menu-workspace
+          Req 22.1-22.5 rows from NOT-COVERED to covered as the tests land.
+          (Project standards)
