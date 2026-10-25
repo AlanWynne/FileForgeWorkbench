@@ -147,6 +147,16 @@ impl AliasTable {
             // the editor. UNDO/REDO are deferred (Req 10.6: UNDO is keyboard-only
             // today, REDO does not exist) so they are NOT in the table yet.
             ("SAVE", "SAVE"),
+            // CR-CH-069 (Req 21.1): the in-buffer line-renumbering verbs AUTONUM
+            // and NUM are FFEDIT roots -- they act on the open buffer's sequence
+            // columns (CR-CH-053 Req 2a.4 / Req 10), moved out of the FFCMD
+            // ladder. Their eventual target verb NUMBER is NOT wired on main
+            // (the NUMBER/UNNUM sequence-number engine is the deferred
+            // ff-sequence-numbers effort); these remain the SAME redirect/
+            // placeholder they are today, now claimed only when an editor Context
+            // is active.
+            ("AUTONUM", "AUTONUM"),
+            ("NUM", "NUM"),
         ];
         let mut entries: Vec<AliasEntry> = Vec::with_capacity(raw.len());
         for &(surface, canonical) in raw {
@@ -612,6 +622,25 @@ mod tests {
         assert_eq!(t.canonical_verb("X"), Some("EXCLUDE")); // alias -> canonical
         assert_eq!(t.canonical_verb("INCLUDE"), Some("SHOW"));
         assert_eq!(t.canonical_verb("NOTAVERB"), None);
+    }
+
+    /// Validates: command-environments Requirement 21.1 (CR-CH-069) -- the
+    /// in-buffer line-renumbering verbs AUTONUM and NUM are seeded as FFEDIT
+    /// canonical roots (moved out of the FFCMD ladder), so the FFEDIT alias table
+    /// resolves them to themselves and `canonical_verbs_owned` lists them (the
+    /// source `EnvironmentRegistry::root_commands("FFEDIT")` reads).
+    #[test]
+    fn ffedit_english_owns_autonum_and_num_roots() {
+        let t = AliasTable::ffedit_english();
+        assert_eq!(t.canonical_verb("AUTONUM"), Some("AUTONUM"));
+        assert_eq!(t.canonical_verb("NUM"), Some("NUM"));
+        // Case-insensitive, like every other seeded root.
+        assert_eq!(t.canonical_verb("autonum"), Some("AUTONUM"));
+        let owned = t.canonical_verbs_owned();
+        assert!(
+            owned.iter().any(|c| c == "AUTONUM") && owned.iter().any(|c| c == "NUM"),
+            "ffedit_english canonical roots must include AUTONUM and NUM, got {owned:?}"
+        );
     }
 
     /// Validates: command-semantics Requirement 14.1 -- a seeded entry carries

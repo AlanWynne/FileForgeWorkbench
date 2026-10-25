@@ -204,8 +204,10 @@ pub(crate) const BUILTIN_WORKSPACE_VERB_ROOTS: &[&str] = &[
 ///     PFSHOW, END, RETURN  (X and HELP are already built-in menu/verb roots)
 ///   - commands_ladder_b.rs: COMMAND, SNAPSHOT, CAPTURE, RETRIEVE
 ///     (RESET BARE is already a built-in menu root)
-///   - commands_ladder_c.rs: DETACH, SPLIT, UNSPLIT, FOCUS, SWAP, AUTONUM, NUM,
-///     SUBMIT, TIME, STATUS, CREATE, REPLACE, BROWSE, VIEW, COMPARE, WORKSPACE
+///   - commands_ladder_c.rs: DETACH, SPLIT, UNSPLIT, FOCUS, SWAP, SUBMIT, TIME,
+///     STATUS, CREATE, REPLACE, BROWSE, VIEW, COMPARE, WORKSPACE
+///     (AUTONUM / NUM MOVED to FFEDIT -- CR-CH-069 Req 21.1 -- so they are no
+///     longer FFCMD ladder roots)
 ///
 /// Validates: command-environments Requirement 20.1
 pub(crate) const BUILTIN_FFCMD_LADDER_VERB_ROOTS: &[&str] = &[
@@ -239,8 +241,10 @@ pub(crate) const BUILTIN_FFCMD_LADDER_VERB_ROOTS: &[&str] = &[
     "SNAPSHOT",
     "CAPTURE",
     "RETRIEVE",
-    "AUTONUM",
-    "NUM",
+    // CR-CH-069 (Req 21.1): AUTONUM and NUM were REMOVED here -- they are
+    // in-buffer line-renumbering verbs moved to FFEDIT (ffedit_english), so
+    // `root_commands("FFCMD")` no longer lists them and `root_commands("FFEDIT")`
+    // does.
     // Status / stubs.
     "SUBMIT",
     "TIME",

@@ -497,8 +497,10 @@ mod tests {
     #[test]
     fn root_commands_ffedit_returns_canonical_editor_verbs() {
         let roots = EnvironmentRegistry::root_commands(FFEDIT_NAME);
+        // AUTONUM / NUM added by CR-CH-069 (the in-buffer line-renumbering verbs
+        // moved out of the FFCMD ladder into ffedit_english).
         for expected in [
-            "FIND", "CHANGE", "LOCATE", "SAVE", "SORT", "EXCLUDE", "SHOW",
+            "FIND", "CHANGE", "LOCATE", "SAVE", "SORT", "EXCLUDE", "SHOW", "AUTONUM", "NUM",
         ] {
             assert!(
                 roots.iter().any(|r| r == expected),
@@ -595,6 +597,50 @@ mod tests {
         // Unknown environment -> always false.
         assert!(!EnvironmentRegistry::contains_root("NOTANENV", "CONFIG"));
         assert!(!EnvironmentRegistry::contains_root(MAINFRAME_NAME, "FIND"));
+    }
+
+    /// Validates: command-environments Requirement 21.1, 21.4 (CR-CH-069) --
+    /// AUTONUM and NUM are FFEDIT roots, NOT FFCMD roots, after the placement
+    /// correction: `root_commands("FFEDIT")` CONTAINS them and
+    /// `root_commands("FFCMD")` does NOT. They were moved out of
+    /// `BUILTIN_FFCMD_LADDER_VERB_ROOTS` and into `ffedit_english` (in-buffer
+    /// line-renumbering verbs, CR-CH-053 Req 2a.4 / Req 10), so the enumeration
+    /// the alias-anchoring model reads reflects the corrected ownership.
+    #[test]
+    fn autonum_and_num_are_ffedit_roots_not_ffcmd_roots() {
+        let ffedit = EnvironmentRegistry::root_commands(FFEDIT_NAME);
+        let ffcmd = EnvironmentRegistry::root_commands(FFCMD_NAME);
+        for verb in ["AUTONUM", "NUM"] {
+            assert!(
+                ffedit.iter().any(|r| r == verb),
+                "FFEDIT roots must contain {verb} after CR-CH-069, got {ffedit:?}"
+            );
+            assert!(
+                !ffcmd.iter().any(|r| r == verb),
+                "FFCMD roots must NOT contain {verb} after CR-CH-069, got {ffcmd:?}"
+            );
+        }
+    }
+
+    /// Validates: command-environments Requirement 21.4 (CR-CH-069) --
+    /// `contains_root` reflects the corrected placement: FFEDIT owns AUTONUM/NUM
+    /// (and FIND); FFCMD owns none of them. An FFCMD-anchored row for these is
+    /// therefore invalid-in-environment (consistent with CR-CH-067 Req 20.4).
+    #[test]
+    fn contains_root_reflects_autonum_num_find_moved_to_ffedit() {
+        for verb in ["AUTONUM", "NUM", "FIND"] {
+            assert!(
+                EnvironmentRegistry::contains_root(FFEDIT_NAME, verb),
+                "FFEDIT must contain root {verb} after CR-CH-069"
+            );
+            assert!(
+                !EnvironmentRegistry::contains_root(FFCMD_NAME, verb),
+                "FFCMD must NOT contain root {verb} after CR-CH-069"
+            );
+        }
+        // Case-insensitive on the corrected roots too.
+        assert!(EnvironmentRegistry::contains_root(FFEDIT_NAME, "autonum"));
+        assert!(EnvironmentRegistry::contains_root(FFEDIT_NAME, "num"));
     }
 
     /// Validates: command-environments Requirement 13.3, 5.1 -- the active-wins

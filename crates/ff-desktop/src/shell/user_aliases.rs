@@ -23,9 +23,13 @@
 use serde::{Deserialize, Serialize};
 
 /// Which Command Environment's `AliasTable` a user row loads into (Req 5.1, 5.7).
-/// Defaults to FFCMD (the workbench shorthand case); FFEDIT is chosen for an
-/// editor-verb root such as EDIT (`ECOB -> EDIT` is an FFEDIT alias). Serialises
-/// to the lowercase stable spelling `ffcmd` / `ffedit`.
+/// Defaults to FFCMD (the workbench shorthand case). FFCMD is the environment for
+/// an editor-verb root such as EDIT: file-open is a workbench operation, so EDIT
+/// is an FFCMD root and `ECOB -> EDIT` is an FFCMD alias (CR-CH-069 Req 21.5;
+/// the `validate_accepts_root_valid_in_declared_environment` test accepts
+/// `ECOB -> EDIT` under FFCMD). FFEDIT is chosen for an in-buffer editor verb
+/// such as FIND / CHANGE. Serialises to the lowercase stable spelling
+/// `ffcmd` / `ffedit`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AliasEnvironment {

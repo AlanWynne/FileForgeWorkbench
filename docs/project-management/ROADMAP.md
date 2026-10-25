@@ -275,6 +275,31 @@ localisation-aware and avoids re-touching new UI and merge collisions.
      (cmdenv-root-enum) Tasks 27-29. See command-environments Req 20, change-log
      CR-CH-067, command-configurator Req 5 (CR-NR-113, the future consumer), and
      `.agents/tasks/command-env-enumeration/findings.md`.
+   - **CR-CH-069 (correct editor command-environment placement: AUTONUM/NUM ->
+     FFEDIT; af SOEK->FIND -> FFEDIT catalogue; EDIT doc-comment)** GATE AUTHORED /
+     PENDING OWNER APPROVAL. The ONE gated change the command-environment placement
+     audit recommends (`.agents/tasks/command-placement-audit/command-environment-audit.md`,
+     sections 5 and 8). THREE corrections: (A) MOVE AUTONUM and NUM from the FFCMD
+     ladder to FFEDIT -- they are in-buffer line-renumbering verbs (ownership
+     principle Req 2a.4 / Req 10), claimed only when an editor Context is active
+     (Req 5.1); a PURE CLASSIFICATION MOVE since their target verb NUMBER is NOT
+     wired on main (the NUMBER/UNNUM sequence-number ENGINE is the deferred
+     `ff-sequence-numbers` effort, NOT built here); the only observable change is
+     WHERE they are claimed. (B) RELOCATE the mis-placed af SOEK->FIND alias from
+     `i18n/af/aliases/FFCMD.toml` to `i18n/af/aliases/FFEDIT.toml` (FIND is an
+     FFEDIT root; command-semantics Req 12.1). (C) FIX the stale EDIT doc-comment in
+     `user_aliases.rs` (EDIT is an FFCMD file-open root; ECOB->EDIT is an FFCMD
+     alias). Interacts with CR-CH-067: the corrected (environment, root) sets feed
+     `root_commands`/`contains_root`, so an FFCMD-anchored FIND/AUTONUM/NUM alias is
+     now correctly rejected (intended, not a regression). Lands BEFORE the Afrikaans
+     alias-data authoring and the `=FILES` root-token fix (audit item D, a separate
+     change request) so the root sets are corrected once. NOT a framework change
+     (classification/DATA/doc only; no second dispatcher, no second navigation
+     stack, no new persistence format). Governing plan:
+     `docs/specs/command-environments/tasks.md` Phase (command-placement-audit)
+     Task 30. See command-environments Req 21, change-log CR-CH-069,
+     command-semantics Req 12, CR-CH-067 (the validation safety net), and the
+     deferred `docs/specs/sequence-numbers/` NUMBER engine.
 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
    ALTER actions via the single command path, volume picker in catalog creation,

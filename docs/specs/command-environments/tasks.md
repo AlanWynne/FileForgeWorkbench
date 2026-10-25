@@ -629,3 +629,64 @@ before any code. `[ ]` only.
 | Req 20: root enumeration + reject-at-load | 20.1-20.6 (query) | 27.1-27.4 |
 | Req 20: reject-with-WARNING-at-load | 20.7 | 28.1-28.2 |
 | Req 20: save-side validity hook | 20.8 | 29.1-29.2 |
+
+---
+
+### Phase (command-placement-audit) -- CR-CH-069 (correct editor command-environment placement) -- Requirement 21
+
+> The ONE gated change the command-environment placement audit recommends
+> (sections 5 and 8): move AUTONUM/NUM from FFCMD to FFEDIT (in-buffer verbs),
+> relocate the mis-placed af SOEK->FIND alias to the FFEDIT per-locale catalogue,
+> and fix the stale EDIT doc-comment. PURE CLASSIFICATION MOVE for AUTONUM/NUM --
+> the NUMBER/UNNUM sequence-number ENGINE is NOT wired here (deferred
+> `ff-sequence-numbers` effort). The `=FILES` root-token fix (audit item D) and the
+> Afrikaans alias-data authoring are SEPARATE later tasks, OUT of scope. TDD per
+> `testing.md`; agent verification is compile/clippy/fmt clean + scoped
+> `-p ff-desktop` tests, the owner runs the authoritative full gate. `[ ]` only.
+
+- [x] 30. Correct editor command-environment placement (AUTONUM/NUM -> FFEDIT; af SOEK->FIND -> FFEDIT catalogue; EDIT doc-comment)
+  - [x] 30.1 Move AUTONUM and NUM out of FFCMD into FFEDIT (enumeration): remove
+        AUTONUM and NUM from `BUILTIN_FFCMD_LADDER_VERB_ROOTS`
+        (`crates/ff-desktop/src/command_config/mod.rs`) and add them as canonical
+        roots to `AliasTable::ffedit_english()` (`crates/ff-desktop/src/shell/environment.rs`),
+        so `root_commands("FFEDIT")` contains them and `root_commands("FFCMD")` does
+        not. Re-baseline the `environment_registry.rs` enumeration tests (red first).
+        Validates: Requirement 21.1, 21.4.
+  - [ ] 30.2 Move AUTONUM/NUM to the FFEDIT claim path (claim): relocate the
+        AUTONUM/NUM arms from `crates/ff-desktop/src/shell/commands_ladder_c.rs` to
+        the FFEDIT active-wins claim (so they are claimed ONLY when an editor Context
+        is active), preserving the existing AUTONUM ON/OFF -> NUMBER ON/OFF and NUM
+        -> NUMBER [rest] redirect text verbatim. Do NOT implement the NUMBER/UNNUM/
+        NUMBER-SHOW engine (deferred). Test FIRST (red before green): AUTONUM/NUM are
+        claimed by FFEDIT on an editor Context and NOT claimed on a non-editor
+        Context; the redirect-to-NUMBER string is unchanged. Validates: Requirement
+        21.1, 21.2.
+  - [ ] 30.3 Relocate the af SOEK->FIND alias to the FFEDIT catalogue: move the
+        SOEK -> FIND row from `crates/ff-i18n/i18n/af/aliases/FFCMD.toml` to
+        `crates/ff-i18n/i18n/af/aliases/FFEDIT.toml` (per-locale FFEDIT catalogue;
+        localisation DATA, out of ASCII scope) and remove it from the af FFCMD.toml.
+        Validates: Requirement 21.3.
+  - [ ] 30.4 Update the af POC load test: move the assertion in
+        `crates/ff-desktop/src/shell/alias_reader.rs`
+        (`af_poc_alias_catalogue_loads_and_resolves`) so SOEK -> FIND is read from
+        the FFEDIT catalogue, not the FFCMD catalogue (red first against the moved
+        data). Validates: Requirement 21.3.
+  - [ ] 30.5 Fix the EDIT doc-comment: correct the stale text in
+        `crates/ff-desktop/src/shell/user_aliases.rs` (~lines 26-28) so it states
+        FFCMD for an editor-verb root such as EDIT (ECOB -> EDIT is an FFCMD alias).
+        Documentation-only, no behaviour change. Validates: Requirement 21.5.
+  - [ ] 30.6 Scoped verification: `cargo fmt`, `cargo check -p ff-desktop`,
+        `cargo clippy -p ff-desktop -- -D warnings`, and the scoped Req-21 tests
+        (`-p ff-desktop`). Confirm `contains_root("FFCMD", "FIND"/"AUTONUM"/"NUM")`
+        is FALSE and `contains_root("FFEDIT", ...)` is TRUE. The authoritative full
+        `cargo gate` is the owner's manual run. Validates: Requirement 21.1, 21.2,
+        21.3, 21.4, 21.5.
+
+### Acceptance Criteria Coverage (CR-CH-069)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 21: AUTONUM/NUM are FFEDIT roots (enumeration + claim) | 21.1, 21.2 | 30.1, 30.2 |
+| Req 21: af SOEK->FIND in the FFEDIT catalogue + POC test | 21.3 | 30.3, 30.4 |
+| Req 21: FFCMD-anchored FIND/AUTONUM/NUM invalid-in-environment | 21.4 | 30.1, 30.6 |
+| Req 21: EDIT doc-comment corrected to FFCMD | 21.5 | 30.5 |

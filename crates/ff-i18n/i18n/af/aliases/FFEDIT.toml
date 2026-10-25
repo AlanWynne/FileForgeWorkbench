@@ -1,0 +1,19 @@
+# Afrikaans (af) command-alias catalogue for the FFEDIT command environment
+# (CR-NR-109, localization Requirement 11, Task 11.7 -- proof-of-concept data).
+#
+# Each [[alias]] row maps a localised, typeable SURFACE form to the ROOT
+# (canonical) command verb, optionally carrying a localisation_key that resolves
+# the displayed surface through the ff-i18n catalogue (t(key)). The ROOT verb is
+# the dispatched and persisted identity (Requirement 11.9); the surface is a
+# display/typeable concern only. Loaded by shell/alias_reader.rs via the existing
+# apply_locale_overlay seam -- no new mechanism.
+#
+# CR-CH-069 (command-environments Requirement 21.3): SOEK -> FIND lives HERE,
+# under FFEDIT, because FIND is an FFEDIT root (command-semantics Requirement
+# 12.1; ffedit_english owns FIND). It was moved out of the af FFCMD.toml, where
+# it was mis-placed (FIND is not an FFCMD root).
+
+[[alias]]
+surface = "SOEK"
+canonical = "FIND"
+localisation_key = "verb-find"

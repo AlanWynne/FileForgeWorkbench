@@ -1092,3 +1092,65 @@ discipline (Req 6a.3 collision rule; CR-NR-113 no-shadow guard).
 > the CR-NR-113 no-shadow guard with the per-environment `root_commands` set, and
 > add the interactive save-side rejection UX on top of the `validate_user_alias_rows`
 > hook this gate provides.
+
+### Requirement 21: Correct editor command-environment placement -- AUTONUM/NUM are FFEDIT roots; the af SOEK->FIND alias lives in the FFEDIT catalogue (CR-CH-069)
+
+**User Story:** As a user and as a maintainer, I want the in-buffer line-renumbering
+verbs (AUTONUM, NUM) to belong to the editor environment and the mis-placed
+Afrikaans FIND alias to be anchored to the environment that actually owns FIND, so
+that the (environment, root) sets the alias-anchoring model reads are correct
+before any Afrikaans alias data is authored, and a user alias cannot anchor an
+editor verb to FFCMD.
+
+**Source:** [CR-CH-069]. Grounded in the command-environment placement audit
+(`.agents/tasks/command-placement-audit/command-environment-audit.md`, sections 5
+and 8). Applies the CR-CH-053 ownership principle (Requirement 2a.4 / Requirement
+10 -- a verb acting on the active editor buffer is owned by FFEDIT) and the
+active-wins rule (Requirement 5.1), and is consistent with the CR-CH-067
+`contains_root` validation (Requirement 20). FIND is an FFEDIT root
+(command-semantics Requirement 12.1; `ffedit_english` owns FIND).
+
+**Marking:** CLASSIFICATION / SEMANTICS correction. The AUTONUM/NUM move is a pure
+classification move: the target verb NUMBER is NOT wired on main (it falls through
+to an engine "unrecognised" error), so the NUMBER/UNNUM sequence-number ENGINE is
+NOT built here (deferred `ff-sequence-numbers` effort). The af alias relocation is
+per-locale DATA. No framework change: no second dispatcher, no second navigation
+stack, no new persistence format, no reshape of a public framework type.
+
+#### Acceptance Criteria
+
+21.1 THE canonical roots AUTONUM and NUM SHALL be owned by FFEDIT (the editor
+   environment), NOT by FFCMD: `AliasTable::ffedit_english()` SHALL include them so
+   that `EnvironmentRegistry::root_commands("FFEDIT")` CONTAINS AUTONUM and NUM, and
+   `BUILTIN_FFCMD_LADDER_VERB_ROOTS` SHALL NO LONGER list them so that
+   `root_commands("FFCMD")` does NOT contain AUTONUM or NUM. [CR-CH-069]
+
+21.2 WHEN AUTONUM or NUM is submitted, THE FFEDIT environment SHALL CLAIM it at the
+   active-environment step ONLY when an editor Context is active (active-wins,
+   Requirement 5.1); on a NON-editor Context FFEDIT SHALL NOT claim it (the verb is
+   not handled anywhere once it leaves the global FFCMD ladder). THE only observable
+   behaviour change from today SHALL be WHERE the verb is claimed (editor-active vs
+   anywhere); this requirement SHALL NOT implement the NUMBER / UNNUM /
+   NUMBER-SHOW sequence-number ENGINE (deferred `ff-sequence-numbers` effort), which
+   remains unresolved exactly as it is today. [CR-CH-069]
+
+21.3 THE per-locale Afrikaans FFEDIT alias catalogue
+   (`i18n/af/aliases/FFEDIT.toml`) SHALL own the row SOEK -> FIND (FIND being an
+   FFEDIT root), and the per-locale Afrikaans FFCMD alias catalogue
+   (`i18n/af/aliases/FFCMD.toml`) SHALL NOT contain SOEK -> FIND. The af POC load
+   test SHALL assert the row resolves through the FFEDIT catalogue, not the FFCMD
+   catalogue. [CR-CH-069]
+
+21.4 A user or per-locale alias row that anchors FIND, AUTONUM, or NUM to FFCMD
+   SHALL be INVALID-IN-ENVIRONMENT: `EnvironmentRegistry::contains_root("FFCMD",
+   "FIND")`, `contains_root("FFCMD", "AUTONUM")`, and `contains_root("FFCMD",
+   "NUM")` SHALL each return FALSE, while `contains_root("FFEDIT", "FIND")`,
+   `contains_root("FFEDIT", "AUTONUM")`, and `contains_root("FFEDIT", "NUM")` SHALL
+   each return TRUE, consistent with the CR-CH-067 load/save validation
+   (Requirement 20.4, 20.7, 20.8). [CR-CH-069]
+
+21.5 THE `user_aliases.rs` doc-comment that describes the AliasEnvironment choice
+   for an editor-verb root such as EDIT SHALL state FFCMD (EDIT is an FFCMD
+   file-open root, owner-confirmed, so `ECOB -> EDIT` is an FFCMD alias), correcting
+   the stale text that says FFEDIT. This is a documentation-only correction with no
+   behaviour change. [CR-CH-069]
