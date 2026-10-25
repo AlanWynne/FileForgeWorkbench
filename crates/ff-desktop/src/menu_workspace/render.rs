@@ -61,14 +61,23 @@ pub struct MenuRenderResult {
 /// pre-CR-NR-109 render (Req 11.8, 10.2). Selection ALWAYS yields the option's
 /// ROOT `command` (the displayed surface is never persisted/dispatched).
 ///
+/// `mnemonic_surfaces` supplies the per-option DISPLAYED key-column text
+/// (CR-NR-111, localization Req 12.1, 12.3), also positionally aligned with the
+/// loaded menu's options and also computed shell-side: the active-locale mnemonic
+/// for each option, falling back per option to the stored `option.key` on a
+/// short/empty slice so at `en` / no catalogue key the column is byte-identical.
+/// Like the command surface it is DISPLAY-only -- selection matching uses the
+/// stored `option.key`, never the derived mnemonic (Req 12.5).
+///
 /// Validates: Requirement 2.1-2.6, 2.1a-2.1c, 10.6; Requirement 13.4-13.8;
-/// localization Requirement 11.7, 11.8
+/// localization Requirement 11.7, 11.8, 12.1, 12.3
 pub fn render_menu_workspace(
     state: &mut MenuWorkspaceState,
     ui: &mut egui::Ui,
     calendar_offset: i32,
     colours: MenuColours,
     command_surfaces: &[String],
+    mnemonic_surfaces: &[String],
 ) -> MenuRenderResult {
     use crate::primary_option_menu::PomColours;
     let mut result = MenuRenderResult::default();
@@ -140,7 +149,13 @@ pub fn render_menu_workspace(
     // The calendar is thus hidden BEFORE any description wraps (Req 16.9): Tier 1
     // is the only calendar-showing tier and it requires the full one-line width.
     let available_w = ui.available_width();
-    let natural_w = natural_option_list_width(&menu.options, command_surfaces, cmd_width, ui);
+    let natural_w = natural_option_list_width(
+        &menu.options,
+        mnemonic_surfaces,
+        command_surfaces,
+        cmd_width,
+        ui,
+    );
     let display_calendar =
         menu.show_calendar && natural_w + CALENDAR_GAP + CALENDAR_MIN_WIDTH <= available_w;
     // The option column's DEFINITE width (Req 16.8): the natural width in Tier 1
@@ -185,6 +200,16 @@ pub fn render_menu_workspace(
                             .get(opt_index)
                             .map(String::as_str)
                             .unwrap_or(option.command.as_str());
+                        // CR-NR-111 (localization Req 12.1, 12.3): the DISPLAYED
+                        // key-column mnemonic (active-locale value for the root),
+                        // falling back per option to the stored option.key when no
+                        // surface is supplied or no localised mnemonic exists
+                        // (Req 12.8). Selection still matches on option.key
+                        // (Req 12.5) -- this text is display-only.
+                        let mnemonic_surface = mnemonic_surfaces
+                            .get(opt_index)
+                            .map(String::as_str)
+                            .unwrap_or(option.key.as_str());
                         // Req 2.4/4a (CR-CH-021) -- configurable group boundary.
                         // Only between two DIFFERENT non-empty groups (never
                         // before the first option, never for ungrouped options).
@@ -240,6 +265,7 @@ pub fn render_menu_workspace(
                         // single-galley Button re-wrapped everything back to x0).
                         let prefix_job = option_prefix_job(
                             option,
+                            mnemonic_surface,
                             command_surface,
                             cmd_width,
                             row_key_col,
@@ -513,7 +539,7 @@ mod tests {
         let mut harness = Harness::builder()
             .with_size(egui::Vec2::new(1000.0, 800.0))
             .build_ui(move |ui| {
-                let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default(), &[]);
+                let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default(), &[], &[]);
                 first_c.set(r.first_interior_id);
                 last_c.set(r.last_interior_id);
             });
@@ -662,7 +688,7 @@ mod tests {
             .with_size(egui::Vec2::new(panel_w, 800.0))
             .build_ui(move |ui| {
                 clip_c.set(ui.clip_rect());
-                let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default(), &[]);
+                let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default(), &[], &[]);
                 last_c.set(r.last_interior_id);
                 if let Some(id) = r.last_interior_id {
                     if let Some(resp) = ui.ctx().read_response(id) {
@@ -754,7 +780,7 @@ mod tests {
                 // One text-line height for the option font, as the wrap threshold.
                 let lh = ui.fonts_mut(|f| f.row_height(&option_font()));
                 line_h_c.set(lh);
-                let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default(), &[]);
+                let r = render_menu_workspace(&mut state, ui, 0, MenuColours::default(), &[], &[]);
                 // Calendar shown iff the reported last interior differs from the
                 // reported first interior (the single option row): when shown the
                 // last interior is the calendar `>` button, not the option.

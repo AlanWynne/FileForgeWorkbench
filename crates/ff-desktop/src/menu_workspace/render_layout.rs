@@ -106,13 +106,19 @@ pub(crate) fn option_font() -> egui::FontId {
 /// SEPARATELY (B065) so wrapped description lines hang-indent under the
 /// description column rather than the row's left edge.
 ///
-/// `command_text` is the DISPLAYED command-column text (CR-NR-109 Task 11.5: the
-/// active-locale alias surface for the option's root, resolved shell-side), which
-/// at `en` / no overlay is byte-identical to `option.command`.
+/// `mnemonic_text` is the DISPLAYED key-column text (CR-NR-111: the active-locale
+/// mnemonic for the option, resolved shell-side), which at `en` / no catalogue
+/// key is byte-identical to `option.key`. `command_text` is the DISPLAYED
+/// command-column text (CR-NR-109 Task 11.5: the active-locale alias surface for
+/// the option's root, resolved shell-side), which at `en` / no overlay is
+/// byte-identical to `option.command`. Both are DISPLAY-only: selection matching
+/// still uses the stored `option.key`/`option.command`.
 ///
-/// Validates: Requirement 2.1a; Requirement 13.4, 13.5; localization Req 11.7
+/// Validates: Requirement 2.1a; Requirement 13.4, 13.5; localization Req 11.7,
+/// 12.1, 12.3
 pub(crate) fn option_prefix_job(
-    option: &super::MenuOption,
+    _option: &super::MenuOption,
+    mnemonic_text: &str,
     command_text: &str,
     cmd_width: usize,
     key_col: egui::Color32,
@@ -126,7 +132,7 @@ pub(crate) fn option_prefix_job(
     };
     // Never wrap the fixed columns.
     job.wrap.max_width = f32::INFINITY;
-    job.append(&format!("{:<4}", option.key), 0.0, fmt(key_col));
+    job.append(&format!("{mnemonic_text:<4}"), 0.0, fmt(key_col));
     job.append("  ", 0.0, fmt(key_col));
     job.append(
         &format!("{command_text:<cmd_width$}"),
@@ -139,14 +145,16 @@ pub(crate) fn option_prefix_job(
 
 /// The prefix TEXT (key + gutter + command + gutter) for one option, matching
 /// exactly what `option_prefix_job` paints. Kept separate so the natural-width
-/// measurement lays out the same string the renderer draws. `command_text` is
-/// the displayed command-column text (CR-NR-109 Task 11.5).
+/// measurement lays out the same string the renderer draws. `mnemonic_text` is
+/// the displayed key-column text (CR-NR-111); `command_text` is the displayed
+/// command-column text (CR-NR-109 Task 11.5).
 pub(crate) fn option_prefix_text(
-    option: &super::MenuOption,
+    _option: &super::MenuOption,
+    mnemonic_text: &str,
     command_text: &str,
     cmd_width: usize,
 ) -> String {
-    format!("{:<4}  {command_text:<cmd_width$}  ", option.key)
+    format!("{mnemonic_text:<4}  {command_text:<cmd_width$}  ")
 }
 
 /// Reduce per-row natural widths to the option list's Natural_Option_Width: the
@@ -175,14 +183,16 @@ pub(crate) fn natural_width_from_rows(
 /// drop the layout to Tier 2/3; menu-workspace Req 16.7, 16.8).
 ///
 /// Measures against the live `ui` fonts so the result matches what the renderer
-/// paints (the prefix and description both use `option_font()`). `command_texts`
-/// supplies each option's DISPLAYED command-column text (CR-NR-109 Task 11.5),
-/// positionally aligned with `options`; a short/absent slice falls back to
-/// `option.command` so the measurement never panics.
+/// paints (the prefix and description both use `option_font()`). `mnemonic_texts`
+/// supplies each option's DISPLAYED key-column text (CR-NR-111) and
+/// `command_texts` each option's DISPLAYED command-column text (CR-NR-109 Task
+/// 11.5), both positionally aligned with `options`; a short/absent slice falls
+/// back to `option.key` / `option.command` so the measurement never panics.
 ///
-/// Validates: menu-workspace Requirement 16.7 (CR-CH-032)
+/// Validates: menu-workspace Requirement 16.7 (CR-CH-032); localization Req 12.1
 pub(crate) fn natural_option_list_width(
     options: &[super::MenuOption],
+    mnemonic_texts: &[String],
     command_texts: &[String],
     cmd_width: usize,
     ui: &egui::Ui,
@@ -198,11 +208,17 @@ pub(crate) fn natural_option_list_width(
         ui.painter().layout_job(job).size().x
     };
     let row_widths = options.iter().enumerate().map(|(i, o)| {
+        let mnemonic_text = mnemonic_texts.get(i).map(String::as_str).unwrap_or(&o.key);
         let command_text = command_texts
             .get(i)
             .map(String::as_str)
             .unwrap_or(&o.command);
-        let prefix_w = measure(&option_prefix_text(o, command_text, cmd_width));
+        let prefix_w = measure(&option_prefix_text(
+            o,
+            mnemonic_text,
+            command_text,
+            cmd_width,
+        ));
         let desc_w = measure(&o.description);
         prefix_w + desc_w
     });
@@ -297,6 +313,7 @@ mod tests {
         let w = command_column_width(std::slice::from_ref(&o));
         let job = option_prefix_job(
             &o,
+            &o.key,
             &o.command,
             w,
             egui::Color32::WHITE,
@@ -321,6 +338,7 @@ mod tests {
         let w = command_column_width(&opts);
         let a = option_prefix_job(
             &opts[0],
+            &opts[0].key,
             &opts[0].command,
             w,
             egui::Color32::WHITE,
@@ -328,6 +346,7 @@ mod tests {
         );
         let b = option_prefix_job(
             &opts[1],
+            &opts[1].key,
             &opts[1].command,
             w,
             egui::Color32::WHITE,
@@ -348,12 +367,42 @@ mod tests {
         let w = command_column_width(std::slice::from_ref(&o));
         let job = option_prefix_job(
             &o,
+            &o.key,
             &o.command,
             w,
             egui::Color32::WHITE,
             egui::Color32::WHITE,
         );
-        assert_eq!(option_prefix_text(&o, &o.command, w), job.text);
+        assert_eq!(option_prefix_text(&o, &o.key, &o.command, w), job.text);
+    }
+
+    // Validates: localization Requirement 12.1, 12.3 (CR-NR-111) -- a localised
+    // mnemonic text replaces the key column in both the painted prefix job and
+    // the measured prefix text, DISPLAY-only (option.key is unchanged). A longer
+    // mnemonic widens the prefix; the stored option.key is not consulted for the
+    // drawn text when a mnemonic_text is supplied.
+    #[test]
+    fn option_prefix_uses_supplied_mnemonic_text() {
+        let o = opt("R", "RESET", "Reset bare");
+        let w = command_column_width(std::slice::from_ref(&o));
+        // A localised mnemonic "Herstel" (Afrikaans) is drawn in the key column.
+        let job = option_prefix_job(
+            &o,
+            "Herstel",
+            &o.command,
+            w,
+            egui::Color32::WHITE,
+            egui::Color32::WHITE,
+        );
+        assert!(
+            job.text.starts_with("Herstel"),
+            "the supplied mnemonic must be drawn in the key column; got {:?}",
+            job.text
+        );
+        // The prefix text mirrors the job text exactly.
+        assert_eq!(option_prefix_text(&o, "Herstel", &o.command, w), job.text);
+        // The stored option.key is unchanged -- the mnemonic is display-only.
+        assert_eq!(o.key, "R");
     }
 
     // Validates: menu-workspace Requirement 16.7 -- Natural_Option_Width is the

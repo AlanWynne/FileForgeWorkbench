@@ -144,6 +144,8 @@ mod tests_focus;
 #[cfg(test)]
 mod tests_locale_menu;
 #[cfg(test)]
+mod tests_locale_menu_full;
+#[cfg(test)]
 mod tests_menu_workspace;
 #[cfg(test)]
 mod tests_misc;
