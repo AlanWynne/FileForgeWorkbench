@@ -996,3 +996,99 @@ RC.B.8 Part 2 (b)-(d) + BRC.4 (commit cb4720e); grounded in
    CE SHALL still surface NotFound with the existing non-zero rc (dataset-catalog
    Req 36.6) -- this requirement turns a FALSE miss into a resolve, it SHALL NOT
    mask a true miss. [CR-CH-061]
+
+### Requirement 20: Environment_Registry root-command enumeration + reject-with-WARNING-at-load for invalid user alias roots (CR-CH-067)
+
+**User Story:** As the Alias Editor (and as the user alias loader), I want to ask
+a Command Environment, BY NAME, for its valid canonical root commands and to test
+whether a given root belongs to it, so that an alias can be anchored to a REAL
+root of a REAL environment -- and so a user alias row naming a root that does not
+exist in its declared environment is rejected at load with a warning rather than
+silently mis-routing or blocking startup.
+
+**Marking:** OWNER-CONFIRMED ADDITIVE FRAMEWORK CHANGE (CR-CH-067). Per
+`framework-conformance.md` the `EnvironmentRegistry` / `CommandEnvironment` are the
+CR-CH-053 core model, so adding to the registry is a framework change requiring
+express owner confirmation -- which the owner gave ("Proceed..."). It is PURELY
+ADDITIVE: a new READ-ONLY query plus a new load-time rejection branch; no second
+dispatcher, no second navigation stack, no new persistence format, no reshape of a
+public framework type. This is Gate 1, the FOUNDATION for the Gate 2 Alias Editor
+redesign (NOT in scope here). Builds ON the already-enumerable data
+(`AliasTable::canonical_verbs_owned` over `ffedit_english` for FFEDIT;
+`builtin_ffcmd_roots` for FFCMD) and the existing skip-with-WARN overlay
+discipline (Req 6a.3 collision rule; CR-NR-113 no-shadow guard).
+
+#### Acceptance Criteria
+
+20.1 THE `EnvironmentRegistry` SHALL expose a name-keyed, read-only query
+   `root_commands(env_name)` that RETURNS the named environment's COMPLETE set of
+   CANONICAL root commands: for FFEDIT, the canonical editor verbs
+   (`AliasTable::canonical_verbs_owned()` over `AliasTable::ffedit_english()`); for
+   FFCMD, the COMPLETE built-in canonical roots (`builtin_ffcmd_roots()` = the two
+   code-only built-in menus' option roots, unioned with `BUILTIN_WORKSPACE_VERB_ROOTS`
+   (the `resolve_target` CustomWorkspace verb roots), unioned with
+   `BUILTIN_FFCMD_LADDER_VERB_ROOTS` (the FFCMD verbs handled by the
+   `handle_command` ladder -- MOST IMPORTANTLY the file-open family EDIT / VIEW /
+   BROWSE -- which the classifier does not claim)). EDIT is an FFCMD file-open
+   root, NOT an FFEDIT in-buffer verb (owner-confirmed), so an `ECOB -> EDIT` alias
+   belongs to FFCMD. The query SHALL be keyed by environment NAME ON the
+   `EnvironmentRegistry` type, NOT a method on a `CommandEnvironment` trait object,
+   because the FFCMD base IS `resolve_target` and is not a `CommandEnvironment`
+   object (Req 1.2) -- a trait-only method could not cover FFCMD without a shim.
+   [CR-CH-067]
+
+20.2 THE result of `root_commands(env_name)` SHALL be in a DETERMINISTIC order
+   (e.g. sorted or a stable de-duplicated first-seen order) so repeated calls and
+   the Gate 2 dropdown are stable, and SHALL be de-duplicated case-insensitively.
+   [CR-CH-067]
+
+20.3 THE result of `root_commands(env_name)` SHALL contain CANONICAL roots ONLY --
+   NOT localised alias SURFACES. Aliases are the thing a user AUTHORS against a
+   root (CR-NR-112 / CR-NR-113), so offering alias surfaces as root choices would
+   be circular; both `canonical_verbs_owned()` and `builtin_ffcmd_roots()` already
+   return canonical/root forms, so this falls out of the data sources. [CR-CH-067]
+
+20.4 THE `EnvironmentRegistry` SHALL expose `contains_root(env_name, root) -> bool`
+   that returns TRUE iff `root` is a canonical root of the named environment,
+   matched CASE-INSENSITIVELY using the SAME comparison the existing verb
+   resolution uses (`eq_ignore_ascii_case`, the comparison already used by
+   `builtin_ffcmd_roots`'s de-dup and the no-shadow guard). It SHALL trim
+   surrounding whitespace on `root` before comparing. [CR-CH-067]
+
+20.5 WHEN `env_name` is UNKNOWN / not enumerable (any name other than FFCMD or
+   FFEDIT in phase 1 -- e.g. FFNAV / FFLINE / HOSTFS / MAINFRAME), OR `root` is not
+   a canonical root of a known environment, THE query SHALL be GRACEFUL:
+   `root_commands` SHALL return an EMPTY list and `contains_root` SHALL return
+   FALSE. It SHALL NOT panic and SHALL NOT error. [CR-CH-067]
+
+20.6 THE root-enumeration query SHALL be ADDITIVE and READ-ONLY: it SHALL NOT
+   change command dispatch, the active-environment derivation, the single front
+   door, the per-tab Navigation_Stack, session persistence, or `CommandTarget`
+   (framework-conformance mechanisms 1, 3, 4, 6). It is consumed by the Alias
+   Editor (a consumer), not by the hot dispatch path. [CR-CH-067]
+
+20.7 WHEN the user alias store (CR-NR-113 `UserAliasRowToml` rows in
+   `<User_Data_Dir>/FileForgeWorkbench/aliases/user.toml`) is LOADED and a row's
+   declared root is NOT a valid root command of its declared environment
+   (`contains_root(row.environment, row.canonical) == false`), THE loader SHALL
+   SKIP that row, LOG a WARN that NAMES the offending alias (surface), root
+   (canonical), and environment, and CONTINUE loading the remaining rows. A row
+   with an INVALID root SHALL NOT block application startup and SHALL NOT cause any
+   OTHER valid row to be dropped. This MIRRORS the existing no-shadow / collision
+   skip-with-WARN discipline in `apply_user_rows` and SHALL keep those existing
+   guards (the reserved-built-in-root guard, the cross-layer collision WARN)
+   intact. [CR-CH-067]
+
+20.8 THE SAME root-validity check (`contains_root`) SHALL be surfaced for SAVE-side
+   use in `validate_user_alias_rows` so that a later gate (Gate 2, the Alias Editor
+   redesign) can REJECT an invalid `(environment, root)` pair AT SAVE. Gate 1 (this
+   requirement) adds ONLY the hook plus the load-time skip-with-WARN (criterion
+   20.7); the editor UI and the interactive save-side rejection UX are Gate 2 and
+   are NOT in scope here. [CR-CH-067]
+
+> **Gate 2 consumer (cross-reference, out of scope here):** command-configurator
+> Requirement 5 (CR-NR-113) is the future CONSUMER. Gate 2 will replace the
+> free-text root field with a dropdown populated by `root_commands(env)`, reconcile
+> the CR-NR-113 no-shadow guard with the per-environment `root_commands` set, and
+> add the interactive save-side rejection UX on top of the `validate_user_alias_rows`
+> hook this gate provides.

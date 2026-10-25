@@ -202,6 +202,21 @@ fn validate_user_alias_rows(rows: &[AliasRowEdit]) -> Result<Vec<UserAliasRowTom
                 "alias '{surface}' shadows a reserved built-in root command"
             ));
         }
+        // (e) ROOT-VALIDITY (CR-CH-067, Req 20.8): the declared root must be a
+        // valid canonical root of the declared environment. This is the SAVE-side
+        // surfacing of the same `contains_root` check the LOAD path skips-with-WARN
+        // on (Req 20.7), so Gate 2's Alias Editor can reject an invalid
+        // (environment, root) pair at save. Gate 1 adds only the hook.
+        if !super::environment_registry::EnvironmentRegistry::contains_root(
+            row.environment.env_name(),
+            &canonical,
+        ) {
+            return Err(format!(
+                "alias '{surface}': root '{canonical}' is not a valid root command of \
+                 environment '{}'",
+                row.environment.env_name()
+            ));
+        }
         // (c) within-SAME-environment surface -> two different roots.
         if let Some((_, _, existing)) = seen
             .iter()
@@ -248,7 +263,7 @@ mod tests {
     // rejected.
     #[test]
     fn validate_rejects_empty_surface() {
-        let rows = vec![row("", "EDIT", AliasEnvironment::Ffedit, "")];
+        let rows = vec![row("", "EDIT", AliasEnvironment::Ffcmd, "")];
         assert!(validate_user_alias_rows(&rows).is_err());
     }
 
@@ -256,7 +271,7 @@ mod tests {
     // rejected.
     #[test]
     fn validate_rejects_empty_canonical() {
-        let rows = vec![row("ECOB", "", AliasEnvironment::Ffedit, "")];
+        let rows = vec![row("ECOB", "", AliasEnvironment::Ffcmd, "")];
         assert!(validate_user_alias_rows(&rows).is_err());
     }
 
@@ -264,9 +279,11 @@ mod tests {
     // two different roots WITHIN the same environment is rejected.
     #[test]
     fn validate_rejects_within_same_environment_two_roots() {
+        // EDIT and VIEW are both valid FFCMD (file-open) roots, so the rejection
+        // here is purely the same-surface-two-roots collision, not root-validity.
         let rows = vec![
-            row("DUP", "EDIT", AliasEnvironment::Ffedit, ""),
-            row("DUP", "VIEW", AliasEnvironment::Ffedit, ""),
+            row("DUP", "EDIT", AliasEnvironment::Ffcmd, ""),
+            row("DUP", "VIEW", AliasEnvironment::Ffcmd, ""),
         ];
         assert!(validate_user_alias_rows(&rows).is_err());
     }
@@ -275,8 +292,10 @@ mod tests {
     // DIFFERENT environments is allowed (no collision across environments).
     #[test]
     fn validate_allows_same_surface_in_different_environments() {
+        // FIND is a valid FFEDIT (in-buffer) root; CONFIG is a valid FFCMD root.
+        // The same surface in two different environments does not collide.
         let rows = vec![
-            row("DUP", "EDIT", AliasEnvironment::Ffedit, ""),
+            row("DUP", "FIND", AliasEnvironment::Ffedit, ""),
             row("DUP", "CONFIG", AliasEnvironment::Ffcmd, ""),
         ];
         let out = validate_user_alias_rows(&rows).expect("different envs do not collide");
@@ -295,14 +314,49 @@ mod tests {
         );
     }
 
+    // Validates: command-environments Requirement 20.8 -- the save-side hook
+    // rejects a row whose root is NOT a valid canonical root of its declared
+    // environment (here FIND is an FFEDIT root, not an FFCMD root), reusing the
+    // EnvironmentRegistry::contains_root primitive.
+    #[test]
+    fn validate_rejects_root_not_valid_in_declared_environment() {
+        // FIND is an FFEDIT in-buffer root; it is NOT an FFCMD root.
+        let rows = vec![row("FF", "FIND", AliasEnvironment::Ffcmd, "")];
+        assert!(
+            validate_user_alias_rows(&rows).is_err(),
+            "a root that is not valid in the declared environment must be rejected"
+        );
+        // And the mirror: CONFIG is an FFCMD root, not an FFEDIT root.
+        let rows = vec![row("CF", "CONFIG", AliasEnvironment::Ffedit, "")];
+        assert!(
+            validate_user_alias_rows(&rows).is_err(),
+            "an FFCMD root declared under FFEDIT must be rejected"
+        );
+    }
+
+    // Validates: command-environments Requirement 20.8 -- a row whose root IS a
+    // valid root of its declared environment passes the save-side hook: EDIT in
+    // FFCMD (file-open family) and FIND in FFEDIT (in-buffer).
+    #[test]
+    fn validate_accepts_root_valid_in_declared_environment() {
+        let rows = vec![
+            row("ECOB", "EDIT", AliasEnvironment::Ffcmd, ""),
+            row("SOEK", "FIND", AliasEnvironment::Ffedit, ""),
+        ];
+        let out = validate_user_alias_rows(&rows).expect("valid roots pass");
+        assert_eq!(out.len(), 2);
+    }
+
     // Validates: command-configurator Requirement 5.4 -- a valid set serialises
     // to rows with surface/canonical UPPERCASED and the template preserved.
     #[test]
     fn validate_uppercases_and_preserves_template() {
+        // EDIT is a valid FFCMD (file-open) root (CR-CH-067), so ECOB -> EDIT is
+        // an FFCMD alias.
         let rows = vec![row(
             "ecob",
             "edit",
-            AliasEnvironment::Ffedit,
+            AliasEnvironment::Ffcmd,
             "FFWB.COBOL.MASTER(&1)",
         )];
         let out = validate_user_alias_rows(&rows).expect("valid");

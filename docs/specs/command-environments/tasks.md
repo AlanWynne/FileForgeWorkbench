@@ -557,3 +557,75 @@ before any code. `[ ]` only.
 | Requirement | Criteria | Covered by Task(s) |
 |-------------|----------|---------------------|
 | Req 19: MAINFRAME CE same-session resolve | 19.1-19.6 | 26.1-26.5 (+ dataset-catalog Task 43 for the catalog-backed access) |
+
+---
+
+### Phase (cmdenv-root-enum) -- CR-CH-067 (EnvironmentRegistry root enumeration + reject-with-WARNING-at-load) -- Requirement 20
+
+> Gate 1: the FOUNDATION for the Gate 2 Alias Editor redesign (NOT in scope here).
+> ADDITIVE, owner-confirmed framework change to CR-CH-053: a read-only name-keyed
+> query on the built `EnvironmentRegistry` + a load-time skip-with-WARN branch,
+> both reusing data/discipline that already exist. No second dispatcher, no second
+> navigation stack, no new persistence format. TDD per `testing.md`; agent
+> verification is compile/clippy/fmt clean + scoped `-p ff-desktop` tests, the
+> owner runs the authoritative full gate. `[ ]` only.
+
+- [ ] 27. Add the root-enumeration query to EnvironmentRegistry (root_commands / contains_root)
+  - [ ] 27.1 Add `root_commands(env_name) -> Vec<String>` to
+        `crates/ff-desktop/src/shell/environment_registry.rs`, delegating by name:
+        FFCMD -> `crate::shell::alias_reader::builtin_ffcmd_roots()`; FFEDIT ->
+        `AliasTable::ffedit_english().canonical_verbs_owned()`; any other name ->
+        `Vec::new()`. Return canonical roots ONLY (no alias surfaces), in a
+        deterministic, case-insensitively de-duplicated order.
+        Validates: Requirement 20.1, 20.2, 20.3, 20.5.
+  - [ ] 27.2 Add `contains_root(env_name, root) -> bool` that trims `root` and
+        matches a `root_commands` entry case-insensitively (`eq_ignore_ascii_case`,
+        the existing verb-resolution comparison); false for an unknown env/root,
+        never panicking.
+        Validates: Requirement 20.4, 20.5.
+  - [ ] 27.3 Write the registry enumeration tests (red first): `root_commands("FFCMD")`
+        contains the built-in roots (e.g. CONFIG / THEME / FILES / CATALOGS) and
+        EXCLUDES a user-menu-only root; `root_commands("FFEDIT")` contains the
+        editor verbs (e.g. FIND / CHANGE / LOCATE / SAVE); order is deterministic;
+        `contains_root` is case-insensitive; unknown env -> empty list / false.
+        Each test carries its `// Validates: command-environments Requirement 20.x`
+        annotation.
+        Validates: Requirement 20.1, 20.2, 20.3, 20.4, 20.5.
+  - [ ] 27.4 Confirm the query changes NO dispatch / navigation / persistence /
+        CommandTarget behaviour (read-only; no call-site in the hot dispatch path).
+        Validates: Requirement 20.6.
+
+- [ ] 28. Reject-with-WARNING-at-load for invalid user alias roots (apply_user_rows)
+  - [ ] 28.1 In `crates/ff-desktop/src/shell/alias_reader/alias_user_overlay.rs`
+        `apply_user_rows`, add a skip-with-WARN branch (BEFORE the row is applied,
+        AFTER the existing malformed-row and no-shadow guards): when
+        `contains_root(row.environment.env_name(), &row.canonical)` is false, log a
+        WARN naming the offending alias (surface) / root (canonical) / environment
+        and `continue` (skip this row only). Keep the existing reserved-built-in-root
+        guard and the cross-layer collision WARN intact.
+        Validates: Requirement 20.7.
+  - [ ] 28.2 Write the load tests (red first): a row with an invalid root for its
+        environment is SKIPPED and WARNed; a VALID row loaded alongside it is still
+        applied (no valid row dropped); loading does not panic / block.
+        Validates: Requirement 20.7.
+
+- [ ] 29. Surface the save-side root-validity hook (validate_user_alias_rows)
+  - [ ] 29.1 In `crates/ff-desktop/src/shell/alias_editor.rs`
+        `validate_user_alias_rows`, add the same
+        `contains_root(row.environment.env_name(), &canonical)` check as a
+        rejection condition (reusing the registry query), leaving the existing
+        empty-field / within-environment-collision / reserved-root rejections
+        intact. Gate 1 adds ONLY the hook; the interactive save-side UX is Gate 2.
+        Validates: Requirement 20.8.
+  - [ ] 29.2 Write the save-side test (red first): a row whose root is not a valid
+        root of its declared environment is rejected by `validate_user_alias_rows`;
+        a valid row passes.
+        Validates: Requirement 20.8.
+
+### Acceptance Criteria Coverage (CR-CH-067)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 20: root enumeration + reject-at-load | 20.1-20.6 (query) | 27.1-27.4 |
+| Req 20: reject-with-WARNING-at-load | 20.7 | 28.1-28.2 |
+| Req 20: save-side validity hook | 20.8 | 29.1-29.2 |

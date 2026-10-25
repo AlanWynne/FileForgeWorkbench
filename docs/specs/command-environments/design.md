@@ -908,3 +908,147 @@ preferred so multiple mainframe catalogs are each served.
   the shell (ff-desktop) sits on top and threads the catalog path. No new edge.
 - `CommandTarget` / `WorkspaceContext` / `InteriorFocus` / `WorkspaceDescriptor`
   are untouched.
+
+## Environment_Registry root-command enumeration + user-alias-root load validation (CR-CH-067) -- Requirement 20
+
+Design delta for CR-CH-067 (Gate 1: the FOUNDATION for the Gate 2 Alias Editor
+redesign). Grounded in `.agents/tasks/command-env-enumeration/findings.md`. This
+is an ADDITIVE, read-only query on the built `EnvironmentRegistry` (Req 13) plus a
+load-time rejection branch mirroring the existing skip-with-WARN discipline. NO
+new mechanism: it exposes data that already exists and reuses guards that already
+run.
+
+### Why a name-keyed REGISTRY query, not a trait method
+
+The two phase-1 root sets already exist as enumerable data, in two DIFFERENT
+shapes, in two places used today:
+
+- **FFEDIT** -- `AliasTable::ffedit_english().canonical_verbs_owned()`
+  (`shell/environment.rs`) yields the distinct canonical editor verbs (LOCATE,
+  TOP, ..., FIND, CHANGE, ..., SCROLL, SAVE).
+- **FFCMD** -- `builtin_ffcmd_roots()` (`shell/alias_reader.rs`) unions the two
+  code-only built-in menus' option roots (`recovery_pom_menu` +
+  `recovery_settings_menu`) with `BUILTIN_WORKSPACE_VERB_ROOTS`
+  (`command_config/mod.rs`, pinned against the classifier by a drift-guard test).
+
+The query lives on `EnvironmentRegistry` (`shell/environment_registry.rs`), keyed
+by environment NAME, NOT on the `CommandEnvironment` trait, because:
+
+1. the two root sets live in two different shapes the registry already bridges by
+   name;
+2. FFCMD is NOT a `CommandEnvironment` trait object (FFCMD == `resolve_target`,
+   Req 1.2), so a trait-only method cannot cover it without a shim; the registry
+   query covers all names uniformly;
+3. the consumer (the Alias Editor) already works by NAME
+   (`AliasEnvironment::env_name()` -> "FFCMD" / "FFEDIT"), so a name-keyed query is
+   the natural, shell-decoupled seam.
+
+### API shape
+
+```rust
+// crates/ff-desktop/src/shell/environment_registry.rs
+impl EnvironmentRegistry {
+    /// The canonical ROOT commands owned by the named environment, in a stable,
+    /// de-duplicated order. Canonical roots ONLY -- NOT localised alias surfaces.
+    /// Unknown / non-enumerable environment -> empty Vec (Req 20.1-20.3, 20.5).
+    pub(crate) fn root_commands(&self, env_name: &str) -> Vec<String>;
+
+    /// True iff `root` (case-insensitive, trimmed) is a canonical root of the
+    /// named environment. The validation primitive (Req 20.4-20.5).
+    pub(crate) fn contains_root(&self, env_name: &str, root: &str) -> bool {
+        let r = root.trim();
+        self.root_commands(env_name)
+            .iter()
+            .any(|c| c.eq_ignore_ascii_case(r))
+    }
+}
+```
+
+Delegation by name:
+- `FFCMD` -> `crate::shell::alias_reader::builtin_ffcmd_roots()`.
+- `FFEDIT` -> `AliasTable::ffedit_english().canonical_verbs_owned()` (the
+  canonical roots are identical whether sourced from `ffedit_english()` or the
+  live `LocaleAliasStore` table, because the locale overlay only adds SURFACES,
+  never roots -- so the cheaper fresh-seed source is used).
+- any other name (FFNAV / FFLINE / HOSTFS / MAINFRAME) -> `Vec::new()`.
+
+`root_commands` returns a DETERMINISTIC, case-insensitively de-duplicated order
+(Req 20.2); `builtin_ffcmd_roots` and `canonical_verbs_owned` already de-duplicate
+case-insensitively, so this is either their existing stable order or a sort
+applied in the query (an implementation choice confirmed at build time).
+
+### FFCMD completeness posture
+
+`root_commands("FFCMD")` is the COMPLETE BUILT-IN canonical root set. It unions
+THREE co-located, drift-guarded sources inside `builtin_ffcmd_roots()`
+(`shell/alias_reader.rs`):
+
+1. the two code-only built-in menus' option roots (`recovery_pom_menu` +
+   `recovery_settings_menu`): SETTINGS / CATALOGS / FILES / HELP / X / CONFIG /
+   ALIASES / THEME / MENUS / KEYS / KINDS / RESET BARE;
+2. `command_config::BUILTIN_WORKSPACE_VERB_ROOTS` -- the `resolve_target`
+   CustomWorkspace verb roots (COMMANDS / LOG / PLUGINS / MACROS / SEARCH /
+   GSEARCH / etc.), pinned to the classifier by an existing drift-guard test;
+3. `command_config::BUILTIN_FFCMD_LADDER_VERB_ROOTS` (ADDED for CR-CH-067) -- the
+   FFCMD root verbs handled by the `handle_command` LADDER rather than the
+   classifier, MOST IMPORTANTLY the file-open family EDIT / VIEW / BROWSE, plus
+   the lifecycle/navigation/display verbs (EXIT, START, MENU, END, RETURN,
+   DETACH, SPLIT, SWAP, WORKSPACE, PFSHOW, COMMAND, SNAPSHOT, CAPTURE, RETRIEVE,
+   SUBMIT, TIME, STATUS, ...). A drift-guard test asserts this list is DISJOINT
+   from the classifier list (these verbs are NOT claimed by
+   `builtin_workspace_target_for`) and carries EDIT/VIEW/BROWSE.
+
+Source 3 is why `ECOB -> EDIT` is a valid FFCMD alias: EDIT is an FFCMD file-open
+verb (owner-confirmed), NOT an FFEDIT in-buffer verb, so it belongs in the FFCMD
+root set. Without the union a user alias to EDIT in FFCMD would be incorrectly
+rejected by the CR-CH-067 load/save validation.
+
+A root reachable ONLY via a user `menus/*.toml` override, or a dynamic
+menu/command-definition name, is still intentionally NOT included (that open-ended
+set shifts with user files). For the Gate 2 Alias Editor dropdown this is the
+correct, stable canonical set, and load/save validation uses the SAME set so
+author and validator agree (Req 20.1). This is also the foundation for the future
+"list the supported FFCMD commands" API the owner noted.
+
+### Reject-with-WARNING-at-load (Req 20.7) -- mirrors the existing discipline
+
+`apply_user_rows` (`shell/alias_reader/alias_user_overlay.rs`) already SKIPS a row
+with a WARN in two cases: a surface that shadows a reserved built-in root, and a
+cross-layer different-root collision. CR-CH-067 ADDS one more skip-with-WARN
+branch, BEFORE the row is applied, using `contains_root`:
+
+```text
+for each user alias row:
+    (existing) skip malformed (empty surface/canonical)
+    (existing) skip + WARN if surface shadows a reserved built-in root
+    (NEW, Req 20.7) if !registry.contains_root(row.environment.env_name(), &row.canonical):
+        log_warn!("[aliases] user alias '{surface}' names root '{canonical}'
+                   which is not a valid root of environment '{env}' -- skipped")
+        continue   // skip this row only; keep loading the rest
+    (existing) route into the environment table; apply_locale_overlay_keyed,
+               WARN on a cross-layer collision
+```
+
+The branch is a SKIP, never an abort: a single invalid row cannot block startup or
+drop any other valid row (Req 20.7). The existing guards are retained unchanged.
+
+### Save-side hook (Req 20.8)
+
+`validate_user_alias_rows` (`shell/alias_editor.rs`) already rejects an empty
+surface/canonical, a within-environment same-surface-two-roots collision, and a
+surface equal to a reserved built-in root. CR-CH-067 adds the SAME
+`contains_root(row.environment, row.canonical)` check so the validator can reject
+an invalid `(environment, root)` pair at save. Gate 1 only ADDS the check as a
+hook; the interactive save-side rejection UX (surfacing the rejection in the Alias
+Editor) is Gate 2.
+
+### Framework conformance
+
+- ADDITIVE and read-only: a new registry query + a new load-time skip branch + a
+  new save-side validation branch. No second dispatcher, no second navigation
+  stack, no new persistence format (framework-conformance mechanisms 1, 3, 4, 6).
+- Reshapes NO public framework type. `EnvironmentRegistry` gains methods; its
+  shape and `CommandEnvironment` / `CommandTarget` / `WorkspaceContext` are
+  unchanged.
+- Builds ON existing data (`canonical_verbs_owned`, `builtin_ffcmd_roots`) and the
+  existing skip-with-WARN overlay discipline.

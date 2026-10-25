@@ -174,6 +174,15 @@ pub(crate) fn builtin_ffcmd_roots() -> Vec<String> {
     for &verb in crate::command_config::BUILTIN_WORKSPACE_VERB_ROOTS {
         push_root(verb.trim().to_uppercase(), &mut roots);
     }
+    // CR-CH-067 (Req 20.1): ALSO union the FFCMD root verbs handled by the
+    // `handle_command` LADDER (not the resolve_target classifier) -- most
+    // importantly the file-open family EDIT / VIEW / BROWSE -- so the FFCMD root
+    // set is COMPLETE. Without this a user alias to EDIT in FFCMD would be
+    // incorrectly rejected as "not a valid root" by the CR-CH-067 load/save
+    // validation (contains_root).
+    for &verb in crate::command_config::BUILTIN_FFCMD_LADDER_VERB_ROOTS {
+        push_root(verb.trim().to_uppercase(), &mut roots);
+    }
     roots
 }
 

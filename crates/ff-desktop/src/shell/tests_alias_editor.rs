@@ -182,22 +182,25 @@ fn user_rows_route_into_their_target_environment() {
     let mut shell = make_shell();
     let _dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
+    // SOEK -> FIND is an FFEDIT (in-buffer) alias; GG -> GSEARCH is an FFCMD
+    // alias. Each root is valid in its declared environment (CR-CH-067), and
+    // routing is per-row.
     shell.alias_editor_panel.rows = vec![
-        row("ECOB", "EDIT", AliasEnvironment::Ffedit, ""),
+        row("SOEK", "FIND", AliasEnvironment::Ffedit, ""),
         row("GG", "GSEARCH", AliasEnvironment::Ffcmd, ""),
     ];
     shell.apply_alias_editor_action(AliasEditorAction::Save);
     assert!(shell.alias_editor_panel.error.is_none());
     use super::locale_resolver::LocaleResolveOutcome;
-    // ECOB resolves in FFEDIT (its target environment)...
+    // SOEK resolves in FFEDIT (its target environment)...
     assert_eq!(
-        shell.resolve_locale_verb("ECOB", "FFEDIT"),
-        LocaleResolveOutcome::Root("EDIT".to_string())
+        shell.resolve_locale_verb("SOEK", "FFEDIT"),
+        LocaleResolveOutcome::Root("FIND".to_string())
     );
     // ...and NOT in FFCMD.
     assert_eq!(
-        shell.resolve_locale_verb("ECOB", "FFCMD"),
-        LocaleResolveOutcome::Unknown("ECOB".to_string())
+        shell.resolve_locale_verb("SOEK", "FFCMD"),
+        LocaleResolveOutcome::Unknown("SOEK".to_string())
     );
     // GG resolves in FFCMD.
     assert_eq!(
@@ -238,6 +241,60 @@ fn load_skips_user_row_that_shadows_builtin_root() {
         shell.resolve_locale_verb("CONFIG", "FFCMD"),
         LocaleResolveOutcome::Root("CONFIG".to_string()),
         "a user row shadowing a built-in root is skipped at load"
+    );
+}
+
+// Validates: command-environments Requirement 20.7 (CR-CH-067) -- when the user
+// alias store is LOADED and a row's root is NOT a valid root of its declared
+// environment, that row is SKIPPED (with a WARN) and loading CONTINUES: a VALID
+// row loaded alongside it is still applied, no valid row is dropped, and the load
+// does not error or panic. Here the invalid row declares the FFEDIT root FIND
+// under FFCMD (FIND is an FFEDIT in-buffer root, not an FFCMD root); the valid
+// row is an FFCMD GSEARCH alias. The invalid row is written DIRECTLY to the file
+// (bypassing save-time validation) so the LOAD path is what enforces it.
+#[test]
+fn load_skips_user_row_with_root_invalid_in_environment() {
+    let mut shell = make_shell();
+    let _dir = point_user_aliases_at_temp(&mut shell);
+    let path = shell.user_aliases_path().expect("path");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let rows = vec![
+        // INVALID: FIND is not an FFCMD root -> skipped-with-WARN at load.
+        UserAliasRowToml {
+            surface: "BADROW".to_string(),
+            canonical: "FIND".to_string(),
+            environment: AliasEnvironment::Ffcmd,
+            command_template: String::new(),
+            localisation_key: String::new(),
+        },
+        // VALID: GSEARCH is an FFCMD root -> applied.
+        UserAliasRowToml {
+            surface: "GG".to_string(),
+            canonical: "GSEARCH".to_string(),
+            environment: AliasEnvironment::Ffcmd,
+            command_template: String::new(),
+            localisation_key: String::new(),
+        },
+    ];
+    std::fs::write(
+        &path,
+        super::user_aliases::serialise_user_aliases(&rows).unwrap(),
+    )
+    .unwrap();
+    // Load from the file (must not error/panic even with the invalid row).
+    shell.refresh_alias_store_in_place();
+    use super::locale_resolver::LocaleResolveOutcome;
+    // The invalid row was SKIPPED: BADROW does not resolve.
+    assert_eq!(
+        shell.resolve_locale_verb("BADROW", "FFCMD"),
+        LocaleResolveOutcome::Unknown("BADROW".to_string()),
+        "a row whose root is invalid in its environment is skipped at load"
+    );
+    // The VALID row loaded alongside it is still applied (not dropped).
+    assert_eq!(
+        shell.resolve_locale_verb("GG", "FFCMD"),
+        LocaleResolveOutcome::Root("GSEARCH".to_string()),
+        "a valid row is still applied after an invalid row is skipped"
     );
 }
 
