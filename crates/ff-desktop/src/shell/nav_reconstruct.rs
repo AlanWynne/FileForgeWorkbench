@@ -233,7 +233,6 @@ impl WorkbenchShell {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::shell::tests_common::make_shell;
 
     /// Set the active UI locale on the shell's config handle (user layer).
