@@ -130,6 +130,8 @@ pub(crate) use helpers::config_value_to_toml_value;
 // moved test still resolves to `shell`, unchanged. Shared helpers live in
 // `tests_common` and are glob-imported by each area module.
 #[cfg(test)]
+mod tests_alias_editor;
+#[cfg(test)]
 mod tests_alias_template;
 #[cfg(test)]
 mod tests_command;
