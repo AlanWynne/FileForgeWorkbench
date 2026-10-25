@@ -1052,3 +1052,91 @@ Editor) is Gate 2.
   unchanged.
 - Builds ON existing data (`canonical_verbs_owned`, `builtin_ffcmd_roots`) and the
   existing skip-with-WARN overlay discipline.
+
+## Correct editor command-environment placement (CR-CH-069, Requirement 21)
+
+The command-environment placement audit
+(`.agents/tasks/command-placement-audit/command-environment-audit.md`, sections 5
+and 8) applied ONE semantic test to every registered verb:
+
+> Does the command act on the WORKBENCH / a target / navigation (FFCMD), or does
+> it act on the CONTENT of the buffer currently open in the editor (FFEDIT)?
+
+That test produced exactly three corrections, which this design records. No verb
+other than the two named below is moved; SUBMIT / TIME / STATUS are AMBIGUOUS and
+deliberately LEFT on FFCMD for a later FFJES decision.
+
+### (A) AUTONUM / NUM move FFCMD -> FFEDIT
+
+AUTONUM toggles AUTOMATIC line renumbering (it edits the buffer's sequence
+columns), and NUM is an alias of NUMBER (generate/insert sequence numbers into the
+buffer). Both mutate the CONTENT of the open editor buffer and are meaningless
+with no buffer open, so by the ownership principle (Requirement 2a.4 / Requirement
+10) they are FFEDIT verbs.
+
+Today they live on the FFCMD `handle_command` ladder (`commands_ladder_c.rs`
+AUTONUM / NUM arms) and are listed in `BUILTIN_FFCMD_LADDER_VERB_ROOTS`
+(`command_config/mod.rs`). The correction:
+
+- REMOVE AUTONUM and NUM from `BUILTIN_FFCMD_LADDER_VERB_ROOTS` so
+  `root_commands("FFCMD")` no longer contains them.
+- ADD AUTONUM and NUM as canonical roots of `AliasTable::ffedit_english()`
+  (`shell/environment.rs`) so `root_commands("FFEDIT")` contains them and the
+  FFEDIT active-wins claim path (Requirement 5.1) handles them when an editor
+  Context is focused.
+
+This is a PURE CLASSIFICATION MOVE. Their redirect target NUMBER has NO ladder arm
+and NO `CommandEngine` implementation on main -- it falls through to the engine's
+"unrecognised command" result today. So the NUMBER / UNNUM / NUMBER-SHOW engine is
+NOT built here (the deferred `ff-sequence-numbers` effort). The one observable
+change is WHERE AUTONUM/NUM are claimed: editor-active (FFEDIT) instead of
+anywhere (the global FFCMD ladder). Because NUMBER is unimplemented, the practical
+effect today is already "nothing useful happens", so the behaviour risk is low --
+but the classification change is gated because it changes the (environment, root)
+sets the alias-anchoring model reads.
+
+### (B) Relocate the mis-placed af SOEK -> FIND alias
+
+`i18n/af/aliases/FFCMD.toml` maps SOEK -> FIND under FFCMD, but FIND is an FFEDIT
+root (command-semantics Requirement 12.1; `ffedit_english` owns FIND), NOT an
+FFCMD root. The row shipped only because the per-locale reader path uses the
+3-field `parse_alias_toml` (`alias_reader.rs`) which runs NO `contains_root` check
+(that check runs only on the user-store path). The correction moves the row into
+`i18n/af/aliases/FFEDIT.toml` (the per-locale FFEDIT catalogue) and removes it from
+the af FFCMD.toml, and moves the af POC load test's assertion from the FFCMD
+catalogue to the FFEDIT catalogue. These are per-locale DATA files (out of ASCII
+scope).
+
+### (C) Fix the stale EDIT doc-comment
+
+`shell/user_aliases.rs` (~lines 26-28) wrongly says the AliasEnvironment choice for
+an editor-verb root such as EDIT is FFEDIT (e.g. "ECOB -> EDIT is an FFEDIT
+alias"). The code and tests are authoritative and treat ECOB -> EDIT as an FFCMD
+alias: EDIT is an FFCMD file-open root (file-open = workbench, owner-confirmed; see
+Requirement 20.1 and the `builtin_ffcmd_roots` union of the file-open family). The
+comment is corrected to say FFCMD. Documentation-only, no behaviour change.
+
+### Interaction with CR-CH-067 (the validation safety net)
+
+Moving AUTONUM/NUM directly changes `root_commands`/`contains_root` for both
+environments, so the correction updates `builtin_ffcmd_roots()` inputs and
+`ffedit_english()` together and re-baselines the `environment_registry.rs`
+enumeration tests. After the move, a user alias anchoring AUTONUM/NUM (or FIND) to
+FFCMD is correctly invalid-in-environment and is rejected by the CR-CH-067
+load/save guards (Requirement 20.7 / 20.8) -- intended, not a regression.
+
+### Sequencing
+
+This correction lands BEFORE the Afrikaans FFCMD alias-data authoring and BEFORE
+the `=FILES` root-token fix (audit item D, a separate change request), because the
+corrected (environment, root) sets are the anchor both of those tasks build on.
+Authoring Afrikaans aliases against the current (wrong) root sets would bake the
+misplacement into shipped localisation data.
+
+### Framework conformance
+
+CLASSIFICATION/DATA/DOC edits only. No second dispatcher, no second navigation
+stack, no new persistence format, no reshape of a public framework type. The move
+edits the existing root SOURCES (`BUILTIN_FFCMD_LADDER_VERB_ROOTS` /
+`ffedit_english`) and routes AUTONUM/NUM through the existing FFEDIT active-wins
+claim path; it introduces nothing new.

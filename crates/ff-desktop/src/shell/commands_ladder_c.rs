@@ -129,22 +129,10 @@ impl WorkbenchShell {
             return true;
         }
 
-        // ── AUTONUM / NUM aliases — Validates: Requirement 16.10, 16.11 ──────
-        if upper == "AUTONUM ON" || upper == "AUTONUM OFF" {
-            let rest = &cmd.trim()[7..];
-            let redirected = format!("NUMBER{rest}");
-            self.handle_command(&redirected);
-            return true;
-        }
-        if let Some(rest) = verb_arg(cmd, "NUM") {
-            let redirected = if rest.is_empty() {
-                "NUMBER".to_string()
-            } else {
-                format!("NUMBER {rest}")
-            };
-            self.handle_command(&redirected);
-            return true;
-        }
+        // CR-CH-069 (Req 21.1/21.2): the AUTONUM / NUM in-buffer line-renumbering
+        // aliases were MOVED from this FFCMD ladder to the FFEDIT claim path
+        // (`environment_ffedit.rs`), so they are now claimed ONLY when an editor
+        // Context is active (active-wins). They are no longer handled here.
 
         // ── SUBMIT — Validates: Requirement 17.1 ─────────────────────────────
         if upper == "SUBMIT" {

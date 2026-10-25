@@ -438,17 +438,32 @@ fn stats_off_command_clears_stats_mode() {
     assert_eq!(shell.tabs.active_tab().edit_profile.stats, StatsMode::Off);
 }
 
-/// Validates: Requirement 16.10 -- AUTONUM ON dispatches to NUMBER ON.
+/// Validates: Requirement 16.10; command-environments Requirement 21.1, 21.2
+/// (CR-CH-069) -- AUTONUM ON is claimed by FFEDIT ONLY when an editor Context is
+/// active (active-wins) and dispatches to NUMBER ON, exactly as before. The verb
+/// moved from the FFCMD ladder to the FFEDIT claim path, so the test opens a file
+/// (making the active Context an editor) before submitting. NUMBER ON is still
+/// handled by the CommandEngine; we only verify AUTONUM ON is aliased (not
+/// reported as an unknown AUTONUM command).
 #[test]
 fn autonum_on_dispatches_to_number_on() {
-    // Validates: Requirement 16.10
-    // NUMBER ON is handled by the CommandEngine; we just verify no panic and
-    // that AUTONUM ON is not treated as an unknown command.
+    use crate::tab_state::KindTag;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("doc.txt");
+    std::fs::write(&file, "one\ntwo\n").expect("seed");
+
     let mut shell = make_shell();
+    shell
+        .shell_open_file(file.to_str().expect("path"))
+        .expect("open");
+    // CR-CH-069: AUTONUM is an FFEDIT verb now, claimed only on an editor Context.
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FileEditor);
+
     shell.handle_command("AUTONUM ON");
-    // Should not produce an "unknown command" error from the AUTONUM handler itself
-    // (the CommandEngine may or may not know NUMBER -- we just check dispatch happened)
-    // The key assertion: open_error does NOT contain "AUTONUM"
+    // The key assertion: open_error does NOT contain "AUTONUM" (the verb was
+    // aliased/redirected to NUMBER, not reported unknown by the AUTONUM handler).
     let err = shell.open_error.as_deref().unwrap_or("");
     assert!(
         !err.to_uppercase().contains("AUTONUM"),
@@ -456,17 +471,63 @@ fn autonum_on_dispatches_to_number_on() {
     );
 }
 
-/// Validates: Requirement 16.11 -- NUM dispatches to NUMBER.
+/// Validates: Requirement 16.11; command-environments Requirement 21.1, 21.2
+/// (CR-CH-069) -- NUM is claimed by FFEDIT only on an editor Context and
+/// dispatches to NUMBER, exactly as before (the verb moved to the FFEDIT claim).
 #[test]
 fn num_command_dispatches_to_number() {
-    // Validates: Requirement 16.11
+    use crate::tab_state::KindTag;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().expect("tempdir");
+    let file = dir.path().join("doc.txt");
+    std::fs::write(&file, "one\ntwo\n").expect("seed");
+
     let mut shell = make_shell();
+    shell
+        .shell_open_file(file.to_str().expect("path"))
+        .expect("open");
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FileEditor);
+
     shell.handle_command("NUM ON");
     let err = shell.open_error.as_deref().unwrap_or("");
     assert!(
         !err.to_uppercase().contains("NUM ON"),
         "NUM should be aliased, got: {err}"
     );
+}
+
+/// Validates: command-environments Requirement 21.2 (CR-CH-069) -- on a
+/// NON-editor Context (the default POM Home Context) FFEDIT does NOT claim
+/// AUTONUM or NUM: the verbs left the global FFCMD ladder, so they are no longer
+/// handled anywhere outside an editor Context (active-wins). The only observable
+/// change from before is WHERE they are claimed.
+#[test]
+fn autonum_and_num_not_claimed_on_non_editor_context() {
+    // make_shell's single tab is the welcome editor; set it to the POM Home
+    // Context so the active Context is NOT an editor (mirrors
+    // `non_editor_context_does_not_route_through_ffedit`).
+    let mut shell = make_shell();
+    shell.set_active_tab_home();
+    let t = shell.tabs.active_tab();
+    assert!(
+        !shell.environments.is_ffedit_active(t.kind.tag(), t.is_home),
+        "the POM Home Context must not be an FFEDIT environment"
+    );
+
+    // AUTONUM/NUM are no longer FFCMD ladder verbs, so on a non-editor Context
+    // they are unrecognised (they fall through to the engine, which reports the
+    // unknown verb). The FFEDIT claim does not fire here.
+    for cmd in ["AUTONUM ON", "NUM ON"] {
+        shell.open_error = None;
+        shell.handle_command(cmd);
+        // It must NOT have been silently handled as a recognised FFCMD verb: on a
+        // non-editor Context an unrecognised command surfaces an error.
+        assert!(
+            shell.open_error.is_some(),
+            "{cmd} must not be claimed on a non-editor Context (CR-CH-069 Req 21.2)"
+        );
+    }
 }
 
 /// Validates: Requirement 19.2 -- SCROLL command updates active scroll amount.

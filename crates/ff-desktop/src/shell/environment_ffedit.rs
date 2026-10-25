@@ -286,6 +286,37 @@ impl CommandEnvironment for FfEditEnvironment {
                 true
             }
 
+            // AUTONUM / NUM in-buffer line-renumbering aliases (CR-CH-069,
+            // Req 21.1/21.2). Moved VERBATIM from the former FFCMD
+            // `commands_ladder_c.rs` arms -- the SAME redirect to NUMBER is
+            // preserved, only the CLAIM location changed (editor-active FFEDIT
+            // instead of the global FFCMD ladder). NUMBER itself is still
+            // unimplemented (the deferred ff-sequence-numbers engine), so the
+            // redirected `NUMBER ...` falls through to the engine's "unrecognised"
+            // response exactly as it did before -- the effect is unchanged.
+            "AUTONUM" => {
+                if upper == "AUTONUM ON" || upper == "AUTONUM OFF" {
+                    let rest = &raw.trim()[7..];
+                    let redirected = format!("NUMBER{rest}");
+                    shell.handle_command(&redirected);
+                    true
+                } else {
+                    // Bare/other AUTONUM forms were not handled by the former
+                    // ladder arm either -> decline so behaviour is unchanged.
+                    false
+                }
+            }
+            "NUM" => {
+                let rest = verb_arg(raw, "NUM").unwrap_or("");
+                let redirected = if rest.is_empty() {
+                    "NUMBER".to_string()
+                } else {
+                    format!("NUMBER {rest}")
+                };
+                shell.handle_command(&redirected);
+                true
+            }
+
             // Editor-buffer SAVE: the one STORE-AFFECTING FFEDIT verb
             // (`is_store_affecting_verb`, Task 18). CR-CH-053 Task 20
             // (Req 14.4/14.5/14.6, MODIFIES Req 10.1 routing): FFEDIT no longer
@@ -323,18 +354,33 @@ mod tests {
 
     /// Validates: command-environments Requirement 14.3 -- the in-buffer verbs
     /// (Req 6.1) are NOT store-affecting, so FFEDIT handles them directly and
-    /// never addresses them to another environment.
+    /// never addresses them to another environment. CR-CH-069 adds AUTONUM/NUM,
+    /// the in-buffer line-renumbering verbs, to this in-buffer set.
     #[test]
     fn in_buffer_verbs_are_not_store_affecting() {
         for verb in [
             "LOCATE", "TOP", "BOTTOM", "UP", "DOWN", "LEFT", "RIGHT", "SORT", "EXCLUDE", "SHOW",
             "RESET", "FIND", "RFIND", "CHANGE", "RCHANGE", "CAPS", "NULLS", "STATS", "LOCK",
-            "PROFILE", "HILITE", "SCROLL",
+            "PROFILE", "HILITE", "SCROLL", "AUTONUM", "NUM",
         ] {
             assert!(
                 !is_store_affecting_verb(verb),
                 "{verb} must be classified in-buffer (handled directly, not addressed)"
             );
         }
+    }
+
+    /// Validates: command-environments Requirement 21.1, 21.2 (CR-CH-069) --
+    /// AUTONUM and NUM resolve through the FFEDIT alias table (so the FFEDIT
+    /// claim, which keys on the canonical verb, can match them), meaning they are
+    /// claimable ONLY on an editor Context via the active-wins claim path. The
+    /// claim preserves today's redirect to the (still-unimplemented) NUMBER verb;
+    /// the NUMBER/UNNUM engine is NOT implemented here.
+    #[test]
+    fn autonum_and_num_resolve_through_the_ffedit_alias_table() {
+        use crate::shell::environment::AliasTable;
+        let aliases = AliasTable::ffedit_english();
+        assert_eq!(aliases.canonical_verb("AUTONUM"), Some("AUTONUM"));
+        assert_eq!(aliases.canonical_verb("NUM"), Some("NUM"));
     }
 }

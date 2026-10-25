@@ -4128,6 +4128,26 @@ suite PASS. -->
 > manual `cargo gate` / test run (the full-shell egui_kittest build is slow/quiet on
 > this machine; the agent does not run the whole suite).
 
+### Phase (command-placement-audit) -- CR-CH-069 (correct editor command-environment placement: AUTONUM/NUM -> FFEDIT; af SOEK->FIND -> FFEDIT catalogue; EDIT doc-comment)
+
+> Classification/semantics correction, the ONE gated change the command-environment
+> placement audit recommends (sections 5 and 8). Moves AUTONUM/NUM from FFCMD to
+> FFEDIT (pure classification; NUMBER engine DEFERRED), relocates the mis-placed af
+> SOEK->FIND alias row from the FFCMD to the FFEDIT per-locale catalogue, and fixes
+> the stale EDIT doc-comment. The `=FILES` fix and the Afrikaans alias-data
+> authoring are separate later tasks (out of scope). COVERED by the scoped
+> `-p ff-desktop` unit tests named below (agent compile/clippy/fmt clean + scoped
+> tests; the authoritative full `cargo gate` is the owner's manual run). Criteria
+> from docs/specs/command-environments/requirements.md Req 21.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | ✅ | `shell::environment_registry::tests::autonum_and_num_are_ffedit_roots_not_ffcmd_roots` + `shell::environment::tests::ffedit_english_owns_autonum_and_num_roots` | command-environments Req 21.1: `root_commands("FFEDIT")` contains AUTONUM and NUM; `root_commands("FFCMD")` does NOT (AUTONUM/NUM added to `ffedit_english`, removed from `BUILTIN_FFCMD_LADDER_VERB_ROOTS`) |
+| `ff-desktop` | ✅ | `shell::tests_command::autonum_on_dispatches_to_number_on` + `num_command_dispatches_to_number` + `autonum_and_num_not_claimed_on_non_editor_context` + `shell::environment_ffedit::tests::autonum_and_num_resolve_through_the_ffedit_alias_table` | command-environments Req 21.2: FFEDIT claims AUTONUM/NUM ONLY when an editor Context is active (active-wins); not claimed on a non-editor Context; the only observable change is WHERE they are claimed; the NUMBER/UNNUM engine is NOT implemented (deferred) |
+| `ff-desktop` | ✅ | `shell::alias_reader::tests::af_poc_alias_catalogue_loads_and_resolves` | command-environments Req 21.3: the af FFEDIT catalogue (`i18n/af/aliases/FFEDIT.toml`) owns SOEK->FIND and the af FFCMD catalogue does not; the af POC load test asserts resolution through the FFEDIT catalogue |
+| `ff-desktop` | ✅ | `shell::environment_registry::tests::contains_root_reflects_autonum_num_find_moved_to_ffedit` + `contains_root_false_for_bogus_or_unknown` | command-environments Req 21.4: `contains_root("FFCMD", "FIND"/"AUTONUM"/"NUM")` is FALSE and `contains_root("FFEDIT", "FIND"/"AUTONUM"/"NUM")` is TRUE (an FFCMD-anchored row for these is invalid-in-environment, consistent with CR-CH-067 Req 20.4/20.7/20.8) |
+| `ff-desktop` | ✅ | `shell::alias_editor::tests::validate_accepts_root_valid_in_declared_environment` (doc-comment corrected alongside) | command-environments Req 21.5: the `user_aliases.rs` doc-comment states FFCMD for an editor-verb root such as EDIT (ECOB->EDIT is an FFCMD alias), correcting the stale FFEDIT text; documentation-only |
+
 ### Phase (find-search-split) -- CR-NR-110 (FIND=FFEDIT in-buffer; SEARCH=FFCMD canonical cross-backend; GREP alias; engine deferred)
 
 > Verb split: FIND is the FFEDIT (editor) in-buffer search verb; SEARCH is the FFCMD

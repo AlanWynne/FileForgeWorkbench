@@ -8,10 +8,7 @@
 # display/typeable concern only. Loaded by shell/alias_reader.rs via the existing
 # apply_locale_overlay seam -- no new mechanism.
 #
-# POC scope: a single reviewed row (SOEK -> FIND). French/German alias DATA is
-# out of scope for this change (localization Task 10.2 / 10.3).
-
-[[alias]]
-surface = "SOEK"
-canonical = "FIND"
-localisation_key = "verb-find"
+# CR-CH-069 (command-environments Requirement 21.3): the former SOEK -> FIND row
+# was MOVED to FFEDIT.toml because FIND is an FFEDIT root (command-semantics
+# Requirement 12.1), not an FFCMD root. This FFCMD catalogue currently declares
+# no aliases; genuine Afrikaans FFCMD aliases are a separate later DATA task.

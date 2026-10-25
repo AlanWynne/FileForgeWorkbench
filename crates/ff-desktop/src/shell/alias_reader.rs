@@ -577,35 +577,37 @@ canonical = "CATALOGS"
         ff_i18n::set_catalogue(catalogue);
     }
 
-    /// Validates: localization Requirement 11.1, 5.1, 5.5 -- the SHIPPED
-    /// Afrikaans POC alias catalogue (`af/aliases/FFCMD.toml`) loads via the
-    /// reader and, overlaid onto an FFCMD table that carries the FIND root,
-    /// resolves the localised surface SOEK to the root FIND (11.1/5.1) while the
-    /// root FIND still resolves to itself (Identity_Base retained, 5.5). With the
-    /// shipped `af` catalogue installed, the overlaid row's display surface is
-    /// `t("verb-find")` = "SOEK" (the minimal verb key the POC rows reference).
+    /// Validates: localization Requirement 11.1, 5.1, 5.5; command-environments
+    /// Requirement 21.3 (CR-CH-069) -- the SHIPPED Afrikaans POC alias row
+    /// SOEK -> FIND lives in the FFEDIT per-locale catalogue
+    /// (`af/aliases/FFEDIT.toml`), NOT the FFCMD catalogue, because FIND is an
+    /// FFEDIT root. The reader loads it and, overlaid onto the ffedit_english
+    /// base (which carries the FIND root), resolves the localised surface SOEK to
+    /// the root FIND (11.1/5.1) while the root FIND still resolves to itself
+    /// (Identity_Base retained, 5.5). With the shipped `af` catalogue installed,
+    /// the overlaid row's display surface is `t("verb-find")` = "SOEK". The row
+    /// is NO LONGER in the af FFCMD catalogue.
     #[test]
     fn af_poc_alias_catalogue_loads_and_resolves() {
         let root = super::super::i18n_bootstrap::resolve_i18n_root()
             .expect("shipped i18n/ root must resolve for the af POC");
         let af_aliases = root.join("af").join("aliases");
         assert!(
-            af_aliases.join(format!("{FFCMD_NAME}.toml")).exists(),
-            "the af POC must ship {FFCMD_NAME}.toml under {}",
+            af_aliases.join(format!("{FFEDIT_NAME}.toml")).exists(),
+            "the af POC must ship {FFEDIT_NAME}.toml under {} (CR-CH-069: FIND is an FFEDIT root)",
             af_aliases.display()
         );
 
         // Install the shipped af catalogue so t(verb-find) = SOEK end-to-end.
         install_shipped_af_catalogue(&root);
 
-        // Read the shipped af alias catalogue for FFCMD and load it onto an FFCMD
-        // table seeded with the FIND root (the POC's SOEK aliases the FIND verb;
-        // the menu-kind FFCMD context surfaces it, mirroring the 11.6 full-shell
-        // test's FIND menu option).
-        let catalogue = read_catalogue_from_dir(&af_aliases, &[FFCMD_NAME]);
+        // Read the shipped af alias catalogue for FFEDIT and load it onto the
+        // ffedit_english base (which carries the FIND root). The POC's SOEK
+        // aliases the FIND verb, which FFEDIT owns (command-semantics Req 12.1).
+        let catalogue = read_catalogue_from_dir(&af_aliases, &[FFEDIT_NAME]);
         let rows = catalogue
-            .keyed_rows_for(FFCMD_NAME)
-            .expect("the af FFCMD catalogue carries rows");
+            .keyed_rows_for(FFEDIT_NAME)
+            .expect("the af FFEDIT catalogue carries rows");
         assert!(
             rows.contains(&(
                 "SOEK".to_string(),
@@ -613,15 +615,31 @@ canonical = "CATALOGS"
                 Some("verb-find".to_string()),
                 None
             )),
-            "the POC ships the SOEK -> FIND row keyed verb-find, got {rows:?}"
+            "the POC ships the SOEK -> FIND row keyed verb-find under FFEDIT, got {rows:?}"
         );
 
-        let mut table = AliasTable::identity_for(&["FIND", "CATALOGS", "FILES", "SETTINGS"]);
-        catalogue
-            .load_into_keyed(FFCMD_NAME, &mut table)
-            .expect("the af POC overlay loads cleanly");
+        // CR-CH-069: the row must NOT be in the FFCMD catalogue any more. A
+        // present-but-empty FFCMD catalogue (no [[alias]] rows) is acceptable;
+        // what matters is that it does not carry SOEK -> FIND.
+        let ffcmd_catalogue = read_catalogue_from_dir(&af_aliases, &[FFCMD_NAME]);
+        let ffcmd_rows: Vec<KeyedAliasRow> = ffcmd_catalogue
+            .keyed_rows_for(FFCMD_NAME)
+            .map(|rows| rows.to_vec())
+            .unwrap_or_default();
+        assert!(
+            !ffcmd_rows
+                .iter()
+                .any(|(surface, canonical, _, _)| surface == "SOEK" && canonical == "FIND"),
+            "the af FFCMD catalogue must NOT contain SOEK -> FIND after CR-CH-069, got {ffcmd_rows:?}"
+        );
 
-        // The Afrikaans surface reaches the root (Req 11.1, 5.1).
+        let mut table = AliasTable::ffedit_english();
+        catalogue
+            .load_into_keyed(FFEDIT_NAME, &mut table)
+            .expect("the af POC overlay loads cleanly onto the FFEDIT base");
+
+        // The Afrikaans surface reaches the root (Req 11.1, 5.1) when FFEDIT is
+        // the active environment.
         assert_eq!(table.canonical_verb("SOEK"), Some("FIND"));
         // The root is retained and still self-resolves (Identity_Base, Req 5.5).
         assert_eq!(table.canonical_verb("FIND"), Some("FIND"));
