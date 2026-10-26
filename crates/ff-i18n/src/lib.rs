@@ -55,7 +55,9 @@ pub use args::MessageArgs;
 pub use catalogue::Catalogue;
 pub use error::I18nError;
 pub use locale::{Locale, IDENTITY_BASE_TAG};
-pub use seam::{is_initialised, set_catalogue, t, t_args};
+pub use seam::{
+    clear_test_catalogue, is_initialised, set_catalogue, set_test_catalogue, t, t_args,
+};
 
 #[cfg(test)]
 mod tests;

@@ -100,42 +100,84 @@ impl WorkbenchShell {
     /// without a restart (Req 5.6).
     ///
     /// Validates: command-configurator Requirement 5.4, 5.5, 5.6
-    pub(super) fn save_user_aliases(&mut self) {
+    ///
+    /// CR-CH-071 (Req 20a.1/20a.2): returns `Result<(), String>` so the FFCMD
+    /// editable-Context seam's END (save-then-leave) can branch on ok/err WITHOUT
+    /// reading panel state. On failure the error is BOTH surfaced inline (the
+    /// `alias_editor_panel.error` field, preserved for the inline display) AND
+    /// returned as the `Err`, and the on-disk file is left UNCHANGED (Req 5.4).
+    pub(super) fn save_user_aliases(&mut self) -> Result<(), String> {
         let rows = self.alias_editor_panel.rows.clone();
         let toml_rows = match validate_user_alias_rows(&rows) {
             Ok(rows) => rows,
             Err(e) => {
-                self.alias_editor_panel.error = Some(e);
-                return;
+                self.alias_editor_panel.error = Some(e.clone());
+                return Err(e);
             }
         };
         let text = match serialise_user_aliases(&toml_rows) {
             Ok(text) => text,
             Err(e) => {
-                self.alias_editor_panel.error = Some(format!("serialise failed: {e}"));
-                return;
+                let msg = format!("serialise failed: {e}");
+                self.alias_editor_panel.error = Some(msg.clone());
+                return Err(msg);
             }
         };
         let Some(path) = self.user_aliases_path() else {
-            self.alias_editor_panel.error =
-                Some("could not resolve the user alias store path".to_string());
-            return;
+            let msg = "could not resolve the user alias store path".to_string();
+            self.alias_editor_panel.error = Some(msg.clone());
+            return Err(msg);
         };
         if let Some(parent) = path.parent() {
             if let Err(e) = std::fs::create_dir_all(parent) {
-                self.alias_editor_panel.error = Some(format!("could not create aliases dir: {e}"));
-                return;
+                let msg = format!("could not create aliases dir: {e}");
+                self.alias_editor_panel.error = Some(msg.clone());
+                return Err(msg);
             }
         }
         if let Err(e) = std::fs::write(&path, text) {
-            self.alias_editor_panel.error = Some(format!("could not write user aliases: {e}"));
-            return;
+            let msg = format!("could not write user aliases: {e}");
+            self.alias_editor_panel.error = Some(msg.clone());
+            return Err(msg);
         }
         self.alias_editor_panel.error = None;
         // Refresh the live resolver IN PLACE so the new alias resolves at once
         // (Req 5.6): re-seed + re-apply BOTH the per-locale overlay AND the user
         // store in one re-seed, so neither layer is dropped.
         self.refresh_alias_store_in_place();
+        Ok(())
+    }
+
+    /// The Alias Editor's implementation of the CR-CH-071 editable-Context SEAM
+    /// PERSIST operation (Req 20a.6): validate + write the working copy + refresh
+    /// the live store. Reuses [`WorkbenchShell::save_user_aliases`] verbatim so the
+    /// Alias Editor SAVE is one behaviour, whatever verb reaches it.
+    ///
+    /// Validates: command-environments Requirement 20a.2, 20a.6
+    pub(super) fn alias_editor_persist(&mut self) -> Result<(), String> {
+        self.save_user_aliases()
+    }
+
+    /// The Alias Editor's SEAM DISCARD operation (Req 20a.3): drop the unsaved
+    /// working edits (clear the working rows and the inline error) WITHOUT
+    /// touching the on-disk User_Alias_Store. Used by CANCEL / RETURN (which then
+    /// leave) and by REFRESH (before the reload).
+    ///
+    /// Validates: command-environments Requirement 20a.3, 20a.6
+    pub(super) fn alias_editor_discard(&mut self) {
+        self.alias_editor_panel.rows.clear();
+        self.alias_editor_panel.error = None;
+    }
+
+    /// The Alias Editor's SEAM RELOAD operation (Req 20a.4): re-read the
+    /// last-saved User_Alias_Store from disk into the working rows, dropping any
+    /// unsaved edits. `load_rows` also clears the inline error, command line, and
+    /// filter, so the Context returns to its freshly-opened state.
+    ///
+    /// Validates: command-environments Requirement 20a.4, 20a.6
+    pub(super) fn alias_editor_reload(&mut self) {
+        let rows = self.load_user_alias_rows();
+        self.alias_editor_panel.load_rows(rows);
     }
 
     /// Rebuild the shell's live `LocaleAliasStore` IN PLACE (Req 5.6): one
@@ -345,6 +387,23 @@ mod tests {
         ];
         let out = validate_user_alias_rows(&rows).expect("valid roots pass");
         assert_eq!(out.len(), 2);
+    }
+
+    // Validates: command-environments Requirement 20a.12 -- a user alias row
+    // whose SURFACE equals SAVE / CANCEL / REFRESH is REJECTED at save, because
+    // those three are now FFCMD canonical roots (CR-CH-071 Req 20a.5) and the
+    // no-shadow invariant (Req 5.4 (d)) reads `builtin_ffcmd_roots()`, which now
+    // includes them. No new logic was needed -- this locks the consequence in.
+    #[test]
+    fn validate_rejects_save_cancel_refresh_shadow() {
+        for surface in ["SAVE", "CANCEL", "REFRESH"] {
+            // Use a valid root so ONLY the no-shadow rule can reject the row.
+            let rows = vec![row(surface, "EDIT", AliasEnvironment::Ffcmd, "")];
+            assert!(
+                validate_user_alias_rows(&rows).is_err(),
+                "a user alias named {surface} must be rejected (Req 20a.12)"
+            );
+        }
     }
 
     // Validates: command-configurator Requirement 5.4 -- a valid set serialises

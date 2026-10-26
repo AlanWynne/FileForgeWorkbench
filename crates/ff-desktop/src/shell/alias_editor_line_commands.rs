@@ -61,13 +61,24 @@ impl WorkbenchShell {
     /// Interpret a `Command ===>` primary command (Req 5.14, 5.22). Pending line
     /// commands are ALWAYS applied FIRST (ISPF primary-vs-line ordering), then the
     /// verb (case-insensitive) is dispatched:
-    ///   SAVE          -> validate + write the working copy
-    ///   CANCEL / END  -> leave via the per-tab Navigation_Stack
     ///   FILTER <ce> <root> -> set the FILTER row (CE and/or Root)
     ///   RESET         -> clear the FILTER row
-    ///   (empty / unrecognised) -> no-op beyond applying line commands
+    ///   (empty)       -> no-op beyond applying line commands
+    ///   (any OTHER verb) -> handed to the SINGLE FFCMD front door
+    ///                       (`dispatch_command_string`) so SAVE / CANCEL / END /
+    ///                       RETURN / REFRESH reach the SAME editable-Context seam
+    ///                       that F3 / a globally-typed END reaches (one dispatch
+    ///                       path, Req 20a.10)
     ///
-    /// Validates: command-configurator Requirement 5.14, 5.15, 5.22
+    /// CR-CH-071 (Req 20a.10): the PRIVATE `SAVE` and `CANCEL | END` arms are
+    /// RETIRED. They are no longer interpreted here; the fall-through hands the
+    /// typed command to `dispatch_command_string`, closing the two-parallel-paths
+    /// divergence (the typed `Command ===>` line and F3 / global END now produce
+    /// the SAME result). FILTER / RESET stay panel-local (Req 5.15), and the
+    /// pending-line-command first-pass still runs FIRST (Req 5.22).
+    ///
+    /// Validates: command-configurator Requirement 5.14, 5.15, 5.22;
+    /// command-environments Requirement 20a.10
     pub(super) fn apply_alias_command_line(&mut self, text: &str) {
         // Req 5.22: apply pending line commands BEFORE interpreting the verb.
         self.apply_pending_line_commands();
@@ -77,10 +88,8 @@ impl WorkbenchShell {
             // Bare Enter: pending line commands already applied; nothing more.
             return;
         };
-        let verb = verb.to_ascii_uppercase();
-        match verb.as_str() {
-            "SAVE" => self.save_user_aliases(),
-            "CANCEL" | "END" => self.nav_end(),
+        let verb_upper = verb.to_ascii_uppercase();
+        match verb_upper.as_str() {
             "FILTER" => {
                 let ce = parts.next();
                 let root = parts.next();
@@ -91,7 +100,12 @@ impl WorkbenchShell {
                 self.alias_editor_panel.filter_root.clear();
             }
             _ => {
-                // Unrecognised primary command: no-op (line commands applied).
+                // CR-CH-071 (Req 20a.10): SAVE / CANCEL / END / RETURN / REFRESH
+                // (and any other FFCMD command) route through the SINGLE front
+                // door so the typed line and F3 / global END behave identically.
+                // Pass the ORIGINAL text (not the uppercased verb) so arguments
+                // and case are preserved for the front door.
+                self.dispatch_command_string(text.trim());
             }
         }
     }
@@ -232,11 +246,19 @@ mod tests {
     // Validates: command-configurator Requirement 5.22 -- a SAVE on the command
     // line applies the pending line commands FIRST, then saves: an I pending on
     // the (only) row is applied before validation runs.
+    //
+    // CR-CH-071 (Req 20a.10): SAVE is no longer a private arm -- it routes through
+    // the single FFCMD front door, which reaches the editable-Context seam ONLY
+    // when the focused Context is the Alias Editor. So this test now OPENS the
+    // Alias Editor first (previously it asserted on a POM tab, where the retired
+    // private arm ran regardless); the line-commands-first ordering is unchanged.
     #[test]
     fn command_line_applies_line_commands_before_primary_command() {
         let mut shell = make_shell();
         let dir = tempfile::TempDir::new().expect("tempdir");
         shell.dir_overrides.user_aliases = Some(dir.path().join("aliases").join("user.toml"));
+        // Focus the Alias Editor so the FFCMD SAVE reaches its seam (Req 20a.10).
+        shell.dispatch_command_string("ALIASES");
         let mut r = data_row("GG", "GSEARCH", AliasEnvironment::Ffcmd);
         r.act = "I".to_string();
         shell.alias_editor_panel.rows = vec![r];

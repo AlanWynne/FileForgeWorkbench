@@ -574,7 +574,9 @@ canonical = "CATALOGS"
         let base = ff_i18n::Catalogue::load_identity_base(root).expect("English base loads");
         let af = ff_i18n::Locale::parse("af").expect("af parses");
         let catalogue = base.load_overlay(root, af).expect("af overlay loads");
-        ff_i18n::set_catalogue(catalogue);
+        // Thread-local override (test isolation): install for THIS test thread so
+        // a concurrent test's global install cannot clobber the af catalogue.
+        ff_i18n::set_test_catalogue(catalogue);
     }
 
     /// Validates: localization Requirement 11.1, 5.1, 5.5; command-environments

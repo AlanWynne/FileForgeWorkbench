@@ -433,6 +433,11 @@ mod tests {
     /// one-key catalogue would strip every other English label and break unrelated
     /// label-query tests that run later in the same process. Mirrors the shared
     /// `tests_common::install_verb_find_soek_catalogue` helper.
+    /// Install the `verb-find = SOEK` test catalogue as a PER-THREAD override
+    /// (test isolation, `ff_i18n::set_test_catalogue`), so these global-catalogue
+    /// tests are independent under threaded `cargo test` -- each test thread has
+    /// its own catalogue and concurrent tests cannot clobber it. No lock, full
+    /// parallelism.
     fn install_verb_find_soek_catalogue() {
         let shipped_root = crate::shell::i18n_bootstrap::resolve_i18n_root()
             .expect("shipped i18n/ root must resolve for the verb-find test catalogue");
@@ -461,7 +466,7 @@ mod tests {
         std::fs::write(en.join("zz-test-verbs.ftl"), "verb-find = SOEK\n").expect("write ftl");
         let catalogue =
             ff_i18n::Catalogue::load_identity_base(dir.path()).expect("test catalogue loads");
-        ff_i18n::set_catalogue(catalogue);
+        ff_i18n::set_test_catalogue(catalogue);
     }
 
     /// Validates: localization Requirement 11.1, 11.2 -- an entry carrying a

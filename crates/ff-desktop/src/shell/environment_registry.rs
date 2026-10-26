@@ -679,4 +679,28 @@ mod tests {
         assert!(!reg.is_ffedit_active(KindTag::FileExplorerPanel, false));
         assert!(!reg.is_ffedit_active(KindTag::FilesPanel, false));
     }
+
+    // === CR-CH-071: SAVE/CANCEL/REFRESH as FFCMD roots =====================
+
+    /// Validates: command-environments Requirement 20a.5 -- SAVE, CANCEL, and
+    /// REFRESH are FFCMD-base canonical ROOT commands: `root_commands("FFCMD")`
+    /// contains all three and `contains_root("FFCMD", v)` is TRUE for each.
+    #[test]
+    fn ffcmd_roots_contain_save_cancel_refresh() {
+        let roots = EnvironmentRegistry::root_commands(FFCMD_NAME);
+        for expected in ["SAVE", "CANCEL", "REFRESH"] {
+            assert!(
+                roots.iter().any(|r| r == expected),
+                "FFCMD roots must contain the CR-CH-071 editable-Context verb \
+                 {expected}, got {roots:?}"
+            );
+            assert!(
+                EnvironmentRegistry::contains_root(FFCMD_NAME, expected),
+                "contains_root(FFCMD, {expected}) must be true (Req 20a.5)"
+            );
+        }
+        // Case-insensitivity on the new roots too.
+        assert!(EnvironmentRegistry::contains_root(FFCMD_NAME, "save"));
+        assert!(EnvironmentRegistry::contains_root(FFCMD_NAME, "refresh"));
+    }
 }

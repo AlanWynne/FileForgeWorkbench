@@ -64,6 +64,45 @@ log at the bottom when you add a lesson.
   the injection variant.
 - GOVERNING RULE: `testing.md` (deterministic tests; no reliance on thread order).
 
+- DIAGNOSTIC TELL (how to KNOW it is this class, not a logic regression): the
+  FAILING SET SHIFTS between runs of UNCHANGED code -- different test names, and
+  even a different COUNT (e.g. 4 failed, then a different 4, then 6). A real
+  regression fails the SAME tests every run. A shifting set == a shared mutable
+  global raced under the threaded runner. Also: "green under nextest, red under
+  `cargo test`" is the same tell (nextest is process-per-test, so it MASKS the
+  race; a test that only passes in its own process is not truly isolated).
+  Corollary: do NOT chase the individual named tests -- find the shared global.
+
+- THREE valid fixes -- pick by WHO writes the global, not by which is nearest:
+  1. LOCK every writer (the `CWD_LOCK` pattern above). Correct ONLY if you lock
+     EVERY writer; a partial lock that guards some tests but not the common
+     fixture (`make_shell` / a shared setup) does NOT work -- the unlocked
+     fixture still clobbers mid-assertion. Cost: serialises those tests.
+  2. INJECT the dependency through a constructor seam so the test does not touch
+     the global at all (the B048 `ff-desktop` variant; the same philosophy FFWB
+     uses for user-config / history paths). Best when the test does not need to
+     exercise the global itself.
+  3. THREAD-SCOPE the global with a test-only PER-THREAD OVERRIDE. Use this when
+     the global sits on a HOT path written by a large share of the suite (so a
+     lock would serialise most of `cargo test` and kill parallelism) AND the
+     runner is one-thread-per-test. The reader checks the thread-local first,
+     else the process global; test installers set the thread-local; PRODUCTION
+     never sets it and is unchanged. No lock, full parallelism.
+- DECISION RULE: few writers, rare global -> (1) lock. Test does not need the
+  global -> (2) inject. Global on a hot common-fixture path -> (3) thread-scope.
+  A THREAD-LOCAL OVERRIDE IS A TEST-ISOLATION TOOL, NOT A PRODUCTION MODEL -- see
+  the boundary note below; do not "fix" a production global by making it
+  thread-local.
+- WHERE HIT (variant 3): the `ff-i18n` active catalogue is a process-global
+  `RwLock<Option<Catalogue>>` read by `t()`/`t_args()`; the whole `ff-desktop`
+  test fixture (`make_shell`/`harness_shell` -> `install_catalogue_for_tests`)
+  installs the English base into it, so hundreds of unlocked writers raced the
+  dozen localisation tests. Fixed by a thread-local override in
+  `ff-i18n/src/seam.rs` (`set_test_catalogue`/`clear_test_catalogue`); the two
+  genuine PRODUCTION-global-path tests kept a small shared lock. Full
+  `ff-desktop` suite went from a shifting 4-6 failures to 1162/1162 under
+  threaded `cargo test` (CR-CH-071 follow-up, branch crch071-save-cancel-refresh).
+
 ### A2. Phantom Tab stop in a Workspace Context (B056-B059 class)
 - SYMPTOM: pressing Tab from the command line lands on an "invisible" stop before
   the first real control of a panel.
@@ -172,6 +211,42 @@ section is the FORENSIC record of the terminal quirks on this machine -- the
   `_steering` source (seen with `shell-exit-code.md`) means someone edited the
   deployed copy directly -- fold it back into the source.
 
+### C3. Test-isolation fixes vs production shared-state -- know which problem you have
+This is the BOUNDARY note A1 (variant 3) points to. The in-memory test-isolation
+fix and multi-instance (two app copies at once) are COUSINS, not the same fix.
+
+- THREAD-LOCAL OVERRIDE IS TEST-ONLY, NEVER A PRODUCTION MODEL. The `ff-i18n`
+  thread-local catalogue override (A1 variant 3) is correct ONLY because Rust's
+  test runner is one-thread-per-test. In PRODUCTION there is exactly ONE active
+  locale per process, and the process-global `RwLock<Option<Catalogue>>` is the
+  RIGHT model (set once at startup, swapped atomically on a locale change). A
+  thread-local in production would be a BUG: the egui render thread, Tokio worker
+  threads, and background-I/O threads would each see a different (or empty)
+  catalogue, so labels would render inconsistently off the main thread. Do not
+  "fix" a production global by making it thread-local.
+- WHAT DOES transfer to base code is the PRINCIPLE, not the mechanism: prefer an
+  INJECTED per-instance seam over a process-global (the B048 variant-2 fix, and
+  what FFWB already does for user-config / history paths via constructor seams --
+  which is exactly why those do NOT race). The i18n catalogue is the one
+  subsystem that stayed global; that is an architectural observation, not a
+  defect to rush-fix.
+- MULTI-INSTANCE (running two copies of the app at once) is a DIFFERENT axis:
+  separate processes share NO memory, so a thread-local / in-memory lock does
+  nothing for it. The real contention is on FILES and OS resources on disk:
+  config / history / session files, the user alias store (`user.toml`),
+  `menus/*.toml` / themes, and log files -- two instances writing the same path
+  is last-writer-wins / lost-update / partial-write corruption. The patterns that
+  help THERE are: (a) ATOMIC writes (write-temp-then-rename -- Walrus has
+  `atomic.rs`; FFWB `archive.rs` does transactional writes -- extend to the small
+  config/alias/menu writers); (b) an advisory SINGLE-INSTANCE lockfile to
+  detect/own a second instance; (c) per-instance scratch/config paths where
+  instances must be independent (the test fixture already proves the code SUPPORTS
+  injected paths -- two normal instances just default to the same shared files).
+- STATUS: multi-instance safety is NOT yet audited or implemented; the above is
+  the map for a future change request, not a claim that FFWB is multi-instance
+  safe today. Treat it as its own gated CR (requirements + a read-only audit of
+  every production file writer first).
+
 ---
 
 ## Change log
@@ -180,3 +255,12 @@ section is the FORENSIC record of the terminal quirks on this machine -- the
   B080); B1-B5 terminal forensics (moved out of steering during the terminal-rule
   rationalisation); C1 (path portability after the relocation), C2 (tiered
   steering + the shell-exit-code drift finding).
+- 2026-10 -- Extended A1 with the diagnostic tell (shifting failing set ==
+  shared-global race; green-under-nextest-red-under-cargo-test), the THREE-fix
+  taxonomy (lock all writers / inject seam / thread-scope), the decision rule,
+  and the ff-i18n catalogue thread-local override incident (CR-CH-071 follow-up,
+  1162/1162 green under threaded cargo test). Added C3 (test-isolation vs
+  production shared-state boundary: thread-local is test-only; the transferable
+  principle is injected per-instance seams; multi-instance is a distinct on-disk
+  file-contention axis needing atomic writes / single-instance lock / per-instance
+  paths -- not yet audited, flagged as its own future CR).

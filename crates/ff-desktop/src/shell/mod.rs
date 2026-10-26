@@ -57,6 +57,7 @@ mod construct_commands;
 mod construct_provider;
 mod dispatch;
 mod dispatch_ffedit;
+mod editable_context;
 mod environment;
 mod environment_contract;
 mod environment_ffedit;
@@ -140,6 +141,8 @@ mod tests_command;
 mod tests_common;
 #[cfg(test)]
 mod tests_crch061;
+#[cfg(test)]
+mod tests_crch071;
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]
