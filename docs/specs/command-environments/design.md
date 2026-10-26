@@ -1372,3 +1372,98 @@ EXISTING ladder + active-wins; the seam reuses the EXISTING `pending_action`
 pattern; FFEDIT is untouched. No core framework mechanism is altered, so this is
 NOT a framework change by the framework-conformance definition; the behaviour /
 criteria change runs the normal gate and needs owner CONFIRM.
+
+## Remove the malformed `=FILES` literal root token (CR-CH-070, Requirement 22)
+
+Design delta for CR-CH-070, the `=FILES` root-token fix that CR-CH-069 explicitly
+deferred as a separate change request (audit item D). `=FILES` was registered as a
+LITERAL root token, but `=` is the ISPF JUMP PREFIX and the real root command is
+FILES. The literal is redundant with the generic `=` handling AND pollutes the
+FFCMD root set the alias-anchoring model reads, so it is removed.
+
+### The bug
+
+Two co-located source sites carried the malformed token
+(`crates/ff-desktop/src/command_config/mod.rs`):
+
+1. `BUILTIN_WORKSPACE_VERB_ROOTS` listed `"=FILES"` as its first entry (described
+   in the doc-comment as "the fastpath single token").
+2. `builtin_workspace_target_for` had a dedicated arm:
+   `if is("=FILES") { return custom("file_explorer"); }`, placed before the
+   two-word `FILE CATALOGS` arm and the bare `FILES` arm.
+
+Because `BUILTIN_WORKSPACE_VERB_ROOTS` is one of the three sources
+`builtin_ffcmd_roots()` unions into the FFCMD root set (Requirement 20.1), the
+malformed `=FILES` flowed straight into `EnvironmentRegistry::root_commands("FFCMD")`
+and was therefore accepted by `contains_root("FFCMD", "=FILES")`. The Gate 2 Alias
+Editor Root dropdown (populated by `root_commands`) and the CR-CH-067 load/save
+alias-anchoring validation (keyed on `contains_root`) would then OFFER and ACCEPT
+`=FILES` as if it were a legitimate anchorable root -- it is not.
+
+### Why removing the literal is SAFE (the `=` jump already covers it)
+
+The `=` prefix is handled EXACTLY ONCE at the single front door
+(`shell/dispatch.rs::dispatch_command_string`, CR-CH-052, command-framework
+Requirement 10 criterion 10.2 / criterion 14). That step runs BEFORE the prelude
+and `resolve_target`:
+
+```
+if let Some(rest) = raw.trim_start().strip_prefix('=') {
+    let rest = rest.trim().to_string();
+    self.reinitialise_active_tab_to_pom();   // jump to the POM (FFCMD_Root)
+    self.dispatch_command_string(&rest);     // re-dispatch the remainder
+    return;
+}
+```
+
+So typing `=FILES` strips the `=`, reinitialises the active tab to the POM, and
+RECURSIVELY dispatches `FILES` through the normal front door, where the generic
+bare arm `_ if is("FILES") => custom("file_explorer")` classifies it. The literal
+`=FILES` classifier arm is therefore NEVER the thing that makes `=FILES` work --
+the generic `=` step already covers it. Removing the literal preserves the
+`=FILES` jump path verbatim (Requirement 22.3).
+
+### The correction
+
+- REMOVE `"=FILES"` from `BUILTIN_WORKSPACE_VERB_ROOTS` so
+  `root_commands("FFCMD")` returns FILES and NO LONGER returns `=FILES`
+  (Requirement 22.1).
+- REMOVE the dedicated `is("=FILES")` arm from `builtin_workspace_target_for`. The
+  bare `is("FILES") => custom("file_explorer")` arm is retained unchanged and
+  continues to open the File Explorer workspace (Requirement 22.2).
+- Update the `BUILTIN_WORKSPACE_VERB_ROOTS` doc-comment to drop the "`=FILES` is
+  the fastpath single token" sentence.
+
+### FILE CATALOGS finding (verified, LEFT UNCHANGED)
+
+The audit flagged `FILE CATALOGS` as a two-word classifier entry to check.
+Verification at this gate confirms it is a LEGITIMATE two-word verb:
+`builtin_workspace_target_for` has `if is("FILE") && arg.eq_ignore_ascii_case("CATALOGS")
+{ return custom("files"); }`, which opens the `files` workspace. It is a genuine
+command surface, not a jump-prefix artefact, and it is NOT polluting the root set
+in the malformed way `=FILES` was. It is therefore LEFT UNCHANGED (Requirement
+22.4); only `=FILES` is fixed.
+
+### Interaction with CR-CH-067 (the validation safety net)
+
+Removing `=FILES` directly changes what `root_commands("FFCMD")` and
+`contains_root` return: `root_commands("FFCMD")` loses `=FILES` and keeps FILES, so
+`contains_root("FFCMD", "=FILES")` becomes FALSE (Requirement 22.1). This cleans the
+FFCMD root set the CR-CH-067 Gate 1 validation and the future Gate 2 Alias Editor
+dropdown consume, ahead of the Afrikaans alias-data authoring (which anchors against
+this root set).
+
+### Sequencing
+
+Lands AFTER CR-CH-069 (the AUTONUM/NUM + af SOEK->FIND placement correction) and
+BEFORE the Afrikaans FFCMD alias-data authoring, consistent with the audit's
+"correct the (environment, root) sets before authoring localisation data against
+them" ordering.
+
+### Framework conformance
+
+Builds ON the existing single `=` jump-prefix front-door step (command-framework
+Requirement 10 criterion 10.2 / criterion 14, CR-CH-052) and the existing bare
+`FILES` classifier arm. It REMOVES a redundant, malformed literal; it adds no
+dispatcher, no navigation stack, no persistence format, and reshapes no public
+framework type. NOT a framework change.

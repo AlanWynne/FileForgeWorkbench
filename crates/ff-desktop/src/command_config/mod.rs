@@ -106,7 +106,7 @@ impl TargetResolver for UserCommandStore<'_> {
 ///    id resolves to a `Function` target (command-framework Requirement 8.3).
 ///
 /// `builtin_workspace_target` classifies the CustomWorkspace / navigation family
-/// (B080, Step 2): the in-scope verbs FILES / =FILES, FILE CATALOGS / CATALOGS,
+/// (B080, Step 2): the in-scope verbs FILES, FILE CATALOGS / CATALOGS,
 /// CONFIG [<ns>], COMMANDS, LOG, PLUGINS, MACROS, GSEARCH / SEARCH, KEYS [<kind>],
 /// KINDS, MENUS, and bare THEME resolve to `CommandTarget::CustomWorkspace` so the
 /// TYPED path reaches the SAME classification the key/menu path uses (one front
@@ -158,14 +158,19 @@ const BUILTIN_MENU_NAMES: &[&str] = &["pom", "settings"];
 /// identity row for each so a bare root always self-resolves to `Root` under the
 /// unified resolver (Req 11.6 branch 1.2.1), rather than falling to `Unknown`.
 ///
-/// Uppercased; `FILE CATALOGS` is the one two-word verb; `=FILES` is the fastpath
-/// single token. The menu-option roots (SETTINGS, CATALOGS, FILES, HELP, X,
-/// CONFIG, THEME, MENUS, KEYS, KINDS, RESET BARE) are seeded separately from the
-/// built-in menus; this list covers the NON-menu-option roots plus the overlap.
+/// Uppercased; `FILE CATALOGS` is the one two-word verb. The menu-option roots
+/// (SETTINGS, CATALOGS, FILES, HELP, X, CONFIG, THEME, MENUS, KEYS, KINDS,
+/// RESET BARE) are seeded separately from the built-in menus; this list covers
+/// the NON-menu-option roots plus the overlap.
 ///
-/// Validates: localization Requirement 11.3
+/// `=FILES` is NOT a standalone root (CR-CH-070, command-environments Req 22.1):
+/// `=` is the ISPF JUMP PREFIX handled once at the front door
+/// (`dispatch_command_string`), which strips the `=`, reinitialises the active
+/// tab to the POM, then re-dispatches the remainder FILES through the generic
+/// bare-FILES classifier arm. The literal would only pollute the FFCMD root set.
+///
+/// Validates: localization Requirement 11.3, command-environments Requirement 22.1
 pub(crate) const BUILTIN_WORKSPACE_VERB_ROOTS: &[&str] = &[
-    "=FILES",
     "FILE CATALOGS",
     "CONFIG",
     "KEYS",
@@ -271,10 +276,12 @@ pub(crate) fn builtin_workspace_target_for(input: &str) -> Option<CommandTarget>
     // Case-insensitive verb comparison helper.
     let is = |name: &str| verb.eq_ignore_ascii_case(name);
 
-    // =FILES is a single token (no whitespace), so it arrives as the verb.
-    if is("=FILES") {
-        return custom("file_explorer");
-    }
+    // CR-CH-070 (command-environments Req 22.1/22.3): `=FILES` is NOT classified
+    // here. `=` is the ISPF JUMP PREFIX handled once at the front door
+    // (`dispatch_command_string`): it strips the `=`, reinitialises the active
+    // tab to the POM, then re-dispatches the remainder FILES through the generic
+    // bare `is("FILES")` arm below. The former literal `=FILES` arm was redundant
+    // and only polluted the FFCMD root set.
     // FILE CATALOGS is the ONLY two-word in-scope verb.
     if is("FILE") && arg.eq_ignore_ascii_case("CATALOGS") {
         return custom("files");
@@ -526,14 +533,11 @@ command_id = "file.save"
             "KEYS <kind> preserves the argument case"
         );
 
-        // =FILES single token and FILE CATALOGS two-word verb.
-        assert_eq!(
-            builtin_workspace_target_for("=FILES"),
-            Some(CommandTarget::CustomWorkspace {
-                workspace_kind: "file_explorer".to_string(),
-                params: TargetParams::new(),
-            })
-        );
+        // CR-CH-070 (Req 22.1): `=FILES` is NO LONGER a classifier verb -- the
+        // `=` jump prefix is handled at the front door, which re-dispatches the
+        // remainder FILES. The classifier must NOT claim the literal `=FILES`.
+        assert_eq!(builtin_workspace_target_for("=FILES"), None);
+        // FILE CATALOGS two-word verb still classifies (Req 22.4 -- unchanged).
         assert_eq!(
             builtin_workspace_target_for("FILE CATALOGS"),
             Some(CommandTarget::CustomWorkspace {
@@ -601,6 +605,55 @@ command_id = "file.save"
                 "the FFCMD file-open family must include {expected}"
             );
         }
+    }
+
+    // Validates: command-environments Requirement 22.1 -- the malformed `=FILES`
+    // literal is NOT a standalone root: it is absent from
+    // BUILTIN_WORKSPACE_VERB_ROOTS and its dedicated classifier arm is removed, so
+    // `builtin_workspace_target_for("=FILES")` returns None (the `=` jump prefix
+    // is handled at the front door, which re-dispatches the remainder FILES).
+    #[test]
+    fn equals_files_is_not_a_standalone_root_token() {
+        assert!(
+            !BUILTIN_WORKSPACE_VERB_ROOTS
+                .iter()
+                .any(|v| v.eq_ignore_ascii_case("=FILES")),
+            "=FILES must NOT be a standalone FFCMD verb root (CR-CH-070 Req 22.1)"
+        );
+        assert_eq!(
+            builtin_workspace_target_for("=FILES"),
+            None,
+            "the classifier must NOT claim the literal =FILES (CR-CH-070 Req 22.1)"
+        );
+    }
+
+    // Validates: command-environments Requirement 22.2 -- the bare FILES verb
+    // still classifies to the File Explorer workspace, unchanged by CR-CH-070.
+    #[test]
+    fn bare_files_still_opens_file_explorer_after_equals_files_removal() {
+        assert_eq!(
+            builtin_workspace_target_for("FILES"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "file_explorer".to_string(),
+                params: TargetParams::new(),
+            }),
+            "bare FILES must still resolve to file_explorer (CR-CH-070 Req 22.2)"
+        );
+    }
+
+    // Validates: command-environments Requirement 22.4 -- the legitimate two-word
+    // verb FILE CATALOGS is LEFT UNCHANGED (it is not malformed; only =FILES is
+    // removed).
+    #[test]
+    fn file_catalogs_two_word_verb_left_unchanged_after_equals_files_removal() {
+        assert_eq!(
+            builtin_workspace_target_for("FILE CATALOGS"),
+            Some(CommandTarget::CustomWorkspace {
+                workspace_kind: "files".to_string(),
+                params: TargetParams::new(),
+            }),
+            "FILE CATALOGS must stay a classified two-word verb (CR-CH-070 Req 22.4)"
+        );
     }
 
     // Validates: command-framework Requirement 8.3 (stage 2) -- a full

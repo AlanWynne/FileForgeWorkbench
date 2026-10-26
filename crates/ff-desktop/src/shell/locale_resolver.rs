@@ -314,9 +314,11 @@ mod tests {
     /// root resolves to itself via its synthesised identity row, NOT just the two
     /// built-in menus' option roots. A built-in workspace verb that is NOT a
     /// POM/Settings option root (COMMANDS, LOG, PLUGINS, MACROS, SEARCH, GSEARCH,
-    /// =FILES, FILE CATALOGS) must still return Root(verb), so Req 11.6 branch
-    /// 1.2.1 holds for every root a typed/selected verb can legitimately carry
-    /// and that root can carry a localised surface in a menu.
+    /// FILE CATALOGS) must still return Root(verb), so Req 11.6 branch 1.2.1 holds
+    /// for every root a typed/selected verb can legitimately carry and that root
+    /// can carry a localised surface in a menu. CR-CH-070: `=FILES` is NO LONGER a
+    /// seeded root (the `=` jump prefix is handled at the front door), so it is no
+    /// longer asserted here.
     #[test]
     fn every_registered_ffcmd_root_resolves_to_itself() {
         let shell = make_shell();
@@ -331,16 +333,14 @@ mod tests {
                 "a legitimate FFCMD root ('{root}') must self-resolve (Req 11.6 branch 1.2.1)"
             );
         }
-        // The two-word verb FILE CATALOGS and the =FILES fastpath are also
-        // legitimate roots the seed must carry.
+        // The two-word verb FILE CATALOGS is a legitimate root the seed carries.
         assert_eq!(
             shell.resolve_locale_verb("FILE CATALOGS", FFCMD_NAME),
             LocaleResolveOutcome::Root("FILE CATALOGS".to_string())
         );
-        assert_eq!(
-            shell.resolve_locale_verb("=FILES", FFCMD_NAME),
-            LocaleResolveOutcome::Root("=FILES".to_string())
-        );
+        // CR-CH-070 (Req 22.1): `=FILES` is NO LONGER a seeded FFCMD root -- `=`
+        // is the jump prefix handled at the front door, FILES is the real root.
+        // So the former `=FILES` self-resolve assertion is intentionally removed.
         // And the menu-option roots still resolve (regression guard).
         assert_eq!(
             shell.resolve_locale_verb("CATALOGS", FFCMD_NAME),

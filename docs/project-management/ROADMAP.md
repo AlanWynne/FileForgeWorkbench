@@ -329,6 +329,28 @@ localisation-aware and avoids re-touching new UI and merge collisions.
      `.agents/tasks/alias-editor-save-semantics/findings.md`. A related non-gated
      cosmetic quick-fix (remove the ECOB ghost placeholder in the empty Alias
      Editor) is tracked alongside, needing no gate.
+   - **CR-CH-070 (remove the malformed `=FILES` literal root token: FILES is the
+     root, `=` is the ISPF jump prefix)** GATE AUTHORED / PENDING OWNER APPROVAL.
+     The deferred audit item D that CR-CH-069 split out as its own change request.
+     `=FILES` was registered as a standalone root in `BUILTIN_WORKSPACE_VERB_ROOTS`
+     + a dedicated `is("=FILES")` classifier arm, even though `=` is the ISPF JUMP
+     PREFIX (already handled at the single front door `dispatch_command_string`,
+     CR-CH-052: strip `=`, reinitialise the tab to the POM, re-dispatch the
+     remainder) and FILES is the real root. The literal is redundant AND pollutes
+     the FFCMD root set `root_commands("FFCMD")` enumerates (CR-CH-067 Req 20), so
+     the Gate 2 Alias Editor Root dropdown and `contains_root` validation would
+     offer/accept the malformed `=FILES`. SCOPED outcomes: (1) `root_commands("FFCMD")`
+     returns FILES and NOT `=FILES`; (2) bare FILES still opens the File Explorer
+     workspace, unchanged; (3) typing `=FILES` STILL works via the generic `=` jump
+     (jump-to-POM then FILES) -- behaviour PRESERVED. VERIFIED: removing the literal
+     does NOT break the `=FILES` jump (the generic `=` step already covers it); the
+     legitimate two-word verb `FILE CATALOGS` is LEFT UNCHANGED. Lands AFTER
+     CR-CH-069 and BEFORE the Afrikaans alias-data authoring. NOT a framework change
+     (builds ON the existing `=` front-door step + the bare FILES arm; removes a
+     redundant literal). Governing plan:
+     `docs/specs/command-environments/tasks.md` Phase (eqfiles-fix) Task 31. See
+     command-environments Req 22, change-log CR-CH-070, command-framework Req 10.2/14
+     (the `=` jump step), and CR-CH-067 Req 20 (the root set the fix cleans).
 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
    ALTER actions via the single command path, volume picker in catalog creation,
