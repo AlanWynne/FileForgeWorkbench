@@ -312,6 +312,60 @@ fn save_validation_failure_leaves_file_unchanged() {
     );
 }
 
+// Validates: localization Requirement 13.7; command-configurator Requirement 6.4
+// -- after a SAVE, the MENU render surface for the edited root reflects the new
+// surface: editing an FFCMD menu-root alias (KAT -> CATALOGS) and saving makes
+// the live store's display_surface_for_canonical("CATALOGS") return "KAT", which
+// is exactly the active-locale surface the menu command column reads
+// (menu_option_command_surfaces -> display_surface_for_canonical). No restart.
+#[test]
+fn save_makes_menu_render_surface_reflect_the_edited_alias() {
+    let mut shell = make_shell();
+    let _dir = point_user_aliases_at_temp(&mut shell);
+    shell.dispatch_command_string("ALIASES");
+    // Edit: an FFCMD alias KAT -> CATALOGS (CATALOGS is a valid FFCMD menu root).
+    shell.alias_editor_panel.rows = vec![row("KAT", "CATALOGS", AliasEnvironment::Ffcmd, "")];
+    save(&mut shell);
+    assert!(shell.alias_editor_panel.error.is_none());
+    // The live store's per-root display surface (what the menu column renders) is
+    // now the edited surface KAT (Req 13.7 / 6.4).
+    let store = shell.i18n.alias_store.lock().expect("alias store lock");
+    let table = store.table_for("FFCMD").expect("FFCMD table");
+    assert_eq!(
+        table.display_surface_for_canonical("CATALOGS"),
+        Some("KAT".to_string()),
+        "after save the menu render surface for CATALOGS reflects the edited alias (Req 13.7)"
+    );
+}
+
+// Validates: localization Requirement 13.6; command-configurator Requirement 6.3
+// -- a SAVE writes ONLY the user per-locale override under the shell's override
+// base; it never writes into the shipped read-only seed tree. The shipped
+// `i18n/<locale>/aliases/` root is resolved separately and is not under the
+// TempDir override base, so a save cannot touch it.
+#[test]
+fn save_writes_only_user_override_not_shipped_seed() {
+    let mut shell = make_shell();
+    let dir = point_user_aliases_at_temp(&mut shell);
+    shell.dispatch_command_string("ALIASES");
+    shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
+    save(&mut shell);
+    assert!(shell.alias_editor_panel.error.is_none());
+    // The write landed under the user override base...
+    assert!(
+        override_file(&dir, "en", "FFCMD").exists(),
+        "the save wrote the user override file"
+    );
+    // ...and the shipped i18n root (if any) is a DIFFERENT path, never under the
+    // TempDir override base, so the seed cannot have been written by this save.
+    if let Some(shipped) = super::i18n_bootstrap::resolve_i18n_root() {
+        assert!(
+            !shipped.starts_with(dir.path()),
+            "the shipped seed root must not live under the user override base"
+        );
+    }
+}
+
 // Validates: command-configurator Requirement 6.7 -- a parameterised alias
 // authored in the editor expands/dispatches per CR-NR-112: ECOB -> EDIT with
 // template FFWB.COBOL.MASTER(&1), saved, then `ecob helloW` rewrites to

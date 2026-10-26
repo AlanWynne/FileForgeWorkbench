@@ -669,6 +669,103 @@ canonical = "CATALOGS"
         );
     }
 
+    /// Write `<base>/<locale>/<env>.toml` with `text`, creating the locale dir.
+    fn write_override_file(base: &Path, locale: &str, env: &str, text: &str) {
+        let dir = base.join(locale);
+        fs::create_dir_all(&dir).expect("create override locale dir");
+        fs::write(dir.join(format!("{env}.toml")), text).expect("write override toml");
+    }
+
+    /// Validates: localization Requirement 13.5, 13.6 -- the EFFECTIVE table for a
+    /// locale+ENV is the shipped SEED overlaid by the USER per-locale override;
+    /// the user override WINS where a surface is defined in both, and a
+    /// user-override-only surface is added on top. Here the "seed" is modelled by
+    /// a first overlay (SOEK -> FIND) and the user override customises it
+    /// (VIND -> FIND) plus adds a new row (GG -> GSEARCH under FFCMD).
+    #[test]
+    fn user_override_overlays_seed_and_wins_on_shared_surface() {
+        let seed_dir = TempDir::new().unwrap();
+        // The shipped seed: an af-like FFEDIT surface SOEK -> FIND.
+        write_alias_file(
+            seed_dir.path(),
+            FFEDIT_NAME,
+            "[[alias]]\nsurface = \"SOEK\"\ncanonical = \"FIND\"\n",
+        );
+        // The user per-locale override base: customise FFEDIT (VIND -> FIND) and
+        // add an FFCMD row (GG -> GSEARCH).
+        let base = TempDir::new().unwrap();
+        write_override_file(
+            base.path(),
+            "af",
+            FFEDIT_NAME,
+            "[[alias]]\nsurface = \"VIND\"\ncanonical = \"FIND\"\n",
+        );
+        write_override_file(
+            base.path(),
+            "af",
+            FFCMD_NAME,
+            "[[alias]]\nsurface = \"GG\"\ncanonical = \"GSEARCH\"\n",
+        );
+
+        let mut store = LocaleAliasStore::seed(&["GSEARCH", "CONFIG"]);
+        // Apply the shipped seed overlay, then the per-locale user override.
+        store.apply_overlay_from_dir(&seed_dir.path().join("aliases"));
+        store.apply_user_overlay_from_base(base.path(), "af");
+
+        let ffedit = store.table_for(FFEDIT_NAME).expect("FFEDIT table");
+        // Seed surface still resolves (the chain is cumulative, both reach FIND).
+        assert_eq!(ffedit.canonical_verb("SOEK"), Some("FIND"));
+        // The user override surface VIND resolves to the same root and is the
+        // preferred display surface for FIND (override wins, Req 13.5).
+        assert_eq!(ffedit.canonical_verb("VIND"), Some("FIND"));
+        assert_eq!(
+            ffedit.display_surface_for_canonical("FIND"),
+            Some("VIND".to_string()),
+            "the user override surface wins the display for the shared root (Req 13.5)"
+        );
+        // The FFCMD user-override-only row is present.
+        let ffcmd = store.table_for(FFCMD_NAME).expect("FFCMD table");
+        assert_eq!(ffcmd.canonical_verb("GG"), Some("GSEARCH"));
+    }
+
+    /// Validates: command-configurator Requirement 6.1 -- the effective display
+    /// rows exclude the built-in base (identity + English FFEDIT aliases) and
+    /// list ONLY the overlay rows (shipped seed + user override), so an `en`
+    /// install with no seed/override shows an EMPTY editor, and an af-like seed
+    /// shows its localised surfaces.
+    #[test]
+    fn effective_display_rows_lists_only_overlay_rows() {
+        // No overlay: en-like, identity-only -> zero display rows.
+        let store = LocaleAliasStore::seed(&["CATALOGS", "FILES"]);
+        assert!(
+            store.effective_display_rows().is_empty(),
+            "an identity-only store shows no editor rows (empty en editor)"
+        );
+
+        // With an af-like seed overlay the localised surface appears.
+        let seed = TempDir::new().unwrap();
+        write_alias_file(
+            seed.path(),
+            FFCMD_NAME,
+            "[[alias]]\nsurface = \"KATALOGUSSE\"\ncanonical = \"CATALOGS\"\n",
+        );
+        let mut store = LocaleAliasStore::seed(&["CATALOGS", "FILES"]);
+        store.apply_overlay_from_dir(&seed.path().join("aliases"));
+        let rows = store.effective_display_rows();
+        assert!(
+            rows.iter()
+                .any(|(_, surface, canonical, _)| surface == "KATALOGUSSE"
+                    && canonical == "CATALOGS"),
+            "the af seed surface KATALOGUSSE is listed as an editor row, got {rows:?}"
+        );
+        // The built-in FFEDIT English alias X -> EXCLUDE is NOT listed (not an
+        // overlay; it is a command shorthand, not localisation).
+        assert!(
+            !rows.iter().any(|(_, surface, _, _)| surface == "X"),
+            "built-in English verb aliases are not listed in the editor (Req 6.1)"
+        );
+    }
+
     /// Validates: localization Requirement 11.5 -- a missing per-environment file
     /// is not an error: the environment contributes no overlay and stays
     /// identity-only, while a present file for another environment still loads.
