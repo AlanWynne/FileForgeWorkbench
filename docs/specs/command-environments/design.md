@@ -1140,3 +1140,235 @@ stack, no new persistence format, no reshape of a public framework type. The mov
 edits the existing root SOURCES (`BUILTIN_FFCMD_LADDER_VERB_ROOTS` /
 `ffedit_english`) and routes AUTONUM/NUM through the existing FFEDIT active-wins
 claim path; it introduces nothing new.
+
+## ISPF Save/End/Cancel/Return/Refresh for editable Contexts (CR-CH-071) -- Requirement 20a
+
+Design delta for CR-CH-071. Grounded in
+`.agents/tasks/alias-editor-save-semantics/findings.md` (sections B and C). This
+gives every EDITABLE Workspace Context the ISPF Save/End/Cancel/Return/Refresh
+verb set through the ONE command-dispatch path, retires the Alias Editor's private
+`Command ===>` SAVE/CANCEL/END interpreter, and makes SAVE/CANCEL/REFRESH FFCMD
+canonical roots handled per-focused-editable-Context, with FFEDIT keeping its
+buffer SAVE as the active-wins override. It is ADDITIVE (CR-CH-069 class) plus a
+gated behaviour change; it reshapes no public framework type and adds no second
+dispatcher or navigation stack.
+
+### The problem it fixes (from the findings)
+
+Today the Alias Editor has TWO parallel command paths. (1) The panel's own
+`Command ===>` field is interpreted by `WorkbenchShell::apply_alias_command_line`
+(`shell/alias_editor_line_commands.rs`), where SAVE persists+stays (correct) but
+CANCEL and END BOTH just `nav_end()` -- leave with no save and no explicit
+discard, no distinction between them. (2) F3 / a globally-typed END never reaches
+that interpreter; it goes through the FFCMD ladder (`try_commands_a -> nav_end`),
+which also does not save. So END never saves (wrong vs ISPF), CANCEL does not
+explicitly discard, and SAVE is reachable only from the panel field, not as a
+workbench verb. There is also no CANCEL verb and no REFRESH/REVERT verb anywhere
+dispatchable today (CANCEL exists only in the panel interpreter + a help topic
+list + the ff-navigation-commands delegation table). This CR unifies the two paths
+and adds the missing verbs and semantics.
+
+### The editable-Context verb set (ISPF)
+
+| Verb | Effect on a focused editable Context |
+|------|--------------------------------------|
+| SAVE | persist the working copy, STAY |
+| END (F3) | SAVE the working copy, then leave (`nav_end`) -- ISPF END commits |
+| CANCEL | DISCARD the working copy, then leave (`nav_end`), no save |
+| RETURN | DISCARD the working copy, then leave to the tab visual root (`nav_return`), no save |
+| REFRESH | DISCARD the working copy, RELOAD last-saved state, STAY |
+
+EXIT / QUIT / LOGOFF remain the application-exit family UNCHANGED (Req 20a.13): the
+save-then-leave verb is END, not EXIT. This settles the findings' open point -- EXIT
+is NOT repurposed, so app-exit is not broken.
+
+### The focused-editable-Context SEAM (the one new abstraction)
+
+The FFCMD base needs a way to ask "the Context I am focused on: persist / discard /
+reload your working copy". This is a small trait-shaped seam the shell implements
+for each editable Context, mirroring the `pending_action` / `apply_<editor>_action`
+pattern the config editors already use (command-environments Req 11 E10 option a;
+wiring-standard.md). Illustrative shape (names finalised at implementation):
+
+```rust
+/// A focused Workspace Context that owns an editable WORKING COPY (an alias set,
+/// a theme, a menu, a key map, a kind config, a configuration). The FFCMD base
+/// calls these when SAVE / CANCEL / REFRESH / END / RETURN are dispatched and an
+/// editor BUFFER is not the active-wins claimant. Returns an outcome the caller
+/// surfaces (error -> stay + show; ok -> leave for END/CANCEL/RETURN, stay for
+/// SAVE/REFRESH).
+trait EditableContext {
+    /// Persist the working copy. Ok => stay (SAVE) or proceed to leave (END).
+    /// Err(msg) => leave the backing store unchanged, surface msg, STAY.
+    fn persist(&mut self) -> Result<(), String>;
+    /// Drop the working copy's unsaved changes (explicit, immediate). Used by
+    /// CANCEL / RETURN before leaving, and by REFRESH before reload.
+    fn discard(&mut self);
+    /// Reload the last-saved state from the backing store into the working copy
+    /// (REFRESH). For the Alias Editor: re-read the user alias store from disk.
+    fn reload(&mut self);
+}
+```
+
+Because the editable Contexts are render-entangled with the shell (they are panels
+on `WorkbenchShell`, not standalone objects), the seam is realised the SAME way
+FFEDIT is (design "FFEDIT is a resolver+executor over the active editor"): as a
+small dispatch helper on the shell that, given the focused Context kind, routes to
+that Context's existing persist/discard/reload methods. The handler does NOT
+enumerate kinds in a hardcoded match beyond asking "is the focused Context an
+editable non-buffer Context, and if so which". For the Alias Editor the three
+operations map to:
+
+- `persist` -> the EXISTING `save_user_aliases` (validate + write `user.toml` +
+  refresh the live `ACTIVE_ALIAS_STORE` in place), UNCHANGED.
+- `discard` -> drop the in-memory `alias_editor_panel.rows` working copy (clear
+  the pending edits so they cannot linger to the next open -- the findings note
+  today's discard is only accidental, via reload-on-next-open).
+- `reload` -> re-run the open-time `load_user_alias_rows` + `load_rows(rows)` to
+  repopulate the panel from the last-saved `user.toml`.
+
+### FFCMD-base handler + the active-wins override (how it dispatches)
+
+SAVE / CANCEL / REFRESH become FFCMD-base ladder verbs, reached through the ONE
+shared dispatch path exactly like the existing FFCMD verbs. On the shared ladder:
+
+```text
+dispatch(raw):                                   # (the existing order, unchanged)
+  prelude / = universal / menu fastpath ...
+  if active_env == FFEDIT and FFEDIT.claim(raw): return   # active-wins: buffer SAVE/END/CANCEL/RETURN
+  # FFCMD base:
+  if try_commands_* handles SAVE/CANCEL/REFRESH/END/RETURN:
+      if focused Context is an editable non-buffer Context (EditableContext seam):
+          SAVE    -> persist(); stay
+          REFRESH -> discard(); reload(); stay
+          CANCEL  -> discard(); nav_end()
+          RETURN  -> discard(); nav_return()
+          END     -> persist(); if ok nav_end() else stay+error
+          return
+      else:  # non-editable Context
+          SAVE/REFRESH -> unresolved / no-op (as today, Req 2a.5)
+          END/RETURN   -> plain FFCMD/universal navigation (as today)
+  ...
+```
+
+The ACTIVE-WINS rule (Req 5.1) is the override mechanism and needs NO new
+machinery: when an editor BUFFER is focused, FFEDIT is the active environment and
+its `claim` runs BEFORE the FFCMD base, so FFEDIT's buffer SAVE (Req 10.1, dirty-
+aware, `dispatch_to_environment`-addressed) and its buffer END/CANCEL/RETURN
+(Req 10.2-10.4) are reached FIRST and are BYTE-IDENTICAL to today. On an editable
+NON-buffer Context (Alias Editor + config editors) FFEDIT is not active, declines,
+and the FFCMD base's editable-Context handling runs. REFRESH is NOT claimed by
+FFEDIT in v1 (Req 20a.8), so on an editor buffer REFRESH falls to the FFCMD base,
+which is a no-op there (a buffer is not the `EditableContext` seam); an FFEDIT
+buffer-level revert is a later additive task.
+
+This means the owner's "FFCMD should have its own save command separate from the
+FFEDIT save" is realised as: SAVE is an FFCMD-base verb that DELEGATES to the
+focused Context's seam, and FFEDIT's buffer SAVE OVERRIDES it via active-wins when
+an editor is focused -- precisely the "reuse or overwrite" the owner anticipated.
+
+### Registering SAVE / CANCEL / REFRESH as FFCMD roots (CR-CH-067 enumeration)
+
+SAVE, CANCEL, and REFRESH are added to the FFCMD root SOURCE
+`command_config::BUILTIN_FFCMD_LADDER_VERB_ROOTS` (the list `builtin_ffcmd_roots()`
+unions, which feeds `EnvironmentRegistry::root_commands("FFCMD")` /
+`contains_root`, CR-CH-067 Req 20.1). END and RETURN already live there and are
+UNCHANGED. Consequences, all intended:
+
+- `root_commands("FFCMD")` now lists SAVE / CANCEL / REFRESH; the Alias Editor's
+  Root dropdown (for a FFCMD-environment alias) will offer them -- harmless, they
+  are legitimate FFCMD roots.
+- The CR-NR-113 no-shadow invariant (command-configurator Req 5.4 (d) / 5.7,
+  grounded on `builtin_ffcmd_roots()`) now REJECTS a user alias named SAVE /
+  CANCEL / REFRESH at save and SKIPS it with a WARN at load (Req 20a.12) -- the
+  desired "a user alias may not be named SAVE/CANCEL/REFRESH" consequence.
+- FFEDIT keeps SAVE in `ffedit_english` (its canonical root set is UNCHANGED).
+  Both environments listing SAVE is consistent: `contains_root("FFEDIT","SAVE")`
+  and `contains_root("FFCMD","SAVE")` are both TRUE, so an alias anchoring SAVE in
+  either environment validates, and active-wins decides which runs. CANCEL /
+  REFRESH are FFCMD roots only in v1.
+
+### Retiring the Alias Editor's private interpreter (one dispatch path)
+
+`apply_alias_command_line` (`shell/alias_editor_line_commands.rs`) currently has
+arms `SAVE -> save_user_aliases`, `CANCEL | END -> nav_end`. Those three verb arms
+are REMOVED: SAVE / CANCEL / END / RETURN / REFRESH now flow through the shared
+dispatch path (as FFCMD-base verbs resolved per-focused-Context). The panel-LOCAL
+verbs FILTER and RESET (which set/clear the filter row, command-configurator
+Req 5.15) are RETAINED in the panel interpreter -- they are a Context-local display
+concern, not a cross-Context command. The line-command apply pass (I / R / D,
+Req 5.16) still runs FIRST on Enter (Req 5.22); after retirement the sequence is:
+apply pending line commands -> if the primary verb is FILTER/RESET handle locally,
+otherwise hand the typed line to the shared dispatch path (so SAVE/END/CANCEL/
+REFRESH reach the FFCMD-base editable-Context handler, identical to F3 / a typed
+END). This closes the two-parallel-paths divergence: F3 and the typed line reach
+the SAME handler.
+
+### Per-editor wiring plan (Alias Editor first, siblings as fast-follow)
+
+The seam is designed UNIFORMLY now; implementation is phased (Req 20a.11):
+
+1. ALIAS EDITOR (first implementor): wire the `EditableContext` seam to
+   `save_user_aliases` (persist), a working-copy clear (discard), and the open-time
+   row reload (reload); retire the three private-interpreter arms; add the FFCMD-
+   base editable-Context handler + the root registration. TDD each verb.
+2. SIBLING CONFIG EDITORS (Settings / Menus / Theme / Keys / Kinds) as fast-follow
+   tasks: each already has a Save action applied by `apply_<editor>_action` (the
+   E10 pattern); wire each to the SAME seam (persist = the existing save action;
+   discard/reload = drop + re-open its working copy). No new per-editor verb logic
+   -- they adopt the shared handler. The semantics are NOT re-implemented per
+   editor.
+
+### REFRESH vs UNDO naming (collision rationale)
+
+The context-revert verb is REFRESH, NOT UNDO. UNDO is the FFEDIT buffer-level
+single-step undo (command-environments Req 10.6 defers it as FFEDIT buffer scope;
+CR-CH-054 Req 12.8 builds the UNDO verb over the buffer transaction manager;
+undo-redo-transactions owns the model). A whole-Context discard-and-reload is a
+DIFFERENT concept (it drops ALL unsaved changes and reloads from disk, not one
+edit step). Reusing "UNDO" for it would put two incompatible meanings on one verb
+name and collide on an editor Context (where UNDO already means buffer single-step
+undo). REFRESH is unambiguous and is the RECOMMENDED canonical verb. REVERT was
+considered as an alternative surface; the recommendation is REFRESH as the
+canonical verb, and IF a future decision wants REVERT it SHALL be an ALIAS surface
+of canonical REFRESH (the per-environment alias mechanism, Req 6a), not a second
+verb. (OPEN DECISION, recorded for the owner CONFIRM step; recommended default =
+REFRESH.)
+
+### Open decisions (recorded for the owner CONFIRM step)
+
+1. REFRESH vs REVERT verb name. RECOMMENDED: REFRESH (collision rationale above).
+2. CANCEL / REFRESH FFCMD-only in v1 vs FFEDIT also claims a buffer-revert now.
+   RECOMMENDED: FFCMD-base-only in v1 (FFEDIT declines REFRESH, keeps its buffer
+   CANCEL/RETURN per Req 10); an FFEDIT buffer-revert is a later additive task.
+3. EXIT on an editable Context. RESOLVED in this design: END (not EXIT) is the
+   save-then-leave verb; EXIT stays the app-exit family (Req 20a.13), so app-exit
+   is not broken. Recorded as a decision, not left open.
+4. Registration shape: FFCMD-base-delegating handler (this design) vs per-Context-
+   environment SAVE (Req 11 E10 option a). RECOMMENDED: the FFCMD-base-delegating
+   handler, because it gives ONE handler + ONE seam for all editable Contexts and
+   matches the owner's "FFCMD's own save" phrasing; the OBSERVABLE behaviour is
+   identical to the per-Context-environment shape, which is why this reconciles
+   with Req 2a.5 / 11.1 (the base owns no working copy; it delegates).
+5. Scope of sibling editors in v1 vs follow-up. RECOMMENDED: design the uniform
+   seam now; implement the Alias Editor first, siblings as fast-follow tasks.
+
+### What is explicitly NOT changing
+
+- FFEDIT's buffer SAVE root (`ffedit_english`) and its `dispatch_to_environment`
+  store-addressing claim (Req 14) -- BYTE-IDENTICAL native write.
+- FFEDIT's buffer END / CANCEL / RETURN dirty-aware behaviour (Req 10.2-10.4).
+- EXIT / QUIT / LOGOFF app-exit handling.
+- The command-dispatch front door, the per-tab Navigation_Stack, the
+  `WorkspaceContext` focus latch, session persistence, and `CommandTarget` -- no
+  second dispatcher, no second navigation stack, no new persistence format, no
+  public framework type reshaped.
+
+### Framework conformance
+
+ADDITIVE ownership/placement (CR-CH-069 class) plus a gated behaviour change. The
+new verbs register in the EXISTING FFCMD root source and dispatch through the
+EXISTING ladder + active-wins; the seam reuses the EXISTING `pending_action`
+pattern; FFEDIT is untouched. No core framework mechanism is altered, so this is
+NOT a framework change by the framework-conformance definition; the behaviour /
+criteria change runs the normal gate and needs owner CONFIRM.

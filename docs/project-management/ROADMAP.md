@@ -300,6 +300,35 @@ localisation-aware and avoids re-touching new UI and merge collisions.
      Task 30. See command-environments Req 21, change-log CR-CH-069,
      command-semantics Req 12, CR-CH-067 (the validation safety net), and the
      deferred `docs/specs/sequence-numbers/` NUMBER engine.
+   - **CR-CH-071 (ISPF Save/End/Cancel/Return/Refresh for editable Contexts:
+     SAVE/CANCEL/REFRESH as FFCMD verbs handled per-focused-editable-Context, with
+     FFEDIT active-wins override of buffer SAVE; retire the Alias Editor private
+     interpreter; REFRESH not UNDO)** GATE AUTHORED / PENDING OWNER APPROVAL. Owner
+     follow-up to CR-CH-068/069: every editable Context (Alias Editor first, then
+     Settings/Menus/Theme/Keys/Kinds) gets ISPF semantics -- SAVE persists+stays,
+     END (F3) saves+leaves, CANCEL/RETURN discard+leave, REFRESH discards+reloads+
+     stays -- routed through the ONE command-dispatch path. SAVE/CANCEL/REFRESH
+     become FFCMD canonical roots (enumerated by `root_commands`/`contains_root`,
+     CR-CH-067) handled by a shared focused-editable-Context persist/discard/reload
+     seam; FFEDIT keeps its byte-identical buffer SAVE and OVERRIDES via active-wins
+     (CR-CH-053 Req 5.1). The Alias Editor's private `Command ===>` SAVE/CANCEL/END
+     interpreter is retired so F3 and the typed line reach one handler. REFRESH
+     (not UNDO -- UNDO is the FFEDIT buffer single-step undo) is the context-revert
+     verb. AMENDS command-configurator Req 5.9/5.14 (END/CANCEL semantics);
+     reconciles with command-environments Req 2a.5/11.1 (the base delegates, it owns
+     no working copy). ADDITIVE ownership change (CR-CH-069 class) PLUS a gated
+     behaviour change; no second dispatcher, no second navigation stack, no new
+     persistence format, no reshaped framework type. SEQUENCING: implement AFTER
+     CR-CH-070 (eqfiles-fix) merges and coordinate with the pending Afrikaans
+     alias-data task (both touch the FFCMD root surface); gate docs authored now,
+     implementation waits. Governing plan:
+     `docs/specs/command-environments/tasks.md` Phase (alias-editor-save-semantics)
+     Tasks 32-35. See command-environments Req 20a, change-log CR-CH-071,
+     command-configurator Req 5.9/5.14 (amended), CR-CH-067 (root enumeration),
+     command-environments Req 10/11 (FFEDIT buffer verbs + per-Context SAVE), and
+     `.agents/tasks/alias-editor-save-semantics/findings.md`. A related non-gated
+     cosmetic quick-fix (remove the ECOB ghost placeholder in the empty Alias
+     Editor) is tracked alongside, needing no gate.
 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
    ALTER actions via the single command path, volume picker in catalog creation,

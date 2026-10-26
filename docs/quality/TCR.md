@@ -4148,6 +4148,34 @@ suite PASS. -->
 | `ff-desktop` | ✅ | `shell::environment_registry::tests::contains_root_reflects_autonum_num_find_moved_to_ffedit` + `contains_root_false_for_bogus_or_unknown` | command-environments Req 21.4: `contains_root("FFCMD", "FIND"/"AUTONUM"/"NUM")` is FALSE and `contains_root("FFEDIT", "FIND"/"AUTONUM"/"NUM")` is TRUE (an FFCMD-anchored row for these is invalid-in-environment, consistent with CR-CH-067 Req 20.4/20.7/20.8) |
 | `ff-desktop` | ✅ | `shell::alias_editor::tests::validate_accepts_root_valid_in_declared_environment` (doc-comment corrected alongside) | command-environments Req 21.5: the `user_aliases.rs` doc-comment states FFCMD for an editor-verb root such as EDIT (ECOB->EDIT is an FFCMD alias), correcting the stale FFEDIT text; documentation-only |
 
+### Phase (alias-editor-save-semantics) -- CR-CH-071 (ISPF Save/End/Cancel/Return/Refresh for editable Contexts; SAVE/CANCEL/REFRESH as FFCMD verbs handled per-Context with FFEDIT active-wins override; retire the Alias Editor private interpreter; REFRESH not UNDO)
+
+> GATE AUTHORED / PENDING OWNER APPROVAL. Docs-first; NO source `.rs` edits in this
+> gate. Amends command-configurator Req 5.9/5.14 (END/CANCEL semantics) to the ISPF
+> model and adds command-environments Req 20a. Implementation lands AFTER CR-CH-070
+> (eqfiles-fix) merges and coordinates with the pending Afrikaans alias-data task.
+> All rows NOT-COVERED (no tests yet). Criteria from
+> docs/specs/command-environments/requirements.md Req 20a.
+
+| Crate | Status | Test | Criterion |
+|-------|--------|------|-----------|
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.1: the editable-Context verb set SAVE=persist+stay, END=save+leave, CANCEL=discard+leave, RETURN=discard+leave-to-root, REFRESH=discard+reload+stay; F3 behaves as END |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.2: SAVE on a focused editable non-buffer Context persists via the Context's existing save path (parity) and STAYS; a validation failure surfaces the error and leaves the store unchanged |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.3: CANCEL/RETURN explicitly DISCARD the working copy then leave (`nav_end` / `nav_return`), no save |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.4: REFRESH discards the working copy, reloads last-saved state (Alias Editor: re-read user.toml), STAYS, does not write |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.5: SAVE/CANCEL/REFRESH are FFCMD canonical roots -- `root_commands("FFCMD")` contains them, `contains_root("FFCMD", v)` TRUE; END/RETURN unchanged in the enumeration |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.6: the FFCMD base handles SAVE/CANCEL/REFRESH/END/RETURN via a shared focused-editable-Context persist/discard/reload seam; the base owns no working copy; non-editable Context resolves as today |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.7: FFEDIT overrides the shared SAVE for an active editor buffer via active-wins (byte-identical buffer SAVE/END/CANCEL/RETURN); no new override machinery |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.8: CANCEL/REFRESH are FFCMD-base-only in v1 (FFEDIT keeps buffer CANCEL/RETURN; FFEDIT does not claim REFRESH; a buffer-revert is a later additive task) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.9: the context-revert verb is REFRESH, NOT UNDO (UNDO is the FFEDIT buffer single-step undo -- collision avoided); REVERT, if ever added, is an alias surface of canonical REFRESH |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.10: the Alias Editor private SAVE/CANCEL/END interpreter is retired; F3 / typed END and the typed `Command ===>` line reach the SAME handler; FILTER/RESET retained as panel-local verbs |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.11: the ISPF semantics + the shared seam apply UNIFORMLY to all editable non-buffer Contexts (Alias Editor + Settings/Menus/Theme/Keys/Kinds); not re-implemented per editor; Alias Editor first, siblings fast-follow |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.12: a user alias named SAVE/CANCEL/REFRESH is rejected at save and skipped with a WARN at load (no-shadow invariant over `builtin_ffcmd_roots()`) |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.13: EXIT/QUIT/LOGOFF remain the app-exit family (END, not EXIT, is the save-then-leave verb); app-exit unchanged |
+| `ff-desktop` | 🔴 | -- | command-environments Req 20a.14: behaviour-preserving for every non-editable Context and the FFEDIT buffer, save for the explicit new editable-Context semantics |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.9 (AMENDED by CR-CH-071): END/F3 on the Alias Editor SAVES then returns via the per-tab Navigation_Stack (was navigation-only) |
+| `ff-desktop` | 🔴 | -- | command-configurator Req 5.14 (AMENDED by CR-CH-071): the `Command ===>` SAVE/CANCEL/END follow the ISPF model and resolve through the one dispatch path (private interpreter retired); REFRESH accepted; FILTER/RESET retained panel-local |
+
 ### Phase (find-search-split) -- CR-NR-110 (FIND=FFEDIT in-buffer; SEARCH=FFCMD canonical cross-backend; GREP alias; engine deferred)
 
 > Verb split: FIND is the FFEDIT (editor) in-buffer search verb; SEARCH is the FFCMD
