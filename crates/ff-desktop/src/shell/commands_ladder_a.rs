@@ -211,7 +211,50 @@ impl WorkbenchShell {
             return true;
         }
 
-        // ── END — Validates: Requirement 17.1, 17.2 ———————————————————————
+        // ── SAVE / CANCEL / REFRESH -- CR-CH-071 editable-Context verbs ──────
+        // Validates: command-environments Requirement 20a.1-20a.4, 20a.6, 20a.14.
+        //
+        // These reach the FFCMD base (this ladder) only AFTER the active-env
+        // claim in `run_command_ladder`: on an editor BUFFER the active env is
+        // FFEDIT, which claims SAVE first (active-wins, Req 20a.7), so SAVE here
+        // is only reached on a non-buffer Context. SAVE persists + STAYS; REFRESH
+        // discards + reloads + STAYS; CANCEL discards then leaves via `nav_end`.
+        // On a NON-editable Context (`editable_context_kind()` is None) SAVE /
+        // REFRESH are no-ops and CANCEL is plain navigation (Req 20a.14).
+        if upper == "SAVE" {
+            if self.editable_context_kind().is_some() {
+                // Persist and STAY. The error (if any) is surfaced inline by the
+                // Context's persist; do not navigate.
+                let _ = self.editable_persist();
+            }
+            // Non-editable: SAVE is a no-op here (no FFCMD-base save), matching
+            // today's behaviour (Req 20a.14).
+            self.open_error = None;
+            return true;
+        }
+        if upper == "REFRESH" {
+            if self.editable_context_kind().is_some() {
+                // Discard unsaved edits, then reload the last-saved state, and
+                // STAY in the Context (Req 20a.4).
+                self.editable_discard();
+                self.editable_reload();
+            }
+            // Non-editable: no-op (Req 20a.14).
+            self.open_error = None;
+            return true;
+        }
+        if upper == "CANCEL" {
+            // CANCEL = discard the working changes (NO save) then leave one level
+            // up via the per-tab Navigation_Stack (Req 20a.1, 20a.3). On a
+            // non-editable Context `editable_discard` is a no-op, so CANCEL is
+            // plain `nav_end` navigation exactly as before (Req 20a.14).
+            self.editable_discard();
+            self.nav_end();
+            self.open_error = None;
+            return true;
+        }
+
+        // ── END — Validates: Requirement 17.1, 17.2; CR-CH-071 Req 20a.1 ─────
         if upper == "END" {
             // CR-NR-092 (B046 Slice 2b, Req 13.9): when the Workspace area is
             // split, END collapses the split back to a single Tab_Group (the
@@ -221,6 +264,23 @@ impl WorkbenchShell {
             if self.tabs.is_split() {
                 self.tabs.unsplit();
                 self.open_error = None;
+                return true;
+            }
+            // CR-CH-071 (Req 20a.1): on an editable Context END = SAVE the working
+            // changes THEN leave. If the save FAILS validation, STAY in the
+            // Context with the error surfaced inline and the store UNCHANGED (do
+            // NOT navigate). On a non-editable Context `editable_context_kind()`
+            // is None, so END is plain navigation exactly as before (Req 20a.14).
+            if self.editable_context_kind().is_some() {
+                match self.editable_persist() {
+                    Ok(()) => {
+                        self.nav_end();
+                        self.open_error = None;
+                    }
+                    Err(_) => {
+                        // Save failed: stay put; the Context surfaced the error.
+                    }
+                }
                 return true;
             }
             // Validates: menu-workspace Requirement 14.4, 14.5 (CR-CH-022) --
@@ -235,8 +295,13 @@ impl WorkbenchShell {
             return true;
         }
 
-        // ── RETURN -- Validates: menu-workspace Requirement 14.10 (CR-CH-052) ──
+        // ── RETURN -- Validates: menu-workspace Requirement 14.10 (CR-CH-052);
+        //    CR-CH-071 Req 20a.3 ──────────────────────────────────────────────
         if upper == "RETURN" {
+            // CR-CH-071 (Req 20a.1, 20a.3): RETURN on an editable Context is a
+            // CANCEL-shaped verb -- DISCARD the working changes (no save) then
+            // leave. On a non-editable Context `editable_discard` is a no-op.
+            self.editable_discard();
             // CR-CH-052 (supersedes CR-CH-038): RETURN collapses the whole
             // Navigation_Stack to the TAB'S VISUAL ROOT in one step (converges
             // with bare X); at the root it closes the Workspace (exit when last,

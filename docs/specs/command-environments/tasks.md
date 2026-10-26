@@ -705,38 +705,38 @@ before any code. `[ ]` only.
 > follow CR-CH-069 Task 30 (Task 31 is the eqfiles-fix branch's `=FILES` task).
 > `[ ]` / `[x]` only.
 
-- [ ] 32. Wire the FFCMD Save/Cancel/Refresh editable-Context handler + the shared seam
-  - [ ] 32.1 Add the focused-editable-Context seam (persist/discard/reload)
+- [x] 32. Wire the FFCMD Save/Cancel/Refresh editable-Context handler + the shared seam
+  - [x] 32.1 Add the focused-editable-Context seam (persist/discard/reload)
         abstraction on the shell, modelled on the existing `apply_<editor>_action`
         pattern (wiring-standard.md / command-environments Req 11 E10). Define the
         shape and the "is the focused Context an editable non-buffer Context?"
         resolution; no verb wired yet. Validates: Requirement 20a.6.
-  - [ ] 32.2 Register SAVE, CANCEL, and REFRESH as FFCMD canonical roots: add them
+  - [x] 32.2 Register SAVE, CANCEL, and REFRESH as FFCMD canonical roots: add them
         to `BUILTIN_FFCMD_LADDER_VERB_ROOTS` (`crates/ff-desktop/src/command_config/mod.rs`)
         so `root_commands("FFCMD")` / `contains_root` enumerate them. Test FIRST
         (red): `contains_root("FFCMD", "SAVE"/"CANCEL"/"REFRESH")` is TRUE; re-baseline
         the `environment_registry.rs` enumeration tests. Validates: Requirement 20a.5.
-  - [ ] 32.3 Add the FFCMD-base editable-Context handler for SAVE/CANCEL/REFRESH/
+  - [x] 32.3 Add the FFCMD-base editable-Context handler for SAVE/CANCEL/REFRESH/
         END/RETURN: on a focused editable non-buffer Context, SAVE -> persist()+stay;
         REFRESH -> discard()+reload()+stay; CANCEL -> discard()+`nav_end`;
         RETURN -> discard()+`nav_return`; END -> persist() then `nav_end` on ok /
         stay+error on failure. On a non-editable Context: SAVE/REFRESH unresolved/
         no-op, END/RETURN plain navigation (unchanged). Test FIRST per verb.
         Validates: Requirement 20a.1, 20a.2, 20a.3, 20a.4, 20a.6, 20a.14.
-  - [ ] 32.4 Confirm the FFEDIT active-wins override: on an editor BUFFER Context,
+  - [x] 32.4 Confirm the FFEDIT active-wins override: on an editor BUFFER Context,
         FFEDIT's buffer SAVE (Req 10.1) and buffer END/CANCEL/RETURN (Req 10.2-10.4)
         are claimed FIRST and are byte-identical; REFRESH is NOT claimed by FFEDIT
         in v1 (falls to the FFCMD base, no-op on a buffer). Test FIRST: a buffer SAVE
         still routes through FFEDIT's `dispatch_to_environment` store-addressing,
         unchanged. Validates: Requirement 20a.7, 20a.8.
-- [ ] 33. Alias Editor as the first implementor
-  - [ ] 33.1 Implement the editable-Context seam for the Alias Editor: persist ->
+- [x] 33. Alias Editor as the first implementor
+  - [x] 33.1 Implement the editable-Context seam for the Alias Editor: persist ->
         the EXISTING `save_user_aliases`; discard -> clear the
         `alias_editor_panel.rows` working copy; reload -> re-run `load_user_alias_rows`
         + `load_rows`. Test FIRST (red): discard then a query shows no pending edits;
         reload repopulates from the last-saved `user.toml`. Validates: Requirement
         20a.2, 20a.3, 20a.4, 20a.11.
-  - [ ] 33.2 Retire the Alias Editor's private SAVE/CANCEL/END interpreter: remove
+  - [x] 33.2 Retire the Alias Editor's private SAVE/CANCEL/END interpreter: remove
         the `SAVE`, `CANCEL | END` arms from
         `crates/ff-desktop/src/shell/alias_editor_line_commands.rs::apply_alias_command_line`;
         route a non-FILTER/RESET primary verb to the shared dispatch path so F3 /
@@ -745,7 +745,7 @@ before any code. `[ ]` only.
         (runs first, Req 5.22). Test FIRST: a typed END now SAVES-then-leaves (not a
         bare `nav_end`); CANCEL discards-then-leaves; REFRESH discards+reloads+stays.
         Validates: Requirement 20a.10, command-configurator Req 5.9, 5.14.
-  - [ ] 33.3 Update the no-shadow rule enumeration consequence: confirm a user alias
+  - [x] 33.3 Update the no-shadow rule enumeration consequence: confirm a user alias
         named SAVE / CANCEL / REFRESH is REJECTED at save by `validate_user_alias_rows`
         and SKIPPED with a WARN at load by `apply_user_rows` (both already consult
         `builtin_ffcmd_roots()`, which now includes the three verbs). Test FIRST
@@ -764,23 +764,23 @@ before any code. `[ ]` only.
   - [ ] 34.5 Wire the Kinds editor to the shared seam (persist/discard/reload). Test
         FIRST. Validates: Requirement 20a.11.
 - [ ] 35. Test tasks (TDD; the behaviour safety net)
-  - [ ] 35.1 FFEDIT buffer SAVE unchanged: an editor-buffer SAVE is byte-identical
+  - [x] 35.1 FFEDIT buffer SAVE unchanged: an editor-buffer SAVE is byte-identical
         and still store-addressed via `dispatch_to_environment` (regression guard).
         Validates: Requirement 20a.7.
-  - [ ] 35.2 FFCMD SAVE/CANCEL/REFRESH on a non-buffer editable Context: SAVE
+  - [x] 35.2 FFCMD SAVE/CANCEL/REFRESH on a non-buffer editable Context: SAVE
         persists+stays; CANCEL discards+leaves; REFRESH discards+reloads+stays -- on
         the Alias Editor. Validates: Requirement 20a.1, 20a.2, 20a.3, 20a.4.
-  - [ ] 35.3 END = save-then-leave and the save-failure stay: END on a dirty Alias
+  - [x] 35.3 END = save-then-leave and the save-failure stay: END on a dirty Alias
         Editor saves then `nav_end`; a validation failure leaves the store unchanged
         and STAYS with an error. Validates: Requirement 20a.1, 20a.2.
-  - [ ] 35.4 Root enumeration + contains_root update: `root_commands("FFCMD")`
+  - [x] 35.4 Root enumeration + contains_root update: `root_commands("FFCMD")`
         contains SAVE/CANCEL/REFRESH; `contains_root` TRUE for each. Validates:
         Requirement 20a.5.
-  - [ ] 35.5 No-shadow rejects a SAVE/CANCEL/REFRESH-named user alias (save + load).
+  - [x] 35.5 No-shadow rejects a SAVE/CANCEL/REFRESH-named user alias (save + load).
         Validates: Requirement 20a.12.
-  - [ ] 35.6 EXIT unchanged: EXIT / QUIT / LOGOFF still perform the app-exit family
+  - [x] 35.6 EXIT unchanged: EXIT / QUIT / LOGOFF still perform the app-exit family
         on an editable Context (not save-then-leave). Validates: Requirement 20a.13.
-  - [ ] 35.7 One dispatch path: F3 / a globally-typed END and the typed
+  - [x] 35.7 One dispatch path: F3 / a globally-typed END and the typed
         `Command ===>` END produce the SAME result on the Alias Editor (the private
         interpreter divergence is gone). Validates: Requirement 20a.10.
   - [ ] 35.8 Scoped verification: `cargo fmt`, `cargo check -p ff-desktop`,

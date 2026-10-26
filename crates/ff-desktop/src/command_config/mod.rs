@@ -254,6 +254,17 @@ pub(crate) const BUILTIN_FFCMD_LADDER_VERB_ROOTS: &[&str] = &[
     "SUBMIT",
     "TIME",
     "STATUS",
+    // CR-CH-071 (Req 20a.5): the ISPF editable-Context verbs. SAVE / CANCEL /
+    // REFRESH are FFCMD-base canonical roots handled by the ladder's
+    // editable-Context seam (`try_commands_a`): SAVE persists + stays, CANCEL
+    // discards + leaves, REFRESH discards + reloads + stays. END / RETURN are
+    // already roots above; their editable-Context behaviour is amended in the
+    // ladder. These are NOT classifier verbs, so the disjointness drift guard
+    // holds. (SAVE on an editor BUFFER is claimed FIRST by FFEDIT via active-wins
+    // -- Req 20a.7 -- so this FFCMD root is reached only on a non-buffer Context.)
+    "SAVE",
+    "CANCEL",
+    "REFRESH",
 ];
 
 /// Validates: command-framework Requirement 8.3 (stage 2), 8.4, 9.2, 9.7
