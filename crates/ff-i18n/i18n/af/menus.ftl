@@ -14,6 +14,7 @@ menu-pom-opt-x-desc = Vou in tot die visuele wortel / sluit werkspasie (sluit af
 # --- Settings menu ----------------------------------------------------------
 menu-settings-title = Instellings
 menu-settings-opt-config-desc = Alle instellings -- blaai deur elke konfigurasiesleutel
+menu-settings-opt-aliases-desc = Alias-redigeerder -- skep, redigeer en stoor opdrag-aliasse
 menu-settings-opt-theme-desc = Tema-redigeerder -- kopieer, redigeer, stoor en kies temas
 menu-settings-opt-menus-desc = Kieslys-redigeerder -- skep, verander en stoor kieslyste
 menu-settings-opt-keys-desc = Sleutels -- redigeer en stoor sleuteltoekennings per werkspasie

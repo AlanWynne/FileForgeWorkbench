@@ -19,6 +19,7 @@ menu-pom-opt-x-desc = Collapse to the visual root / close workspace (exit when l
 # --- Settings menu ----------------------------------------------------------
 menu-settings-title = Settings
 menu-settings-opt-config-desc = All settings -- browse every configuration key
+menu-settings-opt-aliases-desc = Alias editor -- create, edit and save command aliases
 menu-settings-opt-theme-desc = Theme editor -- copy, edit, save and select themes
 menu-settings-opt-menus-desc = Menus editor -- create, change and save menus
 menu-settings-opt-keys-desc = Keys -- edit and save per-workspace key assignments

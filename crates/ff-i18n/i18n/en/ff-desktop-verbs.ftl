@@ -10,3 +10,18 @@
 # (Task 11.7); it is NOT the full command-string extraction (out of scope).
 
 verb-find = FIND
+
+# --- POM + Settings menu-root command surfaces (en Identity_Base) ---
+# Identity values = the root verb itself, so the en display equals the root.
+# Non-English catalogues (af/ff-desktop-verbs.ftl) translate these same keys.
+verb-settings = SETTINGS
+verb-catalogs = CATALOGS
+verb-files = FILES
+verb-help = HELP
+verb-config = CONFIG
+verb-aliases = ALIASES
+verb-theme = THEME
+verb-menus = MENUS
+verb-keys = KEYS
+verb-kinds = KINDS
+verb-reset-bare = RESET BARE
