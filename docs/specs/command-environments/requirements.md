@@ -1154,3 +1154,72 @@ stack, no new persistence format, no reshape of a public framework type.
    file-open root, owner-confirmed, so `ECOB -> EDIT` is an FFCMD alias), correcting
    the stale text that says FFEDIT. This is a documentation-only correction with no
    behaviour change. [CR-CH-069]
+
+### Requirement 22: Remove the malformed `=FILES` literal root token -- FILES is the root, `=` is the jump prefix (CR-CH-070)
+
+**User Story:** As a maintainer (and as a user of the Alias Editor Root dropdown),
+I want `=FILES` NOT to appear as a standalone FFCMD root command, so that the FFCMD
+root set `root_commands("FFCMD")` enumerates (CR-CH-067 Requirement 20) is clean --
+it offers and accepts the real root FILES and never the malformed `=FILES` -- while
+typing `=FILES` on the command line continues to work via the existing `=` jump
+prefix (jump to the POM, then run FILES).
+
+**Source:** [CR-CH-070]. Grounded in the command-environment placement audit
+(`.agents/tasks/command-placement-audit/command-environment-audit.md`, audit item
+D), which CR-CH-069 explicitly deferred as "its own change request". `=FILES` was
+registered as a LITERAL root token in `BUILTIN_WORKSPACE_VERB_ROOTS` and classified
+by a dedicated `is("=FILES")` arm in `builtin_workspace_target_for`
+(`crates/ff-desktop/src/command_config/mod.rs`), even though `=` is the ISPF JUMP
+PREFIX and the real root command is FILES. The `=` prefix is already handled at the
+single front door (`shell/dispatch.rs::dispatch_command_string`, CR-CH-052): it
+reinitialises the active tab's Navigation_Stack to the POM (FFCMD_Root) and then
+re-dispatches the stripped remainder against FFCMD. So `=FILES` already resolves as
+`=` (jump) THEN FILES through the generic step; the literal `=FILES` token is
+redundant AND pollutes the FFCMD root set that CR-CH-067's `root_commands("FFCMD")`
+and `contains_root` read, so the Alias Editor Root dropdown and alias-anchoring
+validation would offer/accept the malformed `=FILES`.
+
+**Investigation finding (verified at the gate):** removing the literal `=FILES`
+classifier entry does NOT break the `=FILES` jump path. The front-door `=` step
+(`dispatch_command_string`) strips the leading `=`, reinitialises the tab to the
+POM, and recursively dispatches the remainder `FILES`, which the generic bare
+`is("FILES") => custom("file_explorer")` arm classifies. The `=FILES` literal is
+therefore NOT the thing that makes `=FILES` work; the generic `=` step already
+covers it (command-framework Requirement 10 criterion 10.2 and criterion 14,
+CR-CH-052). The two-word verb `FILE CATALOGS` (`is("FILE") && arg == "CATALOGS"`)
+is a LEGITIMATE two-word classifier entry (it opens the `files` workspace) and is
+NOT malformed; it is LEFT UNCHANGED by this requirement.
+
+**Marking:** CLASSIFICATION correction / bug fix. Removes a redundant, malformed
+literal root token. No framework change: it builds ON the existing single `=`
+jump-prefix front-door step (command-framework Requirement 10/14) and the existing
+bare-FILES classifier arm. No second dispatcher, no second navigation stack, no new
+persistence format, no reshape of a public framework type.
+
+#### Acceptance Criteria
+
+22.1 THE token `=FILES` SHALL NOT be a standalone FFCMD root command: it SHALL be
+   REMOVED from `command_config::BUILTIN_WORKSPACE_VERB_ROOTS` and its dedicated
+   `is("=FILES")` classifier arm in `builtin_workspace_target_for` SHALL be
+   REMOVED, so that `EnvironmentRegistry::root_commands("FFCMD")` CONTAINS FILES and
+   does NOT contain `=FILES`, and `contains_root("FFCMD", "=FILES")` SHALL return
+   FALSE. [CR-CH-070]
+
+22.2 WHEN the bare command FILES is submitted, THE FFCMD classifier
+   (`builtin_workspace_target_for`) SHALL continue to resolve it to the
+   File Explorer workspace (`CustomWorkspace { workspace_kind: "file_explorer" }`)
+   via the existing bare `is("FILES")` arm, UNCHANGED by this requirement. [CR-CH-070]
+
+22.3 WHEN `=FILES` is typed on the command line, THE front door SHALL continue to
+   handle it as the `=` JUMP PREFIX followed by FILES: the `=` step
+   (`dispatch_command_string`, command-framework Requirement 10 criterion 10.2 /
+   criterion 14, CR-CH-052) SHALL reinitialise the active tab's Navigation_Stack to
+   the POM (FFCMD_Root), THEN dispatch the stripped remainder FILES against FFCMD,
+   which resolves to the File Explorer workspace (criterion 22.2). This behaviour
+   SHALL be PRESERVED -- removing the literal `=FILES` token SHALL NOT change it.
+   [CR-CH-070]
+
+22.4 THE legitimate two-word verb `FILE CATALOGS`
+   (`is("FILE") && arg == "CATALOGS"` -> the `files` workspace) SHALL be LEFT
+   UNCHANGED: it is NOT a malformed token and is OUT OF SCOPE for this correction.
+   [CR-CH-070]

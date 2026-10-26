@@ -690,3 +690,53 @@ before any code. `[ ]` only.
 | Req 21: af SOEK->FIND in the FFEDIT catalogue + POC test | 21.3 | 30.3, 30.4 |
 | Req 21: FFCMD-anchored FIND/AUTONUM/NUM invalid-in-environment | 21.4 | 30.1, 30.6 |
 | Req 21: EDIT doc-comment corrected to FFCMD | 21.5 | 30.5 |
+
+### Phase (eqfiles-fix) -- CR-CH-070 (remove the malformed `=FILES` literal root token) -- Requirement 22
+
+> The `=FILES` root-token fix CR-CH-069 explicitly deferred (audit item D). `=` is
+> the ISPF JUMP PREFIX and FILES is the real root; the `=` prefix is already handled
+> at the single front door (`dispatch_command_string`, CR-CH-052), so the literal
+> `=FILES` token is redundant AND pollutes the FFCMD root set `root_commands("FFCMD")`
+> enumerates (CR-CH-067). Remove it so the root set is clean while typing `=FILES`
+> keeps working via the generic `=` jump. The legitimate two-word verb `FILE CATALOGS`
+> is LEFT UNCHANGED. TDD per `testing.md`; agent verification is compile/clippy/fmt
+> clean + scoped `-p ff-desktop` tests, the owner runs the authoritative full gate.
+> `[ ]` only.
+
+- [ ] 31. Remove the malformed `=FILES` literal root token (FILES is the root, `=` is the jump prefix)
+  - [ ] 31.1 Remove `=FILES` from the FFCMD root set (enumeration): delete the
+        `"=FILES"` entry from `BUILTIN_WORKSPACE_VERB_ROOTS`
+        (`crates/ff-desktop/src/command_config/mod.rs`) and delete its dedicated
+        `is("=FILES")` arm from `builtin_workspace_target_for`. Test FIRST (red
+        before green): `EnvironmentRegistry::root_commands("FFCMD")` contains FILES
+        and does NOT contain `=FILES`, and `contains_root("FFCMD", "=FILES")` is
+        FALSE. Validates: Requirement 22.1.
+  - [ ] 31.2 Confirm the bare FILES classifier is unchanged: assert the bare
+        `is("FILES")` arm still resolves FILES to
+        `CustomWorkspace { workspace_kind: "file_explorer" }` (the File Explorer
+        workspace). Validates: Requirement 22.2.
+  - [ ] 31.3 Confirm the `=FILES` jump path is preserved: a dispatch test that
+        typing `=FILES` reinitialises the active tab to the POM (FFCMD_Root) via the
+        front-door `=` step and then resolves FILES to the File Explorer workspace
+        (behaviour unchanged by the literal's removal). Validates: Requirement 22.3.
+  - [ ] 31.4 Leave `FILE CATALOGS` untouched: assert the two-word
+        `is("FILE") && arg == "CATALOGS"` arm still resolves to the `files`
+        workspace (the legitimate two-word verb is NOT a jump-prefix artefact and is
+        out of scope). Validates: Requirement 22.4.
+  - [ ] 31.5 Update the `BUILTIN_WORKSPACE_VERB_ROOTS` doc-comment to drop the
+        "`=FILES` is the fastpath single token" sentence so the comment matches the
+        corrected list. Documentation-only, no behaviour change. Validates:
+        Requirement 22.1.
+  - [ ] 31.6 Scoped verification: `cargo fmt`, `cargo check -p ff-desktop`,
+        `cargo clippy -p ff-desktop -- -D warnings`, and the scoped Req-22 tests
+        (`-p ff-desktop`). The authoritative full `cargo gate` is the owner's manual
+        run. Validates: Requirement 22.1, 22.2, 22.3, 22.4.
+
+### Acceptance Criteria Coverage (CR-CH-070)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 22: `=FILES` removed from the FFCMD root set | 22.1 | 31.1, 31.5 |
+| Req 22: bare FILES still opens File Explorer | 22.2 | 31.2 |
+| Req 22: `=FILES` jump path (jump-to-POM then FILES) preserved | 22.3 | 31.3 |
+| Req 22: legitimate `FILE CATALOGS` left unchanged | 22.4 | 31.4 |
