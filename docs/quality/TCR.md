@@ -4157,15 +4157,18 @@ suite PASS. -->
 > root. Removing the literal cleans the FFCMD root set `root_commands("FFCMD")`
 > enumerates (CR-CH-067 Req 20) while typing `=FILES` keeps working via the generic
 > `=` jump. The legitimate two-word verb `FILE CATALOGS` is LEFT UNCHANGED.
-> IMPLEMENTED + AGENT-VERIFIED (CR-CH-070): the literal was removed and the
-> proving tests were authored. Scoped `cargo check -p ff-desktop` and
-> `cargo clippy -p ff-desktop -- -D warnings` both finished CLEAN this session,
-> and `cargo fmt -p ff-desktop` rewrote nothing (format clean, verified by effect).
-> VERIFICATION CAVEAT: the test-profile run (`cargo test -p ff-desktop`) could NOT
-> be observed -- the machine's terminal entered the known dead-output state during
-> the heavier test build. The authoritative scoped `cargo test -p ff-desktop` run
-> and the full `cargo gate` are the OWNER's manual run (testing.md execution
-> split). Criteria from docs/specs/command-environments/requirements.md Req 22.
+> IMPLEMENTED + AGENT-VERIFIED (CR-CH-070, fix-pass): the literal was removed and
+> the proving tests were authored. Agent-level verification (testing.md execution
+> split), evidenced by logs read back under `tools/logs/`:
+> `cargo check -p ff-desktop` finished CLEAN (`eqfiles-check.log`);
+> `cargo clippy -p ff-desktop -- -D warnings` finished CLEAN, no warnings
+> (`eqfiles-clippy.log`); `cargo fmt -p ff-desktop -- --check` reported no diffs
+> (empty `eqfiles-fmt.log`, format clean by effect). The SCOPED Req-22 tests were
+> run and all PASS: `equals_files*` 6/6 (`eqfiles-test-equals.log`), `files*` 30/30
+> (`eqfiles-test-files.log`), and `root_commands_ffcmd_returns_complete_builtin_root_set`
+> 1/1 (`eqfiles-test-roots.log`). The authoritative full `cargo gate` /
+> whole-suite run remains the OWNER's manual run (testing.md execution split).
+> Criteria from docs/specs/command-environments/requirements.md Req 22.
 
 | Crate | Status | Test | Criterion |
 |-------|--------|------|-----------|
