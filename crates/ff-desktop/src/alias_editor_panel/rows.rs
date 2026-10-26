@@ -74,12 +74,11 @@ pub(super) fn revalidate_root_for_env(row: &mut AliasRowEdit) {
     }
 }
 
-/// Render one DATA row (Act / CE / Root / L18N / ALIAS / Parameters) at backing
-/// index `backing`. Returns `true` when this row's control was the first
-/// interior-focusable data control (unused by the caller today but kept for
-/// symmetry). All edits bind directly to the mutable row (B054 pattern).
+/// Render one DATA row (Act / CE / Root / ALIAS / Parameters) at backing index
+/// `backing`. CR-CH-072 (Req 6.2): the L18N column is removed. All edits bind
+/// directly to the mutable row (B054 pattern).
 ///
-/// Validates: command-configurator Requirement 5.13, 5.18, 5.21
+/// Validates: command-configurator Requirement 5.13, 5.18, 5.21, 6.2
 pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) {
     ui.horizontal(|ui| {
         // Act: the ISPF line-command field (I / R / D). One focusable control.
@@ -101,13 +100,8 @@ pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut Alias
             row.environment,
             &mut row.canonical,
         );
-        // L18N editable field (persists via localisation_key).
-        ui.add(
-            egui::TextEdit::singleline(&mut row.localisation_key)
-                .id(row_control_id("alias_l18n", backing))
-                .desired_width(36.0)
-                .hint_text(""),
-        );
+        // CR-CH-072 (Req 6.2): the L18N (localisation-key) column is REMOVED --
+        // the surface IS the authoritative localised text.
         // ALIAS (surface).
         let surface_resp = ui.add(
             egui::TextEdit::singleline(&mut row.surface)
