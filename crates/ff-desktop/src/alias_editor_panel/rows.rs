@@ -106,14 +106,14 @@ pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut Alias
             egui::TextEdit::singleline(&mut row.localisation_key)
                 .id(row_control_id("alias_l18n", backing))
                 .desired_width(36.0)
-                .hint_text("en"),
+                .hint_text(""),
         );
         // ALIAS (surface).
         let surface_resp = ui.add(
             egui::TextEdit::singleline(&mut row.surface)
                 .id(row_control_id("alias_surface", backing))
                 .desired_width(120.0)
-                .hint_text("ECOB"),
+                .hint_text("name"),
         );
         if surface_resp.lost_focus() {
             let upper = row.surface.trim().to_uppercase();
@@ -126,7 +126,7 @@ pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut Alias
             egui::TextEdit::singleline(&mut row.command_template)
                 .id(row_control_id("alias_template", backing))
                 .desired_width(260.0)
-                .hint_text("FFWB.COBOL.MASTER(&1)"),
+                .hint_text("(&1)"),
         );
     });
 }
