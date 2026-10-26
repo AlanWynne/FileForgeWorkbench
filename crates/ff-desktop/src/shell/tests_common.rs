@@ -388,7 +388,9 @@ pub(crate) fn install_verb_find_soek_catalogue() {
     std::fs::write(en.join("zz-test-verbs.ftl"), "verb-find = SOEK\n").expect("write ftl");
     let catalogue =
         ff_i18n::Catalogue::load_identity_base(dir.path()).expect("test catalogue loads");
-    ff_i18n::set_catalogue(catalogue);
+    // Thread-local override (test isolation): per-thread, so concurrent tests do
+    // not clobber each other's catalogue under threaded `cargo test`.
+    ff_i18n::set_test_catalogue(catalogue);
 }
 
 /// Install a TEST catalogue (CR-NR-111) that, on top of a COPY of the shipped
@@ -442,7 +444,9 @@ pub(crate) fn install_find_menu_localised_catalogue(menu_name: &str, extra: &str
     std::fs::write(en.join("zz-test-crnr111.ftl"), ftl).expect("write ftl");
     let catalogue =
         ff_i18n::Catalogue::load_identity_base(dir.path()).expect("test catalogue loads");
-    ff_i18n::set_catalogue(catalogue);
+    // Thread-local override (test isolation): per-thread, so concurrent tests do
+    // not clobber each other's catalogue under threaded `cargo test`.
+    ff_i18n::set_test_catalogue(catalogue);
 }
 
 /// Install a TEST catalogue (CR-NR-111 per-part fallback) that seeds ONLY the

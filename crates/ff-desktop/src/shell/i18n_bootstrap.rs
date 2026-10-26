@@ -213,15 +213,36 @@ fn load_base(root: &std::path::Path) -> Option<Catalogue> {
 /// `crates/ff-i18n/i18n` marker and so reaches the catalogue from the test
 /// binary). Safe to call repeatedly; a missing root degrades to the key
 /// fallback exactly as production does.
+/// Install the English Identity_Base catalogue as a PER-THREAD override for the
+/// calling test (test isolation), NOT the process-wide global. The active
+/// catalogue is a single process-global; under threaded `cargo test` many tests
+/// install different catalogues concurrently and clobber each other's global
+/// mid-assertion. `set_test_catalogue` installs a thread-local override instead,
+/// and Rust's test runner uses one thread per test, so each test gets its own
+/// catalogue with NO lock and NO loss of parallelism (the race is removed, not
+/// serialised). Falls back to the process-wide install only if the shipped root
+/// cannot be resolved (degrades to the key fallback exactly as production).
 #[cfg(test)]
 pub(crate) fn install_catalogue_for_tests() {
-    install_catalogue_for_locale(ff_i18n::IDENTITY_BASE_TAG);
+    match resolve_i18n_root().and_then(|root| build_catalogue(&root, ff_i18n::IDENTITY_BASE_TAG)) {
+        Some(catalogue) => ff_i18n::set_test_catalogue(catalogue),
+        None => install_catalogue_for_locale(ff_i18n::IDENTITY_BASE_TAG),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::path::Path;
+
+    /// Serialises the FEW tests here that exercise the PROCESS-GLOBAL catalogue
+    /// install path (the production `install_catalogue` / `install_catalogue_for_locale`
+    /// seam, which must be tested on the real global rather than a thread-local
+    /// override). Only these global-path tests take it, so there is no suite-wide
+    /// speed cost. Tests that merely need a resolvable catalogue use the
+    /// thread-local override (`ff_i18n::set_test_catalogue`) instead and do not
+    /// take this lock.
+    static GLOBAL_CATALOGUE_SEAM_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     /// The crate-relative path to the shipped ff-i18n `i18n/` tree, used so the
     /// install test resolves against the real English catalogue DATA.
@@ -267,7 +288,9 @@ mod tests {
         // Install directly from the known-present shipped root (bypassing the
         // exe-dir search, which does not point at the crate in a test binary).
         let base = Catalogue::load_identity_base(&root).expect("English base loads");
-        ff_i18n::set_catalogue(base);
+        // Thread-local override (test isolation): asserts on THIS thread's
+        // catalogue so a concurrent test's global install cannot perturb it.
+        ff_i18n::set_test_catalogue(base);
         assert!(ff_i18n::is_initialised());
         // A key from main.ftl and one from the new menus.ftl both resolve.
         assert_eq!(ff_i18n::t("files-panel-title"), "Files");
@@ -386,6 +409,10 @@ mod tests {
     // and resolves a shipped key, confirming the end-to-end install seam works.
     #[test]
     fn install_catalogue_for_locale_en_installs_the_seam() {
+        // Global-path test: serialise against the other global-seam test.
+        let _seam = GLOBAL_CATALOGUE_SEAM_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         // resolve_i18n_root in a test binary resolves via the exe-dir dev-tree
         // marker walk (finds crates/ff-i18n/i18n on an ancestor), so the real
         // shipped root is found and the seam is installed.
@@ -407,7 +434,9 @@ mod tests {
         // Drive the same build path install_catalogue_for_locale uses, from the
         // known-present shipped root (bypassing the exe-dir search).
         let catalogue = build_catalogue(&root, "af").expect("af catalogue must build");
-        ff_i18n::set_catalogue(catalogue);
+        // Thread-local override (test isolation): asserts on THIS thread's
+        // catalogue so a concurrent test's global install cannot perturb it.
+        ff_i18n::set_test_catalogue(catalogue);
         assert!(ff_i18n::is_initialised());
         // "Settings" in English; "Instellings" in Afrikaans (af/menus.ftl).
         let resolved = ff_i18n::t("menu-settings-title");
@@ -432,6 +461,11 @@ mod tests {
         use std::sync::mpsc;
         use tempfile::TempDir;
 
+        // Global-path test (production install_catalogue seam): serialise against
+        // the other global-seam test so they cannot clobber the global mid-assert.
+        let _seam = GLOBAL_CATALOGUE_SEAM_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let dir = TempDir::new().unwrap();
         let user_path = dir.path().join("config.toml");
         std::fs::write(&user_path, "[ui]\nlocale = \"en\"\n").unwrap();
