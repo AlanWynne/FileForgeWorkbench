@@ -20,7 +20,7 @@ impl WorkbenchShell {
     pub(super) fn try_commands_b1(&mut self, cmd: &str, upper: &str) -> bool {
         // DELETED-ARM NOTE (CR-CH-052, B080 Step 2 follow-up): the CustomWorkspace
         // / navigation verbs that used to live in this segment -- CONFIG,
-        // FILES/=FILES, GSEARCH/SEARCH, COMMANDS, MENUS, LOG, FILE CATALOGS/
+        // FILES, GSEARCH/SEARCH, COMMANDS, MENUS, LOG, FILE CATALOGS/
         // CATALOGS, PLUGINS, MACROS -- are now resolved by
         // `builtin_workspace_target` through the front door's `resolve_target`
         // BEFORE this ladder is reached (the CustomWorkspace dispatch arm calls

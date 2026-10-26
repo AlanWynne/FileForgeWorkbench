@@ -225,6 +225,43 @@ fn file_explorer_panel_end_command_returns_to_pom() {
     assert!(mgr.active_tab().is_home);
 }
 
+/// Validates: command-environments Requirement 22.3 (CR-CH-070) -- typing
+/// `=FILES` is PRESERVED after the literal `=FILES` root token was removed. The
+/// front-door `=` jump step strips the `=`, reinitialises the active tab to the
+/// POM, then re-dispatches the remainder FILES through the generic bare-FILES
+/// classifier arm, transforming the tab to the File Explorer workspace. From a
+/// NON-POM Context (Keys), this proves the jump-then-FILES path still works.
+#[test]
+fn equals_files_jump_path_still_opens_file_explorer() {
+    use crate::tab_state::KindTag;
+    let mut shell = make_shell();
+    // Move away from the POM first so the `=` jump has to reinitialise to POM.
+    shell.dispatch_command_string("KEYS");
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::KeysEditor);
+    // `=FILES` must still resolve to the File Explorer workspace via the `=`
+    // jump prefix (jump to POM, then run FILES) -- behaviour preserved.
+    shell.dispatch_command_string("=FILES");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::FileExplorerPanel,
+        "=FILES must still open the File Explorer via the `=` jump path"
+    );
+}
+
+/// Validates: command-environments Requirement 22.2 (CR-CH-070) -- the bare FILES
+/// command still opens the File Explorer workspace, unchanged.
+#[test]
+fn bare_files_still_opens_file_explorer_via_front_door() {
+    use crate::tab_state::KindTag;
+    let mut shell = make_shell();
+    shell.dispatch_command_string("FILES");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::FileExplorerPanel,
+        "bare FILES must open the File Explorer workspace (Req 22.2)"
+    );
+}
+
 /// Validates: Requirement 19.4 -- fastpath dotted notation navigates to option.
 #[test]
 fn fastpath_notation_navigates_to_option() {

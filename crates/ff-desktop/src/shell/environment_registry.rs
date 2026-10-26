@@ -462,12 +462,14 @@ mod tests {
 
     // === Root-command enumeration tests (CR-CH-067, Req 20) ================
 
-    /// Validates: command-environments Requirement 20.1, 20.3 -- `root_commands`
-    /// for FFCMD returns the COMPLETE built-in canonical root set: the built-in
-    /// menu-option roots (CONFIG, THEME, FILES, CATALOGS, ...) unioned with
-    /// BUILTIN_WORKSPACE_VERB_ROOTS (COMMANDS, LOG, PLUGINS, MACROS, SEARCH,
-    /// GSEARCH, KINDS, MENUS, ALIASES, KEYS). A user-menu-only root (never in the
-    /// two code-only built-in menus nor the verb list) is intentionally EXCLUDED.
+    /// Validates: command-environments Requirement 20.1, 20.3, and Requirement
+    /// 22.1 -- `root_commands` for FFCMD returns the COMPLETE built-in canonical
+    /// root set: the built-in menu-option roots (CONFIG, THEME, FILES, CATALOGS,
+    /// ...) unioned with BUILTIN_WORKSPACE_VERB_ROOTS (COMMANDS, LOG, PLUGINS,
+    /// MACROS, SEARCH, GSEARCH, KINDS, MENUS, ALIASES, KEYS). A user-menu-only
+    /// root (never in the two code-only built-in menus nor the verb list) is
+    /// intentionally EXCLUDED. CR-CH-070 update: FILES is a root and the malformed
+    /// `=FILES` literal is NOT -- the latter was removed from the FFCMD root set.
     #[test]
     fn root_commands_ffcmd_returns_complete_builtin_root_set() {
         let roots = EnvironmentRegistry::root_commands(FFCMD_NAME);
@@ -483,11 +485,32 @@ mod tests {
                 "FFCMD roots must contain built-in root {expected}, got {roots:?}"
             );
         }
+        // CR-CH-070 Req 22.1: the malformed `=FILES` literal is NO LONGER a
+        // standalone FFCMD root -- `=` is the jump prefix, FILES is the root.
+        assert!(
+            !roots.iter().any(|r| r.eq_ignore_ascii_case("=FILES")),
+            "the malformed =FILES literal must NOT be an FFCMD root, got {roots:?}"
+        );
         // A root reachable ONLY via a user menus/*.toml override is NOT a built-in
         // canonical root and must not appear (the documented completeness posture).
         assert!(
             !roots.iter().any(|r| r.eq_ignore_ascii_case("USERONLYROOT")),
             "a user-menu-only root must not be in the built-in canonical set"
+        );
+    }
+
+    /// Validates: command-environments Requirement 22.1 -- `contains_root` agrees
+    /// with the cleaned FFCMD root set: FILES is a root, the malformed `=FILES`
+    /// literal is NOT.
+    #[test]
+    fn contains_root_ffcmd_files_true_equals_files_false() {
+        assert!(
+            EnvironmentRegistry::contains_root(FFCMD_NAME, "FILES"),
+            "FILES is a legitimate FFCMD root (CR-CH-070 Req 22.1/22.2)"
+        );
+        assert!(
+            !EnvironmentRegistry::contains_root(FFCMD_NAME, "=FILES"),
+            "=FILES must NOT be an FFCMD root after CR-CH-070 (Req 22.1)"
         );
     }
 
