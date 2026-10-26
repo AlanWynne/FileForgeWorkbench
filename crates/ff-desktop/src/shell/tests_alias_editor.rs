@@ -1,20 +1,33 @@
-//! Shell-level tests for the Alias Editor Context (command-configurator Req 5,
-//! CR-NR-113): open/add/save, the live-resolver refresh, the third-overlay load
-//! with routing + no-shadow + cross-layer discipline, and the end-to-end
+//! Shell-level tests for the Alias Editor Context (command-configurator Req 5 +
+//! Req 6 CR-CH-072): open/add/save, the live-resolver refresh, the per-locale
+//! override load with no-shadow + root-validity discipline, and the end-to-end
 //! parameterised-alias expansion.
+//!
+//! CR-CH-072: the Alias Editor now edits the ACTIVE-locale EFFECTIVE table
+//! (shipped seed overlaid by the User_Locale_Override_Store) and WRITES to the
+//! per-locale override `<base>/<locale>/<ENV>.toml`. These tests were updated
+//! from the superseded CR-NR-113 flat `user.toml` model; each supersession is
+//! noted inline with a `// CR-CH-072:` comment.
 
 use super::tests_common::make_shell;
-use super::user_aliases::{AliasEnvironment, UserAliasRowToml};
+use super::user_aliases::{self, AliasEnvironment, UserAliasRowToml};
 use super::WorkbenchShell;
 use crate::alias_editor_panel::{AliasEditorAction, AliasRowEdit};
 use crate::tab_state::KindTag;
 
-/// Point the shell's User_Alias_Store at an isolated temp file and return the
-/// guard dir (kept alive by the caller).
+/// Point the shell's User_Locale_Override_Store BASE at an isolated temp dir and
+/// return the guard dir (kept alive by the caller).
+///
+/// CR-CH-072: the override is a per-locale DIR base, not a single `user.toml`.
 fn point_user_aliases_at_temp(shell: &mut WorkbenchShell) -> tempfile::TempDir {
     let dir = tempfile::TempDir::new().expect("tempdir");
-    shell.dir_overrides.user_aliases = Some(dir.path().join("aliases").join("user.toml"));
+    shell.dir_overrides.user_aliases = Some(dir.path().join("aliases"));
     dir
+}
+
+/// The per-locale override file for the active locale + FFCMD under the temp base.
+fn override_file(dir: &tempfile::TempDir, locale: &str, env_name: &str) -> std::path::PathBuf {
+    user_aliases::user_alias_override_file(&dir.path().join("aliases"), locale, env_name)
 }
 
 /// Build an editor row.
@@ -25,6 +38,16 @@ fn row(surface: &str, canonical: &str, env: AliasEnvironment, template: &str) ->
         environment: env,
         command_template: template.to_string(),
         ..Default::default()
+    }
+}
+
+/// Build an override row (the per-locale file row shape, no localisation_key).
+fn override_row(surface: &str, canonical: &str, env: AliasEnvironment) -> UserAliasRowToml {
+    UserAliasRowToml {
+        surface: surface.to_string(),
+        canonical: canonical.to_string(),
+        environment: env,
+        command_template: String::new(),
     }
 }
 
@@ -52,10 +75,8 @@ fn aliases_verb_opens_the_alias_editor_context() {
 
 // Validates: menu-workspace Requirement 22.2 (CR-CH-066) -- selecting the
 // Settings option with mnemonic `A` dispatches the `ALIASES` verb through the
-// SAME single command-dispatch front door and opens the Alias Editor Context
-// (CR-NR-113), introducing no new verb and no new dispatcher. Selection goes
-// through the single Option-Selection path (the active Settings Menu_Workspace
-// resolves the option key to its command).
+// SAME single command-dispatch front door and opens the Alias Editor Context,
+// introducing no new verb and no new dispatcher.
 #[test]
 fn settings_alias_option_dispatches_aliases_verb() {
     let mut shell = make_shell();
@@ -66,26 +87,22 @@ fn settings_alias_option_dispatches_aliases_verb() {
         KindTag::MenuWorkspace,
         "SETTINGS opens the Settings Menu_Workspace"
     );
-    // Select the `A` option by its key (same path as a click / typed Option_Key).
     shell.handle_command("A");
     assert_eq!(
         shell.tabs.active_tab().kind.tag(),
         KindTag::AliasEditor,
-        "selecting Settings option A must open the Alias Editor Context (CR-NR-113)"
+        "selecting Settings option A must open the Alias Editor Context"
     );
     assert_eq!(shell.tabs.active_tab().title, "[ALIASES]");
 }
 
 // Validates: command-configurator Requirement 5.2, 5.9 -- the tab title is
-// [ALIASES] and END returns via the per-tab Navigation_Stack to the opener
-// (parity with the Menus Editor).
+// [ALIASES] and END returns via the per-tab Navigation_Stack to the opener.
 #[test]
 fn alias_editor_end_returns_to_opener_via_nav_stack() {
     let mut shell = make_shell();
     let _dir = point_user_aliases_at_temp(&mut shell);
     let tabs_before = shell.tabs.len();
-    // Open the Alias Editor IN PLACE (navigate_to pushes the opener onto the
-    // per-tab Navigation_Stack); the title is [ALIASES].
     shell.dispatch_command_string("ALIASES");
     assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::AliasEditor);
     assert_eq!(shell.tabs.active_tab().title, "[ALIASES]");
@@ -98,8 +115,6 @@ fn alias_editor_end_returns_to_opener_via_nav_stack() {
         !shell.tabs.active_tab().nav_stack.is_empty(),
         "the opener was pushed onto the Navigation_Stack"
     );
-    // END pops one Navigation_Stack level back to the opener Context (parity with
-    // the Menus Editor): the tab is no longer the Alias Editor and no tab spawned.
     shell.handle_command("END");
     assert_ne!(
         shell.tabs.active_tab().kind.tag(),
@@ -114,35 +129,37 @@ fn alias_editor_end_returns_to_opener_via_nav_stack() {
 }
 
 // Validates: command-configurator Requirement 5.16 -- the ISPF line commands
-// supersede the footer Add/Delete: an `I` Act on a row inserts a blank row and a
-// `D` Act deletes a row when the batch is applied (CR-CH-068).
+// supersede the footer Add/Delete: an `I` Act inserts a blank row and a `D` Act
+// deletes a row when the batch is applied (CR-CH-068).
+//
+// CR-CH-072: under `en` with no shipped seed the effective table is empty, so
+// the editor opens with zero rows (the fix observed for en; af opens populated).
 #[test]
 fn line_commands_insert_and_delete_the_working_copy() {
     let mut shell = make_shell();
     let _dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
     assert_eq!(shell.alias_editor_panel.rows.len(), 0);
-    // Seed one row, mark it I, apply -> two rows.
     let mut r = row("ECOB", "EDIT", AliasEnvironment::Ffcmd, "");
     r.act = "I".to_string();
     shell.alias_editor_panel.rows = vec![r];
     shell.apply_alias_editor_action(AliasEditorAction::ApplyLineCommands);
     assert_eq!(shell.alias_editor_panel.rows.len(), 2);
-    // Mark row 0 D, apply -> one row.
     shell.alias_editor_panel.rows[0].act = "D".to_string();
     shell.apply_alias_editor_action(AliasEditorAction::ApplyLineCommands);
     assert_eq!(shell.alias_editor_panel.rows.len(), 1);
 }
 
-// Validates: command-configurator Requirement 5.1, 5.4, 5.6 -- a valid Save
-// writes the user store file (created on first save) and the live resolver
+// Validates: command-configurator Requirement 6.3, 6.4 -- a valid Save writes the
+// per-locale override file (created on first save) and the live resolver
 // refreshes in place so the alias resolves immediately.
+//
+// CR-CH-072: the save target is `<base>/<locale>/FFCMD.toml`, not `user.toml`.
 #[test]
 fn save_writes_file_and_live_resolver_resolves_new_alias() {
     let mut shell = make_shell();
     let dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
-    // Author an FFCMD shorthand GG -> GSEARCH.
     shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
     save(&mut shell);
     assert!(
@@ -150,10 +167,11 @@ fn save_writes_file_and_live_resolver_resolves_new_alias() {
         "a valid save has no error: {:?}",
         shell.alias_editor_panel.error
     );
-    // The file was created on first save (Req 5.1).
-    let path = dir.path().join("aliases").join("user.toml");
-    assert!(path.exists(), "user.toml created on first save");
-    // The live resolver resolves the new alias at once (Req 5.6), routed to FFCMD.
+    let path = override_file(&dir, "en", "FFCMD");
+    assert!(
+        path.exists(),
+        "the per-locale FFCMD override file is created on first save"
+    );
     use super::locale_resolver::LocaleResolveOutcome;
     assert_eq!(
         shell.resolve_locale_verb("GG", "FFCMD"),
@@ -162,10 +180,9 @@ fn save_writes_file_and_live_resolver_resolves_new_alias() {
     );
 }
 
-// Validates: command-configurator Requirement 5.6 -- the in-place refresh is a
-// re-seed that re-applies BOTH the base/per-locale layer AND the user-store
-// overlay: after save the built-in FFCMD roots STILL resolve (base not dropped)
-// AND the new user alias resolves (user layer applied).
+// Validates: command-configurator Requirement 6.4 -- the in-place refresh is a
+// re-seed that re-applies BOTH the seed layer AND the user override: after save
+// the built-in FFCMD roots STILL resolve AND the new user alias resolves.
 #[test]
 fn refresh_keeps_base_layer_and_adds_user_layer() {
     let mut shell = make_shell();
@@ -174,30 +191,26 @@ fn refresh_keeps_base_layer_and_adds_user_layer() {
     shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
     save(&mut shell);
     use super::locale_resolver::LocaleResolveOutcome;
-    // Base layer retained: a built-in FFCMD root still self-resolves.
     assert_eq!(
         shell.resolve_locale_verb("CONFIG", "FFCMD"),
         LocaleResolveOutcome::Root("CONFIG".to_string()),
         "the re-seed did not drop the identity/base layer"
     );
-    // User layer applied in the same re-seed.
     assert_eq!(
         shell.resolve_locale_verb("GG", "FFCMD"),
         LocaleResolveOutcome::Root("GSEARCH".to_string())
     );
 }
 
-// Validates: command-configurator Requirement 5.7 -- a row with
-// environment = "ffedit" loads into the FFEDIT table and resolves there; a
-// defaulted row loads into FFCMD. Routing is per-row.
+// Validates: command-configurator Requirement 6.3 -- a row with
+// environment = ffedit is grouped into the FFEDIT override file and resolves in
+// FFEDIT; a defaulted row goes into the FFCMD file. Routing is per-row (grouped
+// into per-ENV override files by the save).
 #[test]
 fn user_rows_route_into_their_target_environment() {
     let mut shell = make_shell();
     let _dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
-    // SOEK -> FIND is an FFEDIT (in-buffer) alias; GG -> GSEARCH is an FFCMD
-    // alias. Each root is valid in its declared environment (CR-CH-067), and
-    // routing is per-row.
     shell.alias_editor_panel.rows = vec![
         row("SOEK", "FIND", AliasEnvironment::Ffedit, ""),
         row("GG", "GSEARCH", AliasEnvironment::Ffcmd, ""),
@@ -205,105 +218,68 @@ fn user_rows_route_into_their_target_environment() {
     save(&mut shell);
     assert!(shell.alias_editor_panel.error.is_none());
     use super::locale_resolver::LocaleResolveOutcome;
-    // SOEK resolves in FFEDIT (its target environment)...
     assert_eq!(
         shell.resolve_locale_verb("SOEK", "FFEDIT"),
         LocaleResolveOutcome::Root("FIND".to_string())
     );
-    // ...and NOT in FFCMD.
     assert_eq!(
         shell.resolve_locale_verb("SOEK", "FFCMD"),
         LocaleResolveOutcome::Unknown("SOEK".to_string())
     );
-    // GG resolves in FFCMD.
     assert_eq!(
         shell.resolve_locale_verb("GG", "FFCMD"),
         LocaleResolveOutcome::Root("GSEARCH".to_string())
     );
 }
 
-// Validates: command-configurator Requirement 5.7 -- a user row whose surface
-// equals a reserved built-in root (the NEW CR-NR-113 no-shadow invariant) is
-// skipped at LOAD with a WARN, so it never shadows the built-in. The LOAD path
-// enforces it even when a file reaches disk by other means.
+// Validates: localization Requirement 13.5 -- a user override row whose surface
+// equals a reserved built-in root (the no-shadow invariant) is skipped at LOAD
+// with a WARN, so it never shadows the built-in. The LOAD path enforces it even
+// when a file reaches disk by other means.
+//
+// CR-CH-072: the shadowing row is written to the per-locale FFCMD override file.
 #[test]
 fn load_skips_user_row_that_shadows_builtin_root() {
     let mut shell = make_shell();
-    let _dir = point_user_aliases_at_temp(&mut shell);
-    // Write a shadowing row DIRECTLY to the file (bypassing save-time validation).
-    let path = shell.user_aliases_path().expect("path");
+    let dir = point_user_aliases_at_temp(&mut shell);
+    let path = override_file(&dir, "en", "FFCMD");
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    let rows = vec![UserAliasRowToml {
-        surface: "CONFIG".to_string(),
-        canonical: "EDIT".to_string(),
-        environment: AliasEnvironment::Ffcmd,
-        command_template: String::new(),
-        localisation_key: String::new(),
-    }];
-    std::fs::write(
-        &path,
-        super::user_aliases::serialise_user_aliases(&rows).unwrap(),
-    )
-    .unwrap();
-    // Refresh the live store from the file.
+    let rows = vec![override_row("CONFIG", "EDIT", AliasEnvironment::Ffcmd)];
+    std::fs::write(&path, user_aliases::serialise_user_aliases(&rows).unwrap()).unwrap();
     shell.refresh_alias_store_in_place();
     use super::locale_resolver::LocaleResolveOutcome;
-    // CONFIG still resolves to CONFIG (the built-in root), NOT to the shadowing
-    // EDIT: the user row was skipped.
     assert_eq!(
         shell.resolve_locale_verb("CONFIG", "FFCMD"),
         LocaleResolveOutcome::Root("CONFIG".to_string()),
-        "a user row shadowing a built-in root is skipped at load"
+        "a user override shadowing a built-in root is skipped at load"
     );
 }
 
 // Validates: command-environments Requirement 20.7 (CR-CH-067) -- when the user
-// alias store is LOADED and a row's root is NOT a valid root of its declared
-// environment, that row is SKIPPED (with a WARN) and loading CONTINUES: a VALID
-// row loaded alongside it is still applied, no valid row is dropped, and the load
-// does not error or panic. Here the invalid row declares the FFEDIT root FIND
-// under FFCMD (FIND is an FFEDIT in-buffer root, not an FFCMD root); the valid
-// row is an FFCMD GSEARCH alias. The invalid row is written DIRECTLY to the file
-// (bypassing save-time validation) so the LOAD path is what enforces it.
+// override is LOADED and a row's root is NOT a valid root of its environment,
+// that row is SKIPPED (with a WARN) and loading CONTINUES: a VALID row loaded
+// alongside it is still applied. Here the invalid row declares the FFEDIT root
+// FIND in the FFCMD override file.
 #[test]
 fn load_skips_user_row_with_root_invalid_in_environment() {
     let mut shell = make_shell();
-    let _dir = point_user_aliases_at_temp(&mut shell);
-    let path = shell.user_aliases_path().expect("path");
+    let dir = point_user_aliases_at_temp(&mut shell);
+    let path = override_file(&dir, "en", "FFCMD");
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     let rows = vec![
         // INVALID: FIND is not an FFCMD root -> skipped-with-WARN at load.
-        UserAliasRowToml {
-            surface: "BADROW".to_string(),
-            canonical: "FIND".to_string(),
-            environment: AliasEnvironment::Ffcmd,
-            command_template: String::new(),
-            localisation_key: String::new(),
-        },
+        override_row("BADROW", "FIND", AliasEnvironment::Ffcmd),
         // VALID: GSEARCH is an FFCMD root -> applied.
-        UserAliasRowToml {
-            surface: "GG".to_string(),
-            canonical: "GSEARCH".to_string(),
-            environment: AliasEnvironment::Ffcmd,
-            command_template: String::new(),
-            localisation_key: String::new(),
-        },
+        override_row("GG", "GSEARCH", AliasEnvironment::Ffcmd),
     ];
-    std::fs::write(
-        &path,
-        super::user_aliases::serialise_user_aliases(&rows).unwrap(),
-    )
-    .unwrap();
-    // Load from the file (must not error/panic even with the invalid row).
+    std::fs::write(&path, user_aliases::serialise_user_aliases(&rows).unwrap()).unwrap();
     shell.refresh_alias_store_in_place();
     use super::locale_resolver::LocaleResolveOutcome;
-    // The invalid row was SKIPPED: BADROW does not resolve.
     assert_eq!(
         shell.resolve_locale_verb("BADROW", "FFCMD"),
         LocaleResolveOutcome::Unknown("BADROW".to_string()),
         "a row whose root is invalid in its environment is skipped at load"
     );
-    // The VALID row loaded alongside it is still applied (not dropped).
     assert_eq!(
         shell.resolve_locale_verb("GG", "FFCMD"),
         LocaleResolveOutcome::Root("GSEARCH".to_string()),
@@ -311,20 +287,18 @@ fn load_skips_user_row_with_root_invalid_in_environment() {
     );
 }
 
-// Validates: command-configurator Requirement 5.4 -- a Save that fails
-// validation (built-in-root shadow) surfaces an error and leaves the on-disk
-// file UNCHANGED.
+// Validates: command-configurator Requirement 5.4 -- a Save that fails validation
+// (built-in-root shadow) surfaces an error and leaves the on-disk override
+// UNCHANGED.
 #[test]
 fn save_validation_failure_leaves_file_unchanged() {
     let mut shell = make_shell();
     let dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
-    // First, a valid save establishes a known file.
     shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
     save(&mut shell);
-    let path = dir.path().join("aliases").join("user.toml");
+    let path = override_file(&dir, "en", "FFCMD");
     let before = std::fs::read_to_string(&path).expect("file written");
-    // Now author an invalid set (CONFIG shadows a built-in root) and Save.
     shell.alias_editor_panel.rows = vec![row("CONFIG", "EDIT", AliasEnvironment::Ffcmd, "")];
     save(&mut shell);
     assert!(
@@ -334,24 +308,19 @@ fn save_validation_failure_leaves_file_unchanged() {
     let after = std::fs::read_to_string(&path).expect("file still present");
     assert_eq!(
         before, after,
-        "a failed save leaves the on-disk file unchanged"
+        "a failed save leaves the on-disk override unchanged"
     );
 }
 
-// Validates: command-configurator Requirement 5.8 -- a parameterised alias
+// Validates: command-configurator Requirement 6.7 -- a parameterised alias
 // authored in the editor expands/dispatches per CR-NR-112: ECOB -> EDIT with
 // template FFWB.COBOL.MASTER(&1), saved, then `ecob helloW` rewrites to
-// `EDIT FFWB.COBOL.MASTER(helloW)` through the existing pre-pass (no new
-// behaviour).
+// `EDIT FFWB.COBOL.MASTER(helloW)` through the existing pre-pass.
 #[test]
 fn parameterised_alias_authored_in_editor_expands_end_to_end() {
     let mut shell = make_shell();
     let _dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
-    // Author the parameterised alias. At a fresh shell the active tab is the POM,
-    // whose environment is FFCMD, so author the row in FFCMD so the active-env
-    // pre-pass (which the front door uses) sees it; the ffcmd/ffedit ROUTING is
-    // separately proven by `user_rows_route_into_their_target_environment`.
     let env = shell.active_environment_name();
     let environment = if env == "FFEDIT" {
         AliasEnvironment::Ffedit
@@ -361,11 +330,9 @@ fn parameterised_alias_authored_in_editor_expands_end_to_end() {
     shell.alias_editor_panel.rows = vec![row("ECOB", "EDIT", environment, "FFWB.COBOL.MASTER(&1)")];
     save(&mut shell);
     assert!(shell.alias_editor_panel.error.is_none());
-    // The authored parameterised alias expands through the EXISTING CR-NR-112
-    // pre-pass (no new behaviour): `ecob helloW` -> `EDIT FFWB.COBOL.MASTER(helloW)`.
     assert_eq!(
         shell.rewrite_verb_to_root("ecob helloW"),
         "EDIT FFWB.COBOL.MASTER(helloW)",
-        "the authored parameterised alias expands per CR-NR-112 (Req 5.8)"
+        "the authored parameterised alias expands per CR-NR-112 (Req 6.7)"
     );
 }
