@@ -4157,14 +4157,15 @@ suite PASS. -->
 > root. Removing the literal cleans the FFCMD root set `root_commands("FFCMD")`
 > enumerates (CR-CH-067 Req 20) while typing `=FILES` keeps working via the generic
 > `=` jump. The legitimate two-word verb `FILE CATALOGS` is LEFT UNCHANGED.
-> IMPLEMENTED (CR-CH-070): the literal was removed and the proving tests were
-> authored. VERIFICATION CAVEAT: the scoped `cargo check`/`clippy`/`fmt` and
-> `cargo test -p ff-desktop` runs could NOT be observed this session (the machine's
-> terminal entered the known dead-output state mid-compile); the change and tests
-> are verified STATICALLY. Agent verification = compile/clippy/fmt clean + scoped
-> `-p ff-desktop` tests; the authoritative full `cargo gate` + scoped test run is
-> the OWNER's manual run. Criteria from
-> docs/specs/command-environments/requirements.md Req 22.
+> IMPLEMENTED + AGENT-VERIFIED (CR-CH-070): the literal was removed and the
+> proving tests were authored. Scoped `cargo check -p ff-desktop` and
+> `cargo clippy -p ff-desktop -- -D warnings` both finished CLEAN this session,
+> and `cargo fmt -p ff-desktop` rewrote nothing (format clean, verified by effect).
+> VERIFICATION CAVEAT: the test-profile run (`cargo test -p ff-desktop`) could NOT
+> be observed -- the machine's terminal entered the known dead-output state during
+> the heavier test build. The authoritative scoped `cargo test -p ff-desktop` run
+> and the full `cargo gate` are the OWNER's manual run (testing.md execution
+> split). Criteria from docs/specs/command-environments/requirements.md Req 22.
 
 | Crate | Status | Test | Criterion |
 |-------|--------|------|-----------|
