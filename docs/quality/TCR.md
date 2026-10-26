@@ -4293,3 +4293,40 @@ suite PASS. -->
 | `ff-desktop` | ✅ | `shell::tests_nav::settings_config_option_dispatches_config` | menu-workspace Req 22.3: selecting `C` dispatches `CONFIG` (configuration-system Req 15), unchanged except for the mnemonic |
 | `ff-desktop` | ✅ | `menu_workspace::defaults::tests::ensure_menus_dir_does_not_materialise_built_in_menus` | menu-workspace Req 22.4: Settings menu remains a code-only built-in (`DEFAULT_SETTINGS_TOML` Recovery_Baseline), never written to disk on startup |
 | `ff-desktop` | ✅ | `menu_workspace::defaults::tests::default_settings_toml_has_alias_editor_and_config_mnemonic_c`, `shell::tests_nav::default_settings_toml_option_c_is_config_and_a_is_aliases` | menu-workspace Req 22.5: the `A` -> `C` remap + `A` Alias Editor insertion is a deliberate change (no existing users); the compiled Recovery_Baseline (Req 12.3) is the single source, no duplicate hardcoded list |
+
+### Phase (alias-model-simplification) -- CR-CH-072: single-layer surface-in-row alias + two-level resolution + ONE locale-aware store + Alias Editor edits per-locale aliases
+
+> Owner-endorsed SIMPLIFICATION that supersedes the three-layer / two-store
+> command-surface model (CR-NR-109/111/113) and amends CR-NR-112 and CR-CH-071.
+> All rows NOT COVERED (gate authored; docs-only; no code yet). Flip to PASS as
+> the CR-CH-072 tasks land (localization Task group 23-30; command-environments
+> Task group 32). Criteria from docs/specs/localization/requirements.md Req 13,
+> command-environments Req 2b, command-configurator Req 6, and the amended Req 11/12/14/18.
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.1: surface stored in row; one lookup surface->root; no localisation_key/verb-* for command surfaces (Task 23.1/23.2) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.2: command surface resolves via the two-level Req 2b path under the diacritic fold; root dispatched/persisted (Task 24.1) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.3: DESCRIPTION/TITLE .ftl localisation unchanged; only verb-* command-surface indirection removed (Task 28.1) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.4: menu option references an alias; renders in-row surface + dispatches root via one path; no reverse-derivation (Task 25.1/25.2) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.5: ONE effective table = shipped seed overlaid by user override; override wins (Task 26.1/26.2) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.6: shipped af seed works out of box; every row customisable to the user override (Task 26.2/26.3) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.7: after save, effective table + menu reflect the edited surface (Task 27.3) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.8: CR-NR-112 parameter template retained + expands unchanged (Task 24.3) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.9: af POC non-regressing via one-layer model (POM+Settings render af; roots dispatch; two-level holds) (Task 28.2/29.1) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | command-environments Req 2b.1-2b.3: active-env alias->root->reject then FFCMD same; same path typed+menu (Task 32.1) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | command-environments Req 2b.4: fold + prelude/shadowing precedence + persisted root (Task 32.3) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | command-environments Req 2b.5: no new dispatcher; CommandTarget/resolve_target unchanged (Task 32.2) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.1: Alias Editor shows active-locale effective table (af surfaces visible) (Task 27.1/27.2) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.2: rows show surface/root/env/template; no L18N column (Task 27.2) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.3/6.4: save writes user override (never seed); menu reflects edit after save (Task 27.3/27.4) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.5: CR-CH-071 Save/End/Cancel/Return/Refresh over the override store (Task 27.4) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.6: validation discipline on override rows; override wins over seed surface (Task 27.5) |
+| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.7 / semantics Req 14.1 amended: template editable; localisation_key field dropped (Task 23.2) |
+
+| Summary | Count |
+|---------|-------|
+| ✅ PASS | 0 |
+| ❌ FAIL | 0 |
+| 🔲 MANUAL | 0 |
+| 🔴 NOT COVERED | 18 |

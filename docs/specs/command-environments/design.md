@@ -1467,3 +1467,52 @@ Requirement 10 criterion 10.2 / criterion 14, CR-CH-052) and the existing bare
 `FILES` classifier arm. It REMOVES a redundant, malformed literal; it adds no
 dispatcher, no navigation stack, no persistence format, and reshapes no public
 framework type. NOT a framework change.
+
+---
+
+## CR-CH-072 -- Two-level resolution over the in-row surface (Requirement 2b)
+
+### Overview
+
+CR-CH-072 records the owner-confirmed TWO-LEVEL resolution model and points it at
+the simplified single-layer alias surface. The alias DATA model, the per-locale
+store collapse, the menu-option-references-an-alias change, and the Alias Editor's
+active-locale view are designed in `docs/specs/localization/design.md`
+("CR-CH-072 -- Single-layer surface-in-row alias + ONE locale-aware store"); this
+section covers the RESOLUTION PATH that lives in the command-environments spec and
+cross-references the localization design for the data/store/editor concerns.
+
+### The resolution path (no new dispatcher)
+
+The two-level contract (Requirement 2b) IS the existing `rewrite_verb_to_root`
+pre-pass (`shell/locale_resolver.rs`) running before `ff_command::resolve_target`
+at the two seams it already serves (`shell/dispatch.rs` typed front door,
+`shell/commands_menu.rs` menu selection). FFCMD remains `resolve_target`; the
+active-environment step is the already-present pre-`resolve_target` stage (the
+B080 front door, Requirement 3). The algorithm:
+
+```
+# Level 1 -- ACTIVE Command Environment
+1a. V matches an In_Row_Surface in ACTIVE.alias_table[locale] -> root; execute(root)
+1b. else V is a root of ACTIVE                                -> execute(V)
+1c. else REJECT and pass V back
+# Level 2 -- FFCMD base (receives any string ACTIVE rejected)
+2a. V matches an In_Row_Surface in FFCMD.alias_table[locale]  -> root; execute(root)
+2b. else V is a root of FFCMD                                 -> execute(V)
+2c. else                                                      -> unresolved-command result
+```
+
+Each surface comparison uses the diacritic-insensitive fold (localization
+Req 11.11); an alias carrying a `command_template` expands it (CR-NR-112) before
+`resolve_target`. The resolved ROOT is recorded/persisted (Req 6a.2); the
+In_Row_Surface is input/display only. EXACTLY two levels; the SAME path for typed
+and menu-selected commands (no render-time reverse-derivation).
+
+### What is NOT changing
+
+`CommandTarget` and `resolve_target` are unchanged; FFCMD = `resolve_target`; no
+second dispatcher, no second navigation stack, no new persistence format. The
+FFCMD/FFEDIT root sets (CR-CH-069/070), active-wins (Req 5), the prelude/shadowing
+precedence (Req 6a.4), and the WorkspaceContext focus contract are unchanged. This
+is a re-statement of the existing pre-pass contract plus the alias-surface source
+collapse; NOT a framework change.

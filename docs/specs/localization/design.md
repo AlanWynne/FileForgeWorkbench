@@ -828,3 +828,171 @@ PROPOSED (future) cross-spec change: structured-message text lives as ordinary
 Growing that catalogue data beyond the English seed is future work under this
 spec's incremental extraction; it is marked PROPOSED here, not committed in this
 gate.
+
+---
+
+## CR-CH-072 -- Single-layer surface-in-row alias + ONE locale-aware store
+
+### Overview
+
+CR-CH-072 is a SIMPLIFICATION that unwinds complexity the owner rejected. The
+delivered command-alias localisation used THREE layers of interpretation (alias
+row -> `localisation_key` -> `verb-*` Fluent entry) and TWO stores (the shipped
+per-locale `i18n/<locale>/aliases/*.toml` catalogue, which actually localises the
+menus but is invisible/uneditable in-app; and the CR-NR-113 user store, which the
+Alias Editor edits but which does NOT localise the menus). This design collapses
+command-surface localisation to ONE layer (the surface lives in the alias row) and
+the alias data to ONE locale-aware store per environment (shipped read-only seed
+overlaid by a user per-locale override), and makes the Alias Editor edit THAT
+effective table. DESCRIPTION and TITLE localisation (ordinary `.ftl` via the
+Catalogue_Lookup_Seam) is UNCHANGED; routing/dispatch/persistence is UNCHANGED (the
+ROOT stays the dispatched/persisted identity).
+
+### The unified AliasEntry shape
+
+The in-memory alias entry (`shell/environment.rs` `AliasEntry`) and the on-disk row
+(`shell/alias_reader.rs` `AliasRowToml`) collapse to:
+
+```
+AliasEntry / AliasRowToml:
+  surface          : String            // the In_Row_Surface (localised, authoritative display/typeable text)
+  canonical (root) : String            // the ROOT command (dispatched + persisted identity)
+  command_template : Option<String>    // CR-NR-112 parameter template, RETAINED (e.g. "FFWB.COBOL.MASTER(&1)")
+  environment      : AliasEnvironment  // ffcmd | ffedit (per-row target CE; default ffcmd)
+```
+
+The `localisation_key` field is REMOVED. There is NO `verb-*` lookup for command
+surfaces. The surface is matched under the existing diacritic-insensitive fold
+(localization Req 11.11, CR-CH-065) so a plain-keyboard user can type the folded
+form. Identity rows (canonical -> itself) are still auto-synthesised (Req 11.3) so
+the root is always resolvable; an auto-identity row is overridable by an explicit
+row (Req 11.4).
+
+Decision -- surface vs localisation_key as authoritative: the SURFACE is chosen as
+authoritative (owner point 2: "surface in the alias row"). Rationale: it removes an
+indirection and a duplicate store of the same text (today `surface = "INSTELLINGS"`
+AND `verb-settings = INSTELLINGS` both exist); one source of truth cannot drift.
+
+### The single resolution algorithm and where it lives
+
+Resolution is the EXISTING `rewrite_verb_to_root` pre-pass (`shell/locale_resolver.rs`)
+called at the two seams it already serves -- the typed front door
+(`shell/dispatch.rs`) and menu selection (`shell/commands_menu.rs`) -- BEFORE
+`ff_command::resolve_target`. It is re-pointed at the In_Row_Surface; NO new
+dispatcher is added. The two-level contract (command-environments Req 2b):
+
+```
+resolve(V, locale L):
+  # Level 1 -- the ACTIVE Command Environment
+  if V matches an In_Row_Surface in ACTIVE.alias_table[L]   -> root = that row's canonical; execute(root); done
+  elif V is a root of ACTIVE                                 -> execute(V); done
+  else  # ACTIVE rejects, pass back
+  # Level 2 -- the FFCMD base
+  if V matches an In_Row_Surface in FFCMD.alias_table[L]     -> root = that row's canonical; execute(root); done
+  elif V is a root of FFCMD                                  -> execute(V); done
+  else                                                       -> unresolved-command result
+  # each surface comparison uses the diacritic-insensitive fold (Req 11.11);
+  # a matched alias that carries a command_template expands it (CR-NR-112) before resolve_target
+```
+
+Exactly two levels, one path, identical for typed and menu-selected commands.
+
+### How a menu option references an alias (owner reservation #3)
+
+Today a menu option stores the ROOT in its `command` field and the localised
+surface is reverse-derived at render time (a bespoke special case). The redesign
+makes the option reference an alias so render AND dispatch use the one path.
+
+Decision -- OPEN (recommended, for owner CONFIRM): store the ROOT in the option's
+`command` field AND mark the option "resolve-as-alias", rather than storing an
+alias id/surface-key. At render the Menu_Workspace looks up the active-locale
+In_Row_Surface whose canonical equals the option's root (per-part fallback to the
+root/English surface when absent, Req 12.8) and DISPLAYS it; on selection the SAME
+referenced verb is fed through the Req 2b resolver to the root. Rationale: the
+persisted identity stays the ROOT (Req 10.3 / 11.9 unchanged, no migration of
+saved menus), the render path stops reverse-deriving a surface from a translated
+string and instead reads the row's authoritative surface, and no new option field
+or id scheme is introduced. The alternative (store an alias id/surface-key on the
+option) was rejected: it would make the persisted value locale-dependent and would
+need a migration of every saved menu.
+
+### The per-locale store model (precedence, merge)
+
+For an active locale L and environment ENV the EFFECTIVE table is:
+
+```
+shipped seed  i18n/<locale>/aliases/<ENV>.toml     (read-only, ships af out of the box)
+   overlaid by
+user override <User_Data_Dir>/FileForgeWorkbench/aliases/<locale>/<ENV>.toml  (editable)
+```
+
+User override WINS where a surface is defined in both (it is the user's explicit
+customisation, localization Req 13.5). The Identity_Base + per-locale overlay +
+user-third-overlay THREE-layer stack (CR-NR-113 Req 5.6/5.7) collapses to this ONE
+overlay chain per environment-per-locale. The existing `apply_locale_overlay` seam
+is reused for the seed->override merge (no new overlay mechanism); the reload seam
+(`seed_and_overlay_for_locale`) re-applies seed + override in one pass so a save
+goes live without restart.
+
+Decision -- OPEN (recommended, for owner CONFIRM): KEEP the shipped catalogues in
+`i18n/<locale>/aliases/` as a READ-ONLY seed with the user override layered on top,
+rather than copying them into the user store on first run. Rationale: preserves
+out-of-box `af` and gives clean upgrades (a new shipped surface appears
+automatically unless the user has overridden it).
+
+### The Alias Editor's active-locale effective view
+
+The Alias Editor (command-configurator Req 6) shows the EFFECTIVE table for the
+active locale -- seed overlaid by override -- so an `af` user SEES the shipped `af`
+surfaces (the fix for "I don't see any Afrikaans aliases"). Edits write to the user
+override for the active locale/ENV only; the seed is never written. The CR-CH-071
+ISPF semantics operate over the override: SAVE persists the override and stays;
+CANCEL/RETURN discards; REFRESH reloads the effective table. The CR-CH-068 column
+layout drops the L18N (localisation-key) column (there is no command-surface key
+any more); the remaining columns are Act / CE / Root / ALIAS(surface) / Parameters.
+
+### Migration of the current af data
+
+The shipped `af/aliases/FFCMD.toml` rows currently carry
+`localisation_key = "verb-settings"` etc., and `af/ff-desktop-verbs.ftl` carries
+`verb-settings = INSTELLINGS` etc. The migration:
+
+1. DROP the `localisation_key` line from each `[[alias]]` row; the existing
+   `surface = "INSTELLINGS"` already holds the localised text, so the row becomes
+   `surface` + `canonical` (+ optional `command_template`). No surface text is lost
+   (the surface was already duplicated into the row).
+2. The `verb-*` keys in `af/ff-desktop-verbs.ftl` and `en/ff-desktop-verbs.ftl`
+   become UNUSED for command surfaces and are retired (DESCRIPTION/TITLE keys in
+   `menus.ftl` are UNCHANGED and keep localising descriptions/titles).
+3. The menus must still render `af` -- verified by the test matrix: because the
+   surface is unchanged and is now read directly, POM + Settings render the same
+   `af` surfaces with ONE lookup instead of three.
+
+This design BUILDS ON the current uncommitted `af` data (the surfaces are reused);
+it does not discard it. See the gate-summary sequencing note: that uncommitted data
+should be committed/carried before the rework so it is not lost.
+
+### What is NOT changing
+
+FFCMD/FFEDIT root sets (CR-CH-069/070 placement + `=FILES` fix), command routing,
+the single front door, active-wins, code-only built-in menus (`DEFAULT_*_TOML`),
+the DESCRIPTION/TITLE `.ftl` localisation, the WorkspaceContext focus contract, and
+the ISPF Save/End/Cancel/Return/Refresh BEHAVIOUR (CR-CH-071). The CR-NR-112
+parameter-template expansion is retained byte-for-byte. The mnemonic stays English
+(it does not localise; CR-NR-111 Req 12.3 source unchanged).
+
+### Migration / supersession table
+
+| Prior criterion | Disposition under CR-CH-072 | How observable behaviour is preserved |
+|-----------------|------------------------------|----------------------------------------|
+| CR-NR-109 loc Req 11.1/11.2 (`localisation_key` + `t(key)` surface) | SUPERSEDED for command surfaces | surface stored in row, resolved by one lookup; same displayed text |
+| CR-NR-109 loc Req 11.3/11.4 (identity rows) | RETAINED (over in-row surface) | root always resolvable; identity overridable |
+| CR-NR-109 loc Req 11.6 (resolver order) | RETAINED (= Req 2b two-level) | same active-env-then-FFCMD order |
+| CR-NR-109 loc Req 11.11-11.13 (diacritic fold) | RETAINED (applies to in-row surface) | plain-keyboard input still resolves |
+| CR-NR-111 loc Req 12.2/12.4 (menu stores root, reverse-derive surface) | AMENDED (option references alias; one path) | menus render full af; per-part fallback kept |
+| CR-NR-111 loc Req 12.3 (mnemonic source) | UNCHANGED | mnemonics stay English |
+| CR-NR-112 semantics Req 14.1 (4-field record) | AMENDED (drop localisation_key; 3 fields) | template feature unchanged |
+| CR-NR-112 template expansion (14.2-14.4) | RETAINED byte-for-byte | ecob &1 still expands |
+| CR-NR-113 configurator Req 5.11 (user-store-only) | SUPERSEDED (editor edits per-locale aliases) | editor now shows/edits af surfaces |
+| CR-NR-113 configurator Req 5.6/5.7 (3-overlay store) | SUPERSEDED (one seed + user override) | save goes live; af seeded out of box |
+| CR-CH-071 Req 20a (ISPF save semantics) | PRESERVED (over the override store) | Save/End/Cancel/Return/Refresh unchanged |

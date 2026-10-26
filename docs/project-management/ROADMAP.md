@@ -300,6 +300,35 @@ localisation-aware and avoids re-touching new UI and merge collisions.
      Task 30. See command-environments Req 21, change-log CR-CH-069,
      command-semantics Req 12, CR-CH-067 (the validation safety net), and the
      deferred `docs/specs/sequence-numbers/` NUMBER engine.
+   - **CR-CH-072 (simplified single-layer command-alias + menu-localisation model:
+     ONE alias table per environment surface->root DIRECT (no verb-* layer), a
+     single active-env-then-FFCMD resolution, menu options reference an alias, ONE
+     locale-aware store shipped-seed + user per-locale override fully editable in
+     the Alias Editor)** GATE AUTHORED / PENDING OWNER APPROVAL. Owner-endorsed
+     SIMPLIFICATION after the af menus rendered but the Alias Editor showed no
+     Afrikaans aliases: the delivered architecture used THREE interpretation layers
+     (alias row -> localisation_key -> verb-* Fluent entry) and TWO stores, the
+     menu-localising one (shipped `i18n/<locale>/aliases`) being invisible/
+     uneditable in-app. The rework COLLAPSES command-surface localisation to ONE
+     layer (surface stored in the alias row), the resolution to EXACTLY two levels
+     (active Command Environment alias-then-root, then FFCMD the same), the menu
+     option to REFERENCE an alias (render + dispatch via the one path, retiring the
+     render-time reverse-derivation), and the data to ONE locale-aware store per
+     environment (shipped read-only seed overlaid by a user per-locale override)
+     that the Alias Editor edits as the active-locale effective table. SUPERSEDES/
+     AMENDS CR-NR-109/111/112/113 and preserves CR-CH-071 (observable wins kept: af
+     menus render, ecob &1 expands, ISPF save semantics, root dispatch unchanged).
+     REMOVES layers; builds ON the single front door + existing AliasTable +
+     apply_locale_overlay; no new dispatcher/navigation/persistence-format; NOT a
+     framework change. FOUR OPEN DECISIONS parked for owner CONFIRM (override store
+     path/shape; how a menu option references its alias; keep shipped seed read-only
+     vs copy-to-user; retain CR-NR-112 template). Governing plan:
+     `docs/specs/localization/tasks.md` CR-CH-072 Task group 23-30 +
+     `docs/specs/command-environments/tasks.md` Task group 32. See localization
+     Req 13, command-environments Req 2b, command-configurator Req 6, change-log
+     CR-CH-072, and the gate-summary at
+     `.agents/tasks/alias-model-simplification/gate-summary.md`. Implementation is a
+     SEPARATE run after approval.
    - **CR-CH-071 (ISPF Save/End/Cancel/Return/Refresh for editable Contexts:
      SAVE/CANCEL/REFRESH as FFCMD verbs handled per-focused-editable-Context, with
      FFEDIT active-wins override of buffer SAVE; retire the Alias Editor private

@@ -362,6 +362,12 @@ split.
    is present, THE displayed surface text for that alias SHALL be resolved through
    the EXISTING `ff-i18n` Catalogue_Lookup_Seam (`t(key)`, Requirement 3) against
    the active locale, adding NO new lookup mechanism.
+   - SUPERSEDED by CR-CH-072 (Requirement 13.1): for COMMAND SURFACES the
+     `localisation_key -> verb-*` indirection is REMOVED. The alias entry becomes
+     `(surface-form, canonical-verb, command_template?)` with the localised
+     surface stored DIRECTLY in the row (the In_Row_Surface) and resolved by a
+     SINGLE lookup. The `.ftl` surface resolution of this criterion no longer
+     applies to command surfaces; DESCRIPTION/TITLE `.ftl` lookups are unchanged.
 2. THE resolved localised string for an alias SHALL be the displayed surface
    form for that locale, AND SHALL be ACCEPTED as a typeable surface form for that
    locale: what a user sees for a verb is a form the user can type to invoke it.
@@ -588,6 +594,125 @@ identifier used for dispatch and persistence (Requirement 10.3, 11.9 unchanged).
     Menu_Workspace concern localised via the catalogues and alias layer, while the
     per-Kind chrome localises via its own existing seams; this requirement adds no
     new Kinds-registry field.
+
+---
+
+### Requirement 13: Single-layer surface-in-row alias + ONE locale-aware store (CR-CH-072)
+
+**User Story:** As a foreign-language user, I want ONE place -- the Alias Editor --
+to see and customise the aliases that localise my menus in my own language, with
+a command resolving through ONE lookup, not three.
+
+This requirement is the owner-endorsed SIMPLIFICATION that SUPERSEDES the
+three-layer / two-store command-surface model introduced by Requirements 11 and
+12 (CR-NR-109 / CR-NR-111) and the Alias Editor scope of command-configurator
+Requirement 5 (CR-NR-113). It collapses the COMMAND-SURFACE localisation to a
+SINGLE layer and the alias data to a SINGLE locale-aware store per environment. It
+changes NOTHING about how DESCRIPTIONS and TITLES localise (ordinary Fluent
+`.ftl` translation via the Catalogue_Lookup_Seam, Requirements 3, 6, 7 -- all
+UNCHANGED) and NOTHING about routing/dispatch/persistence (the ROOT stays the
+dispatched/persisted identity, Requirement 10.3).
+
+#### Amendments to prior requirements (flagged, not silent)
+
+- **AMENDS Requirement 11.1 and 11.2** (the alias entry's optional
+  `localisation_key` and the `t(key)` surface resolution): for COMMAND SURFACES
+  the `localisation_key -> verb-*` indirection is REMOVED. The displayed/typeable
+  surface is the SURFACE STRING STORED DIRECTLY IN THE ALIAS ROW (e.g. Afrikaans
+  `INSTELLINGS`), resolved by a single lookup, NOT by `t("verb-settings")`. The
+  diacritic-insensitive input fold (Requirement 11.11-11.13) still applies to the
+  in-row surface. The auto-synthesised identity rows (Requirement 11.3, 11.4) and
+  the resolver ORDER (Requirement 11.6) are RETAINED, re-expressed over the in-row
+  surface.
+- **AMENDS Requirement 12.2 and 12.4** (the menu-option `Locale_Independent_Stored_Value`
+  = ROOT with render-time reverse-derivation of the surface): the menu option now
+  REFERENCES AN ALIAS (Requirement 13.4) so render and dispatch flow through the
+  ONE alias -> root resolution path; the bespoke render-time reverse-derivation is
+  retired. The observable wins of Requirement 12 (full `af` menus; per-part,
+  per-option fallback Requirement 12.8; mnemonics localised per Requirement 12.3)
+  are PRESERVED.
+
+#### Glossary additions
+
+- **In_Row_Surface**: the localised typeable/displayed verb text stored DIRECTLY
+  on an alias row (the authoritative surface), replacing the
+  `localisation_key -> verb-*` command-surface indirection. DESCRIPTIONS and
+  TITLES continue to use Fluent keys; only the COMMAND SURFACE moves into the row.
+- **Locale_Aware_Alias_Store**: the SINGLE per-environment, per-locale alias store
+  for an active locale, formed as the shipped read-only SEED
+  (`i18n/<locale>/aliases/<ENV>.toml`) OVERLAID by the User_Locale_Override_Store.
+  Replaces the Identity_Base + per-locale overlay + user-third-overlay stack with
+  ONE effective table per environment-per-locale.
+- **User_Locale_Override_Store**: the user-editable per-locale override the Alias
+  Editor writes (recommended `<User_Data_Dir>/FileForgeWorkbench/aliases/<locale>/<ENV>.toml`),
+  layered on top of the shipped seed for the active locale. The shipped seed is
+  never written by the editor.
+
+#### Acceptance Criteria
+
+1. AN alias row SHALL carry its localised SURFACE string DIRECTLY (the
+   In_Row_Surface), together with its ROOT (canonical) command and an OPTIONAL
+   parameter template; it SHALL NOT carry a `localisation_key` for the command
+   surface, and the displayed/typeable surface SHALL NOT be resolved through the
+   Catalogue_Lookup_Seam (`t(key)` / `verb-*`). There SHALL be exactly ONE lookup
+   (surface -> root), not three (row -> key -> catalogue).
+2. WHEN a command surface `V` is entered at active locale `L`, THE resolution
+   SHALL use the SINGLE two-level path of command-environments Requirement 2b (the
+   active Command Environment's alias table then its roots, then FFCMD's alias
+   table then its roots), comparing `V` against the In_Row_Surface of each
+   active-locale row under the diacritic-insensitive fold (Requirement 11.11); a
+   found alias SHALL resolve to its ROOT and that ROOT SHALL be dispatched and
+   persisted (Requirement 10.3 unchanged).
+3. THE DESCRIPTION and TITLE localisation of menus, chrome, messages, and help
+   SHALL be UNCHANGED: they continue to resolve through the Catalogue_Lookup_Seam
+   against the active locale's `.ftl` catalogues (Requirements 3, 6, 7). ONLY the
+   command-surface `verb-*` indirection is removed; no other `.ftl` lookup is
+   affected.
+4. A menu-kind option SHALL REFERENCE AN ALIAS rather than storing a root whose
+   surface is reverse-derived at render time: AT render the option SHALL DISPLAY
+   the active-locale In_Row_Surface of its referenced alias (falling back per
+   Requirement 12.8 to the root/English surface when the active locale has no
+   row), and WHEN selected the same referenced verb SHALL be fed through the
+   Requirement 13.2 resolver to the ROOT command. Rendering and dispatch SHALL use
+   the SAME single path; the render-time reverse-derivation special case SHALL NOT
+   be used.
+   - NOTE (storage SHAPE): the exact persisted form of the option's alias
+     reference was OPEN DECISION 2 of the CR-CH-072 gate. The owner CONFIRMED the
+     recommended default: the option stores its ROOT and is marked
+     "resolve-as-alias" (render resolves the active-locale In_Row_Surface by the
+     root; dispatch resolves the root), keeping the persisted identity = root so
+     NO saved-menu migration is required. This criterion states the observable
+     contract; the confirmed shape is recorded here and in the design.
+5. THE alias data for an active locale and environment SHALL be a SINGLE
+   Locale_Aware_Alias_Store = the shipped read-only SEED
+   (`i18n/<locale>/aliases/<ENV>.toml`) OVERLAID by the User_Locale_Override_Store
+   for that locale and environment. THE two-store / three-overlay model of
+   Requirement 5.6/5.7 and command-configurator Requirement 5.6/5.7 SHALL be
+   collapsed to this one effective table; where the user override and the shipped
+   seed both define a surface, THE user override SHALL WIN (it is the user's
+   explicit customisation).
+6. THE shipped seed SHALL ship pre-authored `af` rows so that a fresh `af` install
+   localises its menus OUT OF THE BOX with NO user editing; EVERY seeded row SHALL
+   be customisable: a user MAY change any surface (including an English-tool user
+   giving an English-base install his own localised surfaces) and the change SHALL
+   be persisted to the User_Locale_Override_Store, never to the shipped seed.
+7. WHEN the user edits an alias in the Alias Editor for active locale `L`, THE
+   effective Locale_Aware_Alias_Store for `L` SHALL reflect the edit after save
+   (the editor shows the shipped seed overlaid by the user override -- the active
+   locale's EFFECTIVE table), and the corresponding MENU option SHALL render the
+   edited surface after save (the owner's end-to-end expectation: edit an `af`
+   alias, the menu reflects it).
+8. THE parameter template (Requirement 11 / command-semantics Requirement 14,
+   CR-NR-112) SHALL be RETAINED as an optional field on the unified alias row and
+   SHALL expand EXACTLY as before (`&1..&N`, `&*`); it is a shorthand feature, NOT
+   a localisation layer, and its removal is NOT implied by this requirement.
+9. THE change SHALL be observationally NON-REGRESSING for the shipped `af` POC:
+   POM + Settings SHALL render fully in `af` (INSTELLINGS / KATALOGUSSE / LEERS /
+   HULP / KONFIG / ALIASSE / TEMA / KIESLYSTE / SLEUTELS / SOORTE / HERSTEL KAAL;
+   descriptions in `af`; mnemonics stay English), commands SHALL dispatch to the
+   English root underneath, and the two-level active-env-then-FFCMD resolution
+   SHALL hold -- all via the one-layer model, with the `verb-*` command-surface
+   keys no longer consulted for the surface.
 
 ---
 

@@ -281,3 +281,76 @@ NOT change the on-disk `UserAliasRowToml` shape (5.1), the dispatch front door
 23. FIRST-TAB FOCUS (MANDATORY). THE Alias_Editor SHALL report its interior focus through the single `WorkspaceContext::render -> InteriorFocus` path, with a STABLE `egui::Id` on the FIRST interior control, AND the FIRST Tab from the `Command ===>` field SHALL land EXACTLY on that first interior control, with NO phantom stop. THE first interior control SHALL be the FILTER row's filter CE dropdown (its `response.id` captured fresh each frame, per workspace-conformance.md), matching design 9.10.8 part 3. (This names exactly ONE deterministic target so the mandatory first-Tab test asserts a single `egui::Id`; the filter Root field is NOT the first interior control.) THIS SHALL be proven by a full-shell egui_kittest first-Tab test (workspace-conformance.md; a specialisation of criterion 5.10 for the redesigned layout).
 
 24. MODEL + FRAMEWORK UNCHANGED. THE CR-CH-068 redesign SHALL NOT change the on-disk `UserAliasRowToml` shape (criterion 5.1), the single command-dispatch front door and `ALIASES` verb registration (criterion 5.2), the `WorkspaceKind::CommandConfigurator` + `editor = "aliases"` descriptor, the per-tab Navigation_Stack return behaviour (criterion 5.9), the `pending_action` / owned-panel-swap effect pattern, or the v1 user-store-only scope (criterion 5.11). IT SHALL add NO second dispatcher and NO new session-persistence format.
+    - **SUPERSEDED by CR-CH-072 (Requirement 6 below)**: the v1 user-store-only
+      scope (criterion 5.11) is replaced -- the Alias_Editor now edits the
+      per-locale LOCALISATION aliases (the active-locale effective table = shipped
+      seed overlaid by the user per-locale override store). The on-disk ROW shape
+      changes with the simplified model: the `localisation_key` command-surface
+      field is REMOVED (the localised surface is stored directly as `surface`);
+      the row becomes `surface` + `canonical` + optional `command_template` +
+      optional `environment`. Criteria 5.13's L18N column is retired for command
+      surfaces (there is no command-surface localisation key any more). The
+      interaction model (ISPF command line, line commands, filter row, cascading
+      dropdowns, focus contract) and the ISPF save semantics (CR-CH-071) are
+      PRESERVED; only the STORE the editor reads/writes and the ROW shape change.
+
+---
+
+### Requirement 6: The Alias Editor edits the per-locale localisation aliases, active-locale effective view (CR-CH-072)
+
+**User Story:** As a foreign-language user, I want the Alias Editor to show me the
+aliases that localise MY menus for MY active locale, seeded with the shipped
+defaults and fully editable, so I can customise any command surface into my own
+language and see the menus reflect it.
+
+This requirement SUPERSEDES the v1 user-store-only scope of Requirement 5.11
+(CR-NR-113). It is the SINGLE in-app place to view and customise the localised
+menu-command aliases. It builds ON the Alias Editor Context (Requirement 5, incl.
+the CR-CH-068 ISPF redesign and the CR-CH-071 save semantics) and the simplified
+one-layer alias model (localization Requirement 13); it adds NO new Context, NO
+new dispatcher, and NO new WorkspaceKind.
+
+#### Acceptance Criteria
+
+6.1. THE Alias_Editor SHALL display the ACTIVE LOCALE's EFFECTIVE alias table for
+   each environment: the shipped read-only seed (`i18n/<locale>/aliases/<ENV>.toml`)
+   OVERLAID by the User_Locale_Override_Store for the active locale (localization
+   Requirement 13.5). WHEN the active locale is `af`, THE editor SHALL show the
+   shipped `af` surfaces (INSTELLINGS / KATALOGUSSE / LEERS / ... ) -- the explicit
+   fix for the owner-reported "I don't see any Afrikaans aliases" -- not an empty
+   or English-only list.
+
+6.2. EACH displayed row SHALL present the localised SURFACE (the In_Row_Surface),
+   the ROOT (canonical) command, the target ENVIRONMENT, and the optional
+   parameter TEMPLATE. THE editor SHALL NOT present a command-surface localisation
+   key column (the `verb-*` indirection is removed, localization Requirement 13.1);
+   the surface IS the authoritative localised text.
+
+6.3. WHEN the user edits a surface (or adds / deletes a row) and SAVEs, THE
+   Alias_Editor SHALL write the change to the User_Locale_Override_Store for the
+   ACTIVE locale and environment (localization Requirement 13.6), NEVER to the
+   shipped seed; the shipped seed SHALL remain unmodified on disk.
+
+6.4. AFTER a save, THE effective active-locale table SHALL reflect the edit and the
+   corresponding MENU option SHALL render the edited surface (localization
+   Requirement 13.7), reusing the existing reload seam so the change goes live
+   without restart. An English-base user MAY likewise customise surfaces into his
+   own language against the active locale.
+
+6.5. THE editor's SAVE / END / CANCEL / RETURN / REFRESH semantics (CR-CH-071,
+   command-environments Requirement 20a) SHALL operate over the
+   User_Locale_Override_Store: SAVE persists the override and STAYS; END / F3 saves
+   then leaves; CANCEL / RETURN discards the working changes and leaves; REFRESH
+   discards the working changes and reloads the effective table (seed + override).
+
+6.6. THE validation discipline of Requirement 5.4 / 5.19 SHALL apply to the override
+   rows (empty surface, empty root, within-environment surface->two-roots
+   collision, no-shadow of a reserved built-in root, valid (environment, root) via
+   `contains_root`); where a user override surface equals a shipped-seed surface
+   the override WINS (localization Requirement 13.5), which is the user's intended
+   customisation, not a collision.
+
+6.7. THE parameter template (CR-NR-112) SHALL remain editable on each row and SHALL
+   expand unchanged when the aliased command is invoked (localization
+   Requirement 13.8); removing the localisation-key column SHALL NOT affect the
+   template feature.

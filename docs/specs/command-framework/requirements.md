@@ -774,6 +774,15 @@ alias lookup inside `resolve_target`.
    ROOT through the SAME single `resolve_target` classifier used for every typed
    command (Requirement 15), so a localised option and its un-localised equivalent
    produce an IDENTICAL `CommandTarget` and observable result.
+   - AMENDED by CR-CH-072 (command-environments Requirement 2b, localization
+     Requirement 13): the active-locale alias surface the pre-pass translates is
+     now the In_Row_Surface stored DIRECTLY on the alias row (one lookup,
+     surface -> root), NOT a `localisation_key -> verb-*` catalogue resolution; and
+     a menu option REFERENCES an alias rather than storing a root whose surface is
+     reverse-derived at render time (the render-time reverse-derivation is
+     retired). The single-classifier routing invariant of this criterion is
+     UNCHANGED -- render and dispatch both flow through the same pre-pass +
+     `resolve_target`.
 2. THE full menu-option localisation of CR-NR-111 SHALL add NO second dispatcher,
    NO parallel resolver, and NO change to `CommandTarget` / `resolve_target` / the
    navigation stack; it is alias-surface -> root -> the existing front door

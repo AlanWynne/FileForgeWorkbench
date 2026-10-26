@@ -481,3 +481,106 @@ single new scoped test where quick; the OWNER runs the full gate and suite.
   - [x] 22.2 Update `docs/status/change-log.md` CR-NR-111 Status from GATE
         AUTHORING to IN PROGRESS / DONE as implementation proceeds and mark the
         completed tasks here. (Project standards)
+
+---
+
+## CR-CH-072 -- Single-layer surface-in-row alias + ONE locale-aware store
+
+TDD-first: write the failing test before the implementation for each task. Agent
+verification is compile/clippy/fmt clean + scoped tests; the authoritative full
+gate is the owner's manual run (gate-policy.md). Implementation follows owner
+approval of this gate (and the four OPEN DECISIONS) as a SEPARATE run.
+
+- [ ] 23. Unify the alias model and drop the command-surface localisation layer
+  - [ ] 23.1 Write failing unit tests that an `AliasEntry` / `AliasRowToml` with
+        `surface` + `canonical` (+ optional `command_template`) resolves surface
+        -> root by ONE lookup with NO `localisation_key` / `t(key)` consulted.
+        (Validates loc Req 13.1, semantics Req 14.1 amended)
+  - [ ] 23.2 Remove the `localisation_key` field from `AliasEntry` (environment.rs)
+        and `AliasRowToml` (alias_reader.rs); make the in-row `surface` the
+        authoritative display/typeable text. Keep `command_template`. (Validates
+        loc Req 13.1, 13.8)
+  - [ ] 23.3 Confirm the diacritic-insensitive fold (CR-CH-065) still applies to
+        the in-row surface (test a folded-input match). (Validates loc Req 11.11
+        retained)
+  - [ ] 23.4 Confirm auto-synthesised identity rows still resolve the root and
+        remain overridable by an explicit row. (Validates loc Req 11.3, 11.4)
+
+- [ ] 24. The single two-level resolution path (active env -> FFCMD)
+  - [ ] 24.1 Write failing tests for the two-level order: ACTIVE alias -> ACTIVE
+        root -> reject -> FFCMD alias -> FFCMD root -> unresolved, over the in-row
+        surface, identical for typed and menu-selected input. (Validates
+        command-environments Req 2b.1-2b.3, loc Req 13.2)
+  - [ ] 24.2 Re-point the existing `rewrite_verb_to_root` pre-pass
+        (`shell/locale_resolver.rs`) at the in-row surface; add NO new dispatcher;
+        keep `resolve_target` / `CommandTarget` unchanged. (Validates
+        command-environments Req 2b.5)
+  - [ ] 24.3 Confirm a matched alias carrying a `command_template` still expands
+        (&1..&N, &*) before `resolve_target`. (Validates loc Req 13.8,
+        command-semantics Req 14.2-14.4 retained)
+
+- [ ] 25. Menu option references an alias (retire render-time reverse-derivation)
+  - [ ] 25.1 Write a failing full-shell egui_kittest that a menu option renders
+        the active-locale in-row surface AND, on selection, dispatches the root via
+        the one path (no reverse-derivation). (Validates loc Req 13.4,
+        command-framework Req 18.1 amended)
+  - [ ] 25.2 Change the menu render path (`menu_workspace/`) to look up the
+        active-locale in-row surface by the option's root (per-part fallback to
+        root/English, loc Req 12.8) instead of reverse-deriving it from a
+        translated string. Keep the persisted value = root (recommended OPEN
+        DECISION 2). (Validates loc Req 13.4, 10.3)
+
+- [ ] 26. One locale-aware store: shipped seed + user per-locale override
+  - [ ] 26.1 Write failing tests for the seed-overlaid-by-override merge (user
+        override wins on a shared surface) and the collapse of the 3-overlay stack
+        to one chain per environment-per-locale. (Validates loc Req 13.5)
+  - [ ] 26.2 Add the user per-locale override reader
+        (`<User_Data_Dir>/FileForgeWorkbench/aliases/<locale>/<ENV>.toml`,
+        recommended OPEN DECISION 1) layered on the shipped
+        `i18n/<locale>/aliases/<ENV>.toml` seed via the EXISTING
+        `apply_locale_overlay` seam; extend the reload seam to re-apply seed +
+        override in one pass. (Validates loc Req 13.5, 13.6)
+  - [ ] 26.3 Confirm the shipped seed is never written by a save (save targets the
+        user override only). (Validates loc Req 13.6, configurator Req 6.3)
+
+- [ ] 27. Alias Editor edits the active-locale effective table
+  - [ ] 27.1 Write a failing full-shell test that opening the Alias Editor under
+        `af` SHOWS the shipped `af` surfaces (the "I don't see Afrikaans aliases"
+        fix). (Validates configurator Req 6.1)
+  - [ ] 27.2 Make the editor display the active-locale effective table (seed +
+        override); drop the L18N (localisation-key) column from the CR-CH-068
+        layout; keep Act / CE / Root / ALIAS(surface) / Parameters. (Validates
+        configurator Req 6.1, 6.2)
+  - [ ] 27.3 Write a failing end-to-end test: edit an `af` alias surface, SAVE, and
+        assert the user override carries it AND the menu renders the edited surface.
+        (Validates configurator Req 6.3, 6.4, loc Req 13.7)
+  - [ ] 27.4 Wire the editor save/discard/reload to the user override store; confirm
+        CR-CH-071 Save/End/Cancel/Return/Refresh semantics operate over it.
+        (Validates configurator Req 6.5)
+  - [ ] 27.5 Confirm the validation discipline (empty surface/root, within-env
+        surface->two-roots collision, no-shadow built-in root, valid (env,root)) on
+        override rows. (Validates configurator Req 6.6)
+
+- [ ] 28. Migrate the current af DATA to the one-layer shape
+  - [ ] 28.1 Remove the `localisation_key` line from each `[[alias]]` row in
+        `i18n/af/aliases/FFCMD.toml` (the `surface` already holds the af text);
+        retire the command-surface `verb-*` keys in `af`/`en`
+        `ff-desktop-verbs.ftl` (DESCRIPTION/TITLE keys in `menus.ftl` UNCHANGED).
+        (Validates loc Req 13.9)
+  - [ ] 28.2 Prove POM + Settings still render fully in `af` with ONE lookup
+        (INSTELLINGS/KATALOGUSSE/LEERS/HULP/KONFIG/ALIASSE/TEMA/KIESLYSTE/SLEUTELS/
+        SOORTE/HERSTEL KAAL; descriptions af; mnemonics English). (Validates loc
+        Req 13.9)
+
+- [ ] 29. Test matrix and coverage (the no-regression proof)
+  - [ ] 29.1 af menus still render fully; typed `af` alias resolves to root;
+        template expands; editor edits an `af` alias and the menu reflects it after
+        save; resolution falls back active-env -> FFCMD; mnemonics stay English.
+        (Validates loc Req 13.9, command-environments Req 2b)
+  - [ ] 29.2 Update the CR-CH-072 NOT-COVERED rows in `docs/quality/TCR.md` to PASS
+        as each test lands; flip the change-log Status. (Project standards)
+
+- [ ] 30. Deferrable / separable items
+  - [ ] 30.1 DEFERRABLE: authoring additional non-`af` locale alias seeds (fr/de)
+        under the one-layer shape -- separate DATA task, not required for this
+        rework. (Validates loc Req 13.6 for future locales)

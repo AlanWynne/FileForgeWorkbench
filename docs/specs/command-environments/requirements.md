@@ -178,6 +178,51 @@ other environments.
    receives `X` / `RETURN` / `EXIT` only when the active environment rejects them.
    The close-the-application effect MAY be performed by an upper layer FFCMD calls.
 
+### Requirement 2b: Two-level alias-then-root resolution over the in-row surface (CR-CH-072)
+
+**User Story:** As a user, I want a command I type to be interpreted by the active
+Command Environment first -- against its alias table, then its roots -- and, only
+if it rejects the command, by FFCMD doing the same, with EXACTLY two levels and no
+third interpretation layer.
+
+This requirement RECORDS the owner-confirmed resolution MODEL that the simplified
+alias architecture (localization Requirement 13, CR-CH-072) resolves against. It
+BUILDS ON Requirement 2a (per-environment verb ownership), Requirement 3 (the
+front-door environment router), and Requirement 6a (per-environment alias tables);
+it introduces NO new dispatcher and NO new navigation stack -- it is the existing
+`rewrite_verb_to_root` pre-pass + the active-env-then-FFCMD front door, re-stated
+as the single two-level contract and re-pointed at the In_Row_Surface
+(localization Requirement 13.1) instead of a `verb-*` catalogue lookup.
+
+#### Acceptance Criteria
+
+1. WHEN a command string `V` is submitted, THE ACTIVE Command Environment SHALL
+   process it FIRST in this order: (a) compare `V` against the In_Row_Surface of
+   each row in ITS alias table for the active locale -- WHEN an alias matches,
+   resolve `V` to that row's ROOT command and execute the root; (b) ELSE WHEN `V`
+   IS a root command of this environment, execute it; (c) ELSE REJECT `V` and pass
+   it back unchanged.
+2. WHEN the active environment REJECTS `V`, THE FFCMD base environment SHALL
+   perform the IDENTICAL process over ITS OWN alias table then ITS OWN roots
+   (step 1 (a) then (b)); WHEN FFCMD also finds neither, THE result SHALL be the
+   existing unresolved-command outcome. There SHALL be EXACTLY TWO levels -- the
+   active environment, then FFCMD -- for ALL commands.
+3. THE resolution path SHALL be THE SAME single path for a command typed on the
+   command line AND for a command issued by selecting a menu-kind option
+   (localization Requirement 13.4): both feed the referenced verb through the same
+   two-level alias-then-root resolution; NO separate menu dispatch and NO
+   render-time reverse-derivation SHALL be used.
+4. EACH alias-table lookup in step 1 (a) SHALL compare under the
+   diacritic-insensitive fold (localization Requirement 11.11) and SHALL honour the
+   prelude/shadowing precedence of Requirement 6a.4 (an alias SHALL NOT shadow a
+   prelude-owned verb; active-wins applies to roots). The ROOT resolved SHALL be
+   what is recorded and persisted (Requirement 6a.2, localization Requirement 10.3);
+   the In_Row_Surface is an input/display form only.
+5. THIS requirement SHALL add NO second dispatcher, NO second navigation stack, and
+   NO new `CommandTarget` variant: FFCMD remains `resolve_target`, and the
+   two-level model is the existing active-env step BEFORE `resolve_target`
+   (Requirement 3). The `CommandTarget` enum SHALL be unchanged.
+
 ### Requirement 3: The front-door environment router
 
 **User Story:** As a maintainer, I want environments resolved through the one
@@ -317,6 +362,12 @@ verb (FIND), so localization can extend to the VERBS without changing behaviour.
    IDENTICAL result (behaviour-neutral). The existing one-behaviour aliases
    (EXCLUDE/X, SHOW/INCLUDE) ARE this mechanism (surface forms of one canonical
    verb).
+   - AMENDED by CR-CH-072 (Requirement 2b, localization Requirement 13.1): the
+     surface compared is the In_Row_Surface stored DIRECTLY on the alias row (one
+     lookup, surface -> canonical), NOT a `localisation_key -> verb-*` catalogue
+     resolution. The per-environment alias table and the behaviour-neutral
+     canonical dispatch are UNCHANGED; only the command-surface source collapses
+     to the row.
 2. THE CANONICAL verb SHALL be what is RECORDED, PERSISTED, and used internally
    (command history, macro `command=` values, menu option `command` values,
    keybindings, session/Workspace descriptors). Aliases are COMMAND-LINE INPUT

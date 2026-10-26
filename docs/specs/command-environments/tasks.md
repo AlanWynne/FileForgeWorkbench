@@ -852,3 +852,38 @@ before any code. `[ ]` only.
 | Req 22: bare FILES still opens File Explorer | 22.2 | 31.2 |
 | Req 22: `=FILES` jump path (jump-to-POM then FILES) preserved | 22.3 | 31.3 |
 | Req 22: legitimate `FILE CATALOGS` left unchanged | 22.4 | 31.4 |
+
+---
+
+## CR-CH-072 -- Two-level resolution over the in-row surface (Requirement 2b)
+
+The alias data model, the per-locale store collapse, the menu-option change, and
+the Alias Editor view are implemented under `docs/specs/localization/tasks.md`
+(CR-CH-072 Task group 23-30). This group covers the RESOLUTION PATH only. TDD-first;
+agent verification is compile/clippy/fmt clean + scoped tests (gate-policy.md).
+
+- [ ] 32. Two-level alias-then-root resolution path
+  - [ ] 32.1 Write failing unit tests asserting the two-level order over the in-row
+        surface: ACTIVE alias -> ACTIVE root -> reject -> FFCMD alias -> FFCMD root
+        -> unresolved, identical for typed and menu-selected input. Validates:
+        Requirement 2b.1, 2b.2, 2b.3.
+  - [ ] 32.2 Confirm the existing `rewrite_verb_to_root` pre-pass is the single path
+        (no new dispatcher, `CommandTarget` / `resolve_target` unchanged) and is
+        re-pointed at the in-row surface. Validates: Requirement 2b.5.
+  - [ ] 32.3 Confirm each surface comparison uses the diacritic-insensitive fold and
+        honours the prelude/shadowing precedence (Req 6a.4), and the resolved ROOT
+        is what is persisted (Req 6a.2). Validates: Requirement 2b.4.
+  - [ ] 32.4 Scoped verification: `cargo fmt`, `cargo check -p ff-desktop`,
+        `cargo clippy -p ff-desktop -- -D warnings`, and the scoped Req-2b tests.
+        The authoritative full `cargo gate` is the owner's manual run. Validates:
+        Requirement 2b.1-2b.5.
+
+### Acceptance Criteria Coverage (CR-CH-072, Req 2b)
+
+| Requirement | Criteria | Covered by Task(s) |
+|-------------|----------|---------------------|
+| Req 2b: active-env alias -> root -> reject order | 2b.1, 2b.3 | 32.1 |
+| Req 2b: FFCMD base performs same process on reject | 2b.2 | 32.1 |
+| Req 2b: same path typed + menu-selected | 2b.3 | 32.1 |
+| Req 2b: fold + precedence + persisted root | 2b.4 | 32.3 |
+| Req 2b: no new dispatcher / CommandTarget unchanged | 2b.5 | 32.2 |

@@ -434,6 +434,7 @@ does NOT contradict CR-NR-111 Requirement 12. Builds ON the primary command pars
 #### Acceptance Criteria
 
 14.1. EACH alias entry SHALL carry FOUR parts: a ROOT command (the canonical verb), an ALIAS name (the typeable/displayed surface, e.g. `ECOB`), an optional LOCALISATION KEY (the existing display key), and an optional PARAMETER TEMPLATE string (e.g. `FFWB.COBOL.MASTER(&1)`). [CR-NR-112]
+   - AMENDED by CR-CH-072 (localization Requirement 13.1): the optional LOCALISATION KEY is REMOVED from the alias entry. The entry collapses to THREE parts -- a ROOT command, an ALIAS/SURFACE name (the In_Row_Surface, now the authoritative localised display/typeable text), and an optional PARAMETER TEMPLATE. The template feature (14.2-14.4) is UNCHANGED; only the command-surface localisation-key field is dropped.
 
 14.2. WHEN an alias that carries a non-empty Parameter_Template is invoked, THE command engine SHALL produce the fully resolved command by concatenating the alias's ROOT verb, a single space, and the template after substituting its placeholders, so `ECOB` (root `EDIT`, template `FFWB.COBOL.MASTER(&1)`) invoked as `ecob helloW` SHALL produce `EDIT FFWB.COBOL.MASTER(helloW)` -- and literal template text other than `&N`/`&*` SHALL be preserved verbatim. [CR-NR-112]
 
