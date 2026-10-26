@@ -36,9 +36,10 @@ pub(crate) struct DirOverrides {
     pub workspace_kinds: Option<PathBuf>,
     /// Override for the screen-collections directory (CR-NR-098 Wave 3).
     pub scrm: Option<PathBuf>,
-    /// Override for the User_Alias_Store FILE (CR-NR-113). Points at an isolated
-    /// `user.toml` in tests so the Alias Editor never touches the developer's
-    /// real store.
+    /// Override for the User_Locale_Override_Store BASE directory (CR-CH-072).
+    /// Points at an isolated `aliases/` base in tests so the Alias Editor never
+    /// touches the developer's real override store; the per-locale, per-ENV
+    /// override file is `<base>/<locale>/<ENV>.toml`.
     pub user_aliases: Option<PathBuf>,
 }
 

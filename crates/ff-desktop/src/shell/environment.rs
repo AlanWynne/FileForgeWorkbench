@@ -32,53 +32,61 @@
 //! `AliasTable`; the shared contract (`CommandEnvironment` + `EnvDispatchOutcome`)
 //! lives in `environment_contract.rs`, re-exported here (CR-NR-109 400-line split).
 
-/// One ALIAS TABLE entry: a surface form, the canonical (root) verb it resolves
-/// to, and an OPTIONAL localisation key (CR-NR-109, localization Requirement
-/// 11.1). The canonical verb is the dispatched/persisted identity; the surface
-/// and localisation key are DISPLAY/typeable concerns only.
+/// One ALIAS TABLE entry: a surface form (the In_Row_Surface) and the canonical
+/// (root) verb it resolves to, plus an OPTIONAL parameter template.
 ///
-/// WHERE `localisation_key` is `Some(k)`, the DISPLAYED (and typeable) surface
-/// for this entry is `ff_i18n::t(k)` resolved against the ACTIVE locale, reusing
-/// the EXISTING Catalogue_Lookup_Seam with no new lookup mechanism (Req 11.1,
-/// 11.2). WHERE it is `None`, the `surface` string itself is both displayed and
-/// typeable (the pre-CR-NR-109 behaviour, so the `en` default is unchanged).
+/// CR-CH-072 (localization Requirement 13.1): the command-surface
+/// `localisation_key -> verb-*` indirection is REMOVED. The surface string stored
+/// DIRECTLY on the row is the authoritative displayed/typeable text (the
+/// In_Row_Surface), resolved by a SINGLE lookup (surface -> root). There is no
+/// `t(key)` indirection for command surfaces; DESCRIPTION/TITLE `.ftl`
+/// localisation is unchanged and lives elsewhere. The canonical verb is the
+/// dispatched/persisted identity; the surface is a DISPLAY/typeable concern only.
 ///
-/// Validates: localization Requirement 11.1, 11.2
+/// Validates: localization Requirement 13.1
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AliasEntry {
-    /// UPPERCASED typeable/displayed surface form (the fallback display when no
-    /// localisation key is present).
+    /// UPPERCASED typeable/displayed surface form (the In_Row_Surface, the
+    /// authoritative display text under CR-CH-072).
     pub(crate) surface: String,
     /// The root (canonical) verb -- the dispatched/persisted identity.
     pub(crate) canonical: String,
-    /// Optional `ff-i18n` key resolving the displayed surface per active locale.
-    pub(crate) localisation_key: Option<String>,
     /// CR-NR-112: OPTIONAL parameter template (e.g. `FFWB.COBOL.MASTER(&1)`).
     /// `Some`+non-empty -> invoking the alias expands `canonical` + ` ` + the
     /// substituted template into the ROOT command (Req 14.1/14.2); `None`/empty
     /// is a pure verb alias, byte-identical to today (Req 14.6). Pre-resolution
     /// form only; the ROOT stays the dispatched/persisted identity (Req 19.4).
+    /// RETAINED by CR-CH-072 (localization Requirement 13.8).
     ///
     /// Validates: command-semantics Requirement 14.1
     pub(crate) command_template: Option<String>,
+    /// CR-CH-072: `true` when this row came from a per-locale OVERLAY -- the
+    /// shipped seed `i18n/<locale>/aliases/<ENV>.toml` or the user override
+    /// store -- as opposed to a built-in base row (the hard-coded English FFEDIT
+    /// aliases and the synthesised identity roots). ONLY overlay rows are the
+    /// localisation / user-customisation aliases the Alias Editor shows and
+    /// edits (Req 6.1); the built-in English verb aliases (X -> EXCLUDE,
+    /// INCLUDE -> SHOW) are command shorthands, not localisation, so they are NOT
+    /// listed. Resolution ignores this flag.
+    ///
+    /// Validates: command-configurator Requirement 6.1
+    pub(crate) is_overlay: bool,
 }
 
 impl AliasEntry {
-    /// The DISPLAYED (and typeable) surface for this entry under the active
-    /// locale: `ff_i18n::t(key)` when a localisation key is present, else the raw
-    /// `surface` string (CR-NR-109, localization Requirement 11.1, 11.2). The
-    /// `t()` seam returns the key itself on a miss, so an unresolved key falls
-    /// back to the key string, and a `None` key always yields the raw surface.
+    /// The DISPLAYED (and typeable) surface for this entry: the In_Row_Surface
+    /// stored directly on the row.
     ///
-    /// Validates: localization Requirement 11.1, 11.2
+    /// CR-CH-072 (localization Requirement 13.1): there is exactly ONE lookup
+    /// (surface -> root); the surface is NOT resolved through the
+    /// Catalogue_Lookup_Seam (`t(key)` / `verb-*`). The surface string IS the
+    /// authoritative display text.
+    ///
+    /// Validates: localization Requirement 13.1
     // Consumed by `display_surface_for_canonical` (the menu-kind render reader,
-    // now called by `menu_option_command_surfaces`, CR-NR-109 FEAT-002) and by
-    // the Task 11.1 unit tests.
+    // now called by `menu_option_command_surfaces`).
     pub(crate) fn display_surface(&self) -> String {
-        match &self.localisation_key {
-            Some(key) => ff_i18n::t(key),
-            None => self.surface.clone(),
-        }
+        self.surface.clone()
     }
 }
 
@@ -170,21 +178,21 @@ impl AliasTable {
                     existing.canonical
                 );
             }
-            // ffedit_english seeds the English base: no localisation key, so the
-            // `en` display/typeable surface is byte-identical to the raw surface
-            // (localization Req 11.1 behaviour-neutral at en).
+            // ffedit_english seeds the English base: the surface IS the display
+            // text (In_Row_Surface), byte-identical at `en` (localization
+            // Req 13.1 behaviour-neutral at en).
             entries.push(AliasEntry {
                 surface: surface.to_string(),
                 canonical: canonical.to_string(),
-                localisation_key: None,
                 command_template: None,
+                is_overlay: false,
             });
         }
         Self { entries }
     }
 
-    /// Build an alias table seeded with an IDENTITY row (`surface == canonical`,
-    /// `localisation_key = None`) for every root command in `roots` (CR-NR-109,
+    /// Build an alias table seeded with an IDENTITY row (`surface == canonical`)
+    /// for every root command in `roots` (CR-NR-109,
     /// localization Requirement 11.3). This makes the synthesised identity rows
     /// EXPLICIT and universal: the root command is always resolvable in whatever
     /// source language it was authored, WITHOUT an author hand-writing an identity
@@ -204,8 +212,8 @@ impl AliasTable {
             entries.push(AliasEntry {
                 surface: root.to_string(),
                 canonical: root.to_string(),
-                localisation_key: None,
                 command_template: None,
+                is_overlay: false,
             });
         }
         Self { entries }
@@ -272,6 +280,30 @@ impl AliasTable {
             .map(AliasEntry::display_surface)
     }
 
+    /// The OVERLAY alias rows of this table as `(surface, canonical,
+    /// command_template)` triples -- the per-locale localisation surfaces (the
+    /// shipped seed) and the user-override customisations the Alias Editor shows
+    /// and edits (CR-CH-072 Req 6.1). The built-in base rows -- the hard-coded
+    /// English FFEDIT verb aliases (X -> EXCLUDE, INCLUDE -> SHOW) and the
+    /// synthesised identity roots -- are EXCLUDED: they are command shorthands,
+    /// not localisation, so an `en` install with no seed/override shows an empty
+    /// editor. Owned strings, first-seen order.
+    ///
+    /// Validates: command-configurator Requirement 6.1
+    pub(crate) fn display_rows(&self) -> Vec<(String, String, Option<String>)> {
+        self.entries
+            .iter()
+            .filter(|e| e.is_overlay)
+            .map(|e| {
+                (
+                    e.surface.clone(),
+                    e.canonical.clone(),
+                    e.command_template.clone(),
+                )
+            })
+            .collect()
+    }
+
     /// Overlay a locale's `(surface-form -> canonical-verb)` rows ON TOP of this
     /// table's existing English base entries (base English + locale overlay, NOT
     /// a replacement -- localization Requirement 5.5). A localized surface form
@@ -303,23 +335,24 @@ impl AliasTable {
         environment_name: &str,
         rows: &[(String, String)],
     ) -> Result<(), super::alias_overlay::AliasOverlayError> {
-        // Delegate to the keyed form with no localisation key per row, so the two
-        // entry points share ONE scratch-copy collision discipline (Req 5.6,
-        // 11.10). Existing (surface, canonical) callers are unchanged.
+        // Delegate to the keyed form with no template per row, so the two entry
+        // points share ONE scratch-copy collision discipline (Req 5.6, 11.10).
+        // Existing (surface, canonical) callers are unchanged.
         let keyed: Vec<super::alias_overlay::KeyedAliasRow> = rows
             .iter()
-            .map(|(s, c)| (s.clone(), c.clone(), None, None))
+            .map(|(s, c)| (s.clone(), c.clone(), None))
             .collect();
         self.apply_locale_overlay_keyed(environment_name, &keyed)
     }
 
-    /// Overlay a locale's `(surface, canonical, localisation_key?)` rows ON TOP of
-    /// this table's existing base entries, carrying the per-row localisation key
-    /// through to the entry (CR-NR-109, localization Requirement 11.1, 11.4). This
-    /// is the keyed entry point; [`apply_locale_overlay`] is the keyless shim that
-    /// defaults `localisation_key = None`. BOTH reuse the SAME scratch-copy
-    /// collision machinery, so a within-environment collision leaves `self`
-    /// UNCHANGED and the Identity_Base retained (Req 5.6, 11.10).
+    /// Overlay a locale's `(surface, canonical, command_template?)` rows ON TOP
+    /// of this table's existing base entries, carrying the per-row parameter
+    /// template through to the entry (CR-NR-112; CR-CH-072 localization
+    /// Requirement 13.1, 13.8). This is the keyed entry point;
+    /// [`apply_locale_overlay`] is the keyless shim that defaults the template to
+    /// `None`. BOTH reuse the SAME scratch-copy collision machinery, so a
+    /// within-environment collision leaves `self` UNCHANGED and the Identity_Base
+    /// retained (Req 5.6, 11.10).
     ///
     /// An incoming row whose surface already resolves (case-insensitively) to the
     /// SAME canonical REPLACES that existing row in place -- so an authored row for
@@ -328,7 +361,7 @@ impl AliasTable {
     /// AHEAD so a canonical lookup prefers the overlaid row's display surface. A
     /// surface resolving to a DIFFERENT canonical is a collision.
     ///
-    /// Validates: localization Requirement 5.1, 5.5, 5.6, 10.3, 11.1, 11.4, 11.10
+    /// Validates: localization Requirement 5.1, 5.5, 5.6, 10.3, 13.1, 11.4, 11.10
     // Production caller chain: the on-disk alias store's `apply_overlay_from_dir`
     // -> `AliasCatalogue::load_into_keyed` -> here (CR-NR-109), so no dead_code
     // allow is needed.
@@ -343,7 +376,7 @@ impl AliasTable {
         // leaves `self` untouched (Identity_Base retained, Req 5.6). Only on full
         // success do we commit the scratch copy back.
         let mut scratch = self.entries.clone();
-        for (surface, canonical, key, template) in rows {
+        for (surface, canonical, template) in rows {
             let surface_trimmed = surface.trim();
             // CR-NR-112: an empty/whitespace template deserialises/overlays to
             // None (a pure verb alias), so the byte-identical legacy path is
@@ -366,13 +399,15 @@ impl AliasTable {
                 }
                 // Same canonical: an authored/overlaid row UPDATES the existing
                 // (possibly synthesised-identity) row rather than colliding
-                // (Req 11.4). Move it to the front and apply the new key and
+                // (Req 11.4). Move it to the front and apply the new surface and
                 // template (CR-NR-112), so a canonical lookup prefers the
                 // overlaid display surface and the entry carries the template.
                 let mut updated = scratch.remove(pos);
                 updated.surface = surface_trimmed.to_string();
-                updated.localisation_key = key.clone();
                 updated.command_template = template;
+                // CR-CH-072: an overlaid row (locale seed or user override) is a
+                // localisation/customisation alias the Alias Editor lists.
+                updated.is_overlay = true;
                 scratch.insert(0, updated);
                 continue;
             }
@@ -381,8 +416,8 @@ impl AliasTable {
                 AliasEntry {
                     surface: surface_trimmed.to_string(),
                     canonical: canonical.clone(),
-                    localisation_key: key.clone(),
                     command_template: template,
+                    is_overlay: true,
                 },
             );
         }
@@ -423,107 +458,53 @@ mod tests {
     // `is_ffedit_active_matches_editor_contexts_only`). The AliasTable tests
     // below stay here with the table they exercise.
 
-    /// Install a TEST catalogue defining `verb-find = SOEK` so a localised
-    /// display surface resolves end-to-end through the real `ff_i18n::t` seam.
-    ///
-    /// CRITICAL: builds from a COPY of the SHIPPED English base PLUS the extra
-    /// `verb-find` key, NOT a one-key catalogue. The i18n seam is PROCESS-WIDE and
-    /// the ff-desktop test binary runs every `shell::*` test (these unit tests AND
-    /// the full-shell `get_by_label` tests in `tests_focus`) in ONE process, so a
-    /// one-key catalogue would strip every other English label and break unrelated
-    /// label-query tests that run later in the same process. Mirrors the shared
-    /// `tests_common::install_verb_find_soek_catalogue` helper.
-    /// Install the `verb-find = SOEK` test catalogue as a PER-THREAD override
-    /// (test isolation, `ff_i18n::set_test_catalogue`), so these global-catalogue
-    /// tests are independent under threaded `cargo test` -- each test thread has
-    /// its own catalogue and concurrent tests cannot clobber it. No lock, full
-    /// parallelism.
-    fn install_verb_find_soek_catalogue() {
-        let shipped_root = crate::shell::i18n_bootstrap::resolve_i18n_root()
-            .expect("shipped i18n/ root must resolve for the verb-find test catalogue");
-        let shipped_en = shipped_root.join("en");
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let en = dir.path().join("en");
-        std::fs::create_dir_all(&en).expect("create en dir");
-        if let Ok(entries) = std::fs::read_dir(&shipped_en) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().and_then(|e| e.to_str()) == Some("ftl") {
-                    if let Some(name) = path.file_name() {
-                        // SKIP the shipped verb catalogue (`verb-find = FIND`,
-                        // CR-NR-109 Task 11.7): copying it beside the test's own
-                        // `verb-find = SOEK` below would duplicate `verb-find` in
-                        // the en bundle (a Fluent duplicate-message error). The
-                        // test's zz-test-verbs.ftl is the sole `verb-find` source.
-                        if name.eq_ignore_ascii_case("ff-desktop-verbs.ftl") {
-                            continue;
-                        }
-                        let _ = std::fs::copy(&path, en.join(name));
-                    }
-                }
-            }
-        }
-        std::fs::write(en.join("zz-test-verbs.ftl"), "verb-find = SOEK\n").expect("write ftl");
-        let catalogue =
-            ff_i18n::Catalogue::load_identity_base(dir.path()).expect("test catalogue loads");
-        ff_i18n::set_test_catalogue(catalogue);
-    }
+    // CR-CH-072: the former `install_verb_find_soek_catalogue` helper (which
+    // installed a `verb-find = SOEK` Fluent catalogue so `display_surface` could
+    // resolve `t(verb-find)`) is removed. The command-surface `verb-*` indirection
+    // no longer exists: the In_Row_Surface stored on the row IS the display text,
+    // so these tests now assert the in-row surface directly without any catalogue.
 
-    /// Validates: localization Requirement 11.1, 11.2 -- an entry carrying a
-    /// localisation key displays the `t(key)` resolution (and that string is the
-    /// one typeable surface); a None-key entry returns its raw surface; after a
-    /// keyed overlay, `canonical_verb` of the localised surface still resolves to
-    /// the SAME canonical (one source of truth, Req 11.2).
+    /// Validates: localization Requirement 13.1 -- the In_Row_Surface stored on
+    /// the row IS the display text (one lookup, no `t(key)`); after a keyed
+    /// overlay the localised in-row surface resolves to the SAME canonical the
+    /// root yields (one source of truth), and `display_surface_for_canonical`
+    /// returns the overlaid in-row surface.
     #[test]
-    fn display_surface_resolves_localisation_key_else_raw_surface() {
-        install_verb_find_soek_catalogue();
-
-        // Keyed entry: surface FIND, canonical FIND, key verb-find -> displays SOEK.
-        let keyed = AliasEntry {
-            surface: "FIND".to_string(),
+    fn display_surface_returns_in_row_surface() {
+        // CR-CH-072: an entry's display surface IS its in-row `surface` string.
+        let entry = AliasEntry {
+            surface: "SOEK".to_string(),
             canonical: "FIND".to_string(),
-            localisation_key: Some("verb-find".to_string()),
             command_template: None,
+            is_overlay: true,
         };
         assert_eq!(
-            keyed.display_surface(),
+            entry.display_surface(),
             "SOEK",
-            "a keyed entry must display the t(key) resolution"
+            "the display surface is the in-row surface string (Req 13.1)"
         );
 
-        // None-key entry returns its raw surface unchanged.
         let plain = AliasEntry {
             surface: "CHANGE".to_string(),
             canonical: "CHANGE".to_string(),
-            localisation_key: None,
             command_template: None,
+            is_overlay: false,
         };
-        assert_eq!(
-            plain.display_surface(),
-            "CHANGE",
-            "a None-key entry must return its raw surface"
-        );
+        assert_eq!(plain.display_surface(), "CHANGE");
 
         // After a keyed overlay onto the English base, the localised surface SOEK
-        // resolves to the SAME canonical FIND the root yields (Req 11.2).
+        // resolves to the SAME canonical FIND the root yields (one source of
+        // truth), and its in-row surface is the preferred display for FIND.
         let mut table = AliasTable::ffedit_english();
         table
-            .apply_locale_overlay_keyed(
-                "FFEDIT",
-                &[(
-                    "SOEK".to_string(),
-                    "FIND".to_string(),
-                    Some("verb-find".to_string()),
-                    None,
-                )],
-            )
+            .apply_locale_overlay_keyed("FFEDIT", &[("SOEK".to_string(), "FIND".to_string(), None)])
             .expect("keyed overlay applies");
         assert_eq!(table.canonical_verb("SOEK"), Some("FIND"));
         assert_eq!(table.canonical_verb("FIND"), Some("FIND"));
         assert_eq!(
             table.display_surface_for_canonical("FIND"),
             Some("SOEK".to_string()),
-            "the overlaid SOEK row's display surface is preferred for canonical FIND"
+            "the overlaid SOEK row's in-row surface is preferred for canonical FIND"
         );
     }
 
@@ -545,13 +526,11 @@ mod tests {
     /// Validates: localization Requirement 11.4 -- an overlay row REPLACES the
     /// synthesised identity default for the SAME canonical WITHOUT changing the
     /// root: the Russian-root / English-surface case. Seed root NAYTI; apply an
-    /// `en` overlay row (surface FIND, canonical NAYTI, key verb-find). After it,
-    /// FIND resolves to the root NAYTI, NAYTI still self-resolves, and the display
-    /// surface for the row is the t(key) resolution.
+    /// overlay row (surface FIND, canonical NAYTI). After it, FIND resolves to the
+    /// root NAYTI, NAYTI still self-resolves, and the in-row surface for the row
+    /// is FIND (CR-CH-072: the surface IS the display text, Req 13.1).
     #[test]
     fn overlay_row_replaces_synthesised_default_without_changing_root() {
-        install_verb_find_soek_catalogue();
-
         // Seed the Russian-authored root NAYTI (identity row).
         let mut table = AliasTable::identity_for(&["NAYTI"]);
         assert_eq!(table.canonical_verb("NAYTI"), Some("NAYTI"));
@@ -560,12 +539,7 @@ mod tests {
         table
             .apply_locale_overlay_keyed(
                 "FFEDIT",
-                &[(
-                    "FIND".to_string(),
-                    "NAYTI".to_string(),
-                    Some("verb-find".to_string()),
-                    None,
-                )],
+                &[("FIND".to_string(), "NAYTI".to_string(), None)],
             )
             .expect("overlay row for a new surface of the same root applies");
 
@@ -580,39 +554,30 @@ mod tests {
             Some("NAYTI"),
             "the root is unchanged and still self-resolves"
         );
-        // The overlaid row's display surface is the localisation-key resolution.
+        // The overlaid row's display surface is its in-row surface FIND.
         assert_eq!(
             table.display_surface_for_canonical("NAYTI"),
-            Some("SOEK".to_string()),
-            "the overlaid row for NAYTI is preferred and displays t(verb-find)"
+            Some("FIND".to_string()),
+            "the overlaid row for NAYTI is preferred and displays its in-row surface FIND"
         );
     }
 
     /// Validates: localization Requirement 11.4 -- re-stating a row whose surface
     /// matches an existing identity with a COMPATIBLE canonical UPDATES it (not a
-    /// collision): attaching a localisation key to an existing identity row keeps
-    /// the canonical and gains the key.
+    /// collision): the canonical is kept (CR-CH-072: the in-row surface is updated
+    /// in place; there is no separate localisation key to attach).
     #[test]
     fn overlay_row_matching_identity_surface_updates_without_collision() {
-        install_verb_find_soek_catalogue();
         let mut table = AliasTable::identity_for(&["FIND"]);
-        // Same surface FIND, same canonical FIND, now with a key -> update in place.
+        // Same surface FIND, same canonical FIND -> update in place (no collision).
         table
-            .apply_locale_overlay_keyed(
-                "FFEDIT",
-                &[(
-                    "FIND".to_string(),
-                    "FIND".to_string(),
-                    Some("verb-find".to_string()),
-                    None,
-                )],
-            )
+            .apply_locale_overlay_keyed("FFEDIT", &[("FIND".to_string(), "FIND".to_string(), None)])
             .expect("re-stating a surface with the same canonical must not collide");
         assert_eq!(table.canonical_verb("FIND"), Some("FIND"));
         assert_eq!(
             table.display_surface_for_canonical("FIND"),
-            Some("SOEK".to_string()),
-            "the identity row gained the localisation key via an update"
+            Some("FIND".to_string()),
+            "the identity row's in-row surface is unchanged after a same-root update"
         );
     }
 
@@ -682,7 +647,6 @@ mod tests {
                 &[(
                     "ECOB".to_string(),
                     "EDIT".to_string(),
-                    None,
                     Some("FFWB.COBOL.MASTER(&1)".to_string()),
                 )],
             )

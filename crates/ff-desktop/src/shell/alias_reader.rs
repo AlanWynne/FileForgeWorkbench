@@ -45,15 +45,18 @@ use super::environment_registry::{FFCMD_NAME, FFEDIT_NAME};
 mod alias_user_overlay;
 
 /// One `[[alias]]` row as deserialised from a per-environment TOML file.
+///
+/// CR-CH-072 (localization Req 13.1): the `surface` IS the In_Row_Surface (the
+/// authoritative display/typeable text). The former `localisation_key` command-
+/// surface field is REMOVED; a stale `localisation_key` in an old shipped/user
+/// file is tolerated and ignored (serde ignores unknown keys), so no migration
+/// of any surviving file is forced.
 #[derive(Debug, Deserialize)]
 struct AliasRowToml {
-    /// The typeable/displayed surface form (uppercased when loaded).
+    /// The typeable/displayed In_Row_Surface (uppercased when loaded).
     surface: String,
     /// The root (canonical) verb this surface resolves to.
     canonical: String,
-    /// Optional `ff-i18n` key resolving the displayed surface per locale.
-    #[serde(default)]
-    localisation_key: Option<String>,
     /// CR-NR-112: optional parameter template (e.g. `FFWB.COBOL.MASTER(&1)`).
     /// Absent/empty keeps today's pure verb-rewrite behaviour (Req 14.6). The
     /// template VALUE is preserved verbatim (it is DATA, not ASCII-scoped).
@@ -70,13 +73,16 @@ struct AliasFileToml {
 }
 
 /// Parse one environment's alias-catalogue TOML text into keyed overlay rows
-/// `(surface-UPPERCASED, canonical-UPPERCASED, localisation_key?)`.
+/// `(surface-UPPERCASED, canonical-UPPERCASED, command_template?)`.
 ///
 /// Surfaces and canonicals are uppercased to match the `AliasTable`
-/// case-insensitive convention; the localisation key is preserved verbatim.
+/// case-insensitive convention; the template is preserved verbatim.
 /// Returns a parse error string on malformed TOML.
 ///
-/// Validates: localization Requirement 11.5
+/// CR-CH-072 (localization Req 13.1): the surface IS the display text; there is
+/// no `localisation_key` command-surface element in the parsed row.
+///
+/// Validates: localization Requirement 11.5, 13.1
 fn parse_alias_toml(text: &str) -> Result<Vec<KeyedAliasRow>, String> {
     let parsed: AliasFileToml = toml::from_str(text).map_err(|e| e.to_string())?;
     Ok(parsed
@@ -86,9 +92,6 @@ fn parse_alias_toml(text: &str) -> Result<Vec<KeyedAliasRow>, String> {
             (
                 r.surface.trim().to_uppercase(),
                 r.canonical.trim().to_uppercase(),
-                r.localisation_key
-                    .map(|k| k.trim().to_string())
-                    .filter(|k| !k.is_empty()),
                 // CR-NR-112: the template is preserved VERBATIM (data, not
                 // uppercased), with empty mapped to None so a blank/absent field
                 // keeps the pure verb-alias path (Req 14.1, 14.6).
@@ -232,23 +235,25 @@ impl LocaleAliasStore {
     /// `<root>/<locale>/aliases/`. A missing root (or missing `aliases/` dir)
     /// leaves the store identity-only (Req 10.2, graceful degradation).
     ///
-    /// CR-NR-113 (command-configurator Req 5.6): the re-seed is EXTENDED to ALSO
-    /// apply the User_Alias_Store overlay as a THIRD layer, so ONE re-seed
-    /// re-applies BOTH the per-locale overlay AND the user store -- a save (which
-    /// triggers a reload) never drops the per-locale aliases and the newly saved
-    /// user alias goes live without a restart.
+    /// CR-CH-072 (localization Req 13.5, command-configurator Req 6.1): the
+    /// re-seed applies the shipped per-locale SEED overlay AND the USER per-locale
+    /// override (`<base>/<locale>/<ENV>.toml`) in ONE re-seed, so a save (which
+    /// triggers a reload) never drops the shipped seed and the newly saved user
+    /// override goes live without a restart. The former CR-NR-113 flat,
+    /// locale-independent `user.toml` third layer is REPLACED by this per-locale
+    /// override.
     ///
-    /// Validates: localization Requirement 11.2, 11.5; command-configurator Req 5.6
+    /// Validates: localization Requirement 11.2, 11.5, 13.5, 13.6
     pub(crate) fn seed_and_overlay_for_locale(ffcmd_roots: &[&str], locale: &str) -> Self {
         let mut store = Self::seed(ffcmd_roots);
         if let Some(root) = super::i18n_bootstrap::resolve_i18n_root() {
             let aliases_dir = root.join(locale).join("aliases");
             store.apply_overlay_from_dir(&aliases_dir);
         }
-        // CR-NR-113: the user store is the THIRD overlay, on top of the identity
-        // base and the per-locale overlay (Req 5.7).
-        if let Some(path) = super::user_aliases::user_aliases_file() {
-            store.apply_user_overlay_from_file(&path);
+        // CR-CH-072: the SINGLE user layer is the per-locale override on top of
+        // the shipped seed (Req 13.5).
+        if let Some(base) = super::user_aliases::user_alias_override_base() {
+            store.apply_user_overlay_from_base(&base, locale);
         }
         store
     }
@@ -285,10 +290,51 @@ impl LocaleAliasStore {
             .map(|(_, t)| t)
     }
 
-    /// Test-only: overlay a single `(surface -> canonical)` row (with the
-    /// optional `verb-find` localisation key) onto `environment_name`'s table,
-    /// so a test can simulate an active-locale alias without writing a TOML file.
-    /// Panics on a within-environment collision (a test authoring error).
+    /// The overlaid `AliasTable` for `environment_name`, mutable -- used by the
+    /// per-locale user override overlay (CR-CH-072) to apply one row at a time.
+    pub(crate) fn table_for_mut(&mut self, environment_name: &str) -> Option<&mut AliasTable> {
+        self.tables
+            .iter_mut()
+            .find(|(n, _)| n == environment_name)
+            .map(|(_, t)| t)
+    }
+
+    /// The stable NAMEs of every environment table the store holds (owned), so a
+    /// caller may iterate while mutating the tables (CR-CH-072 user overlay).
+    pub(crate) fn table_name_list(&self) -> Vec<String> {
+        self.tables.iter().map(|(n, _)| n.clone()).collect()
+    }
+
+    /// The ACTIVE-locale EFFECTIVE display rows across every environment the store
+    /// holds, as `(environment, surface, canonical, command_template)` tuples --
+    /// the shipped seed overlaid by the user override, excluding the synthesised
+    /// identity rows (CR-CH-072 Req 6.1). This is what the Alias Editor shows so
+    /// an `af` user SEES the shipped `af` surfaces.
+    ///
+    /// Validates: command-configurator Requirement 6.1
+    pub(crate) fn effective_display_rows(
+        &self,
+    ) -> Vec<(
+        super::user_aliases::AliasEnvironment,
+        String,
+        String,
+        Option<String>,
+    )> {
+        use super::user_aliases::AliasEnvironment;
+        let mut out = Vec::new();
+        for (name, table) in &self.tables {
+            let env = AliasEnvironment::from_env_name(name);
+            for (surface, canonical, template) in table.display_rows() {
+                out.push((env, surface, canonical, template));
+            }
+        }
+        out
+    }
+
+    /// Test-only: overlay a single `(surface -> canonical)` row onto
+    /// `environment_name`'s table, so a test can simulate an active-locale alias
+    /// without writing a TOML file. Panics on a within-environment collision (a
+    /// test authoring error).
     #[cfg(test)]
     pub(crate) fn overlay_row_for_test(
         &mut self,
@@ -318,7 +364,6 @@ impl LocaleAliasStore {
                     &[(
                         surface.to_uppercase(),
                         canonical.to_uppercase(),
-                        Some("verb-find".to_string()),
                         template.map(str::to_string),
                     )],
                 )
@@ -419,15 +464,10 @@ canonical = "CHANGE"
             .keyed_rows_for(FFEDIT_NAME)
             .expect("FFEDIT rows present");
         assert_eq!(rows.len(), 2);
-        // Keyed row preserved with its localisation key (no template).
-        assert!(rows.contains(&(
-            "SOEK".to_string(),
-            "FIND".to_string(),
-            Some("verb-find".to_string()),
-            None
-        )));
-        // Plain row has no key and no template.
-        assert!(rows.contains(&("VERANDER".to_string(), "CHANGE".to_string(), None, None)));
+        // CR-CH-072: the in-row surface SOEK is the display text (no template).
+        assert!(rows.contains(&("SOEK".to_string(), "FIND".to_string(), None)));
+        // Plain row has no template.
+        assert!(rows.contains(&("VERANDER".to_string(), "CHANGE".to_string(), None)));
 
         // Loading into the English base makes the localised surfaces resolve to
         // their root canonicals (one source of truth, Req 11.2).
@@ -446,6 +486,8 @@ canonical = "CHANGE"
     /// pre-CR-NR-112 schema deserialises byte-identically).
     #[test]
     fn reader_row_without_template_parses_to_none() {
+        // CR-CH-072: a stale `localisation_key` is tolerated and ignored (serde
+        // ignores unknown keys); the in-row surface SOEK is the display text.
         let rows = parse_alias_toml(
             r#"
 [[alias]]
@@ -458,12 +500,7 @@ localisation_key = "verb-find"
         assert_eq!(rows.len(), 1);
         assert_eq!(
             rows[0],
-            (
-                "SOEK".to_string(),
-                "FIND".to_string(),
-                Some("verb-find".to_string()),
-                None
-            ),
+            ("SOEK".to_string(), "FIND".to_string(), None),
             "a templateless row deserialises to command_template = None (Req 14.6)"
         );
     }
@@ -488,7 +525,6 @@ command_template = "FFWB.COBOL.MASTER(&1)"
             (
                 "ECOB".to_string(),
                 "EDIT".to_string(),
-                None,
                 Some("FFWB.COBOL.MASTER(&1)".to_string())
             ),
             "surface/canonical uppercase; template preserved verbatim (Req 14.1)"
@@ -566,29 +602,16 @@ canonical = "CATALOGS"
         assert_eq!(ffedit.canonical_verb("X"), Some("EXCLUDE"));
     }
 
-    /// Install the SHIPPED Afrikaans catalogue (English Identity_Base + the `af`
-    /// overlay) on the process-wide seam, so `ff_i18n::t("verb-find")` resolves
-    /// to the Afrikaans surface "SOEK" authored in `af/ff-desktop-verbs.ftl`.
-    /// Builds from the real shipped root so the POC is exercised end-to-end.
-    fn install_shipped_af_catalogue(root: &Path) {
-        let base = ff_i18n::Catalogue::load_identity_base(root).expect("English base loads");
-        let af = ff_i18n::Locale::parse("af").expect("af parses");
-        let catalogue = base.load_overlay(root, af).expect("af overlay loads");
-        // Thread-local override (test isolation): install for THIS test thread so
-        // a concurrent test's global install cannot clobber the af catalogue.
-        ff_i18n::set_test_catalogue(catalogue);
-    }
-
-    /// Validates: localization Requirement 11.1, 5.1, 5.5; command-environments
+    /// Validates: localization Requirement 13.1, 5.1, 5.5; command-environments
     /// Requirement 21.3 (CR-CH-069) -- the SHIPPED Afrikaans POC alias row
     /// SOEK -> FIND lives in the FFEDIT per-locale catalogue
     /// (`af/aliases/FFEDIT.toml`), NOT the FFCMD catalogue, because FIND is an
     /// FFEDIT root. The reader loads it and, overlaid onto the ffedit_english
     /// base (which carries the FIND root), resolves the localised surface SOEK to
-    /// the root FIND (11.1/5.1) while the root FIND still resolves to itself
-    /// (Identity_Base retained, 5.5). With the shipped `af` catalogue installed,
-    /// the overlaid row's display surface is `t("verb-find")` = "SOEK". The row
-    /// is NO LONGER in the af FFCMD catalogue.
+    /// the root FIND (13.1/5.1) while the root FIND still resolves to itself
+    /// (Identity_Base retained, 5.5). CR-CH-072: the in-row surface SOEK IS the
+    /// display text -- `display_surface_for_canonical("FIND")` returns "SOEK" by a
+    /// SINGLE lookup, with NO `t(verb-find)` catalogue consulted.
     #[test]
     fn af_poc_alias_catalogue_loads_and_resolves() {
         let root = super::super::i18n_bootstrap::resolve_i18n_root()
@@ -600,9 +623,6 @@ canonical = "CATALOGS"
             af_aliases.display()
         );
 
-        // Install the shipped af catalogue so t(verb-find) = SOEK end-to-end.
-        install_shipped_af_catalogue(&root);
-
         // Read the shipped af alias catalogue for FFEDIT and load it onto the
         // ffedit_english base (which carries the FIND root). The POC's SOEK
         // aliases the FIND verb, which FFEDIT owns (command-semantics Req 12.1).
@@ -611,13 +631,8 @@ canonical = "CATALOGS"
             .keyed_rows_for(FFEDIT_NAME)
             .expect("the af FFEDIT catalogue carries rows");
         assert!(
-            rows.contains(&(
-                "SOEK".to_string(),
-                "FIND".to_string(),
-                Some("verb-find".to_string()),
-                None
-            )),
-            "the POC ships the SOEK -> FIND row keyed verb-find under FFEDIT, got {rows:?}"
+            rows.contains(&("SOEK".to_string(), "FIND".to_string(), None)),
+            "the POC ships the SOEK -> FIND in-row-surface row under FFEDIT, got {rows:?}"
         );
 
         // CR-CH-069: the row must NOT be in the FFCMD catalogue any more. A
@@ -631,7 +646,7 @@ canonical = "CATALOGS"
         assert!(
             !ffcmd_rows
                 .iter()
-                .any(|(surface, canonical, _, _)| surface == "SOEK" && canonical == "FIND"),
+                .any(|(surface, canonical, _)| surface == "SOEK" && canonical == "FIND"),
             "the af FFCMD catalogue must NOT contain SOEK -> FIND after CR-CH-069, got {ffcmd_rows:?}"
         );
 
@@ -640,17 +655,17 @@ canonical = "CATALOGS"
             .load_into_keyed(FFEDIT_NAME, &mut table)
             .expect("the af POC overlay loads cleanly onto the FFEDIT base");
 
-        // The Afrikaans surface reaches the root (Req 11.1, 5.1) when FFEDIT is
+        // The Afrikaans surface reaches the root (Req 13.1, 5.1) when FFEDIT is
         // the active environment.
         assert_eq!(table.canonical_verb("SOEK"), Some("FIND"));
         // The root is retained and still self-resolves (Identity_Base, Req 5.5).
         assert_eq!(table.canonical_verb("FIND"), Some("FIND"));
-        // The overlaid row's display surface is the localisation-key resolution
-        // under the active af catalogue.
+        // CR-CH-072: the overlaid row's display surface is its in-row surface
+        // SOEK, resolved by ONE lookup (no verb-* catalogue).
         assert_eq!(
             table.display_surface_for_canonical("FIND"),
             Some("SOEK".to_string()),
-            "the overlaid FIND row displays t(verb-find) = SOEK under the af catalogue"
+            "the overlaid FIND row displays its in-row surface SOEK (one lookup, Req 13.1)"
         );
     }
 

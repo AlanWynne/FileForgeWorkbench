@@ -51,12 +51,13 @@
 use super::environment::AliasTable;
 
 /// One KEYED overlay row:
-/// `(surface-UPPERCASED, canonical, localisation_key?, command_template?)`
-/// (CR-NR-109, localization Req 11.1; CR-NR-112 adds the 4th element, the
-/// optional parameter template, command-semantics Req 14.1). Named so the keyed
-/// catalogue and the `AliasTable::apply_locale_overlay_keyed` signature stay
-/// readable.
-pub(crate) type KeyedAliasRow = (String, String, Option<String>, Option<String>);
+/// `(surface-UPPERCASED, canonical, command_template?)`
+/// (CR-NR-112 the optional parameter template, command-semantics Req 14.1).
+/// CR-CH-072 (localization Req 13.1): the former `localisation_key` element is
+/// REMOVED -- the In_Row_Surface stored in the first element IS the display text,
+/// resolved by a single lookup. Named `KeyedAliasRow` for continuity with the
+/// `AliasTable::apply_locale_overlay_keyed` signature.
+pub(crate) type KeyedAliasRow = (String, String, Option<String>);
 
 /// Recoverable overlay failure (NOT a panic): a within-environment alias
 /// collision. The loader rejects the catalogue FOR THAT ENVIRONMENT and retains
