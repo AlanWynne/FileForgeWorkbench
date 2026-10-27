@@ -4298,10 +4298,10 @@ suite PASS. -->
 
 > Owner-endorsed SIMPLIFICATION that supersedes the three-layer / two-store
 > command-surface model (CR-NR-109/111/113) and amends CR-NR-112 and CR-CH-071.
-> All rows NOT COVERED (gate authored; docs-only; no code yet). Flip to PASS as
-> the CR-CH-072 tasks land (localization Task group 23-30; command-environments
-> Task group 32). Criteria from docs/specs/localization/requirements.md Req 13,
-> command-environments Req 2b, command-configurator Req 6, and the amended Req 11/12/14/18.
+> IMPLEMENTED: all rows PASS (localization Task group 23-30; command-environments
+> Task group 32 landed; proving tests named per row). Criteria from
+> docs/specs/localization/requirements.md Req 13, command-environments Req 2b,
+> command-configurator Req 6, and the amended Req 11/12/14/18.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
