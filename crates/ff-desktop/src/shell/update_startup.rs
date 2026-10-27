@@ -6,9 +6,7 @@
 //! Phase 2 task 2.2 file-size split; behaviour and order are unchanged. `update`
 //! now calls `self.run_startup()` as its first statement.
 
-use std::path::PathBuf;
-
-use super::update::{ensure_default_home_catalog, ensure_pom_tab_present};
+use super::update::ensure_pom_tab_present;
 use super::{KeyBarScope, WorkbenchShell};
 
 impl WorkbenchShell {
@@ -62,24 +60,14 @@ impl WorkbenchShell {
                 // absent falls back to Base).
                 self.key_bar_scope =
                     KeyBarScope::parse(&state.key_bar_scope).unwrap_or(KeyBarScope::Base);
-                // Validates: Requirement 23.9 (file-tree-panel) -- restore sidebar width.
-                if state.file_explorer_sidebar_width >= 120.0 {
-                    self.file_explorer_panel_width = state.file_explorer_sidebar_width;
-                }
+                // core-001 strip: the File Explorer sidebar width and the catalog
+                // registry restore/seed are parked with the navigator + catalog
+                // domains.
                 // Validates: command-palette Requirement 5.2 -- restore recent palette commands.
                 self.recent_palette_commands = state.recent_palette_commands.clone();
                 // Validates: global-search Requirement 6.2 -- restore search history.
                 self.search_results_panel
                     .restore_history(state.search_history.clone());
-                // Validates: Requirement 2.1, 2.2 (virtual-catalog-manager) -- restore catalog registry.
-                self.files_panel.registry = session.load_catalog_registry();
-                // Validates: Requirement 14.1-14.5 -- create default Home catalog when none exist.
-                let home_path = dirs::home_dir()
-                    .or_else(|| std::env::current_dir().ok())
-                    .unwrap_or_else(|| PathBuf::from("."));
-                if ensure_default_home_catalog(&mut self.files_panel.registry, home_path) {
-                    session.save_catalog_registry(&self.files_panel.registry);
-                }
                 // The `session` immutable borrow ends here; reconstruction below
                 // needs `&mut self` (open_settings_view etc.), so it runs after.
                 if restored_any {
@@ -122,12 +110,9 @@ impl WorkbenchShell {
                     }
                 }
             } else {
-                // No session manager -- first launch: open POM tab
-                // Validates: Requirement 14.1-14.5 -- create default Home catalog when none exist.
-                let home_path = dirs::home_dir()
-                    .or_else(|| std::env::current_dir().ok())
-                    .unwrap_or_else(|| PathBuf::from("."));
-                let _ = ensure_default_home_catalog(&mut self.files_panel.registry, home_path);
+                // No session manager -- first launch: open POM tab.
+                // core-001 strip: default Home catalog seeding is parked with the
+                // catalog domain.
                 // Validates: Requirement 14.1
                 self.tabs.close_welcome_tab();
                 self.tabs.insert_pom_tab(&self.runtime);

@@ -96,6 +96,55 @@ members = [
     "crates/ff-mdx-plugin",
 ]
 
+# Milestone core-001 (true-core strip): the DEFAULT build/test scope is narrowed
+# to the minimal workbench SHELL and its content-independent Contexts (32 crates).
+# `members` above is UNCHANGED -- every parked crate stays in the workspace and
+# can be built explicitly (`-p <crate>` / `--workspace`). Only the default set
+# that a bare `cargo build` / `cargo gate` compiles is reduced, so the gate
+# round-trip is fast while the core is rationalised. The editor, file navigator,
+# dataset catalog, VFS providers, and volume domains are UNWIRED from the `ffwb`
+# binary and their crates parked here; they return later as plugins. See
+# docs/reentry-register.md for the full park/re-entry map.
+#
+# Option A (owner-approved adjustment to the true-core proposal): ff-document-model,
+# ff-viewport-scrolling, ff-edit-operations, and ff-vfs are RETAINED in the core
+# because the shell's per-tab `TabState` depends on them directly; a later
+# TabState refactor (~core-002) could park them fully.
+default-members = [
+    "crates/ff-command",
+    "crates/ff-command-semantics",
+    "crates/ff-config",
+    "crates/ff-context-menu",
+    "crates/ff-core",
+    "crates/ff-desktop",
+    "crates/ff-document-model",
+    "crates/ff-edit-operations",
+    "crates/ff-fftest",
+    "crates/ff-file-ops",
+    "crates/ff-find-and-replace",
+    "crates/ff-gcc-toolchain",
+    "crates/ff-global-search",
+    "crates/ff-help",
+    "crates/ff-i18n",
+    "crates/ff-keys",
+    "crates/ff-layout",
+    "crates/ff-logging",
+    "crates/ff-plugin",
+    "crates/ff-rust-toolchain",
+    "crates/ff-screen-model",
+    "crates/ff-scrm",
+    "crates/ff-session",
+    "crates/ff-shell",
+    "crates/ff-theme",
+    "crates/ff-theme-editor",
+    "crates/ff-toolchain-api",
+    "crates/ff-toolchain-panel",
+    "crates/ff-viewport-scrolling",
+    "crates/ff-vfs",
+    "crates/ff-workflow",
+    "crates/ff-zoom",
+]
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

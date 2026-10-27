@@ -105,6 +105,11 @@ pub enum KindTag {
 #[derive(Debug)]
 pub enum TabKind {
     /// A file loaded from the VFS.
+    //
+    // core-001 strip: no code constructs a FileEditor tab now (the editor open
+    // path is parked); the variant is retained (its render arm shows the
+    // "unavailable in core" notice) for the editor plugin's re-entry.
+    #[allow(dead_code)]
     FileEditor,
     /// A new, unsaved buffer with no backing file.
     Untitled,
@@ -195,6 +200,9 @@ impl TabKind {
 }
 
 /// A single undoable edit stored as the inverse operation to apply.
+// core-001 strip: the editor undo path is parked, so these variants are not
+// constructed in the core build; retained for the editor plugin's re-entry.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum UndoEntry {
     /// Undo an insert: delete `length` bytes at `position`.
@@ -243,6 +251,12 @@ pub struct TabState {
     /// Full path if backed by a file, None for untitled buffers.
     pub path: Option<String>,
     /// Shared document handle.
+    //
+    // core-001 strip: retained as core TabState infrastructure (Option A) but not
+    // READ in the core build -- the editor Context that rendered/edited the
+    // document is parked. The field stays so every tab constructor is unchanged
+    // and the editor plugin re-reads it on re-entry.
+    #[allow(dead_code)]
     pub document: DocumentHandle,
     /// Independent viewport state for this tab.
     pub viewport: ViewportModel,
@@ -255,8 +269,12 @@ pub struct TabState {
     /// Cached line-end / encoding mode -- used to derive the encoding label.
     pub line_end_mode: LineEndMode,
     /// Per-tab undo stack (inverse operations, most-recent last).
+    // core-001 strip: editor-only state, not read while the editor is parked.
+    #[allow(dead_code)]
     pub undo_stack: Vec<UndoEntry>,
     /// Per-line editable prefix area text (line number -> current input string).
+    // core-001 strip: editor-only state, not read while the editor is parked.
+    #[allow(dead_code)]
     pub prefix_inputs: HashMap<u64, String>,
     /// True when this tab has been detached into a floating OS window.
     ///
@@ -272,6 +290,8 @@ pub struct TabState {
     /// `None` means no selection is active.
     ///
     /// Validates: Requirement 13.1-13.10 (caret-and-selection)
+    // core-001 strip: editor-only state, not read while the editor is parked.
+    #[allow(dead_code)]
     pub canvas_selection: Option<(u64, u64, u64, u64)>,
     /// User-assigned Workspace name (optional).
     ///
@@ -308,6 +328,9 @@ pub struct TabState {
     /// flow bound a real DSN (a MAINFRAME dataset open); `None` for every
     /// host-path tab, which keeps the host-path placeholder `StoreTarget` and so
     /// native SAVE is unchanged.
+    // core-001 strip: the mainframe SAVE seam that read this is parked; retained
+    // for re-entry.
+    #[allow(dead_code)]
     pub store_identity: Option<StoreIdentity>,
 }
 

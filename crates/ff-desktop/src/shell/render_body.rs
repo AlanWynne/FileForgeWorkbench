@@ -6,10 +6,24 @@
 
 use eframe::egui;
 
-use crate::editor_panel;
 use crate::tab_state::TabKind;
 
 use super::WorkbenchShell;
+
+/// Render a centred "unavailable in the core build" notice for a parked Context
+/// (core-001 strip). The editor, file navigator, and catalog explorer Contexts
+/// are unwired from the minimal shell core (see docs/reentry-register.md); the
+/// POM options / commands that opened them land here. This is a plain,
+/// non-interactive display with no interior Tab stop -- its arm reports
+/// `InteriorFocus::none()`.
+pub(super) fn render_core_unavailable_notice(ui: &mut egui::Ui, message: &str) {
+    ui.vertical_centered(|ui| {
+        ui.add_space(40.0);
+        ui.heading(message);
+        ui.add_space(8.0);
+        ui.label("This capability is parked in the core build and returns later as a plugin.");
+    });
+}
 
 impl WorkbenchShell {
     /// Render the ACTIVE tab's Context body (the `match tab.kind` dispatch) into
@@ -30,35 +44,30 @@ impl WorkbenchShell {
             self.focus.last_interior_id = None;
             match self.tabs.active_tab().kind {
                 TabKind::FilesPanel => {
-                    self.render_body_files_panel(ctx, ui);
+                    // core-001 strip: the Catalog Explorer Context (Virtual
+                    // Catalog Manager, POM option 1) is PARKED (see
+                    // docs/reentry-register.md). Render an "unavailable in core"
+                    // notice; no interior Tab stop -> InteriorFocus::none().
+                    render_core_unavailable_notice(
+                        ui,
+                        "Catalog Explorer is not available in the core build.",
+                    );
+                    self.apply_interior_focus(
+                        ctx,
+                        crate::shell::workspace_context::InteriorFocus::none(),
+                    );
                 }
                 TabKind::FileEditor | TabKind::Untitled => {
-                    // CR-NR-078 WF.6 special case (task 8.2): the Editor Context
-                    // renders the ACTIVE `TabState` (not a shell-owned panel) and
-                    // needs shell-entangled inputs (cmd_engine, exclude_manager,
-                    // runtime, the mutable tab) that do not fit the
-                    // `ShellServices`-only trait, so it is NOT a `WorkspaceContext`
-                    // implementor. Its body is a native egui multiline surface
-                    // with its OWN internal focus/caret model and its own
-                    // "Command ===>" line; it has NO shell-latched interior Tab
-                    // stop. It therefore reports `InteriorFocus::none()`
-                    // EXPLICITLY through the single latch path, documenting the
-                    // deliberate no-interior case (workspace-conformance rule
-                    // exception 2) rather than silently leaving the anchors unset.
-                    let tab_id = self.tabs.active_tab().id;
-                    let scroll_amount = self.scroll_amount.clone();
-                    let tab = self.tabs.active_tab_mut();
-                    if let Some(err) = editor_panel::render(
+                    // core-001 strip: the Editor Context (text/file editor) is
+                    // PARKED (see docs/reentry-register.md). The editor crates are
+                    // no longer wired into `ffwb`, so this arm renders an
+                    // "unavailable in core" notice. It reports
+                    // `InteriorFocus::none()` EXPLICITLY through the single latch
+                    // path (workspace-conformance rule exception 2).
+                    render_core_unavailable_notice(
                         ui,
-                        tab,
-                        &self.runtime,
-                        &mut self.cmd_engine,
-                        &mut self.exclude_manager,
-                        tab_id,
-                        &scroll_amount,
-                    ) {
-                        self.open_error = Some(err);
-                    }
+                        "Editor is not available in the core build.",
+                    );
                     self.apply_interior_focus(
                         ctx,
                         crate::shell::workspace_context::InteriorFocus::none(),
@@ -119,10 +128,7 @@ impl WorkbenchShell {
                     // only receives ShellServices), owned-panel swap through the
                     // framework (reports the query-field interior + honours the
                     // latch), then apply the stashed outcome shell-side.
-                    let roots = collect_search_roots(
-                        &self.files_panel.registry,
-                        self.active_workspace.as_ref(),
-                    );
+                    let roots = collect_search_roots(self.active_workspace.as_ref());
                     let mut panel = std::mem::take(&mut self.search_results_panel);
                     panel.search_roots = roots.clone();
                     self.render_workspace_context(ctx, ui, &mut panel);
@@ -131,16 +137,18 @@ impl WorkbenchShell {
                     self.apply_search_outcome(roots, outcome);
                 }
                 TabKind::FileExplorerPanel => {
-                    // Unsplit: rendered as a full-window ctx-level panel by
-                    // render_central_panel (the is_file_explorer branch), so this
-                    // arm is skipped. Split (CR-NR-093 B071): the ctx-level branch
-                    // is suppressed, so render the File Explorer HERE, inside this
-                    // region's `ui`, keeping the split visible (Req 13.4/14.4).
-                    if self.tabs.is_split() {
-                        self.nav_explorer_seed();
-                        let effects = self.render_nav_explorer_body(ui);
-                        self.apply_nav_explorer_effects(ctx, effects);
-                    }
+                    // core-001 strip: the File Explorer Context (VFS tree browser,
+                    // POM option 2) is PARKED (see docs/reentry-register.md).
+                    // Render an "unavailable in core" notice; no interior Tab stop
+                    // -> InteriorFocus::none().
+                    render_core_unavailable_notice(
+                        ui,
+                        "File Explorer is not available in the core build.",
+                    );
+                    self.apply_interior_focus(
+                        ctx,
+                        crate::shell::workspace_context::InteriorFocus::none(),
+                    );
                 }
                 TabKind::MacroLibrary => {
                     // Validates: lua-macro-engine Requirement 12.1-12.8;
@@ -233,13 +241,15 @@ impl WorkbenchShell {
     // split).
 }
 
-/// Collect search root paths from the active workspace or mounted Native catalogs.
+/// Collect search root paths from the active workspace.
+///
+/// core-001 strip: the catalog registry (Native-catalog roots) is parked with
+/// the Catalog domain, so the search roots are reduced to the active
+/// workspace's roots only. Search Results stays functional over the active
+/// workspace without the catalog registry.
 ///
 /// Validates: global-search Requirement 2.4
-pub(super) fn collect_search_roots(
-    registry: &crate::catalog_registry::CatalogRegistry,
-    workspace: Option<&ff_session::WorkspaceState>,
-) -> Vec<String> {
+pub(super) fn collect_search_roots(workspace: Option<&ff_session::WorkspaceState>) -> Vec<String> {
     if let Some(ws) = workspace {
         if !ws.roots.is_empty() {
             return ws
@@ -249,72 +259,9 @@ pub(super) fn collect_search_roots(
                 .collect();
         }
     }
-    registry
-        .list_by_type(crate::catalog_registry::CatalogType::Native)
-        .iter()
-        .map(|c| c.path.clone())
-        .collect()
+    Vec::new()
 }
 
-/// Resolve a Mainframe DSN to a physical path via the ff-desktop CatalogRegistry,
-/// creating the file on disk if it does not yet exist.
-///
-/// Returns the path as a `String` on success, or a human-readable error.
-///
-/// Validates: Requirement 16.1, 16.3, 16.4
-pub(super) fn open_mainframe_dsn(
-    registry: &crate::catalog_registry::CatalogRegistry,
-    catalog_name: &str,
-    dsn: &str,
-) -> Result<String, String> {
-    let parsed = ff_dscatalog::dsn::Dsn::parse(dsn)
-        .map_err(|_| format!("'{}': invalid dataset name", dsn))?;
-    let path = registry
-        .resolve_dsn(catalog_name, &parsed)
-        .map_err(|_| format!("'{}': dataset not found in catalog '{}'", dsn, catalog_name))?;
-    if !path.exists() {
-        crate::files_panel::FilesPanelState::create_dataset_file(&path).map_err(|e| {
-            format!(
-                "'{}': cannot create dataset file at {}: {}",
-                dsn,
-                path.display(),
-                e
-            )
-        })?;
-    }
-    Ok(path.to_string_lossy().into_owned())
-}
-
-/// Look up a Mainframe dataset's record format (RC.B.8 (c)) in `catalog_name`
-/// and map it to the `file.open` `recfm` + `lrecl` params (so the opened
-/// Document's RecordFormat can be set and the BRC.3 record-save selection
-/// fires). Returns `None` when the dataset has no RECFM/LRECL catalogued or the
-/// catalog cannot be read -- the open then falls back to the host/Delimited
-/// default (a conservative, byte-identical save).
-///
-/// The `recfm` string is the ff-vfs record-format kind name
-/// (`Fixed`/`Variable`/`Undefined`) that `FileOpenHandler` understands: catalog
-/// `F`/`FB` -> `Fixed`, `V`/`VB` -> `Variable`, `U` -> `Undefined`.
-///
-/// Validates: command-environments Requirement 18.2; document-model Req 11.2
-pub(super) fn mainframe_dataset_recfm(
-    registry: &crate::catalog_registry::CatalogRegistry,
-    catalog_name: &str,
-    dsn: &str,
-) -> Option<(String, i64)> {
-    use ff_dscatalog::dataset::Recfm;
-    let records = registry.list_datasets(catalog_name).ok()?;
-    let want = dsn.trim().to_uppercase();
-    let record = records.into_iter().find(|r| r.dsn.as_str() == want)?;
-    let recfm = record.recfm?;
-    let lrecl = record.lrecl? as i64;
-    let kind = match recfm {
-        Recfm::F | Recfm::FB => "Fixed",
-        Recfm::V | Recfm::VB => "Variable",
-        Recfm::U => "Undefined",
-        // `Recfm` is #[non_exhaustive]; any future variant falls back to the
-        // host/Delimited default (no record params emitted) by returning None.
-        _ => return None,
-    };
-    Some((kind.to_string(), lrecl))
-}
+// core-001 strip: `open_mainframe_dsn` and `mainframe_dataset_recfm` (catalog
+// DSN -> physical path / record format, via ff-dscatalog + ff-files-panel) are
+// parked with the catalog domain.

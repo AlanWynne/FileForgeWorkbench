@@ -8,144 +8,16 @@
 
 use eframe::egui;
 
-use crate::catalog_manager_dialog::{self, NewCatalogForm};
-use crate::dataset_alloc_dialog::{self};
-use crate::files_panel;
 use crate::primary_option_menu;
 
-use super::render_body::open_mainframe_dsn;
 use super::WorkbenchShell;
 
+// core-001 strip: `render_body_files_panel` (the Catalog Explorer / Files Panel
+// body, backed by the parked ff-files-panel / catalog crates) is removed with
+// the catalog domain. The `TabKind::FilesPanel` arm now renders an "unavailable
+// in core" notice directly in `render_body.rs`.
+
 impl WorkbenchShell {
-    /// Render the Catalog Explorer (Files Panel) Context body and apply its
-    /// panel actions. Extracted verbatim from the `TabKind::FilesPanel` arm of
-    /// `render_active_tab_body` (TASK 2.2, pure code movement, no behaviour
-    /// change) to keep that dispatcher under the 400-line rule.
-    pub(super) fn render_body_files_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        // Validates: Requirement 1.1, 1.7
-        let action = files_panel::render(ui, &mut self.files_panel);
-        match action {
-            files_panel::FilesPanelAction::ReturnToPom => {
-                self.pending_tab_actions.return_to_pom = true;
-            }
-            files_panel::FilesPanelAction::NewCatalog => {
-                if matches!(self.files_panel.dialog, files_panel::FilesDialogState::None) {
-                    // Req 12.1, 12.2 — pre-populate with configured defaults
-                    let mf_root = self
-                        .config_handle
-                        .get_string(ff_config::keys::catalogs::DEFAULT_MAINFRAME_ROOT)
-                        .unwrap_or_default();
-                    let posix_root = self
-                        .config_handle
-                        .get_string(ff_config::keys::catalogs::DEFAULT_POSIX_ROOT)
-                        .unwrap_or_default();
-                    self.files_panel.dialog = files_panel::FilesDialogState::NewCatalog(
-                        NewCatalogForm::with_defaults(mf_root, posix_root),
-                    );
-                }
-            }
-            files_panel::FilesPanelAction::EditCatalog(name) => {
-                // Req 4.1 - open Edit Catalog dialog pre-populated
-                if matches!(self.files_panel.dialog, files_panel::FilesDialogState::None) {
-                    if let Some(cat) = self.files_panel.registry.get_by_name(&name) {
-                        let form = catalog_manager_dialog::EditCatalogForm::from_catalog(cat);
-                        self.files_panel.dialog = files_panel::FilesDialogState::EditCatalog(form);
-                    }
-                }
-            }
-            files_panel::FilesPanelAction::DeleteCatalog(name) => {
-                // Req 4.3 - open Delete Catalog confirmation dialog
-                if matches!(self.files_panel.dialog, files_panel::FilesDialogState::None) {
-                    if let Some(cat) = self.files_panel.registry.get_by_name(&name) {
-                        let confirm =
-                            catalog_manager_dialog::DeleteCatalogConfirm::from_catalog(cat);
-                        self.files_panel.dialog =
-                            files_panel::FilesDialogState::DeleteCatalog(confirm);
-                    }
-                }
-            }
-
-            files_panel::FilesPanelAction::AllocateDataset(catalog_name) => {
-                // Req 5.1 - open Allocate Dataset dialog
-                // Req 13.2 - record which catalog opened the dialog
-                if matches!(self.files_panel.dialog, files_panel::FilesDialogState::None) {
-                    self.files_panel.pending_alloc_catalog = Some(catalog_name.clone());
-                    // Req 5.7 — pre-populate Dataset Name with catalog HLQ if set
-                    let form = self
-                        .files_panel
-                        .registry
-                        .get_by_name(&catalog_name)
-                        .and_then(|c| c.default_hlq.as_deref())
-                        .map(dataset_alloc_dialog::AllocDatasetForm::with_hlq)
-                        .unwrap_or_default();
-                    self.files_panel.dialog = files_panel::FilesDialogState::AllocateDataset(form);
-                }
-            }
-            files_panel::FilesPanelAction::OpenFile(dsn) => {
-                // Req 16 — resolve physical path from catalog repository + DSN
-                let is_mainframe = self
-                    .files_panel
-                    .content
-                    .selected_catalog
-                    .as_deref()
-                    .and_then(|n| self.files_panel.registry.get_by_name(n))
-                    .map(|c| c.catalog_type == crate::catalog_registry::CatalogType::Mainframe)
-                    .unwrap_or(false);
-                if is_mainframe {
-                    let catalog_name = self
-                        .files_panel
-                        .content
-                        .selected_catalog
-                        .clone()
-                        .unwrap_or_default();
-                    match open_mainframe_dsn(&self.files_panel.registry, &catalog_name, &dsn) {
-                        Err(e) => self.open_error = Some(e),
-                        Ok(path_str) => {
-                            // RC.B.8 (c): bind owning_env=MAINFRAME + the real DSN
-                            // + catalog + the dataset RECFM/LRECL so the opened tab
-                            // reaches the record-capable backend with the real
-                            // dataset identity (Req 18.2) and record framing
-                            // (document-model Req 11.2).
-                            let mut p = ff_command::CommandParams::new();
-                            p.insert("path", path_str.as_str());
-                            p.insert("owning_env", super::environment_registry::MAINFRAME_NAME);
-                            p.insert("dsn", dsn.as_str());
-                            p.insert("catalog", catalog_name.as_str());
-                            if let Some((recfm, lrecl)) =
-                                super::render_body::mainframe_dataset_recfm(
-                                    &self.files_panel.registry,
-                                    &catalog_name,
-                                    &dsn,
-                                )
-                            {
-                                p.insert("recfm", recfm.as_str());
-                                p.insert("lrecl", lrecl);
-                            }
-                            let _ = self.dispatch.execute_command("file.open", p);
-                        }
-                    }
-                } else {
-                    let mut p = ff_command::CommandParams::new();
-                    p.insert("path", dsn.as_str());
-                    let _ = self.dispatch.execute_command("file.open", p);
-                }
-            }
-            files_panel::FilesPanelAction::NavigateInto(_) => {}
-            files_panel::FilesPanelAction::None => {}
-        }
-        // CR-NR-078 WF.6 special case (task 8.2): the Files Panel
-        // (Catalog Explorer Context) has its OWN internal
-        // "Command ===>" field and a bespoke Tab redirect
-        // (files_panel_cmd -> first catalog node via
-        // `tree_focus_requested`, B024/Req 20.1) handled in
-        // `render_central_panel`, NOT the shell command-field ->
-        // first-interior latch. It has no shell-latched interior Tab
-        // stop, so it reports `InteriorFocus::none()` EXPLICITLY
-        // through the single latch path (workspace-conformance rule
-        // exception 2) rather than silently leaving the anchors unset.
-        self.apply_interior_focus(ctx, crate::shell::workspace_context::InteriorFocus::none());
-    }
-
     /// Render the Menu_Workspace (Home Context / POM and every named menu)
     /// Context body. Extracted verbatim from the `TabKind::MenuWorkspace` arm of
     /// `render_active_tab_body` (TASK 2.2, pure code movement, no behaviour

@@ -27,41 +27,27 @@ use crate::automation::ShellAutomationRegistry;
 use crate::command_palette::CommandPaletteState;
 use crate::config_panel::ConfigPanelState;
 use crate::event_log_panel::EventLogPanelState;
-use crate::exclude_manager::ExcludeManager;
-use crate::files_panel::FilesPanelState;
-use crate::find_manager::FindManager;
-use crate::nav_manager::NavManager;
 use crate::notification::{Notification, NotificationQueue};
 use crate::plugin_manager_panel::PluginManagerPanelState;
-use crate::scroll_amount::ScrollAmount;
 use crate::session_manager::SessionManager;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
 
 use super::{command_line_outcome, reset_bare, state_groups, KeyBarScope};
 
-/// The deferred-open channel payload (RC.B.8 (c) widens it from the former
-/// `(path, owning_env)` tuple): the resource `path`, the optional
-/// Owning_Environment NAME (`owning_env`, CR-CH-053 Task 19, Req 15.2; `None` ->
-/// host FS default, Req 15.3), the optional real dataset identity (`identity`,
-/// `(dsn, catalog)`, bound for a MAINFRAME open so the record-store `StoreTarget`
-/// carries the real DSN -- RC.B.8 (c), Req 18.2), and the optional dataset record
-/// format (`recfm_lrecl`, `(RecordFormatKind, lrecl)`) so the opened Document's
-/// RecordFormat can be set at open (document-model Req 11.2) and the BRC.3 save
-/// selection fires. A small struct (not a 4-tuple) for clarity.
+/// The deferred-open channel payload: the resource `path` and the optional
+/// Owning_Environment NAME (`owning_env`; `None` -> host FS default).
+///
+/// core-001 strip: the mainframe-dataset open fields (`identity` /
+/// `recfm_lrecl`, which carried `ff_vfs::RecordFormatKind` for the record-aware
+/// SAVE seam) are removed with the catalog/VFS domains. The editor Context is
+/// parked, so the pending open no longer sets a record format on a document.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct PendingOpenReq {
-    /// The resource path the editor reads from (host path, even for a dataset).
+    /// The resource path the open reads from.
     pub(super) path: String,
     /// The Owning_Environment NAME; `None` -> host FS default.
     pub(super) owning_env: Option<String>,
-    /// The real dataset identity `(dsn, catalog)` for a MAINFRAME open; `None`
-    /// for a host-path open (which keeps the host-path placeholder `StoreTarget`).
-    pub(super) identity: Option<(String, String)>,
-    /// The dataset record format `(kind, lrecl)` to set on the opened Document;
-    /// `None` for a host-path open (which keeps the Delimited default so native
-    /// SAVE is byte-identical).
-    pub(super) recfm_lrecl: Option<(ff_vfs::RecordFormatKind, u32)>,
 }
 
 /// The deferred-open channel: when `Some`, open the [`PendingOpenReq`] at the
@@ -133,12 +119,10 @@ pub struct WorkbenchShell {
     /// override for test isolation); `None` when the path cannot be resolved.
     /// Loaded in `new`, saved in `on_exit`.
     pub(super) history_store: Option<HistoryStore>,
-    /// Find/replace engine -- FIND, RFIND, CHANGE, RCHANGE.
-    pub(super) find_manager: FindManager,
-    /// Navigation engine -- LOCATE, SORT, UP, DOWN, LEFT, RIGHT, TOP, BOTTOM.
-    pub(super) nav_manager: NavManager,
-    /// Exclude/Show/Reset engine -- EXCLUDE, SHOW, RESET.
-    pub(super) exclude_manager: ExcludeManager,
+    // core-001 strip: the editor engines -- find_manager (FIND/CHANGE),
+    // nav_manager (editor viewport LOCATE/SORT/UP/DOWN), exclude_manager
+    // (EXCLUDE/SHOW/RESET) -- are parked with the editor domain. Their fields
+    // are removed; the verbs now fall through the ladder with no editor target.
     /// Active key map resolver -- global key map (no profile active at startup).
     pub(super) key_map_resolver: KeyMapResolver,
     /// Key label bar display model -- derived from the active key map.
@@ -206,29 +190,9 @@ pub struct WorkbenchShell {
     ///
     /// Validates: command-environments Requirement 13.1, 13.2, 13.7
     pub(super) environments: super::environment_registry::EnvironmentRegistry,
-    /// Live `ff-vfs` Provider_Registry (CR-CH-053 Task 22): a shell-owned
-    /// `ProviderRegistry` registered LIVE at startup, seeded with the host-FS
-    /// `local` provider so a provider is resolvable BY SCHEME at runtime (Req
-    /// 17.1). This is the seam a plugin-provided `VfsProvider` (e.g. the mainframe
-    /// VFS provider in the `V` stream) registers into -- without it such a
-    /// provider has nowhere to land (Req 17.2). Registering it is ADDITIVE: the
-    /// host-path open/save path reads through `LocalFsProvider` /
-    /// `BackendEnvironment` directly and does NOT consult this registry, so native
-    /// file access is unchanged whether or not a non-host provider is registered
-    /// (Req 17.3, 17.4). `Arc` so a background provider producer could share it.
-    ///
-    /// Validates: command-environments Requirement 17.1, 17.2, 17.3, 17.4
-    //
-    // `allow(dead_code)`: this field is the LIVE registration SEAM required by
-    // Req 17.1/17.2 -- its job is to EXIST at runtime so a plugin-provided
-    // `VfsProvider` (the `V`-stream mainframe provider) has somewhere to land.
-    // Its runtime CONSUMER (resolving a non-host provider by scheme during a
-    // non-host open) is a later phase (Req 17.4), so no non-test code reads it
-    // yet. The seam and its "additive, host path unchanged" contract are proven
-    // by the Task 22 tests. Remove the allow when the first non-host consumer
-    // lands.
-    #[allow(dead_code)]
-    pub(super) provider_registry: Arc<ff_vfs::ProviderRegistry>,
+    // core-001 strip: the live ff-vfs Provider_Registry seam is removed with the
+    // VFS provider domain (the host-path open/save path never consulted it, so
+    // removing it changes no retained behaviour).
     /// Command Configurator Context UI state (list + edit form + delete confirm).
     ///
     /// Validates: command-configurator Requirement 2.1, 2.3
@@ -258,20 +222,11 @@ pub struct WorkbenchShell {
     ///
     /// Validates: command-configurator Requirement 3.8
     pub(crate) pending_external: Option<crate::shell::external_adapter::PendingExternal>,
-    /// Files Panel (Virtual Catalog Manager) state.
-    pub(super) files_panel: FilesPanelState,
-    /// Persisted width of the File Explorer side panel (logical pixels).
-    /// Session-persisted via `file_explorer_sidebar_width` (ff-session).
-    ///
-    /// Validates: Requirement 1.3 file-tree-panel (fix B019), 23.9
-    pub(super) file_explorer_panel_width: f32,
-    /// Canonical ff-file-tree-backed navigation model for the File Explorer
-    /// (CR-NR-060 Slice A). Identity is NodeId + ResourceUri (Req 24.1, 24.2).
-    pub(super) nav_model: crate::nav_model::NavModel,
-    /// Modern-explorer UI interaction state (grouped sub-struct, see
-    /// [`state_groups::NavUiState`]): selection, the rename/delete/new dialogs,
-    /// the keyboard-focus flag, and the file clipboard.
-    pub(super) nav_ui: state_groups::NavUiState,
+    // core-001 strip: the file navigator and catalog domains are parked, so the
+    // Files Panel / File Explorer state fields (files_panel, the sidebar width,
+    // the ff-file-tree nav_model, and the nav_ui interaction sub-struct) are
+    // removed. The Catalog Explorer and File Explorer Contexts render an
+    // "unavailable in core" notice instead (see docs/reentry-register.md).
     /// Toolchain panel state -- GCC and Rust plugin entries.
     pub(super) toolchain_panel: ToolchainPanelState,
     /// Whether the Toolchain Panel is currently visible.
@@ -334,14 +289,9 @@ pub struct WorkbenchShell {
     ///
     /// Validates: global-search Requirement 1.1
     pub(crate) search_results_panel: crate::search_results_panel::SearchResultsPanelState,
-    /// Active scroll amount for the SCROLL ===> field.
-    ///
-    /// Validates: Requirement 19.1, 19.2, 19.3
-    pub(crate) scroll_amount: ScrollAmount,
-    /// Text buffer for the SCROLL ===> field input.
-    ///
-    /// Validates: Requirement 19.1
-    pub(crate) scroll_field_text: String,
+    // core-001 strip: the SCROLL ===> field state (scroll_amount / the parked
+    // ff-scroll-amount type, and scroll_field_text) is editor chrome; it is
+    // removed with the editor domain.
     /// True when any modal dialog is open -- suppresses the shell Tab-cycle and
     /// command-field focus steal so keystrokes reach the dialog's own widgets.
     pub(super) modal_open: bool,

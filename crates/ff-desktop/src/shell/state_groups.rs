@@ -66,40 +66,9 @@ pub(crate) struct DetachSplitState {
     pub focused_region_menu_first: Option<egui::Id>,
 }
 
-// === NavUiState ======================================================
-// Modern-explorer (NavModel-backed) UI interaction state: selection, the
-// rename / delete / new-child dialogs, keyboard-focus flag, and file clipboard.
-// Grouped from the former flat `nav_*` fields (behaviour-preserving: only the
-// access path changes, e.g. `self.nav_selection` -> `self.nav_ui.nav_selection`).
-
-/// Modern-explorer UI interaction state grouped from the former flat `nav_*`
-/// `WorkbenchShell` fields. A plain data container: every field keeps the same
-/// type and semantics it had as a flat field; only the access path changes.
-#[derive(Debug, Default)]
-pub(crate) struct NavUiState {
-    /// Selection/cursor state for the NavModel-backed explorer (Requirement 24.2).
-    pub nav_selection: crate::explorer_view::ExplorerSelection,
-
-    /// Active rename dialog for the modern explorer: (target node, edit buffer).
-    /// `None` when no rename is in progress. (CR-NR-060 Slice A, Req 16 Rename.)
-    pub nav_rename: Option<(ff_file_tree::NodeId, String)>,
-
-    /// Active delete-confirmation dialog for the modern explorer: (target node,
-    /// display label). `None` when no delete is pending. (Req 16 Delete.)
-    pub nav_delete: Option<(ff_file_tree::NodeId, String)>,
-
-    /// Active new-child dialog for the modern explorer: (parent directory node,
-    /// is_directory, name buffer). `None` when none pending. (Req 16 New.)
-    pub nav_new: Option<(ff_file_tree::NodeId, bool, String)>,
-
-    /// When true, the modern explorer node list holds keyboard focus (Tab moved
-    /// focus from the shell Command ===> into the tree). (Req 24.9 / 20.1.)
-    pub nav_focused: bool,
-
-    /// File clipboard for the modern explorer: source resource URIs marked for a
-    /// copy, pasted into a target directory on Paste. (Req 21.1 / 21.3.)
-    pub nav_file_clipboard: Vec<ff_vfs::ResourceUri>,
-}
+// core-001 strip: NavUiState (the modern-explorer selection / rename / delete /
+// new-child dialogs / file clipboard, backed by the parked ff-explorer-view and
+// ff-file-tree crates) is removed with the file navigator domain.
 
 // === HelpState =======================================================
 // The shell-owned Help Topic Registry, the Help Context panel, and the

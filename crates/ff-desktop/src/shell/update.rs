@@ -4,41 +4,12 @@
 
 use eframe::egui;
 
-use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
-
 use super::WorkbenchShell;
 use ff_fftest::AutomationRegistry as _;
-use std::path::PathBuf;
 
-/// Create a default `"Home"` Native catalog pointing at `home_path` and register
-/// it in `registry`, but only when no Native catalogs exist yet.
-///
-/// Returns `true` when a catalog was added (caller should persist the registry).
-///
-/// Validates: Requirement 14.1, 14.2, 14.4, 14.5
-pub(super) fn ensure_default_home_catalog(
-    registry: &mut CatalogRegistry,
-    home_path: PathBuf,
-) -> bool {
-    if !registry.list_by_type(CatalogType::Native).is_empty() {
-        return false;
-    }
-    let catalog = VirtualCatalog {
-        name: "Home".to_string(),
-        catalog_type: CatalogType::Native,
-        path: home_path.to_string_lossy().into_owned(),
-        description: Some("Default home directory catalog".to_string()),
-        auto_mount: true,
-        default_hlq: None,
-        mount_point: None,
-        read_only: false,
-    };
-    // register() only fails on duplicate name or invalid name — neither applies here.
-    // If a non-Native catalog named "Home" already exists the register silently fails,
-    // which is acceptable (the user has a catalog named Home of a different type).
-    let _ = registry.register(catalog);
-    true
-}
+// core-001 strip: `ensure_default_home_catalog` (and the CatalogRegistry /
+// CatalogType / VirtualCatalog types it used) is parked with the catalog
+// domain.
 
 /// Ensure a Home Context (POM) tab is present at index 0.
 ///
@@ -97,13 +68,9 @@ impl eframe::App for WorkbenchShell {
                     self.open_error = Some(e);
                 } else {
                     self.open_error = None;
-                    // RC.B.8 (c): bind the real dataset identity + the dataset
-                    // record format onto the just-opened (now active) tab, so the
-                    // record-store StoreTarget carries the real DSN (Req 18.2) and
-                    // the BRC.3 save selection takes the record path (document-model
-                    // Req 11.2). Host-path opens carry neither, so this is a no-op
-                    // for them and native SAVE stays byte-identical.
-                    self.apply_pending_open_identity(req.identity, req.recfm_lrecl);
+                    // core-001 strip: the mainframe-dataset identity / record-format
+                    // binding (apply_pending_open_identity) is parked with the
+                    // catalog/VFS domains; host-path opens never used it.
                 }
             }
         }
@@ -346,13 +313,17 @@ impl eframe::App for WorkbenchShell {
                 self.zoom.offset().value(),
                 self.key_bar_visible,
                 self.key_bar_scope.persist_name(),
-                self.file_explorer_panel_width,
+                // core-001 strip: the File Explorer sidebar width is parked with
+                // the navigator domain; persist the schema default so the
+                // session field stays well-formed.
+                260.0,
                 ws_path,
                 self.recent_palette_commands.clone(),
                 self.search_results_panel.history.clone(),
                 self.config_panel.namespace_filter.as_deref(),
             );
-            session.save_catalog_registry(&self.files_panel.registry);
+            // core-001 strip: catalog registry persistence is parked with the
+            // catalog domain.
         }
 
         // Persist the command-line history (function-keys-and-history Req 6.3).
@@ -364,61 +335,15 @@ impl eframe::App for WorkbenchShell {
 
 #[cfg(test)]
 mod startup_tests {
-    use super::{ensure_default_home_catalog, ensure_pom_tab_present};
-    use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
+    // core-001 strip: `ensure_default_home_catalog` was a catalog-only startup
+    // helper, parked with the catalog domain (production confirms this at the
+    // top of this file); its two tests (Home-catalog creation / suppression,
+    // Req 14.2/14.4/14.5) are removed with it. `ensure_pom_tab_present` and the
+    // POM-on-startup tests are retained core behaviour.
+    use super::ensure_pom_tab_present;
     use crate::tab_manager::TabManager;
     use crate::tab_state::KindTag;
-    use std::path::PathBuf;
     use tokio::runtime::Runtime;
-
-    fn home() -> PathBuf {
-        PathBuf::from("C:/Users/testuser")
-    }
-
-    fn native_catalog(name: &str) -> VirtualCatalog {
-        VirtualCatalog {
-            name: name.to_string(),
-            catalog_type: CatalogType::Native,
-            path: "C:/some/path".to_string(),
-            description: None,
-            auto_mount: true,
-            default_hlq: None,
-            mount_point: None,
-            read_only: false,
-        }
-    }
-
-    /// Validates: Requirement 14.1, 14.2 — empty registry gets a "Home" Native catalog.
-    #[test]
-    fn no_native_catalogs_triggers_home_catalog_creation() {
-        // Validates: Requirement 14.1, 14.2
-        let mut registry = CatalogRegistry::new();
-        let added = ensure_default_home_catalog(&mut registry, home());
-        assert!(added, "must return true when catalog was added");
-        let cat = registry
-            .get_by_name("Home")
-            .expect("Home catalog must exist");
-        assert_eq!(cat.catalog_type, CatalogType::Native);
-        assert_eq!(cat.path, "C:/Users/testuser");
-        assert!(cat.auto_mount);
-    }
-
-    /// Validates: Requirement 14.4 — existing Native catalog suppresses Home creation.
-    #[test]
-    fn existing_native_catalog_suppresses_home_creation() {
-        // Validates: Requirement 14.4
-        let mut registry = CatalogRegistry::new();
-        registry.register(native_catalog("Projects")).unwrap();
-        let added = ensure_default_home_catalog(&mut registry, home());
-        assert!(
-            !added,
-            "must return false when Native catalog already exists"
-        );
-        assert!(
-            registry.get_by_name("Home").is_none(),
-            "Home must not be created when a Native catalog already exists"
-        );
-    }
 
     // === Phase CL: POM guaranteed on startup (Req 14.1, 14.1a, 14.1b) ===
 
@@ -471,18 +396,5 @@ mod startup_tests {
             "must prepend a POM tab when none exists"
         );
         assert!(tabs.tabs()[0].is_home, "POM must be at index 0");
-    }
-
-    /// Validates: Requirement 14.3 -- returned true signals caller to persist registry.
-    /// Validates: Requirement 14.5 -- fallback path is used when home_path is provided.
-    #[test]
-    fn home_catalog_uses_provided_path() {
-        // Validates: Requirement 14.3, 14.5
-        let fallback = PathBuf::from("C:/fallback");
-        let mut registry = CatalogRegistry::new();
-        let added = ensure_default_home_catalog(&mut registry, fallback.clone());
-        assert!(added);
-        let cat = registry.get_by_name("Home").unwrap();
-        assert_eq!(cat.path, "C:/fallback");
     }
 }

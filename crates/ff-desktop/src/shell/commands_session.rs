@@ -77,10 +77,8 @@ impl WorkbenchShell {
                 .cursor_column(tab.cursor.cursor_column() as usize);
         }
 
-        // (e) Active scroll setting (for the deferred CSR consumer).
-        if !self.scroll_field_text.trim().is_empty() {
-            b = b.scroll_setting(self.scroll_field_text.clone());
-        }
+        // core-001 strip: the active SCROLL ===> setting is editor chrome, parked
+        // with the editor domain; the Cursor_Context no longer carries it.
 
         b.build()
     }
@@ -132,8 +130,8 @@ impl WorkbenchShell {
         let saved_active_id = self.tabs.active_tab().id;
         let saved_active = self.tabs.active_index();
         let saved_command_text = std::mem::take(&mut self.command_text);
-        let saved_scroll_text = std::mem::take(&mut self.scroll_field_text);
-        let saved_scroll_amount = self.scroll_amount.clone();
+        // core-001 strip: the SCROLL ===> field state is parked with the editor
+        // domain, so it is no longer part of the per-window swap.
         let saved_open_error = self.open_error.take();
         let saved_focus_req = self.focus.command_field_focus_requested;
         let saved_outcome = self.pending_command_line_outcome.take();
@@ -141,8 +139,6 @@ impl WorkbenchShell {
         // Install the detached window's context (active tab via the seam).
         self.tabs.set_active(tab_index);
         self.command_text = std::mem::take(&mut ctx.command_text);
-        self.scroll_field_text = std::mem::take(&mut ctx.scroll_field_text);
-        self.scroll_amount = ctx.scroll_amount.clone();
         self.open_error = ctx.open_error.take();
         self.focus.command_field_focus_requested = ctx.command_field_focus_requested;
         self.pending_command_line_outcome = ctx.pending_command_line_outcome.take();
@@ -151,8 +147,6 @@ impl WorkbenchShell {
 
         // Move the (possibly modified) detached-window buffers back into `ctx`.
         ctx.command_text = std::mem::take(&mut self.command_text);
-        ctx.scroll_field_text = std::mem::take(&mut self.scroll_field_text);
-        ctx.scroll_amount = self.scroll_amount.clone();
         ctx.open_error = self.open_error.take();
         ctx.command_field_focus_requested = self.focus.command_field_focus_requested;
         ctx.pending_command_line_outcome = self.pending_command_line_outcome.take();
@@ -167,8 +161,6 @@ impl WorkbenchShell {
             .unwrap_or_else(|| saved_active.min(self.tabs.len().saturating_sub(1)));
         self.tabs.set_active(restore_index);
         self.command_text = saved_command_text;
-        self.scroll_field_text = saved_scroll_text;
-        self.scroll_amount = saved_scroll_amount;
         self.open_error = saved_open_error;
         self.focus.command_field_focus_requested = saved_focus_req;
         self.pending_command_line_outcome = saved_outcome;

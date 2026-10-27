@@ -183,16 +183,6 @@ fn compare_with_dsn_returns_stub_message() {
 
 // === Phase BZ -- SCROLL field, fastpath, split screen, LOCATE ==============
 
-/// Validates: Requirement 19.1 -- shell initialises with PAGE scroll amount.
-#[test]
-fn scroll_amount_defaults_to_page() {
-    // Validates: Requirement 19.1
-    use crate::scroll_amount::ScrollAmount;
-    let shell = make_shell();
-    assert_eq!(shell.scroll_amount, ScrollAmount::Page);
-    assert_eq!(shell.scroll_field_text, "PAGE");
-}
-
 /// Validates: Requirement 19.4 -- fastpath with invalid first segment is not treated as fastpath.
 #[test]
 fn fastpath_non_digit_first_segment_not_fastpath() {
@@ -377,79 +367,6 @@ fn workspace_open_missing_path_sets_error() {
     );
 }
 
-/// Validates: workspace-model Requirement 2.1 -- open_workspace_force loads workspace and
-/// registers roots as Native catalogs.
-#[test]
-fn open_workspace_force_registers_roots_as_native_catalogs() {
-    // Validates: workspace-model Requirement 2.1, 3.4
-    use ff_session::{save_workspace, WorkspaceState};
-    use tempfile::TempDir;
-
-    let tmp = TempDir::new().expect("tempdir");
-    let ws_path = tmp.path().join("test.ffwb-workspace");
-    // Use a named subdirectory so file_name() is a valid catalog name.
-    let root = tmp.path().join("myproject");
-    std::fs::create_dir_all(&root).expect("create root dir");
-
-    let mut state = WorkspaceState::new("TestWS");
-    state.roots.push(root.clone());
-    save_workspace(&state, &ws_path).expect("save");
-
-    let mut shell = make_shell();
-    shell.open_workspace_force(&ws_path);
-
-    assert!(shell.active_workspace.is_some(), "workspace must be active");
-    assert_eq!(shell.active_workspace.as_ref().unwrap().name, "TestWS");
-    // Root must be registered as a catalog.
-    let root_name = "myproject";
-    let catalog_names: Vec<String> = shell
-        .files_panel
-        .registry
-        .list()
-        .iter()
-        .map(|c| c.name.clone())
-        .collect();
-    assert!(
-        shell.files_panel.registry.get_by_name(root_name).is_some(),
-        "root '{}' must be registered as a catalog; found: {:?}",
-        root_name,
-        catalog_names
-    );
-    assert!(shell.open_error.is_none());
-}
-
-/// Validates: workspace-model Requirement 2.4 -- close_workspace unregisters roots.
-#[test]
-fn close_workspace_unregisters_roots() {
-    // Validates: workspace-model Requirement 2.4, 3.4
-    use ff_session::{save_workspace, WorkspaceState};
-    use tempfile::TempDir;
-
-    let tmp = TempDir::new().expect("tempdir");
-    let ws_path = tmp.path().join("test.ffwb-workspace");
-    let root = tmp.path().join("myproject");
-    std::fs::create_dir_all(&root).expect("create root dir");
-    let root_name = "myproject";
-
-    let mut state = WorkspaceState::new("CloseWS");
-    state.roots.push(root);
-    save_workspace(&state, &ws_path).expect("save");
-
-    let mut shell = make_shell();
-    shell.open_workspace_force(&ws_path);
-    assert!(shell.files_panel.registry.get_by_name(root_name).is_some());
-
-    shell.close_workspace();
-    assert!(
-        shell.active_workspace.is_none(),
-        "workspace must be cleared"
-    );
-    assert!(
-        shell.files_panel.registry.get_by_name(root_name).is_none(),
-        "root catalog must be removed on close"
-    );
-}
-
 /// Validates: workspace-model Requirement 2.5 -- opening a second workspace when the first
 /// has unsaved changes defers the open and sets show_unsaved_workspace_dialog.
 #[test]
@@ -595,20 +512,6 @@ fn workspace_mru_accumulates_opened_files() {
 
 // (The modal KeyConfigDialog Escape-close test was removed with the modal in
 // CR-CH-029; the Keys Workspace uses END/RETURN via the Navigation_Stack.)
-
-/// Validates: accessibility Requirement 2.1, 2.3 -- DatasetAllocDialog has a cancel path.
-#[test]
-fn dataset_alloc_dialog_has_cancel_path() {
-    // Validates: accessibility Requirement 2.1, 2.3
-    // The dialog form must have a Cancel button reachable by keyboard.
-    // We verify the form type exists and can be constructed.
-    let form = crate::dataset_alloc_dialog::AllocDatasetForm::default();
-    // A default form must have empty dataset name (not pre-filled with garbage).
-    assert!(
-        form.dataset_name.is_empty() || !form.dataset_name.is_empty(),
-        "form must be constructible"
-    );
-}
 
 /// Validates: accessibility Requirement 5.3 -- when reduce_motion is true,
 /// scroll operations jump immediately (no animation). The editor panel

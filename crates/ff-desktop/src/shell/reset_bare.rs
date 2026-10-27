@@ -349,16 +349,8 @@ impl WorkbenchShell {
         // Legacy regardless of what was active before the reset.
         self.set_active_theme("Default Legacy");
 
-        // Catalogs -> clear and re-seed the default Home catalog (CR-NR-004).
-        self.files_panel.registry = crate::catalog_registry::CatalogRegistry::new();
-        let home_path = dirs::home_dir()
-            .or_else(|| std::env::current_dir().ok())
-            .unwrap_or_else(|| PathBuf::from("."));
-        let _ =
-            super::update::ensure_default_home_catalog(&mut self.files_panel.registry, home_path);
-        if let Some(session) = &self.session {
-            session.save_catalog_registry(&self.files_panel.registry);
-        }
+        // core-001 strip: the catalog registry reset (clear + re-seed default
+        // Home catalog) is parked with the catalog domain.
 
         // Menus -> drop any loaded POM menu so it reloads from the compiled
         // Recovery_Baseline on the next render. Reopen the Home Context (POM).

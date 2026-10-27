@@ -73,6 +73,9 @@ impl TabState {
     }
 
     /// Create a tab for a file that has been loaded into `document`.
+    // core-001 strip: the editor open path that built a file tab is parked, so
+    // this constructor has no caller in the core build; retained for re-entry.
+    #[allow(dead_code)]
     pub fn for_file(
         id: TabId,
         path: String,

@@ -175,26 +175,15 @@ impl WorkbenchShell {
     /// store-affecting verb (SAVE) to for the current resource. Defaults to the
     /// host FS environment for a host-path tab (Req 15.3/15.6), so native SAVE is
     /// unchanged.
+    // core-001 strip: `active_owning_environment` fed the parked FFEDIT SAVE
+    // addressing; retained (TabState keeps `owning_environment`) for re-entry.
+    #[allow(dead_code)]
     pub(crate) fn active_owning_environment(&self) -> String {
         self.tabs.active_tab().owning_environment.clone()
     }
 
-    /// The live `ff-vfs` Provider_Registry registered at startup (CR-CH-053
-    /// Task 22, Req 17.1). A clone of the shared `Arc` so a background/plugin
-    /// producer can register a `VfsProvider` into the SAME registry the shell
-    /// resolves from (Req 17.2). Resolving a provider by scheme is additive to
-    /// the host-path open/save path, which does not consult it (Req 17.3, 17.4).
-    ///
-    /// Validates: command-environments Requirement 17.1, 17.2
-    //
-    // `allow(dead_code)`: the accessor exists so a plugin/background producer and
-    // the Task 22 tests can reach the SAME live registry (the registration seam,
-    // Req 17.2). Its non-test caller (the `V`-stream mainframe provider wiring)
-    // is a later phase; remove the allow when that consumer lands.
-    #[allow(dead_code)]
-    pub(crate) fn provider_registry(&self) -> std::sync::Arc<ff_vfs::ProviderRegistry> {
-        std::sync::Arc::clone(&self.provider_registry)
-    }
+    // core-001 strip: the `provider_registry()` accessor (the live ff-vfs
+    // Provider_Registry seam) is parked with the VFS provider domain.
 
     /// Open a file into a new tab AND apply the resulting Kind's profile
     /// (CR-NR-090 B.3). The single shell open-file seam; wraps
@@ -227,42 +216,9 @@ impl WorkbenchShell {
         result
     }
 
-    /// Bind the real dataset identity + dataset record format onto the just-
-    /// opened (now active) tab (RC.B.8 (c)). `identity` is `(dsn, catalog)` from
-    /// the open payload; `recfm_lrecl` is `(RecordFormatKind, lrecl)`. Both are
-    /// `None` for a host-path open, which keeps `store_identity = None` and the
-    /// document's Delimited default, so native SAVE stays byte-identical.
-    ///
-    /// Binding the record format makes the editor SAVE walk take the record path
-    /// for a MAINFRAME tab (document-model Req 11.2); the `store_identity` makes
-    /// the record-store `StoreTarget` carry the real DSN (Req 18.2).
-    pub(crate) fn apply_pending_open_identity(
-        &mut self,
-        identity: Option<(String, String)>,
-        recfm_lrecl: Option<(ff_vfs::RecordFormatKind, u32)>,
-    ) {
-        if let Some((dsn, catalog)) = identity {
-            self.tabs.active_tab_mut().store_identity =
-                Some(crate::tab_state::StoreIdentity { dsn, catalog });
-        }
-        if let Some((kind, lrecl)) = recfm_lrecl {
-            let format = match kind {
-                ff_vfs::RecordFormatKind::Fixed => ff_document_model::RecordFormat::Fixed { lrecl },
-                ff_vfs::RecordFormatKind::Variable => ff_document_model::RecordFormat::Variable {
-                    max_lrecl: lrecl,
-                    rdw: true,
-                },
-                // Undefined has no editor RecordFormat variant; leave the
-                // document's format untouched (the save walk then keeps the byte
-                // path, which is the correct conservative behaviour for U).
-                _ => return,
-            };
-            let document = self.tabs.active_tab().document.clone();
-            self.runtime.block_on(async {
-                document.write().await.set_record_format(format);
-            });
-        }
-    }
+    // core-001 strip: `apply_pending_open_identity` (binding a MAINFRAME tab's
+    // real dataset identity + record format via `ff_vfs::RecordFormatKind`) is
+    // parked with the catalog/VFS domains. Host-path opens never used it.
 
     /// Create a new untitled buffer AND apply the resulting Kind's profile
     /// (CR-NR-090 B.3). The single shell new-untitled seam.

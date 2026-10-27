@@ -11,30 +11,29 @@ name = "ffwb"
 path = "src/main.rs"
 
 [dependencies]
+# core-001 strip (milestone core-001): the editor, file navigator, dataset
+# catalog, VFS providers, and volume domains are UNWIRED from the `ffwb` binary
+# and their crates PARKED (dropped here, still in the workspace `members`). See
+# docs/reentry-register.md for the full map. KEPT per Option A: ff-document-model,
+# ff-viewport-scrolling, ff-edit-operations, and ff-vfs are core TabState
+# infrastructure used directly by the shell's per-tab state, so they remain
+# direct dependencies even though the editor Context itself is unwired.
 ff-core = { path = "../ff-core" }
 ff-config = { path = "../ff-config" }
 ff-logging = { path = "../ff-logging" }
 ff-theme = { path = "../ff-theme" }
 ff-document-model = { path = "../ff-document-model" }
 ff-viewport-scrolling = { path = "../ff-viewport-scrolling" }
-ff-connector-local-fs = { path = "../ff-connector-local-fs" }
 ff-vfs = { path = "../ff-vfs" }
 ff-command = { path = "../ff-command" }
 ff-command-semantics = { path = "../ff-command-semantics" }
 ff-edit-operations = { path = "../ff-edit-operations" }
 ff-find-and-replace = { path = "../ff-find-and-replace" }
-ff-navigation-commands = { path = "../ff-navigation-commands" }
-ff-exclude-show-filter = { path = "../ff-exclude-show-filter" }
-ff-display-line-mapping = { path = "../ff-display-line-mapping" }
-ff-file-tree = { path = "../ff-file-tree" }
 ff-keys = { path = "../ff-keys" }
 ff-help = { path = "../ff-help" }
 ff-i18n = { path = "../ff-i18n" }
 ff-session = { path = "../ff-session" }
 ff-zoom = { path = "../ff-zoom" }
-ff-dscatalog = { path = "../ff-dscatalog" }
-ff-volume = { path = "../ff-volume" }
-ff-idcams = { path = "../ff-idcams" }
 ff-toolchain-api = { path = "../ff-toolchain-api" }
 ff-gcc-toolchain = { path = "../ff-gcc-toolchain" }
 ff-rust-toolchain = { path = "../ff-rust-toolchain" }
@@ -47,18 +46,7 @@ ff-screen-model = { path = "../ff-screen-model" }
 ff-scrm = { path = "../ff-scrm" }
 ff-theme-editor = { path = "../ff-theme-editor" }
 ff-toolchain-panel = { path = "../ff-toolchain-panel" }
-ff-catalog-registry = { path = "../ff-catalog-registry" }
-ff-catalog-dialog = { path = "../ff-catalog-dialog" }
-ff-dataset-alloc-dialog = { path = "../ff-dataset-alloc-dialog" }
 ff-context-menu = { path = "../ff-context-menu" }
-ff-posix-provider = { path = "../ff-posix-provider" }
-ff-ce-host-fs = { path = "../ff-ce-host-fs" }
-ff-nav-model = { path = "../ff-nav-model" }
-ff-explorer-view = { path = "../ff-explorer-view" }
-ff-scroll-amount = { path = "../ff-scroll-amount" }
-ff-exclude-manager = { path = "../ff-exclude-manager" }
-ff-editor-panel = { path = "../ff-editor-panel" }
-ff-files-panel = { path = "../ff-files-panel" }
 anyhow = { workspace = true }
 arboard = "3"
 tokio = { workspace = true }

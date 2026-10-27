@@ -11,7 +11,6 @@ use eframe::egui;
 use ff_keys::KeyModifier;
 
 use super::command_line_outcome;
-use super::ScrollAmount;
 
 // === Key_Label_Bar scope (CR-CH-046) ===
 
@@ -93,27 +92,16 @@ impl KeyBarScope {
 /// `WorkbenchShell::with_workspace_context`), run the UNCHANGED pipeline, then
 /// swap the (possibly command-modified) buffers back -- so each window's command
 /// line acts only on its own tab.
-#[derive(Debug, Clone)]
+//
+// core-001 strip: the SCROLL ===> field state (`scroll_field_text` /
+// `scroll_amount`) is editor chrome and is removed from the per-window context
+// with the editor domain.
+#[derive(Debug, Clone, Default)]
 pub(crate) struct WorkspaceCommandContext {
     pub command_text: String,
-    pub scroll_field_text: String,
-    pub scroll_amount: ScrollAmount,
     pub open_error: Option<String>,
     pub command_field_focus_requested: bool,
     pub pending_command_line_outcome: Option<command_line_outcome::CommandLineOutcome>,
-}
-
-impl Default for WorkspaceCommandContext {
-    fn default() -> Self {
-        Self {
-            command_text: String::new(),
-            scroll_field_text: "PAGE".to_string(),
-            scroll_amount: ScrollAmount::default(),
-            open_error: None,
-            command_field_focus_requested: false,
-            pending_command_line_outcome: None,
-        }
-    }
 }
 
 /// Tracks a tab that has been detached into a floating OS window.

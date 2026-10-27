@@ -8,7 +8,6 @@
 
 use eframe::egui;
 
-use crate::tab_state::KindTag;
 use crate::toolchain_panel;
 
 use super::WorkbenchShell;
@@ -228,40 +227,12 @@ impl WorkbenchShell {
         // we consume the Tab event and request focus on the first catalog node.
         // We cannot use focus_stop here because focus_stop tracks the shell's
         // top-level command field, not the panel-internal one.
-        let is_files_panel = self.tabs.active_tab().kind.tag() == KindTag::FilesPanel;
-        if is_files_panel && !self.modal_open {
-            let files_cmd_id = egui::Id::new("files_panel_cmd");
-            let files_cmd_focused = ctx.memory(|m| m.focused() == Some(files_cmd_id));
-            if files_cmd_focused {
-                let tab_pressed = ctx.input_mut(|i| {
-                    if i.key_pressed(egui::Key::Tab) && !i.modifiers.shift {
-                        i.events.retain(|e| {
-                            !matches!(
-                                e,
-                                egui::Event::Key {
-                                    key: egui::Key::Tab,
-                                    ..
-                                }
-                            )
-                        });
-                        return true;
-                    }
-                    false
-                });
-                if tab_pressed {
-                    self.files_panel.tree_focus_requested = true;
-                }
-            }
-        }
+        // core-001 strip: the Files Panel (Catalog Explorer) internal command
+        // field and its Tab-to-first-catalog-node redirect are parked with the
+        // catalog domain. The FilesPanel/FileExplorerPanel arms now render an
+        // "unavailable in core" notice via render_active_tab_body, so there is no
+        // ctx-level full-window File Explorer branch any more.
 
-        // CR-NR-093 B071: the ctx-level full-window File Explorer only applies
-        // when the Workspace is NOT split. While split, the File Explorer renders
-        // INSIDE its region (via render_active_tab_body's FileExplorerPanel arm),
-        // so the split must stay visible -- do not take the full-window branch.
-        let is_file_explorer = self.tabs.active_tab().kind.tag() == KindTag::FileExplorerPanel
-            && !self.tabs.is_split();
-        // CR-NR-060 Slice A: the NavModel-backed modern explorer is the sole File
-        // Explorer content (legacy inline tree retired).
         // ── Toolchain Panel (bottom dock) ────────────────────────────────
         if self.show_toolchain_panel {
             egui::TopBottomPanel::bottom("toolchain_panel")
@@ -284,36 +255,27 @@ impl WorkbenchShell {
                     if let Some((file, line, col)) =
                         toolchain_panel::render(ui, &mut self.toolchain_panel)
                     {
-                        // Navigate editor to the clicked diagnostic location.
-                        // Req 16.7, 18.6 — open the file if not already open,
-                        // then scroll to the target line.
-                        let _ = self.shell_open_file(&file);
-                        self.nav_manager.locate(&line.to_string(), &mut self.tabs);
-                        let _ = col; // column navigation deferred to Phase W follow-up
+                        // core-001 strip: "navigate editor to the clicked
+                        // diagnostic" required the editor Context + the parked
+                        // nav_manager, both parked with the editor domain. The
+                        // Toolchain Panel still renders diagnostics; jumping to a
+                        // source location returns with the editor plugin.
+                        let _ = (file, line, col);
                     }
                 });
         }
 
-        // CR-NR-060 Slice A: the modern NavModel explorer is the File Explorer
-        // Context content. Rendered here -- after all bottom/side panels -- so
-        // the CentralPanel is added last (egui panel-ordering requirement).
-        if is_file_explorer {
-            self.render_nav_explorer(ctx);
-        }
-
         // Validates: Requirement 14.8 — central panel dispatches on tab kind
-        if !is_file_explorer {
-            egui::CentralPanel::default().show(ctx, |ui| {
-                // CR-NR-092 (Slice 2b): when split, the central panel is divided
-                // into two regions, each with its own tab bar + Context body and
-                // a draggable Splitter between them (Req 13.1, 13.4, 13.5, 13.6).
-                if self.tabs.is_split() {
-                    self.render_split_central(ctx, ui);
-                } else {
-                    self.render_active_tab_body(ctx, ui);
-                }
-            });
-        } // end !is_file_explorer
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // CR-NR-092 (Slice 2b): when split, the central panel is divided
+            // into two regions, each with its own tab bar + Context body and
+            // a draggable Splitter between them (Req 13.1, 13.4, 13.5, 13.6).
+            if self.tabs.is_split() {
+                self.render_split_central(ctx, ui);
+            } else {
+                self.render_active_tab_body(ctx, ui);
+            }
+        });
     }
 }
 

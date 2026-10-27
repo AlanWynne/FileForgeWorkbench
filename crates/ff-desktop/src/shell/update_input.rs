@@ -9,8 +9,6 @@
 use eframe::egui;
 
 use super::WorkbenchShell;
-use crate::files_panel;
-use crate::tab_state::KindTag;
 
 impl WorkbenchShell {
     /// Ctrl+Scroll global zoom, window-drag detection, and the deferred
@@ -94,8 +92,10 @@ impl WorkbenchShell {
             // be included here or background Tab keeps running while the popup is
             // open (accessibility Req 2.3 -- modal focus trap).
             || self.reset_bare_confirm.is_some()
-            || self.pending_external.is_some()
-            || !matches!(self.files_panel.dialog, files_panel::FilesDialogState::None);
+            || self.pending_external.is_some();
+        // core-001 strip: the Files Panel (Catalog Explorer) modal dialogs are
+        // parked with the catalog domain, so they no longer contribute to
+        // `modal_open`.
         // B073: while the Workspace is split, the shell OWNS Tab entirely and
         // keeps focus WITHIN the focused region -- egui-native traversal would
         // otherwise walk across all regions (the top-level command field is
@@ -110,7 +110,9 @@ impl WorkbenchShell {
             false
         };
         if !self.tabs.is_split() && !handled_split_tab {
-            let is_file_explorer = self.tabs.active_tab().kind.tag() == KindTag::FileExplorerPanel;
+            // core-001 strip: the File Explorer tree-transfer branch is parked
+            // with the navigator domain; the Boundary_Policy below is unchanged
+            // for the retained Contexts.
             let cmd_id = egui::Id::new("command_field_input");
             let cmd_has_focus = ctx.memory(|m| m.focused() == Some(cmd_id));
 
@@ -148,9 +150,6 @@ impl WorkbenchShell {
                 /// Re-arm command-field focus.
                 CommandField,
             }
-            let is_explorer_transfer =
-                is_file_explorer && (cmd_has_focus || self.nav_ui.nav_focused);
-
             // Detect Tab/Shift+Tab AND, in the SAME input pass, decide the
             // boundary and consume the event ONLY when the shell will handle it.
             // Consuming during detection (not afterwards) is essential: egui
@@ -162,10 +161,6 @@ impl WorkbenchShell {
                 }
                 let shift = i.modifiers.shift;
                 if !i.key_pressed(egui::Key::Tab) {
-                    return Boundary::None;
-                }
-                // The File Explorer tree-transfer consumes Tab in its own branch.
-                if is_explorer_transfer {
                     return Boundary::None;
                 }
                 // Boundary_Policy (B056). egui-native traversal handles the ORDER
@@ -236,68 +231,21 @@ impl WorkbenchShell {
                 decision
             });
 
-            // Validates: Requirement 20.1 (file-tree-panel) -- Escape exits the
-            // explorer tree back to the command field.
-            if !self.modal_open
-                && is_file_explorer
-                && self.nav_ui.nav_focused
-                && ctx.input(|i| i.key_pressed(egui::Key::Escape))
-            {
-                self.nav_ui.nav_focused = false;
-                self.nav_ui.nav_selection.cursor = None;
-                self.focus.command_field_focus_requested = true;
-            } else if is_explorer_transfer
-                && ctx.input_mut(|i| {
-                    // Modern explorer Tab focus-transfer (Req 20.1 / 24.9):
-                    // consume Tab in its own branch and move the tree cursor.
-                    if i.key_pressed(egui::Key::Tab) && !i.modifiers.shift {
-                        i.events.retain(|e| {
-                            !matches!(
-                                e,
-                                egui::Event::Key {
-                                    key: egui::Key::Tab,
-                                    ..
-                                }
-                            )
-                        });
-                        true
-                    } else {
-                        false
-                    }
-                })
-            {
-                use crate::explorer_view::{first_row_id, next_row_id};
-                let next = if !self.nav_ui.nav_focused {
-                    self.nav_ui.nav_focused = true;
-                    first_row_id(&self.nav_model)
-                } else {
-                    self.nav_ui
-                        .nav_selection
-                        .cursor
-                        .and_then(|c| next_row_id(&self.nav_model, c))
-                };
-                match next {
-                    Some(id) => self.nav_ui.nav_selection.move_cursor(id),
-                    None => {
-                        self.nav_ui.nav_focused = false;
-                        self.nav_ui.nav_selection.cursor = None;
-                        self.focus.command_field_focus_requested = true;
-                    }
+            // core-001 strip: the File Explorer tree-transfer / Escape-exit
+            // branch is parked with the navigator domain. Only the shared
+            // Boundary_Policy applies now.
+            match boundary {
+                Boundary::Focus(id) => ctx.memory_mut(|m| m.request_focus(id)),
+                Boundary::FirstInterior => {
+                    self.focus.focus_first_interior_requested = true;
+                    self.focus.focus_last_interior_requested = false;
                 }
-            } else {
-                match boundary {
-                    Boundary::Focus(id) => ctx.memory_mut(|m| m.request_focus(id)),
-                    Boundary::FirstInterior => {
-                        self.focus.focus_first_interior_requested = true;
-                        self.focus.focus_last_interior_requested = false;
-                    }
-                    Boundary::LastInterior => {
-                        self.focus.focus_last_interior_requested = true;
-                        self.focus.focus_first_interior_requested = false;
-                    }
-                    Boundary::CommandField => self.focus.command_field_focus_requested = true,
-                    Boundary::None => {}
+                Boundary::LastInterior => {
+                    self.focus.focus_last_interior_requested = true;
+                    self.focus.focus_first_interior_requested = false;
                 }
+                Boundary::CommandField => self.focus.command_field_focus_requested = true,
+                Boundary::None => {}
             }
         }
     }

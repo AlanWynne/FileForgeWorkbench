@@ -153,34 +153,8 @@ impl WorkbenchShell {
                     }
                 }
 
-                // ── SCROLL ===> field — Validates: Requirement 19.1, 19.2, 19.3 ──
-                ui.separator();
-                ui.label(ff_i18n::t("ff-desktop-shell-commandline-scroll-prompt"));
-                let scroll_id = egui::Id::new("scroll_field_input");
-                let scroll_resp = ui.add(
-                    egui::TextEdit::singleline(&mut self.scroll_field_text)
-                        .id(scroll_id)
-                        .desired_width(60.0)
-                        .font(egui::TextStyle::Monospace),
-                );
-                // On Enter in the SCROLL field, update the active scroll amount.
-                // Validates: Requirement 19.2
-                let scroll_has_focus = scroll_resp.has_focus() || scroll_resp.lost_focus();
-                if scroll_has_focus && ctx.input(|i| i.key_pressed(egui::Key::Enter)) {
-                    let text = self.scroll_field_text.trim().to_string();
-                    if let Some(amount) = crate::scroll_amount::ScrollAmount::parse(&text) {
-                        self.scroll_amount = amount;
-                        self.scroll_field_text = self.scroll_amount.display_string();
-                        self.open_error = None;
-                    } else {
-                        self.open_error = Some(ff_i18n::t_args(
-                            "ff-desktop-shell-commandline-scroll-invalid",
-                            &ff_i18n::MessageArgs::new().set("arg", text),
-                        ));
-                    }
-                    // Return focus to command field.
-                    self.focus.command_field_focus_requested = true;
-                }
+                // core-001 strip: the SCROLL ===> field (editor chrome) is parked
+                // with the editor domain.
             });
         });
     }

@@ -11,7 +11,9 @@ use ff_session::session_state::{
 };
 use ff_session::{SessionFile, SessionState, UserDataDir};
 
-use crate::catalog_registry::CatalogRegistry;
+// core-001 strip: the catalog registry (ff-catalog-registry via the parked
+// catalog_registry module) is parked; the catalogs.toml save/load helpers below
+// are removed with it.
 use crate::tab_manager::TabManager;
 use crate::tab_state::{KindTag, TabState as RuntimeTab};
 
@@ -326,37 +328,8 @@ impl SessionManager {
         let _ = self.session_file.save(&state);
     }
 
-    /// Persist the catalog registry to `catalogs.toml` next to `session.toml`.
-    ///
-    /// Best-effort — write errors are silently ignored (graceful degradation).
-    /// Validates: Requirement 2.1 (virtual-catalog-manager)
-    pub fn save_catalog_registry(&self, registry: &CatalogRegistry) {
-        let path = self.catalogs_path();
-        let toml_str = registry.save_to_toml();
-        // Best-effort — ignore write errors (graceful degradation)
-        let _ = std::fs::write(&path, toml_str);
-    }
-
-    /// Load the catalog registry from `catalogs.toml` next to `session.toml`.
-    ///
-    /// Returns an empty registry if the file is absent or unreadable.
-    /// Validates: Requirement 2.2 (virtual-catalog-manager)
-    pub fn load_catalog_registry(&self) -> CatalogRegistry {
-        let path = self.catalogs_path();
-        match std::fs::read_to_string(&path) {
-            Ok(contents) => CatalogRegistry::load_from_toml(&contents),
-            Err(_) => CatalogRegistry::new(),
-        }
-    }
-
-    /// Path to `catalogs.toml` — sibling of `session.toml`.
-    fn catalogs_path(&self) -> std::path::PathBuf {
-        let session_path = self.session_file.path();
-        session_path
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new("."))
-            .join("catalogs.toml")
-    }
+    // core-001 strip: save_catalog_registry / load_catalog_registry /
+    // catalogs_path are removed with the catalog domain (ff-catalog-registry).
 
     /// Extract the ordered list of file URIs from a `SessionState`.
     ///
@@ -563,49 +536,10 @@ mod tests {
         assert_eq!(SessionManager::files_panel_tab_ids(&loaded), vec!["2"]);
     }
 
-    /// Validates: Requirement 2.1 (virtual-catalog-manager) — save_catalog_registry
-    /// writes catalogs.toml and load_catalog_registry reads it back.
-    #[test]
-    fn save_and_load_catalog_registry_round_trips() {
-        // Validates: Requirement 2.1
-        use crate::catalog_registry::{CatalogRegistry, CatalogType, VirtualCatalog};
-        let tmp = TempDir::new().expect("tempdir");
-        let mgr = SessionManager::with_path(make_session_file(&tmp));
-
-        let mut reg = CatalogRegistry::new();
-        reg.register(VirtualCatalog {
-            name: "PAYROLL".to_string(),
-            catalog_type: CatalogType::Mainframe,
-            path: "/catalogs/payroll".to_string(),
-            description: Some("Payroll datasets".to_string()),
-            auto_mount: true,
-            default_hlq: Some("PAYROLL".to_string()),
-            mount_point: None,
-            read_only: false,
-        })
-        .expect("register");
-
-        mgr.save_catalog_registry(&reg);
-        let loaded = mgr.load_catalog_registry();
-
-        assert_eq!(loaded.list().len(), 1);
-        assert_eq!(loaded.list()[0].name, "PAYROLL");
-    }
-
-    /// Validates: Requirement 2.2 (virtual-catalog-manager) — load_catalog_registry
-    /// returns an empty registry when catalogs.toml does not exist.
-    #[test]
-    fn load_missing_catalog_file_returns_empty_registry() {
-        // Validates: Requirement 2.2
-        let tmp = TempDir::new().expect("tempdir");
-        let mgr = SessionManager::with_path(make_session_file(&tmp));
-
-        let loaded = mgr.load_catalog_registry();
-        assert!(
-            loaded.list().is_empty(),
-            "absent catalogs.toml must yield empty registry"
-        );
-    }
+    // core-001 strip: save_catalog_registry / load_catalog_registry (and the
+    // catalog_registry types) are parked with the catalog domain; their two
+    // round-trip tests (virtual-catalog-manager Req 2.1, 2.2) are removed with
+    // that feature.
 
     /// Validates: Requirement 12.4 (function-keys-and-history) — key_bar_visible
     /// is persisted and restored across sessions.

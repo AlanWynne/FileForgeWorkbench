@@ -278,20 +278,9 @@ impl WorkbenchShell {
                         ws.roots.push(p.clone());
                         ws.is_modified = true;
                     }
-                    let cat = crate::catalog_registry::VirtualCatalog {
-                        name: p
-                            .file_name()
-                            .map(|n| n.to_string_lossy().into_owned())
-                            .unwrap_or_else(|| p.to_string_lossy().into_owned()),
-                        catalog_type: crate::catalog_registry::CatalogType::Native,
-                        path: p.to_string_lossy().into_owned(),
-                        description: Some("Workspace root".to_string()),
-                        auto_mount: true,
-                        default_hlq: None,
-                        mount_point: None,
-                        read_only: false,
-                    };
-                    let _ = self.files_panel.registry.register(cat);
+                    // core-001 strip: registering the new root as a Native catalog
+                    // is parked with the catalog domain. The root still drives
+                    // Search Results via collect_search_roots.
                     self.open_error = None;
                 } else {
                     self.open_error = Some(ff_i18n::t(
@@ -308,11 +297,8 @@ impl WorkbenchShell {
                     let p = std::path::PathBuf::from(path);
                     ws.roots.retain(|r| r != &p);
                     ws.is_modified = true;
-                    let name = p
-                        .file_name()
-                        .map(|n| n.to_string_lossy().into_owned())
-                        .unwrap_or_else(|| p.to_string_lossy().into_owned());
-                    let _ = self.files_panel.registry.remove(&name);
+                    // core-001 strip: unregistering the root's Native catalog is
+                    // parked with the catalog domain.
                     self.open_error = None;
                 } else {
                     self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-workspace-no-active"));

@@ -268,8 +268,6 @@ impl WorkbenchShell {
                 *pending.lock().expect("pending lock") = Some(super::state::PendingOpenReq {
                     path,
                     owning_env: None,
-                    identity: None,
-                    recfm_lrecl: None,
                 });
             }
         });

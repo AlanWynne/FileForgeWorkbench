@@ -23,6 +23,13 @@
 /// "FFEDIT-as-object"). This is indirection, NOT a behaviour change.
 ///
 /// Validates: command-environments Requirement 1.1, 6.2a, 13.5
+//
+// core-001 strip: the only implementor (the FFEDIT editor environment) is parked
+// with the editor domain, so this contract has no live implementor or caller in
+// the core build. It is RETAINED (not deleted) as the framework seam the editor
+// plugin re-implements on re-entry; `allow(dead_code)` keeps the dormant contract
+// without a warning.
+#[allow(dead_code)]
 pub(crate) trait CommandEnvironment {
     /// Attempt to claim and execute `raw` against `shell`. `upper` is the
     /// pre-uppercased trimmed line to avoid recomputing it. Returns `true` iff
@@ -45,6 +52,11 @@ pub(crate) enum EnvDispatchOutcome {
     /// The named environment claimed and handled the command. `rc` is 0 for a
     /// successful claim (the macro-RC convention; richer codes arrive with the
     /// macro ADDRESS slice, Task 10).
+    //
+    // core-001 strip: no registered environment CLAIMS at the active-env step now
+    // (FFEDIT is parked, the FFCMD base declines), so this variant is not
+    // constructed in the core build. Retained for the editor plugin's re-entry.
+    #[allow(dead_code)]
     Claimed { rc: i32 },
     /// The named environment is registered but DECLINED the command (it is not
     /// one of that environment's verbs); the caller falls through as if the

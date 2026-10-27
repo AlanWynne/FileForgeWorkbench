@@ -360,11 +360,8 @@ impl WorkbenchShell {
             }
         }
 
-        // Catalog Manager Dialogs. Extracted verbatim to
-        // `update_dialogs_catalog.rs`; called as the LAST statement of
-        // `render_overlays` so the early `return`s inside its AllocateDataset arm
-        // end the frame exactly as before. Req 3.1-3.8, 4.1-4.5
-        self.render_catalog_dialogs(ctx);
+        // core-001 strip: the Catalog Manager dialogs (update_dialogs_catalog.rs)
+        // are parked with the catalog domain.
     }
 }
 

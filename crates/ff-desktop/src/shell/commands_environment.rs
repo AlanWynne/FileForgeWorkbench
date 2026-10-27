@@ -5,7 +5,7 @@
 //! no logic edits). It addresses a raw command to a NAMED Command_Environment
 //! (the REXX ADDRESS pattern applied internally).
 
-use super::environment::{CommandEnvironment, EnvDispatchOutcome};
+use super::environment::EnvDispatchOutcome;
 use super::environment_registry::RegisteredEnv;
 use super::WorkbenchShell;
 
@@ -30,53 +30,18 @@ impl WorkbenchShell {
     /// addressing them yields `NotClaimed`.
     ///
     /// Validates: command-environments Requirement 14.1, 14.2, 14.8
-    pub(super) fn dispatch_to_environment(&mut self, name: &str, raw: &str) -> EnvDispatchOutcome {
+    pub(super) fn dispatch_to_environment(&mut self, name: &str, _raw: &str) -> EnvDispatchOutcome {
         let Some(env) = self.environments.resolve(name) else {
             return EnvDispatchOutcome::NoSuchEnvironment;
         };
         match env {
-            RegisteredEnv::FfEdit => {
-                let upper = raw.trim().to_uppercase();
-                let mut ffedit = super::environment_ffedit::FfEditEnvironment;
-                if ffedit.claim(self, raw, &upper) {
-                    EnvDispatchOutcome::Claimed { rc: 0 }
-                } else {
-                    EnvDispatchOutcome::NotClaimed
-                }
-            }
-            // The host-FS environment OWNS the store write for a host-path
-            // resource (CR-CH-053 Task 20, Req 14.4/14.5/14.6). FFEDIT addresses
-            // the store-affecting verb SAVE here; the host env performs the
-            // dirty-aware local-FS write that previously lived in FFEDIT, so a
-            // native file's SAVE is byte-identical (only the EXECUTOR moved). It
-            // claims ONLY SAVE in phase 1; any other verb falls through.
-            RegisteredEnv::HostFsPlaceholder => {
-                let canonical = raw.split_whitespace().next().unwrap_or("");
-                if canonical.eq_ignore_ascii_case("SAVE") {
-                    self.host_fs_save();
-                    EnvDispatchOutcome::Claimed { rc: 0 }
-                } else {
-                    EnvDispatchOutcome::NotClaimed
-                }
-            }
-            // The FFCMD base is reached through the ordinary ladder, not claimed
-            // at the active-env step, so addressing it here declines.
+            // core-001 strip: the only registered environment is the FFCMD base.
+            // FFEDIT (the editor verb-claiming environment) and the host-FS /
+            // mainframe SAVE backend seam are parked with the editor domain (see
+            // docs/reentry-register.md), so there is no environment that claims
+            // at the active-env step. The FFCMD base is reached through the
+            // ordinary ladder, not claimed here, so addressing it declines.
             RegisteredEnv::FfCmdBase => EnvDispatchOutcome::NotClaimed,
-            // The MAINFRAME backend OWNS the store write for a mainframe-dataset
-            // tab (RC.B.8 (b), Req 14.4). FFEDIT addresses SAVE here exactly as
-            // it does for a host-path tab; the write goes through the SAME single
-            // seam `host_fs_save`, which resolves the record-capable mainframe CE
-            // via `backend_for("MAINFRAME")` and takes the record store path. Like
-            // the host arm it claims ONLY SAVE; any other verb falls through.
-            RegisteredEnv::MainframePlaceholder => {
-                let canonical = raw.split_whitespace().next().unwrap_or("");
-                if canonical.eq_ignore_ascii_case("SAVE") {
-                    self.host_fs_save();
-                    EnvDispatchOutcome::Claimed { rc: 0 }
-                } else {
-                    EnvDispatchOutcome::NotClaimed
-                }
-            }
         }
     }
 }

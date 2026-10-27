@@ -114,6 +114,9 @@ pub(super) fn egui_fkey(fk: FunctionKey) -> Option<egui::Key> {
 }
 
 /// Parse an optional u64 from a trimmed string (empty → None, valid int → Some).
+// core-001 strip: this and the other argument-parsing helpers below fed the
+// parked FFEDIT / nav verb dispatch; retained for re-entry.
+#[allow(dead_code)]
 pub(super) fn parse_optional_u64(s: &str) -> Option<u64> {
     if s.is_empty() {
         None
@@ -162,6 +165,7 @@ pub(super) fn open_containing_folder(file_path: &str, mode: FolderOpenMode) {
 
 /// Strip a trailing ` ALL` suffix (case-insensitive) from an EXCLUDE argument.
 /// Returns `(text_without_all, had_all_flag)`.
+#[allow(dead_code)]
 pub(super) fn strip_all_suffix(s: &str) -> (&str, bool) {
     let upper = s.to_uppercase();
     if upper.ends_with(" ALL") {
@@ -210,6 +214,7 @@ pub(super) fn snapshot_format_label(format: ff_screen_model::SnapshotFormat) -> 
 }
 
 /// Map an operation message to `open_error`: None for success/info, Some for errors.
+#[allow(dead_code)]
 pub(super) fn info_or_error(msg: &str) -> Option<String> {
     // Messages that indicate no change or an error get surfaced; pure counts are info.
     if msg.is_empty()
@@ -269,6 +274,7 @@ pub(super) fn split_verb_arg(cmd: &str) -> (&str, &str) {
 
 /// Parse two single-quoted or bare-word arguments from a CHANGE command tail.
 /// Handles: `'old text' 'new text'`, `old new`, `'old' new`, `old 'new'`.
+#[allow(dead_code)]
 pub(super) fn parse_two_args(s: &str) -> Option<(String, String)> {
     let s = s.trim();
     let (first, rest) = extract_arg(s)?;
@@ -278,6 +284,7 @@ pub(super) fn parse_two_args(s: &str) -> Option<(String, String)> {
 
 /// Extract one argument (single-quoted or bare word) from the front of `s`.
 /// Returns `(arg, remainder)`.
+#[allow(dead_code)]
 pub(super) fn extract_arg(s: &str) -> Option<(String, &str)> {
     let s = s.trim_start();
     if s.is_empty() {

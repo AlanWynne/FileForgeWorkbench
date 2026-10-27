@@ -13,10 +13,6 @@
 //! submodule declarations and the re-exports that keep every existing
 //! `super::...` / `crate::shell::...` path resolving unchanged.
 
-// `ScrollAmount` is re-exported here (not just imported) because `types.rs`
-// refers to it as `super::ScrollAmount`.
-pub(crate) use crate::scroll_amount::ScrollAmount;
-
 // Where the former inline items now live (Phase 2 task 2.2 file-size split):
 // - The WorkbenchShell struct definition -> `state.rs` (re-exported below).
 // - The KeyBarScope enum and the Detached_Workspace bookkeeping types
@@ -54,13 +50,10 @@ mod commands_theme;
 mod configurator;
 mod construct;
 mod construct_commands;
-mod construct_provider;
 mod dispatch;
-mod dispatch_ffedit;
 mod editable_context;
 mod environment;
 mod environment_contract;
-mod environment_ffedit;
 pub(crate) mod environment_registry;
 mod external_adapter;
 mod handlers;
@@ -71,7 +64,6 @@ pub(crate) mod i18n_bootstrap;
 mod keys_editor;
 mod kinds_editor;
 mod locale_resolver;
-mod mainframe_backend;
 mod menus_editor;
 mod mod_helpers;
 mod nav_reconstruct;
@@ -81,9 +73,6 @@ mod render_body;
 mod render_body_arms;
 mod render_chrome;
 mod render_command_line;
-mod render_nav;
-mod render_nav_expand;
-mod render_nav_ops;
 mod render_split;
 mod render_split_region;
 mod render_status;
@@ -97,7 +86,6 @@ mod titles;
 mod types;
 mod update;
 mod update_dialogs;
-mod update_dialogs_catalog;
 mod update_floating;
 mod update_input;
 mod update_keys;
@@ -139,10 +127,9 @@ mod tests_alias_template;
 mod tests_command;
 #[cfg(test)]
 mod tests_common;
-#[cfg(test)]
-mod tests_crch061;
-#[cfg(test)]
-mod tests_crch071;
+// core-001 strip: tests_crch061 (mainframe catalog-backed SAVE routing) and
+// tests_crch071 (FFEDIT/FFCMD editor verb seam) validated now-parked domains
+// (catalog, mainframe CE, FFEDIT) and were removed with those features.
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]

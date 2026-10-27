@@ -25,19 +25,13 @@ use crate::automation::ShellAutomationRegistry;
 use crate::command_palette::CommandPaletteState;
 use crate::config_panel::ConfigPanelState;
 use crate::event_log_panel::EventLogPanelState;
-use crate::exclude_manager::ExcludeManager;
-use crate::files_panel::FilesPanelState;
-use crate::find_manager::FindManager;
-use crate::nav_manager::NavManager;
 use crate::notification::{Notification, NotificationQueue};
 use crate::plugin_manager_panel::PluginManagerPanelState;
-use crate::scroll_amount::ScrollAmount;
 use crate::session_manager::SessionManager;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
 
 use super::construct_commands::register_builtin_commands;
-use super::construct_provider::build_live_provider_registry;
 use super::handlers::ShellContextProvider;
 use super::mod_helpers::{
     ensure_keymaps_dir, load_context_maps_from_config, load_context_maps_from_keymaps_dir,
@@ -213,13 +207,9 @@ impl WorkbenchShell {
             );
         }
 
-        // Live Provider_Registry (CR-CH-053 Task 22, Req 17.1): build it HERE,
-        // inside the Tokio runtime context, because the host-FS provider spawns a
-        // filesystem watcher that requires a running reactor (same reason
-        // `tab_manager::open_file` constructs its provider inside
-        // `runtime.block_on`). Built before the `Self { .. }` literal so the
-        // `runtime` is still available to enter.
-        let provider_registry = build_live_provider_registry(&runtime);
+        // core-001 strip: the live ff-vfs Provider_Registry (and its host-FS
+        // provider seeding) is parked with the VFS provider domain; the shell no
+        // longer builds it.
 
         // Command-line history persistence (function-keys-and-history Req 6):
         // load any persisted history from the supplied store and seed the owner.
@@ -251,9 +241,6 @@ impl WorkbenchShell {
             command_line_history,
             command_line_in_progress: None,
             history_store,
-            find_manager: FindManager::new(),
-            nav_manager: NavManager::new(),
-            exclude_manager: ExcludeManager::new(),
             key_map_resolver,
             key_label_bar,
             key_bar_visible: true,
@@ -268,32 +255,11 @@ impl WorkbenchShell {
             config_handle,
             command_store,
             kind_registry,
-            // Built Environment_Registry (CR-CH-053 Task 17): register the
-            // phase-1 built-in environments (FFCMD base, FFEDIT, host-FS
-            // placeholder) in code at startup (Req 13.2). RC.B.8 (c) also builds
-            // and registers the record-capable MAINFRAME backend Command
-            // Environment (a `ff_idcams::MainframeEnvironment` over a co-located
-            // `CatalogDatasetAccess`) so a MAINFRAME-owned editor tab's SAVE
-            // routes to the record path (see shell/mainframe_backend.rs).
-            environments:
-                super::environment_registry::EnvironmentRegistry::with_builtins_and_mainframe(
-                    // CR-CH-061 Req 19.1: the mainframe CE's catalog-backed
-                    // access (dataset-catalog Req 36). Built with no repository
-                    // paths at startup (no catalogs are mounted yet); a SAVE
-                    // threads the active tab's catalog repository path per-save
-                    // via `build_mainframe_backend_for_repo` so the dataset
-                    // resolves against the catalog that owns it.
-                    super::mainframe_backend::build_mainframe_backend(Vec::new()),
-                ),
-            // Live Provider_Registry (CR-CH-053 Task 22, Req 17.1): register an
-            // `ff-vfs` ProviderRegistry LIVE at startup, seeded with the host-FS
-            // `local` provider so a provider is resolvable by scheme at runtime
-            // and a plugin-provided VfsProvider has a seam to register into (Req
-            // 17.2). Additive: the host-path open/save path does not consult it,
-            // so native access is unchanged (Req 17.3, 17.4). Built above inside
-            // the runtime context (the host provider spawns a watcher needing a
-            // reactor).
-            provider_registry,
+            // Built Environment_Registry (CR-CH-053 Task 17): core-001 strip
+            // registers only the FFCMD base (the FFEDIT editor environment and
+            // the host-FS / mainframe SAVE backend seam were parked with the
+            // editor domain -- see docs/reentry-register.md).
+            environments: super::environment_registry::EnvironmentRegistry::with_builtins(),
             command_configurator_panel:
                 crate::command_config::render::CommandConfiguratorState::new(),
             theme_editor_panel: crate::theme_editor_panel::ThemeEditorState::new(),
@@ -303,10 +269,8 @@ impl WorkbenchShell {
             alias_editor_panel: crate::alias_editor_panel::AliasEditorState::new(),
             shell_engine: ff_shell::ShellEngine::new(ff_shell::ShellConfigProvider::new()),
             pending_external: None,
-            files_panel: FilesPanelState::new(),
-            file_explorer_panel_width: 260.0,
-            nav_model: crate::nav_model::NavModel::new(),
-            nav_ui: state_groups::NavUiState::default(),
+            // core-001 strip: files_panel / file_explorer_panel_width / nav_model
+            // / nav_ui are parked with the navigator + catalog domains.
             toolchain_panel: ToolchainPanelState::new(),
             show_toolchain_panel: false,
             pending_tab_actions: state_groups::PendingTabActions::default(),
@@ -324,8 +288,8 @@ impl WorkbenchShell {
             palette_state: CommandPaletteState::default(),
             recent_palette_commands: Vec::new(),
             search_results_panel: crate::search_results_panel::SearchResultsPanelState::new(),
-            scroll_amount: ScrollAmount::default(),
-            scroll_field_text: "PAGE".to_string(),
+            // core-001 strip: scroll_amount / scroll_field_text (SCROLL ===>
+            // field) are editor chrome, parked with the editor domain.
             modal_open: false,
             reset_bare_confirm: None,
             reset_bare_focus_requested: false,

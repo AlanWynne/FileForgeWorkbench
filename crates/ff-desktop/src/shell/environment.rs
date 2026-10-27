@@ -442,7 +442,10 @@ impl AliasTable {
 // to keep this file under the 400-line rule once CR-NR-109 grew the AliasTable).
 // Re-exported here so every existing `super::environment::CommandEnvironment` /
 // `crate::shell::environment::EnvDispatchOutcome` path is unchanged.
-pub(crate) use super::environment_contract::{CommandEnvironment, EnvDispatchOutcome};
+// core-001 strip: the `CommandEnvironment` trait is no longer consumed (the
+// FFEDIT environment object that implemented it is parked); only
+// `EnvDispatchOutcome` is still used, by `dispatch_to_environment`.
+pub(crate) use super::environment_contract::EnvDispatchOutcome;
 
 #[cfg(test)]
 mod tests {

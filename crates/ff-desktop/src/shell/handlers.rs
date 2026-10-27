@@ -10,18 +10,9 @@ use std::sync::{Arc, Mutex};
 use ff_command::{CommandHandler, ContextProvider};
 use ff_command::{CommandParams, CommandResult, ExecutionContext};
 
-/// Map a `recfm` param name (case-insensitive `Fixed`/`Variable`/`Undefined`) to
-/// the ff-vfs record-format kind carried in a [`super::state::PendingOpenReq`]
-/// (RC.B.8 (c)). An unknown name yields `None` (the open falls back to the
-/// host/Delimited default).
-fn recfm_kind_from_name(name: &str) -> Option<ff_vfs::RecordFormatKind> {
-    match name.to_ascii_uppercase().as_str() {
-        "FIXED" => Some(ff_vfs::RecordFormatKind::Fixed),
-        "VARIABLE" => Some(ff_vfs::RecordFormatKind::Variable),
-        "UNDEFINED" => Some(ff_vfs::RecordFormatKind::Undefined),
-        _ => None,
-    }
-}
+// core-001 strip: `recfm_kind_from_name` (mapping a `recfm` param to the parked
+// `ff_vfs::RecordFormatKind` for a mainframe open) is removed with the VFS
+// domain; the file.open handler no longer carries dataset record framing.
 
 /// Handler for `file.open` -- sets `pending_open` via a shared channel.
 /// The shell reads `pending_open` at the top of each frame.
@@ -54,31 +45,12 @@ impl CommandHandler for FileOpenHandler {
                     .get_string("owning_env")
                     .filter(|e| !e.is_empty())
                     .map(|e| e.to_string());
-                // Optional real dataset identity (both must be present to bind).
-                let dsn = params
-                    .get_string("dsn")
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string());
-                let catalog = params
-                    .get_string("catalog")
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string());
-                let identity = match (dsn, catalog) {
-                    (Some(d), Some(c)) => Some((d, c)),
-                    _ => None,
-                };
-                // Optional dataset record format (recfm name + lrecl).
-                let recfm_lrecl = match (params.get_string("recfm"), params.get_integer("lrecl")) {
-                    (Some(recfm), Some(lrecl)) if lrecl >= 0 => {
-                        recfm_kind_from_name(recfm).map(|k| (k, lrecl as u32))
-                    }
-                    _ => None,
-                };
+                // core-001 strip: the mainframe dataset identity (dsn/catalog) and
+                // record format (recfm/lrecl) params are parked with the
+                // catalog/VFS domains; the pending open carries only path + env.
                 *self.pending.lock().expect("pending lock") = Some(super::state::PendingOpenReq {
                     path: path.to_string(),
                     owning_env,
-                    identity,
-                    recfm_lrecl,
                 });
                 CommandResult::Ok
             }
