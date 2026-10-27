@@ -1207,8 +1207,8 @@ fn full_shell_alias_editor_empty_store_i_insert_shows_editable_row() {
     // Isolate the user alias store at a path that does not exist (empty store).
     let dir = tempfile::TempDir::new().expect("tempdir");
     let mut harness = harness_shell();
-    harness.state_mut().dir_overrides.user_aliases =
-        Some(dir.path().join("aliases").join("user.toml"));
+    // CR-CH-072: the override is a per-locale DIR base, not a single user.toml.
+    harness.state_mut().dir_overrides.user_aliases = Some(dir.path().join("aliases"));
     harness.state_mut().dispatch_command_string("ALIASES");
     for _ in 0..4 {
         harness.run();

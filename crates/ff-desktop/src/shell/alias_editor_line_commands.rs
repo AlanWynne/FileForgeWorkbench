@@ -256,7 +256,8 @@ mod tests {
     fn command_line_applies_line_commands_before_primary_command() {
         let mut shell = make_shell();
         let dir = tempfile::TempDir::new().expect("tempdir");
-        shell.dir_overrides.user_aliases = Some(dir.path().join("aliases").join("user.toml"));
+        // CR-CH-072: the override is a per-locale DIR base, not a single file.
+        shell.dir_overrides.user_aliases = Some(dir.path().join("aliases"));
         // Focus the Alias Editor so the FFCMD SAVE reaches its seam (Req 20a.10).
         shell.dispatch_command_string("ALIASES");
         let mut r = data_row("GG", "GSEARCH", AliasEnvironment::Ffcmd);

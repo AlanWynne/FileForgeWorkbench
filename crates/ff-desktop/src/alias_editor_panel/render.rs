@@ -2,7 +2,8 @@
 //! -5.24, CR-CH-068).
 //!
 //! Top to bottom: a `Command ===>` primary command field; the column headings
-//! (Act / CE / Root / L18N / ALIAS / Parameters); a FILTER row (filter CE + Root
+//! (Act / CE / Root / ALIAS / Parameters -- CR-CH-072 Req 6.2 drops L18N); a
+//! FILTER row (filter CE + Root
 //! only); then the filtered data rows inside a vertical scroll area with a
 //! right-hand scrollbar. The render is PURE: it returns an [`AliasEditorAction`]
 //! and the shell applies structural side effects (apply line commands, run the
@@ -44,7 +45,7 @@ impl crate::shell::workspace_context::WorkspaceContext for AliasEditorState {
 ///
 /// Tab focus order is egui-native: every interactive control is created in
 /// visual order (`Command ===>` is the entry control; then filter CE -> filter
-/// Root -> each data row Act -> CE -> Root -> L18N -> ALIAS -> Parameters), so
+/// Root -> each data row Act -> CE -> Root -> ALIAS -> Parameters), so
 /// egui's built-in Tab traversal walks them in that exact order with no phantom
 /// stop (Req 5.21, 5.23). The FILTER row's filter CE dropdown is reported as the
 /// first interior stop.
@@ -87,12 +88,11 @@ pub fn render(ui: &mut egui::Ui, state: &mut AliasEditorState) -> AliasEditorAct
         ui.colored_label(egui::Color32::from_rgb(0xD2, 0x0F, 0x39), err);
     }
 
-    // --- Column headings -------------------------------------------------
+    // --- Column headings (CR-CH-072 Req 6.2: no L18N column) -------------
     ui.horizontal(|ui| {
         heading(ui, "Act", 28.0);
         heading(ui, "CE", 84.0);
         heading(ui, "Root", 96.0);
-        heading(ui, "L18N", 36.0);
         heading(ui, "ALIAS", 120.0);
         heading(ui, "Parameters", 260.0);
     });

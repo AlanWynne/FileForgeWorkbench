@@ -1,76 +1,59 @@
 # Afrikaans (af) command-alias catalogue for the FFCMD command environment
-# (CR-NR-109, localization Requirement 11, Task 11.7 -- proof-of-concept data).
+# (CR-CH-072, localization Requirement 13 -- one-layer surface-in-row model).
 #
-# Each [[alias]] row maps a localised, typeable SURFACE form to the ROOT
-# (canonical) command verb, optionally carrying a localisation_key that resolves
-# the displayed surface through the ff-i18n catalogue (t(key)). The ROOT verb is
-# the dispatched and persisted identity (Requirement 11.9); the surface is a
-# display/typeable concern only. Loaded by shell/alias_reader.rs via the existing
-# apply_locale_overlay seam -- no new mechanism.
-#
-# CR-CH-069 (command-environments Requirement 21.3): the former SOEK -> FIND row
-# was MOVED to FFEDIT.toml because FIND is an FFEDIT root (command-semantics
-# Requirement 12.1), not an FFCMD root. This FFCMD catalogue currently declares
-# no aliases; genuine Afrikaans FFCMD aliases are a separate later DATA task.
+# Each [[alias]] row maps a localised, typeable SURFACE form (the In_Row_Surface)
+# DIRECTLY to the ROOT (canonical) command verb. The ROOT verb is the dispatched
+# and persisted identity (Requirement 13.2); the surface is a display/typeable
+# concern only. There is no localisation_key / verb-* indirection any more -- the
+# surface IS the display text (Requirement 13.1). Loaded by
+# shell/alias_reader.rs via the existing apply_locale_overlay seam.
 
-# --- POM + Settings menu-root command-surface aliases (CR-NR-111 full af menu DATA) ---
+# --- POM + Settings menu-root command-surface aliases (full af menu DATA) ---
 # DRAFT Afrikaans surfaces, pending fluent review. Each row maps an Afrikaans
-# SURFACE to a REAL FFCMD menu-option ROOT (see menu_workspace/defaults.rs), with
-# a verb-* localisation_key resolving the displayed surface via the af catalogue.
+# SURFACE to a REAL FFCMD menu-option ROOT (see menu_workspace/defaults.rs).
 # ROOT (canonical) is the dispatched/persisted identity; surface is display-only.
 # The POM `X` close affordance is intentionally left un-aliased (shows "X" in all locales).
 
 [[alias]]
 surface = "INSTELLINGS"
 canonical = "SETTINGS"
-localisation_key = "verb-settings"
 
 [[alias]]
 surface = "KATALOGUSSE"
 canonical = "CATALOGS"
-localisation_key = "verb-catalogs"
 
 [[alias]]
 surface = "LEERS"
 canonical = "FILES"
-localisation_key = "verb-files"
 
 [[alias]]
 surface = "HULP"
 canonical = "HELP"
-localisation_key = "verb-help"
 
 [[alias]]
 surface = "KONFIG"
 canonical = "CONFIG"
-localisation_key = "verb-config"
 
 [[alias]]
 surface = "ALIASSE"
 canonical = "ALIASES"
-localisation_key = "verb-aliases"
 
 [[alias]]
 surface = "TEMA"
 canonical = "THEME"
-localisation_key = "verb-theme"
 
 [[alias]]
 surface = "KIESLYSTE"
 canonical = "MENUS"
-localisation_key = "verb-menus"
 
 [[alias]]
 surface = "SLEUTELS"
 canonical = "KEYS"
-localisation_key = "verb-keys"
 
 [[alias]]
 surface = "SOORTE"
 canonical = "KINDS"
-localisation_key = "verb-kinds"
 
 [[alias]]
 surface = "HERSTEL KAAL"
 canonical = "RESET BARE"
-localisation_key = "verb-reset-bare"

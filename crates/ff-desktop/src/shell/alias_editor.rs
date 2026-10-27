@@ -1,10 +1,15 @@
-//! Shell-side wiring for the Alias Editor Context (command-configurator Req 5,
-//! CR-NR-113).
+//! Shell-side wiring for the Alias Editor Context (command-configurator Req 5 +
+//! Req 6 CR-CH-072).
 //!
 //! The panel render is pure (`alias_editor_panel::render`); all side effects
-//! (load, validation, serialisation, file writes, live-resolver refresh) live
-//! here in the command layer, mirroring the Menus Editor
-//! (`shell/menus_editor.rs`).
+//! (load the active-locale EFFECTIVE table, validation, serialisation, override
+//! file writes, live-resolver refresh) live here in the command layer, mirroring
+//! the Menus Editor (`shell/menus_editor.rs`).
+//!
+//! CR-CH-072 (Req 6): the editor shows the ACTIVE LOCALE's EFFECTIVE alias table
+//! (the shipped read-only seed `i18n/<locale>/aliases/<ENV>.toml` OVERLAID by the
+//! User_Locale_Override_Store `<base>/<locale>/<ENV>.toml`) and WRITES edits to
+//! the USER override only -- never to the shipped seed.
 
 use super::WorkbenchShell;
 use crate::alias_editor_panel::{AliasEditorAction, AliasRowEdit};
@@ -13,25 +18,34 @@ use crate::shell::user_aliases::{
 };
 
 impl WorkbenchShell {
-    /// Resolve the User_Alias_Store file path (Req 5.1): the shell's test
-    /// override when set, else the user-data-dir default
-    /// (`<User_Data_Dir>/FileForgeWorkbench/aliases/user.toml`).
-    pub(super) fn user_aliases_path(&self) -> Option<std::path::PathBuf> {
+    /// Resolve the User_Locale_Override_Store BASE directory (localization
+    /// Req 13.5): the shell's test override when set, else the user-data-dir
+    /// default (`<User_Data_Dir>/FileForgeWorkbench/aliases/`). The per-locale,
+    /// per-ENV override file is `<base>/<locale>/<ENV>.toml`.
+    pub(super) fn user_alias_override_base(&self) -> Option<std::path::PathBuf> {
         if let Some(path) = &self.dir_overrides.user_aliases {
             return Some(path.clone());
         }
-        user_aliases::user_aliases_file()
+        user_aliases::user_alias_override_base()
     }
 
-    /// Open the Alias Editor Context: load the User_Alias_Store into the working
-    /// rows, then navigate the current tab to a `CommandConfigurator`
-    /// `editor = "aliases"` descriptor IN PLACE (push onto the Navigation_Stack),
-    /// so END/RETURN returns to whatever the editor was opened from. Mirrors
-    /// `open_menus_editor` exactly.
+    /// The active locale for the alias store (the `ui.locale` config, default
+    /// `en`).
+    fn active_locale(&self) -> String {
+        self.config_handle
+            .get_string(ff_config::keys::ui::LOCALE)
+            .unwrap_or_else(|_| "en".to_string())
+    }
+
+    /// Open the Alias Editor Context: load the ACTIVE-locale EFFECTIVE alias
+    /// table into the working rows, then navigate the current tab to a
+    /// `CommandConfigurator` `editor = "aliases"` descriptor IN PLACE (push onto
+    /// the Navigation_Stack), so END/RETURN returns to whatever the editor was
+    /// opened from. Mirrors `open_menus_editor` exactly.
     ///
-    /// Validates: command-configurator Requirement 5.2, 5.9
+    /// Validates: command-configurator Requirement 5.2, 5.9, 6.1
     pub(super) fn open_alias_editor(&mut self) {
-        let rows = self.load_user_alias_rows();
+        let rows = self.load_effective_alias_rows();
         self.alias_editor_panel.load_rows(rows);
 
         self.navigate_to(
@@ -50,35 +64,32 @@ impl WorkbenchShell {
         );
     }
 
-    /// Read the User_Alias_Store file into editable rows. An absent/unreadable or
-    /// malformed file yields an empty working copy (the editor starts blank and
-    /// the file is created on first save, Req 5.1).
-    fn load_user_alias_rows(&self) -> Vec<AliasRowEdit> {
-        let Some(path) = self.user_aliases_path() else {
+    /// Read the ACTIVE-locale EFFECTIVE alias table (the shipped seed overlaid by
+    /// the user override) from the live `LocaleAliasStore` into editable rows
+    /// (Req 6.1). This is why an `af` user SEES the shipped `af` surfaces. A
+    /// locked/empty store yields an empty working copy (the editor starts blank).
+    ///
+    /// Validates: command-configurator Requirement 6.1
+    fn load_effective_alias_rows(&self) -> Vec<AliasRowEdit> {
+        let Ok(store) = self.i18n.alias_store.lock() else {
             return Vec::new();
         };
-        let Ok(text) = std::fs::read_to_string(&path) else {
-            return Vec::new();
-        };
-        match user_aliases::parse_user_alias_toml(&text) {
-            Ok(rows) => rows
-                .into_iter()
-                .map(|r| AliasRowEdit {
-                    act: String::new(),
-                    surface: r.surface,
-                    canonical: r.canonical,
-                    environment: r.environment,
-                    command_template: r.command_template,
-                    localisation_key: r.localisation_key,
-                })
-                .collect(),
-            Err(_) => Vec::new(),
-        }
+        store
+            .effective_display_rows()
+            .into_iter()
+            .map(|(env, surface, canonical, template)| AliasRowEdit {
+                act: String::new(),
+                surface,
+                canonical,
+                environment: env,
+                command_template: template.unwrap_or_default(),
+            })
+            .collect()
     }
 
     /// Apply an [`AliasEditorAction`] produced by the Alias Editor render.
     ///
-    /// Per-field edits (surface / root / environment / template / L18N / act) are
+    /// Per-field edits (surface / root / environment / template / act) are
     /// applied DIRECTLY by the render on the mutable working rows, so they do not
     /// appear as actions here -- only the line-command batch and the primary
     /// command do (Req 5.14, 5.16, 5.22).
@@ -93,19 +104,19 @@ impl WorkbenchShell {
         }
     }
 
-    /// Validate -> serialise -> write -> refresh the User_Alias_Store (Req 5.4,
-    /// 5.6). On ANY validation or write failure the on-disk file is left
-    /// UNCHANGED and the error is surfaced inline (Req 5.4). On success the live
-    /// `LocaleAliasStore` is refreshed IN PLACE so the alias resolves immediately
-    /// without a restart (Req 5.6).
+    /// Validate -> group by environment -> serialise -> write -> refresh the
+    /// User_Locale_Override_Store for the active locale (Req 6.3). On ANY
+    /// validation or write failure the on-disk override is left UNCHANGED and the
+    /// error is surfaced inline (Req 5.4). On success the live `LocaleAliasStore`
+    /// is refreshed IN PLACE so the alias resolves immediately without a restart
+    /// (Req 6.4). The shipped seed is NEVER written.
     ///
-    /// Validates: command-configurator Requirement 5.4, 5.5, 5.6
+    /// Validates: command-configurator Requirement 5.4, 6.3, 6.4
     ///
     /// CR-CH-071 (Req 20a.1/20a.2): returns `Result<(), String>` so the FFCMD
     /// editable-Context seam's END (save-then-leave) can branch on ok/err WITHOUT
-    /// reading panel state. On failure the error is BOTH surfaced inline (the
-    /// `alias_editor_panel.error` field, preserved for the inline display) AND
-    /// returned as the `Err`, and the on-disk file is left UNCHANGED (Req 5.4).
+    /// reading panel state. On failure the error is BOTH surfaced inline AND
+    /// returned as the `Err`, and the on-disk override is left UNCHANGED (Req 5.4).
     pub(super) fn save_user_aliases(&mut self) -> Result<(), String> {
         let rows = self.alias_editor_panel.rows.clone();
         let toml_rows = match validate_user_alias_rows(&rows) {
@@ -115,35 +126,20 @@ impl WorkbenchShell {
                 return Err(e);
             }
         };
-        let text = match serialise_user_aliases(&toml_rows) {
-            Ok(text) => text,
-            Err(e) => {
-                let msg = format!("serialise failed: {e}");
-                self.alias_editor_panel.error = Some(msg.clone());
-                return Err(msg);
-            }
-        };
-        let Some(path) = self.user_aliases_path() else {
-            let msg = "could not resolve the user alias store path".to_string();
+        let Some(base) = self.user_alias_override_base() else {
+            let msg = "could not resolve the user alias override path".to_string();
             self.alias_editor_panel.error = Some(msg.clone());
             return Err(msg);
         };
-        if let Some(parent) = path.parent() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                let msg = format!("could not create aliases dir: {e}");
-                self.alias_editor_panel.error = Some(msg.clone());
-                return Err(msg);
-            }
-        }
-        if let Err(e) = std::fs::write(&path, text) {
-            let msg = format!("could not write user aliases: {e}");
-            self.alias_editor_panel.error = Some(msg.clone());
-            return Err(msg);
+        let locale = self.active_locale();
+        if let Err(e) = write_override_rows(&base, &locale, &toml_rows) {
+            self.alias_editor_panel.error = Some(e.clone());
+            return Err(e);
         }
         self.alias_editor_panel.error = None;
         // Refresh the live resolver IN PLACE so the new alias resolves at once
-        // (Req 5.6): re-seed + re-apply BOTH the per-locale overlay AND the user
-        // store in one re-seed, so neither layer is dropped.
+        // (Req 6.4): re-seed + re-apply BOTH the shipped seed overlay AND the
+        // per-locale user override in one re-seed, so neither layer is dropped.
         self.refresh_alias_store_in_place();
         Ok(())
     }
@@ -153,73 +149,118 @@ impl WorkbenchShell {
     /// the live store. Reuses [`WorkbenchShell::save_user_aliases`] verbatim so the
     /// Alias Editor SAVE is one behaviour, whatever verb reaches it.
     ///
-    /// Validates: command-environments Requirement 20a.2, 20a.6
+    /// Validates: command-environments Requirement 20a.2, 20a.6; command-configurator Req 6.5
     pub(super) fn alias_editor_persist(&mut self) -> Result<(), String> {
         self.save_user_aliases()
     }
 
     /// The Alias Editor's SEAM DISCARD operation (Req 20a.3): drop the unsaved
     /// working edits (clear the working rows and the inline error) WITHOUT
-    /// touching the on-disk User_Alias_Store. Used by CANCEL / RETURN (which then
+    /// touching the on-disk override store. Used by CANCEL / RETURN (which then
     /// leave) and by REFRESH (before the reload).
     ///
-    /// Validates: command-environments Requirement 20a.3, 20a.6
+    /// Validates: command-environments Requirement 20a.3, 20a.6; command-configurator Req 6.5
     pub(super) fn alias_editor_discard(&mut self) {
         self.alias_editor_panel.rows.clear();
         self.alias_editor_panel.error = None;
     }
 
     /// The Alias Editor's SEAM RELOAD operation (Req 20a.4): re-read the
-    /// last-saved User_Alias_Store from disk into the working rows, dropping any
-    /// unsaved edits. `load_rows` also clears the inline error, command line, and
-    /// filter, so the Context returns to its freshly-opened state.
+    /// EFFECTIVE active-locale table (seed + override) into the working rows,
+    /// dropping any unsaved edits. `load_rows` also clears the inline error,
+    /// command line, and filter, so the Context returns to its freshly-opened
+    /// state.
     ///
-    /// Validates: command-environments Requirement 20a.4, 20a.6
+    /// Validates: command-environments Requirement 20a.4, 20a.6; command-configurator Req 6.5
     pub(super) fn alias_editor_reload(&mut self) {
-        let rows = self.load_user_alias_rows();
+        let rows = self.load_effective_alias_rows();
         self.alias_editor_panel.load_rows(rows);
     }
 
-    /// Rebuild the shell's live `LocaleAliasStore` IN PLACE (Req 5.6): one
-    /// re-seed re-applies the Identity_Base, the per-locale `i18n/<locale>/aliases/`
-    /// overlay, AND the User_Alias_Store overlay (at the shell's resolved path),
-    /// so a save never drops the per-locale aliases and the saved user alias goes
-    /// live without a restart. Every holder of the `Arc` (the shell) observes the
-    /// swap.
+    /// Rebuild the shell's live `LocaleAliasStore` IN PLACE (Req 6.4): one re-seed
+    /// re-applies the Identity_Base, the shipped per-locale `i18n/<locale>/aliases/`
+    /// seed overlay, AND the User_Locale_Override_Store overlay (at the shell's
+    /// resolved base), so a save never drops the shipped seed and the saved user
+    /// override goes live without a restart. Every holder of the `Arc` (the
+    /// shell) observes the swap.
     ///
-    /// Validates: command-configurator Requirement 5.6
+    /// Validates: command-configurator Requirement 6.4
     pub(super) fn refresh_alias_store_in_place(&self) {
-        let locale = self
-            .config_handle
-            .get_string(ff_config::keys::ui::LOCALE)
-            .unwrap_or_else(|_| "en".to_string());
+        let locale = self.active_locale();
         let Ok(mut guard) = self.i18n.alias_store.lock() else {
             return;
         };
         let roots = guard.ffcmd_roots();
         let root_refs: Vec<&str> = roots.iter().map(String::as_str).collect();
-        // Re-seed + per-locale overlay (the existing third-overlay-aware path uses
-        // the env-var/default user path; here we re-apply the USER overlay from the
-        // shell's resolved path so a test override is honoured).
+        // Re-seed + shipped seed overlay, then the per-locale USER override from
+        // the shell's resolved base (so a test override is honoured).
         let mut store = super::alias_reader::LocaleAliasStore::seed(&root_refs);
         if let Some(root) = super::i18n_bootstrap::resolve_i18n_root() {
             store.apply_overlay_from_dir(&root.join(&locale).join("aliases"));
         }
-        if let Some(path) = self.user_aliases_path() {
-            store.apply_user_overlay_from_file(&path);
+        if let Some(base) = self.user_alias_override_base() {
+            store.apply_user_overlay_from_base(&base, &locale);
         }
         *guard = store;
     }
 }
 
+/// Write the validated override rows to the per-locale override files, grouped by
+/// environment: one `<base>/<locale>/<ENV>.toml` per environment, each holding
+/// that environment's rows. An environment with NO rows has its override file
+/// REMOVED (so deleting every override row clears the override), leaving only the
+/// shipped seed. The shipped seed is never touched. On any write failure the
+/// error is returned and the caller leaves state unchanged.
+///
+/// Validates: command-configurator Requirement 6.3
+fn write_override_rows(
+    base: &std::path::Path,
+    locale: &str,
+    rows: &[UserAliasRowToml],
+) -> Result<(), String> {
+    for env in AliasEnvironment::ALL {
+        let env_rows: Vec<UserAliasRowToml> = rows
+            .iter()
+            .filter(|r| r.environment == env)
+            .cloned()
+            .collect();
+        let path = user_aliases::user_alias_override_file(base, locale, env.env_name());
+        if env_rows.is_empty() {
+            // No override rows for this ENV -> remove any stale override file so
+            // the shipped seed is the sole source. An absent file is not an error.
+            if path.exists() {
+                if let Err(e) = std::fs::remove_file(&path) {
+                    return Err(format!(
+                        "could not remove stale override {}: {e}",
+                        path.display()
+                    ));
+                }
+            }
+            continue;
+        }
+        let text =
+            serialise_user_aliases(&env_rows).map_err(|e| format!("serialise failed: {e}"))?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("could not create override dir: {e}"))?;
+        }
+        std::fs::write(&path, text)
+            .map_err(|e| format!("could not write user override {}: {e}", path.display()))?;
+    }
+    Ok(())
+}
+
 /// Validate the Alias Editor working rows and convert them to serialisable
-/// [`UserAliasRowToml`] rows (Req 5.4). Rejects: (a) an empty surface, (b) an
+/// [`UserAliasRowToml`] rows (Req 5.4, 6.6). Rejects: (a) an empty surface, (b) an
 /// empty canonical, (c) a surface mapped to two different roots WITHIN the SAME
 /// target environment, (d) a surface equal to a reserved built-in root
-/// (`builtin_ffcmd_roots()` -- the NEW CR-NR-113 pre-pass invariant). On the
-/// first failure returns `Err(message)` so the caller leaves the file unchanged.
+/// (`builtin_ffcmd_roots()` -- the no-shadow invariant), (e) a root that is not a
+/// valid canonical root of its declared environment (`contains_root`). A user
+/// override surface equal to a shipped-seed surface is a CUSTOMISATION (the
+/// override wins, Req 6.6), not a collision. On the first failure returns
+/// `Err(message)` so the caller leaves the override unchanged.
 ///
-/// Validates: command-configurator Requirement 5.4
+/// Validates: command-configurator Requirement 5.4, 6.6
 fn validate_user_alias_rows(rows: &[AliasRowEdit]) -> Result<Vec<UserAliasRowToml>, String> {
     let reserved = super::alias_reader::builtin_ffcmd_roots();
     // Track (environment, surface) -> canonical for the within-same-environment
@@ -242,10 +283,7 @@ fn validate_user_alias_rows(rows: &[AliasRowEdit]) -> Result<Vec<UserAliasRowTom
             ));
         }
         // (e) ROOT-VALIDITY (CR-CH-067, Req 20.8): the declared root must be a
-        // valid canonical root of the declared environment. This is the SAVE-side
-        // surfacing of the same `contains_root` check the LOAD path skips-with-WARN
-        // on (Req 20.7), so Gate 2's Alias Editor can reject an invalid
-        // (environment, root) pair at save. Gate 1 adds only the hook.
+        // valid canonical root of the declared environment.
         if !super::environment_registry::EnvironmentRegistry::contains_root(
             row.environment.env_name(),
             &canonical,
@@ -277,9 +315,6 @@ fn validate_user_alias_rows(rows: &[AliasRowEdit]) -> Result<Vec<UserAliasRowTom
             canonical,
             environment: row.environment,
             command_template: row.command_template.trim().to_string(),
-            // L18N round-trip (Req 5.13, design 9.10.2 DECISION): carry the edited
-            // locale key instead of hardcoding empty, so the column persists.
-            localisation_key: row.localisation_key.trim().to_string(),
         });
     }
     Ok(out)
@@ -317,8 +352,8 @@ mod tests {
         assert!(validate_user_alias_rows(&rows).is_err());
     }
 
-    // Validates: command-configurator Requirement 5.4 (c) -- a surface mapped to
-    // two different roots WITHIN the same environment is rejected.
+    // Validates: command-configurator Requirement 6.6 -- a surface mapped to two
+    // different roots WITHIN the same environment is rejected.
     #[test]
     fn validate_rejects_within_same_environment_two_roots() {
         // EDIT and VIEW are both valid FFCMD (file-open) roots, so the rejection
@@ -330,12 +365,11 @@ mod tests {
         assert!(validate_user_alias_rows(&rows).is_err());
     }
 
-    // Validates: command-configurator Requirement 5.4 -- the SAME surface in
+    // Validates: command-configurator Requirement 6.6 -- the SAME surface in
     // DIFFERENT environments is allowed (no collision across environments).
     #[test]
     fn validate_allows_same_surface_in_different_environments() {
         // FIND is a valid FFEDIT (in-buffer) root; CONFIG is a valid FFCMD root.
-        // The same surface in two different environments does not collide.
         let rows = vec![
             row("DUP", "FIND", AliasEnvironment::Ffedit, ""),
             row("DUP", "CONFIG", AliasEnvironment::Ffcmd, ""),
@@ -344,9 +378,8 @@ mod tests {
         assert_eq!(out.len(), 2);
     }
 
-    // Validates: command-configurator Requirement 5.4 (d) -- a surface equal to a
-    // reserved built-in root (here CONFIG, a builtin_ffcmd_roots() member) is
-    // rejected (the NEW CR-NR-113 no-shadow invariant).
+    // Validates: command-configurator Requirement 6.6 -- a surface equal to a
+    // reserved built-in root (here CONFIG) is rejected (no-shadow invariant).
     #[test]
     fn validate_rejects_builtin_root_shadow() {
         let rows = vec![row("CONFIG", "EDIT", AliasEnvironment::Ffcmd, "")];
@@ -358,17 +391,15 @@ mod tests {
 
     // Validates: command-environments Requirement 20.8 -- the save-side hook
     // rejects a row whose root is NOT a valid canonical root of its declared
-    // environment (here FIND is an FFEDIT root, not an FFCMD root), reusing the
-    // EnvironmentRegistry::contains_root primitive.
+    // environment (FIND is an FFEDIT root, not an FFCMD root), reusing
+    // EnvironmentRegistry::contains_root.
     #[test]
     fn validate_rejects_root_not_valid_in_declared_environment() {
-        // FIND is an FFEDIT in-buffer root; it is NOT an FFCMD root.
         let rows = vec![row("FF", "FIND", AliasEnvironment::Ffcmd, "")];
         assert!(
             validate_user_alias_rows(&rows).is_err(),
             "a root that is not valid in the declared environment must be rejected"
         );
-        // And the mirror: CONFIG is an FFCMD root, not an FFEDIT root.
         let rows = vec![row("CF", "CONFIG", AliasEnvironment::Ffedit, "")];
         assert!(
             validate_user_alias_rows(&rows).is_err(),
@@ -377,8 +408,8 @@ mod tests {
     }
 
     // Validates: command-environments Requirement 20.8 -- a row whose root IS a
-    // valid root of its declared environment passes the save-side hook: EDIT in
-    // FFCMD (file-open family) and FIND in FFEDIT (in-buffer).
+    // valid root of its declared environment passes: EDIT in FFCMD (file-open)
+    // and FIND in FFEDIT (in-buffer).
     #[test]
     fn validate_accepts_root_valid_in_declared_environment() {
         let rows = vec![
@@ -391,13 +422,11 @@ mod tests {
 
     // Validates: command-environments Requirement 20a.12 -- a user alias row
     // whose SURFACE equals SAVE / CANCEL / REFRESH is REJECTED at save, because
-    // those three are now FFCMD canonical roots (CR-CH-071 Req 20a.5) and the
-    // no-shadow invariant (Req 5.4 (d)) reads `builtin_ffcmd_roots()`, which now
-    // includes them. No new logic was needed -- this locks the consequence in.
+    // those three are FFCMD canonical roots (CR-CH-071 Req 20a.5) in
+    // builtin_ffcmd_roots(), which the no-shadow rule reads.
     #[test]
     fn validate_rejects_save_cancel_refresh_shadow() {
         for surface in ["SAVE", "CANCEL", "REFRESH"] {
-            // Use a valid root so ONLY the no-shadow rule can reject the row.
             let rows = vec![row(surface, "EDIT", AliasEnvironment::Ffcmd, "")];
             assert!(
                 validate_user_alias_rows(&rows).is_err(),
@@ -406,12 +435,11 @@ mod tests {
         }
     }
 
-    // Validates: command-configurator Requirement 5.4 -- a valid set serialises
-    // to rows with surface/canonical UPPERCASED and the template preserved.
+    // Validates: command-configurator Requirement 6.3 -- a valid set serialises
+    // to rows with surface/canonical UPPERCASED and the template preserved; the
+    // L18N (localisation-key) field is gone (CR-CH-072 Req 6.2).
     #[test]
     fn validate_uppercases_and_preserves_template() {
-        // EDIT is a valid FFCMD (file-open) root (CR-CH-067), so ECOB -> EDIT is
-        // an FFCMD alias.
         let rows = vec![row(
             "ecob",
             "edit",
@@ -422,31 +450,5 @@ mod tests {
         assert_eq!(out[0].surface, "ECOB");
         assert_eq!(out[0].canonical, "EDIT");
         assert_eq!(out[0].command_template, "FFWB.COBOL.MASTER(&1)");
-    }
-
-    // Validates: command-configurator Requirement 5.13 -- an edited non-empty
-    // L18N (localisation_key) value PERSISTS: validate_user_alias_rows carries the
-    // trimmed value into the UserAliasRowToml (instead of hardcoding empty), and a
-    // serialise + re-parse round-trips the same L18N value (design 9.10.2).
-    #[test]
-    fn l18n_value_round_trips_through_validate_and_serialise() {
-        let mut r = row(
-            "ECOB",
-            "EDIT",
-            AliasEnvironment::Ffcmd,
-            "FFWB.COBOL.MASTER(&1)",
-        );
-        r.localisation_key = "  en  ".to_string();
-        let out = validate_user_alias_rows(std::slice::from_ref(&r)).expect("valid");
-        assert_eq!(
-            out[0].localisation_key, "en",
-            "the trimmed L18N value is carried into the serialisable row"
-        );
-        let text = serialise_user_aliases(&out).expect("serialises");
-        let back = user_aliases::parse_user_alias_toml(&text).expect("parses back");
-        assert_eq!(
-            back[0].localisation_key, "en",
-            "the L18N value re-renders through a full serialise + parse round-trip"
-        );
     }
 }

@@ -15,11 +15,13 @@ use super::WorkbenchShell;
 use crate::alias_editor_panel::AliasRowEdit;
 use crate::tab_state::KindTag;
 
-/// Point the shell's User_Alias_Store at an isolated temp file and return the
-/// guard dir (kept alive by the caller).
+/// Point the shell's User_Locale_Override_Store BASE at an isolated temp dir and
+/// return the guard dir (kept alive by the caller).
+///
+/// CR-CH-072: the override is a per-locale DIR base, not a single `user.toml`.
 fn point_user_aliases_at_temp(shell: &mut WorkbenchShell) -> tempfile::TempDir {
     let dir = tempfile::TempDir::new().expect("tempdir");
-    shell.dir_overrides.user_aliases = Some(dir.path().join("aliases").join("user.toml"));
+    shell.dir_overrides.user_aliases = Some(dir.path().join("aliases"));
     dir
 }
 
@@ -63,8 +65,16 @@ fn save_persists_and_stays_on_alias_editor() {
         "SAVE stays in the Alias Editor (Req 20a.1)"
     );
     // The file was written.
-    let path = dir.path().join("aliases").join("user.toml");
-    assert!(path.exists(), "SAVE wrote the user store file (Req 20a.2)");
+    // CR-CH-072: the FFCMD override writes to <base>/en/FFCMD.toml.
+    let path = super::user_aliases::user_alias_override_file(
+        &dir.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    );
+    assert!(
+        path.exists(),
+        "SAVE wrote the user override file (Req 20a.2)"
+    );
     assert!(shell.alias_editor_panel.error.is_none());
     // Live store refreshed -- the alias resolves at once.
     use super::locale_resolver::LocaleResolveOutcome;
@@ -92,8 +102,12 @@ fn end_persists_then_leaves_on_alias_editor() {
         "END leaves the Alias Editor after saving (Req 20a.1)"
     );
     assert_eq!(shell.tabs.len(), tabs_before, "END did not spawn a tab");
-    // The save happened before leaving (file written).
-    let path = dir.path().join("aliases").join("user.toml");
+    // The save happened before leaving (file written to the per-locale override).
+    let path = super::user_aliases::user_alias_override_file(
+        &dir.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    );
     assert!(path.exists(), "END saved before leaving (Req 20a.1)");
 }
 
@@ -115,7 +129,11 @@ fn end_on_validation_failure_stays_and_leaves_store_unchanged() {
         shell.alias_editor_panel.error.is_some(),
         "the validation error is surfaced inline"
     );
-    let path = dir.path().join("aliases").join("user.toml");
+    let path = super::user_aliases::user_alias_override_file(
+        &dir.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    );
     assert!(
         !path.exists(),
         "a failed END save leaves the store unchanged (not written)"
@@ -136,7 +154,11 @@ fn cancel_discards_and_leaves_without_saving() {
         KindTag::AliasEditor,
         "CANCEL leaves the Context (Req 20a.3)"
     );
-    let path = dir.path().join("aliases").join("user.toml");
+    let path = super::user_aliases::user_alias_override_file(
+        &dir.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    );
     assert!(
         !path.exists(),
         "CANCEL did NOT persist the working edits (Req 20a.3)"
@@ -155,7 +177,11 @@ fn return_discards_and_leaves_without_saving() {
         KindTag::AliasEditor,
         "RETURN leaves the Context (Req 20a.3)"
     );
-    let path = dir.path().join("aliases").join("user.toml");
+    let path = super::user_aliases::user_alias_override_file(
+        &dir.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    );
     assert!(
         !path.exists(),
         "RETURN did NOT persist the working edits (Req 20a.3)"
@@ -276,14 +302,24 @@ fn typed_command_line_end_matches_global_end() {
     shell_a.alias_editor_panel.rows = vec![ffcmd_row("GG", "GSEARCH")];
     shell_a.apply_alias_editor_action(AliasEditorAction::CommandLine("END".to_string()));
     let left_a = shell_a.tabs.active_tab().kind.tag() != KindTag::AliasEditor;
-    let saved_a = dir_a.path().join("aliases").join("user.toml").exists();
+    let saved_a = super::user_aliases::user_alias_override_file(
+        &dir_a.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    )
+    .exists();
 
     // Path B: a globally-typed END (F3-equivalent via handle_command).
     let (mut shell_b, dir_b) = shell_on_alias_editor();
     shell_b.alias_editor_panel.rows = vec![ffcmd_row("GG", "GSEARCH")];
     shell_b.handle_command("END");
     let left_b = shell_b.tabs.active_tab().kind.tag() != KindTag::AliasEditor;
-    let saved_b = dir_b.path().join("aliases").join("user.toml").exists();
+    let saved_b = super::user_aliases::user_alias_override_file(
+        &dir_b.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    )
+    .exists();
 
     assert!(left_a && left_b, "both END paths leave the Context");
     assert!(saved_a && saved_b, "both END paths save before leaving");
@@ -311,7 +347,12 @@ fn typed_command_line_cancel_and_refresh_route_through_front_door() {
         "typed CANCEL leaves via the single path (Req 20a.10)"
     );
     assert!(
-        !dir.path().join("aliases").join("user.toml").exists(),
+        !super::user_aliases::user_alias_override_file(
+            &dir.path().join("aliases"),
+            "en",
+            FFCMD_NAME
+        )
+        .exists(),
         "typed CANCEL did not save (Req 20a.3/20a.10)"
     );
 
@@ -366,40 +407,28 @@ fn load_skips_user_rows_shadowing_save_cancel_refresh() {
     use super::user_aliases::{serialise_user_aliases, UserAliasRowToml};
 
     let mut shell = make_shell();
-    let _dir = point_user_aliases_at_temp(&mut shell);
-    let path = shell.user_aliases_path().expect("path");
+    let dir = point_user_aliases_at_temp(&mut shell);
+    // CR-CH-072: the override is written to the per-locale FFCMD override file
+    // `<base>/en/FFCMD.toml`, and rows carry no localisation_key.
+    let path = super::user_aliases::user_alias_override_file(
+        &dir.path().join("aliases"),
+        "en",
+        FFCMD_NAME,
+    );
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let mk = |surface: &str, canonical: &str| UserAliasRowToml {
+        surface: surface.to_string(),
+        canonical: canonical.to_string(),
+        environment: AliasEnvironment::Ffcmd,
+        command_template: String::new(),
+    };
     // Each shadowing row names a valid root (EDIT) so ONLY the no-shadow guard
     // can reject it; plus one genuinely valid row that MUST still load.
     let rows = vec![
-        UserAliasRowToml {
-            surface: "SAVE".to_string(),
-            canonical: "EDIT".to_string(),
-            environment: AliasEnvironment::Ffcmd,
-            command_template: String::new(),
-            localisation_key: String::new(),
-        },
-        UserAliasRowToml {
-            surface: "CANCEL".to_string(),
-            canonical: "EDIT".to_string(),
-            environment: AliasEnvironment::Ffcmd,
-            command_template: String::new(),
-            localisation_key: String::new(),
-        },
-        UserAliasRowToml {
-            surface: "REFRESH".to_string(),
-            canonical: "EDIT".to_string(),
-            environment: AliasEnvironment::Ffcmd,
-            command_template: String::new(),
-            localisation_key: String::new(),
-        },
-        UserAliasRowToml {
-            surface: "GG".to_string(),
-            canonical: "GSEARCH".to_string(),
-            environment: AliasEnvironment::Ffcmd,
-            command_template: String::new(),
-            localisation_key: String::new(),
-        },
+        mk("SAVE", "EDIT"),
+        mk("CANCEL", "EDIT"),
+        mk("REFRESH", "EDIT"),
+        mk("GG", "GSEARCH"),
     ];
     std::fs::write(&path, serialise_user_aliases(&rows).unwrap()).unwrap();
     shell.refresh_alias_store_in_place();

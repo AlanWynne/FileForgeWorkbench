@@ -4298,35 +4298,35 @@ suite PASS. -->
 
 > Owner-endorsed SIMPLIFICATION that supersedes the three-layer / two-store
 > command-surface model (CR-NR-109/111/113) and amends CR-NR-112 and CR-CH-071.
-> All rows NOT COVERED (gate authored; docs-only; no code yet). Flip to PASS as
-> the CR-CH-072 tasks land (localization Task group 23-30; command-environments
-> Task group 32). Criteria from docs/specs/localization/requirements.md Req 13,
-> command-environments Req 2b, command-configurator Req 6, and the amended Req 11/12/14/18.
+> IMPLEMENTED: all rows PASS (localization Task group 23-30; command-environments
+> Task group 32 landed; proving tests named per row). Criteria from
+> docs/specs/localization/requirements.md Req 13, command-environments Req 2b,
+> command-configurator Req 6, and the amended Req 11/12/14/18.
 
 | Crate | Status | Test files | Notes |
 |-------|--------|-----------|-------|
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.1: surface stored in row; one lookup surface->root; no localisation_key/verb-* for command surfaces (Task 23.1/23.2) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.2: command surface resolves via the two-level Req 2b path under the diacritic fold; root dispatched/persisted (Task 24.1) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.3: DESCRIPTION/TITLE .ftl localisation unchanged; only verb-* command-surface indirection removed (Task 28.1) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.4: menu option references an alias; renders in-row surface + dispatches root via one path; no reverse-derivation (Task 25.1/25.2) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.5: ONE effective table = shipped seed overlaid by user override; override wins (Task 26.1/26.2) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.6: shipped af seed works out of box; every row customisable to the user override (Task 26.2/26.3) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.7: after save, effective table + menu reflect the edited surface (Task 27.3) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.8: CR-NR-112 parameter template retained + expands unchanged (Task 24.3) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | loc Req 13.9: af POC non-regressing via one-layer model (POM+Settings render af; roots dispatch; two-level holds) (Task 28.2/29.1) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | command-environments Req 2b.1-2b.3: active-env alias->root->reject then FFCMD same; same path typed+menu (Task 32.1) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | command-environments Req 2b.4: fold + prelude/shadowing precedence + persisted root (Task 32.3) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | command-environments Req 2b.5: no new dispatcher; CommandTarget/resolve_target unchanged (Task 32.2) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.1: Alias Editor shows active-locale effective table (af surfaces visible) (Task 27.1/27.2) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.2: rows show surface/root/env/template; no L18N column (Task 27.2) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.3/6.4: save writes user override (never seed); menu reflects edit after save (Task 27.3/27.4) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.5: CR-CH-071 Save/End/Cancel/Return/Refresh over the override store (Task 27.4) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.6: validation discipline on override rows; override wins over seed surface (Task 27.5) |
-| `ff-desktop` | 🔴 NOT COVERED | -- | configurator Req 6.7 / semantics Req 14.1 amended: template editable; localisation_key field dropped (Task 23.2) |
+| `ff-desktop` | ✅ PASS | `environment.rs::display_surface_returns_in_row_surface`; `alias_reader.rs::reader_row_without_template_parses_to_none` | loc Req 13.1: surface stored in row; one lookup surface->root; no localisation_key/verb-* for command surfaces |
+| `ff-desktop` | ✅ PASS | `locale_resolver.rs::resolve_locale_verb_follows_the_req_11_6_order`; `root_command_is_returned_regardless_of_surface` | loc Req 13.2: command surface resolves via the two-level Req 2b path; root dispatched/persisted |
+| `ff-desktop` | ✅ PASS | `i18n_keys.rs::localised_description_falls_back_to_parsed_english_on_miss`; `t_or_falls_back_to_english_when_key_absent` | loc Req 13.3: DESCRIPTION/TITLE .ftl localisation unchanged; only verb-* command-surface indirection removed |
+| `ff-desktop` | ✅ PASS | `tests_locale_menu_full.rs::full_shell_stored_value_is_root_and_dispatch_records_root`; `i18n_keys.rs::localised_option_command_resolves_alias_surface_else_root` | loc Req 13.4: menu option references an alias (root stored); renders in-row surface + dispatches root via one path; no reverse-derivation |
+| `ff-desktop` | ✅ PASS | `alias_reader.rs::user_override_overlays_seed_and_wins_on_shared_surface` | loc Req 13.5: ONE effective table = shipped seed overlaid by user override; override wins |
+| `ff-desktop` | ✅ PASS | `alias_reader.rs::user_override_overlays_seed_and_wins_on_shared_surface`; `af_poc_alias_catalogue_loads_and_resolves`; `tests_alias_editor.rs::save_writes_only_user_override_not_shipped_seed` | loc Req 13.6: shipped af seed works out of box; every row customisable to the user override; seed never written |
+| `ff-desktop` | ✅ PASS | `tests_alias_editor.rs::save_makes_menu_render_surface_reflect_the_edited_alias` | loc Req 13.7: after save, effective table + menu render surface reflect the edited surface |
+| `ff-desktop` | ✅ PASS | `locale_resolver.rs::rewrite_verb_to_root_expands_parameterised_alias`; `_empty_arg_substitutes_empty`; `tests_alias_editor.rs::parameterised_alias_authored_in_editor_expands_end_to_end` | loc Req 13.8: CR-NR-112 parameter template retained + expands unchanged |
+| `ff-desktop` | ✅ PASS | `alias_reader.rs::af_poc_alias_catalogue_loads_and_resolves`; `tests_locale_menu_full.rs::full_shell_single_menu_auto_converts_between_locales` | loc Req 13.9: af POC non-regressing via one-layer model (POM+Settings render af surfaces; roots dispatch; two-level holds) |
+| `ff-desktop` | ✅ PASS | `locale_resolver.rs::resolve_locale_verb_follows_the_req_11_6_order`; `resolution_is_scoped_to_the_active_environment` | command-environments Req 2b.1-2b.3: active-env alias->root->reject then FFCMD same; same path typed+menu |
+| `ff-desktop` | ✅ PASS | `locale_resolver.rs::rewrite_verb_to_root_templateless_alias_is_byte_identical`; `every_registered_ffcmd_root_resolves_to_itself` | command-environments Req 2b.4: fold + prelude/shadowing precedence + persisted root |
+| `ff-desktop` | ✅ PASS | `locale_resolver.rs::rewrite_verb_to_root_leaves_non_alias_unchanged`; `rewrite_verb_to_root_is_single_pass` | command-environments Req 2b.5: no new dispatcher; CommandTarget/resolve_target unchanged |
+| `ff-desktop` | ✅ PASS | `alias_reader.rs::effective_display_rows_lists_only_overlay_rows`; `tests_focus.rs::full_shell_alias_editor_empty_store_i_insert_shows_editable_row` | configurator Req 6.1: Alias Editor shows active-locale effective table (af surfaces visible; empty under en) |
+| `ff-desktop` | ✅ PASS | `rows.rs::root_options_match_root_commands_for_ce`; `alias_editor.rs::validate_uppercases_and_preserves_template` | configurator Req 6.2: rows show surface/root/env/template; no L18N column |
+| `ff-desktop` | ✅ PASS | `tests_alias_editor.rs::save_writes_file_and_live_resolver_resolves_new_alias`; `save_makes_menu_render_surface_reflect_the_edited_alias`; `save_writes_only_user_override_not_shipped_seed` | configurator Req 6.3/6.4: save writes user override (never seed); menu reflects edit after save |
+| `ff-desktop` | ✅ PASS | `tests_crch071.rs::save_persists_and_stays_on_alias_editor`; `end_persists_then_leaves_on_alias_editor`; `cancel_discards_and_leaves_without_saving`; `return_discards_and_leaves_without_saving`; `refresh_discards_edits_reloads_last_saved_and_stays` | configurator Req 6.5: CR-CH-071 Save/End/Cancel/Return/Refresh over the override store |
+| `ff-desktop` | ✅ PASS | `alias_editor.rs::validate_rejects_builtin_root_shadow`; `validate_rejects_within_same_environment_two_roots`; `validate_allows_same_surface_in_different_environments`; `alias_reader.rs::user_override_overlays_seed_and_wins_on_shared_surface` | configurator Req 6.6: validation discipline on override rows; override wins over seed surface |
+| `ff-desktop` | ✅ PASS | `tests_alias_editor.rs::parameterised_alias_authored_in_editor_expands_end_to_end`; `user_aliases.rs::row_parses_surface_canonical_template_without_l18n` | configurator Req 6.7 / semantics Req 14.1 amended: template editable; localisation_key field dropped |
 
 | Summary | Count |
 |---------|-------|
-| ✅ PASS | 0 |
+| ✅ PASS | 18 |
 | ❌ FAIL | 0 |
 | 🔲 MANUAL | 0 |
-| 🔴 NOT COVERED | 18 |
+| 🔴 NOT COVERED | 0 |

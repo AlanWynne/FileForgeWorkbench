@@ -4,19 +4,21 @@
 
 use crate::shell::user_aliases::AliasEnvironment;
 
-/// One editable alias row in the Alias Editor working copy (Req 5.1, 5.3, 5.13).
+/// One editable alias row in the Alias Editor working copy (command-configurator
+/// Req 6.2).
 ///
 /// The persisted fields (`surface`, `canonical`, `environment`,
-/// `command_template`, `localisation_key`) map 1:1 to `UserAliasRowToml`
-/// (design 9.10.2). `act` is a TRANSIENT per-row line-command letter (I / R / D)
-/// that is never persisted (Req 5.16).
+/// `command_template`) map 1:1 to `UserAliasRowToml`. CR-CH-072 (localization
+/// Req 13.1): the former L18N (`localisation_key`) column is REMOVED -- the
+/// surface IS the authoritative localised text. `act` is a TRANSIENT per-row
+/// line-command letter (I / R / D) that is never persisted (Req 5.16).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AliasRowEdit {
     /// Transient ISPF line-command letter for this row (I / R / D). Never
     /// persisted; collected as a PENDING code and applied as a batch on the
     /// `Command ===>` Enter (Req 5.16, 5.22).
     pub act: String,
-    /// The alias name (typeable surface, e.g. `ECOB`). Column: ALIAS.
+    /// The alias name (typeable In_Row_Surface, e.g. `ECOB`). Column: ALIAS.
     pub surface: String,
     /// The root command (canonical verb, e.g. `EDIT`). Column: Root.
     pub canonical: String,
@@ -24,9 +26,6 @@ pub struct AliasRowEdit {
     pub environment: AliasEnvironment,
     /// CR-NR-112 parameter template (`""` = pure verb alias). Column: Parameters.
     pub command_template: String,
-    /// The locale key (L18N column). Blank for a language-independent user
-    /// shorthand; PERSISTS via `UserAliasRowToml.localisation_key` (Req 5.13).
-    pub localisation_key: String,
 }
 
 /// A structural action produced by the Alias Editor render, applied by the
