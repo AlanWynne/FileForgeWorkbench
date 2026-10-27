@@ -220,13 +220,25 @@ fn load_base(root: &std::path::Path) -> Option<Catalogue> {
 /// mid-assertion. `set_test_catalogue` installs a thread-local override instead,
 /// and Rust's test runner uses one thread per test, so each test gets its own
 /// catalogue with NO lock and NO loss of parallelism (the race is removed, not
-/// serialised). Falls back to the process-wide install only if the shipped root
-/// cannot be resolved (degrades to the key fallback exactly as production).
+/// serialised).
+///
+/// A1/B081 test-isolation: this install is ALWAYS thread-local and NEVER writes
+/// the process-global. The earlier global fallback (used when the shipped root
+/// could not be resolved) was the one hole by which a full-shell harness test
+/// depended on the shared global, so a concurrent locale test's global install
+/// (Afrikaans) could clobber the English label this test queries
+/// (`get_by_label("Save")` -> "Stoor"). When the root cannot be resolved the
+/// thread-local is simply left unset, so lookups degrade to the key fallback on
+/// THIS thread exactly as production does -- without touching the global and
+/// without exposing this thread to another thread's global writes. See
+/// docs/PATTERNS-AND-LESSONS.md A1 (variant 3) and C3 (thread-local is
+/// test-only; production keeps the single process-global).
 #[cfg(test)]
 pub(crate) fn install_catalogue_for_tests() {
-    match resolve_i18n_root().and_then(|root| build_catalogue(&root, ff_i18n::IDENTITY_BASE_TAG)) {
-        Some(catalogue) => ff_i18n::set_test_catalogue(catalogue),
-        None => install_catalogue_for_locale(ff_i18n::IDENTITY_BASE_TAG),
+    if let Some(catalogue) =
+        resolve_i18n_root().and_then(|root| build_catalogue(&root, ff_i18n::IDENTITY_BASE_TAG))
+    {
+        ff_i18n::set_test_catalogue(catalogue);
     }
 }
 
@@ -516,6 +528,21 @@ mod tests {
             ff_i18n::t("menu-settings-title"),
             "Instellings",
             "after the ui.locale change the seam must render Afrikaans"
+        );
+
+        // A1/B081 test-isolation (defence in depth): this test legitimately
+        // exercises the PRODUCTION process-global install seam, so it writes the
+        // global. Restore the global to English before returning so it leaves no
+        // Afrikaans residue for any later test that reads the process-global.
+        // (With the thread-local-only install_catalogue_for_tests above, no
+        // full-shell harness test reads the global any more, so this is belt-and
+        // -braces -- but it keeps the global clean for the other global-path
+        // tests that share GLOBAL_CATALOGUE_SEAM_LOCK.)
+        install_catalogue_for_locale(ff_i18n::IDENTITY_BASE_TAG);
+        assert_eq!(
+            ff_i18n::t("menu-settings-title"),
+            "Settings",
+            "the test must restore the English global before returning"
         );
     }
 }
