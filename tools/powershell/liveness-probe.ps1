@@ -10,7 +10,7 @@
     (now removed): its check / test / clippy / fmt tasks live here, so there is
     ONE liveness + scoped-check path, not two overlapping ones.
 
-    EVERY task writes its full output to a log under <root>\tools\logs\
+    EVERY task writes its full output to a log under <root>\_ignore\logs\
     (git-ignored, ephemeral) and THEN echoes that same log back to the terminal,
     so the caller always has a durable copy even when the interactive terminal
     mangles stdout (see .kiro/steering/tooling.md).
@@ -67,7 +67,7 @@
 
 .PARAMETER RunLabel
     Optional heartbeat label. When given, the probe folds the last-write time of
-    <root>\tools\logs\<RunLabel>-progress.txt into the liveness signal and prints
+    <root>\_ignore\logs\<RunLabel>-progress.txt into the liveness signal and prints
     its last line. This is the heartbeat convention from the orchestration rule.
 
 .PARAMETER NoGit
@@ -114,7 +114,7 @@ if ($Path) {
 }
 
 $now     = Get-Date
-$logsDir = Join-Path $root 'tools\logs'
+$logsDir = Join-Path $root '_ignore\logs'
 if (-not (Test-Path -LiteralPath $logsDir)) {
     try { New-Item -ItemType Directory -Path $logsDir -Force | Out-Null } catch { $logsDir = $root }
 }
@@ -172,7 +172,7 @@ function Get-LastCommit {
     return $result
 }
 
-# Heartbeat: last line + mtime of tools/logs/<RunLabel>-progress.txt.
+# Heartbeat: last line + mtime of _ignore/logs/<RunLabel>-progress.txt.
 function Get-Heartbeat([string]$label) {
     $result = [pscustomobject]@{ Found = $false; LastLine = ''; Time = $null; Path = '' }
     if (-not $label) { return $result }

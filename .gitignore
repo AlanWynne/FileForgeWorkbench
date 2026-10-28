@@ -35,8 +35,14 @@ TestData/Large_File-157653-records.txt
 # ── FFTest generated reports (Req 10.2 automated-dialog-testing) ────────────
 reports/
 
-# ── Script execution logs (ephemeral, see .amazonq/rules/script-output.md) ──
-tools/logs/
+# ── Session-ignored artefacts: logs, scratch, non-committed data ─────────────
+# All ephemeral/non-committed data lives under _ignore/ (and every subfolder).
+# Script logs go to _ignore/logs/ (the former tools/logs/ was relocated there via
+# tools/powershell/sweep-to-ignore.ps1). The mandatory log-capture discipline is
+# the user-level steering tooling.md ("Script output -- MANDATORY log capture").
+_ignore/
+
+# ── Legacy bootstrap logs (ephemeral) ────────────────────────────────────────
 bootstrap/logs/*.log
 
 # ── cargo gate artifacts (ephemeral; the canonical gate writes here) ──────────
@@ -73,3 +79,12 @@ __pycache__/
 
 # ── Git worktrees (parallel feature streams; never committed) ────────────────
 .worktrees/
+
+# -- Session scratch / machine-wide logs (not project artefacts) --------------
+# tools/logs/ was relocated to _ignore/logs/ (see _ignore/ above); keep the old
+# path ignored in case a not-yet-migrated tool recreates it.
+tools/logs/
+.kiro/terminal-log/
+probe.txt
+worktrees-list.txt
+TERMINAL_DEFECTS.md

@@ -115,12 +115,12 @@ arm MUST still, after rendering, report `self.first_interior_id`/`self.last_inte
 and call `honour_interior_focus_latch` (or explicitly document `None` with a
 reason). This is the interim guardrail for the not-yet-migrated arms listed above.
 
-## The test -- every workspace MUST prove it (unchanged)
+## The test applies to migrated and unmigrated Contexts alike
 
-Each workspace (migrated or not) MUST ship a full-shell `egui_kittest`
-`build_eframe` test asserting the FIRST Tab from the command field lands EXACTLY
-on the reported first interior control (no phantom stop). See the "The test"
-section below.
+The full-shell first-Tab `egui_kittest` test above is MANDATORY for every
+workspace that reports interior focus stops, whether or not it has been migrated
+to `WorkspaceContext`. See "The test -- every workspace MUST prove it" above for
+the requirement and the code sample.
 
 ## Rationale
 

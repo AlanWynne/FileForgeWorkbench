@@ -23,7 +23,6 @@ directly in a workspace is overwritten on the next sync.
 | Testing | `testing.md` | TDD cycle, deterministic tests, coverage annotations, the TCR |
 | Documentation | `documentation-charset.md` | Mandatory plain-ASCII character rules for docs and source |
 | Task format | `task-format.md` | `[ ]`/`[x]` only, titles required, status on sub-bullets |
-| Shell exit codes | `shell-exit-code.md` | Trust the sentinel, not the reported `Exit Code` |
 
 ## Project rules (workspace level, `.kiro/steering/`)
 

@@ -51,6 +51,7 @@ The following specs exist under `docs/specs/`:
 - edit-operations
 - encoding-and-characters
 - exclude-show-filter
+- extension-integration (CR-CH-074: the keystone extension-integration contract -- how an extension contributes commands/menus/Contexts/Kinds through the framework seams; two owner-approved additive framework extension points. Consolidates plugin-architecture + plugin-manager-ui)
 - external-modification
 - global-search
 - jes-emulator (folder was FFW-JES -- renamed Phase BR to match kebab-case convention)
@@ -126,8 +127,10 @@ Context names by Workspace kind:
 - Home Context (POM) -- ISPF-style Primary Option Menu; "POM" is the retained alias
 - Editor Context -- text editing surface
 - Settings Context -- browsable/editable configuration
-- Catalog Explorer Context -- POM option 1, virtual catalog management
-- File Explorer Context -- POM option 2, VFS tree browser
+- Catalog Explorer Context -- virtual catalog management (typed-command reachable
+  via CATALOGS; no longer a bare-core POM option after CR-CH-073)
+- File Explorer Context -- VFS tree browser (typed-command reachable via FILES;
+  no longer a bare-core POM option after CR-CH-073)
 - Compiler Context -- toolchain status and build output
 - Search Results Context -- global search results
 - Database Context, Plugin Manager Context, Macro Library Context, Event Log Context, Hex Context
@@ -135,7 +138,7 @@ Context names by Workspace kind:
 See `docs/reviews/requirements-review/terminology-map.md` for the full glossary.
 
 ## Working with specs
-- All documentation MUST use plain ASCII (see `documentation.md`).
+- All documentation MUST use plain ASCII (see `documentation-charset.md`).
 - For any new requirement, run the gate in `workflow.md` before touching source.
 - Before implementing, read the sub-project `requirements.md` and update criteria first.
 - Before writing tests, confirm criteria exist -- map each test with
@@ -150,37 +153,17 @@ See `docs/reviews/requirements-review/terminology-map.md` for the full glossary.
 ---
 
 ## Task File Format
-When generating or editing `tasks.md` files under `docs/specs/`, follow strictly.
+When generating or editing `tasks.md` files under `docs/specs/`, follow the
+machine-wide task-file rules in the user-level steering `task-format.md` (the
+single source of truth for checkbox markers, titles, and status notes):
 
-### Allowed checkbox markers
-Only two states are valid:
+- Only `[ ]` (pending) and `[x]` (completed) are valid markers -- never `[~]`,
+  `[-]`, `[/]`, or any other symbol (they display as "untitled task").
+- Every task line has descriptive title text immediately after the number.
+- Intermediate states (in-progress / blocked / partially complete) are expressed
+  per `task-format.md` -- status notes on indented sub-bullets, never inside the
+  brackets.
 
-| Marker | Meaning |
-|--------|---------|
-| `[ ]` | Pending / not started |
-| `[x]` | Completed |
-
-Do NOT use `[~]`, `[-]`, `[/]`, or any other symbol -- they display as "untitled task".
-
-### Task title rule
-Every task line MUST have descriptive title text immediately after the number:
-```markdown
-- [ ] 3. Implement persistence layer
-  - [ ] 3.1 Create persistence module with load/save logic
-```
-Never leave a task line without a title.
-
-### Tracking intermediate states
-- In-progress: leave as `[ ]` -- the first unchecked task is implicitly active.
-- Blocked: add a note on a sub-bullet (never inside the brackets):
-  ```markdown
-  - [ ] 5.2 Write property test for undock position
-    - BLOCKED: waiting on egui viewport API stabilisation
-  ```
-- Partially complete: split into smaller subtasks so each can be checked off.
-
-### Summary checklist
-- Every checkbox uses `[ ]` or `[x]` only.
-- Every task line has a human-readable title after the number.
-- Top-level tasks have a concise summary title; subtasks have specific actions.
-- Status notes go on indented sub-bullets, never inside the checkbox brackets.
+The spec-specific point is only that these rules apply to every `tasks.md` under
+`docs/specs/<sub-project>/`. For the full rules, markers table, and examples, see
+`task-format.md`.

@@ -28,7 +28,7 @@ verdict.
 
 The single tool for this is `tools/powershell/liveness-probe.ps1` (default
 `-Task probe`). It gathers the signals below AND emits the verdict in one run,
-writing the full report to `tools/logs/liveness-probe.txt` and echoing it back,
+writing the full report to `_ignore/logs/liveness-probe.txt` and echoing it back,
 so the orchestrator does not compute the verdict by hand. The verdict is ALSO
 the exit code (0 ALIVE / 3 SLOWING / 4 STALLED), so the probe can gate a script:
 
@@ -46,7 +46,7 @@ prefer those over the interactive shell. The signals it combines:
    newest-GATE; BUILD churn is shown for visibility but deliberately EXCLUDED
    from the verdict, so a background `cargo build` cannot mask a stalled agent.
 2. **Heartbeat.** With `-RunLabel`, the last-write time of
-   `tools/logs/<run-label>-progress.txt` is folded into the liveness signal and
+   `_ignore/logs/<run-label>-progress.txt` is folded into the liveness signal and
    its last line is printed (see the heartbeat convention below).
 3. **Last git commit.** The latest commit time/subject is read; when the newest
    work write is NEWER than the last commit, the probe flags "uncommitted work
@@ -86,10 +86,11 @@ per `tooling.md`), say so plainly rather than inferring liveness.
 The mtime/artifact check above is reliable but INDIRECT. To make the ALIVE /
 SLOWING / STALLED call a one-line read, every delegated workflow BRIEF the
 orchestrator authors SHOULD instruct each long-running step to append a
-timestamped progress line to `tools/logs/<run-label>-progress.txt` as it works
+timestamped progress line to `_ignore/logs/<run-label>-progress.txt` as it works
 (mirroring how the canonical gate `cargo gate` streams per-step progress to
 `.gate/gate.timing.log` / `.gate/gate.history.csv`). Keep these logs ephemeral
-(`tools/logs/` is git-ignored). Pass the matching `-RunLabel <run-label>` to
+(`_ignore/logs/` is git-ignored -- the whole `_ignore/` tree). Pass the matching
+`-RunLabel <run-label>` to
 `tools/powershell/liveness-probe.ps1` and it folds the heartbeat's last-write
 time into the liveness signal and prints its last line; when the heartbeat is
 absent the probe falls back to the WORK/GATE mtime and git-commit evidence above.
