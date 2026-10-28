@@ -214,9 +214,11 @@ mod tests {
     #[test]
     fn define_volume_command_contract_is_data_only() {
         assert_eq!(DEFINE_VOLUME_COMMAND, "DEFINE VOLUME");
-        assert!(DefineVolumeParams::CONTRACT.volser_required);
-        assert!(DefineVolumeParams::CONTRACT.accepts_capacity);
-        assert!(VtocParams::CONTRACT.volser_required);
-        assert!(VolumeListingParams::CONTRACT.accepts_volser_filter);
+        const {
+            assert!(DefineVolumeParams::CONTRACT.volser_required);
+            assert!(DefineVolumeParams::CONTRACT.accepts_capacity);
+            assert!(VtocParams::CONTRACT.volser_required);
+            assert!(VolumeListingParams::CONTRACT.accepts_volser_filter);
+        }
     }
 }

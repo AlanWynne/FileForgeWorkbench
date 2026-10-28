@@ -231,3 +231,20 @@ through the single focus-latch path -- no bespoke intercepts, no second
 dispatcher, no reshaped core type. The FFCMD base command environment is
 retained; FFEDIT (the editor claiming environment) degrades to the base at the
 gate, exactly as FFNAV already did.
+
+## Known follow-up (core-001, deferred by owner decision)
+
+- Alias Editor SAVE coverage gap. The core-001 test cleanup deleted
+  `crates/ff-desktop/src/shell/tests_crch071.rs` (CR-CH-071 editable-Context seam
+  tests) as part of parking the FFEDIT editor environment. That file ALSO held
+  the regression guards for the RETAINED core Alias Editor SAVE/END/CANCEL/
+  REFRESH seam (notably `save_persists_and_stays_on_alias_editor`, the only test
+  that drove a globally-typed bare `SAVE` through `dispatch_command_string` onto
+  the Alias Context). Alias SAVE is confirmed WORKING in the strip (production
+  chain untouched: dispatch -> try_commands_a SAVE arm -> editable_persist ->
+  alias_editor_persist -> save_user_aliases) and the write behaviour remains
+  covered by `tests_alias_editor.rs` via the panel command line (same code path).
+  Only the dedicated globally-typed SAVE/END/CANCEL/REFRESH seam guards were lost.
+  Decision (owner): merge without restoring these guards; let the gap surface in
+  testing and add guards when a concrete need appears. Reference investigation:
+  `.agents/tasks/gate-scope-default-members/alias-save-investigation.md`.

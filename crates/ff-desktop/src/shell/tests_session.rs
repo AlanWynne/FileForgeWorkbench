@@ -466,34 +466,12 @@ fn restore_multiple_descriptors_opens_each_workspace() {
     assert!(kinds.contains(&KindTag::EventLog));
 }
 
-/// Validates: Requirement 21.2 -- an Editor descriptor with a uri param re-opens the file.
-#[test]
-fn restore_editor_descriptor_opens_file() {
-    use crate::tab_state::{KindTag, TabKind};
-    use ff_session::session_state::{
-        DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
-    };
-    use std::io::Write;
-
-    let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
-    writeln!(tmp, "hello from restore").expect("write");
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let mut shell = make_shell();
-    let mut params = DescriptorParams::new();
-    params.insert("uri".to_string(), DescriptorValue::from(path.clone()));
-    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
-        workspace_kind: WorkspaceKind::Editor,
-        params,
-    }];
-    shell.restore_workspace_descriptors(&descriptors);
-    assert!(
-        shell.tabs.tabs().iter().any(
-            |t| t.kind.tag() == KindTag::FileEditor && t.path.as_deref() == Some(path.as_str())
-        ),
-        "an Editor descriptor with a uri must reopen that file"
-    );
-}
+// core-001 strip: removed -- this validated the parked editor session restore:
+// a WorkspaceKind::Editor descriptor reopening a FileEditor tab. The editor
+// Context and file-open-into-editor path are parked in the core build, so
+// restore_workspace_descriptors can no longer reopen the file. The retained
+// non-editor descriptor-restore paths are still covered by the tests below.
+// See docs/reentry-register.md, true-core-proposal.md s1/s2/s4.
 
 // Validates: startup-and-session Requirement 21.2/21.3; command-configurator
 // Requirement 2.1 -- a CommandConfigurator descriptor reconstructs the Context.
@@ -682,42 +660,9 @@ fn with_workspace_context_saves_and_restores_primary_context() {
     );
 }
 
-/// Validates: command-environments Requirement 15.5 (CR-CH-053 Task 19.2) -- the
-/// Owning_Environment is NOT persisted as a new descriptor field; a tab reopened
-/// from its `WorkspaceDescriptor` RECAPTURES its owning environment from the
-/// origin by re-entering the same `file.open` seam. For a host-path editor
-/// descriptor that recapture is the host FS environment default, so no new
-/// persistence format is introduced and the reopened tab is bound correctly.
-#[test]
-fn reopened_editor_descriptor_recaptures_owning_environment() {
-    use crate::tab_state::{KindTag, DEFAULT_OWNING_ENVIRONMENT};
-    use ff_session::session_state::{
-        DescriptorParams, DescriptorValue, WorkspaceDescriptor, WorkspaceKind,
-    };
-    use std::io::Write;
-
-    let mut tmp = tempfile::NamedTempFile::new().expect("tempfile");
-    writeln!(tmp, "persisted body").expect("write");
-    let path = tmp.path().to_string_lossy().to_string();
-
-    let mut shell = make_shell();
-    let mut params = DescriptorParams::new();
-    params.insert("uri".to_string(), DescriptorValue::from(path.clone()));
-    let descriptors = vec![WorkspaceDescriptor::CustomWorkspace {
-        workspace_kind: WorkspaceKind::Editor,
-        params,
-    }];
-    shell.restore_workspace_descriptors(&descriptors);
-
-    let reopened = shell
-        .tabs
-        .tabs()
-        .iter()
-        .find(|t| t.kind.tag() == KindTag::FileEditor && t.path.as_deref() == Some(path.as_str()))
-        .expect("the editor descriptor must reopen the file");
-    assert_eq!(
-        reopened.owning_environment, DEFAULT_OWNING_ENVIRONMENT,
-        "a reopened host-path editor tab recaptures the host FS Owning_Environment \
-         (no descriptor field; recaptured via the file.open seam)"
-    );
-}
+// core-001 strip: removed -- this validated the parked editor session restore
+// recapturing a tab's Owning_Environment by reopening a WorkspaceKind::Editor
+// descriptor through the file.open seam. The editor Context and
+// file-open-into-editor path are parked in the core build, so the descriptor
+// can no longer reopen the file. See docs/reentry-register.md,
+// true-core-proposal.md s1/s2/s4.

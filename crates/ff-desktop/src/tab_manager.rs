@@ -1411,20 +1411,10 @@ mod tests {
         assert_eq!(mgr.active_tab().kind.tag(), KindTag::Untitled);
     }
 
-    /// Validates: Requirement 14.1 — file tab has kind FileEditor.
-    #[test]
-    fn file_tab_has_kind_file_editor() {
-        // Validates: Requirement 14.1
-        use std::io::Write;
-        use tempfile::NamedTempFile;
-        let runtime = Runtime::new().expect("runtime");
-        let mut tmp = NamedTempFile::new().expect("tempfile");
-        writeln!(tmp, "hello").expect("write");
-        let path = tmp.path().to_string_lossy().into_owned();
-        let mut mgr = TabManager::new(&runtime, "");
-        mgr.open_file(&path, &runtime).expect("open");
-        assert_eq!(mgr.active_tab().kind.tag(), KindTag::FileEditor);
-    }
+    // core-001 strip: removed `file_tab_has_kind_file_editor` -- it validated the
+    // parked file-open-into-editor path (`open_file` creating a FileEditor tab),
+    // which now returns the "editor parked" Err in the core build. See
+    // docs/reentry-register.md, true-core-proposal.md s1/s2/s4.
 
     // core-001 strip: `save_writes_document_content_to_file` and
     // `save_clears_modified_flag` exercised the parked `save_active_tab_via_backend`

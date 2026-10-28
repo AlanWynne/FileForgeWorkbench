@@ -24,87 +24,11 @@ fn egui_fkey_unassigned_key_returns_none() {
     assert!(cmd.is_none());
 }
 
-/// Validates: Requirement 16.2 -- CAPS with no argument toggles state.
-#[test]
-fn caps_no_arg_toggles_state() {
-    // Validates: Requirement 16.2
-    use ff_edit_operations::CapsMode;
-    let mut shell = make_shell();
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
-    shell.handle_command("CAPS");
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
-    shell.handle_command("CAPS");
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
-}
-
-/// Validates: Requirement 16.6 -- PROFILE CAPS ON updates the setting.
-#[test]
-fn profile_caps_on_keyword_updates_caps() {
-    // Validates: Requirement 16.6
-    use ff_edit_operations::CapsMode;
-    let mut shell = make_shell();
-    shell.handle_command("PROFILE CAPS ON");
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
-    assert!(shell.open_error.is_none());
-}
-
-/// Validates: Requirement 16.8 -- LOCK ON prevents profile changes.
-#[test]
-fn lock_on_prevents_profile_changes() {
-    // Validates: Requirement 16.8
-    use ff_edit_operations::CapsMode;
-    let mut shell = make_shell();
-    shell.handle_command("LOCK ON");
-    shell.handle_command("PROFILE CAPS ON");
-    // Profile is locked so CAPS should remain Off
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
-    assert!(shell.open_error.is_some());
-}
-
-/// Validates: Requirement 16.8 -- LOCK OFF re-enables profile changes.
-#[test]
-fn lock_off_re_enables_profile_changes() {
-    // Validates: Requirement 16.8
-    use ff_edit_operations::CapsMode;
-    let mut shell = make_shell();
-    shell.handle_command("LOCK ON");
-    shell.handle_command("LOCK OFF");
-    shell.handle_command("CAPS ON");
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
-}
-
-/// Validates: Requirement 16.12 -- HILITE ON sets hilite mode.
-#[test]
-fn hilite_on_sets_hilite_mode() {
-    // Validates: Requirement 16.12
-    use ff_edit_operations::HiliteMode;
-    let mut shell = make_shell();
-    shell.handle_command("HILITE ON");
-    assert_eq!(shell.tabs.active_tab().edit_profile.hilite, HiliteMode::On);
-    assert!(shell.open_error.is_none());
-}
-
-/// Validates: Requirement 16.12 -- HILITE LOGIC sets logic mode.
-#[test]
-fn hilite_logic_sets_logic_mode() {
-    // Validates: Requirement 16.12
-    use ff_edit_operations::HiliteMode;
-    let mut shell = make_shell();
-    shell.handle_command("HILITE LOGIC");
-    assert_eq!(
-        shell.tabs.active_tab().edit_profile.hilite,
-        HiliteMode::Logic
-    );
-}
-
-/// Validates: Requirement 16.12 -- HILITE with unknown mode sets error.
-#[test]
-fn hilite_unknown_mode_sets_error() {
-    // Validates: Requirement 16.12
-    let mut shell = make_shell();
-    shell.handle_command("HILITE BOGUS");
-    assert!(shell.open_error.is_some());
-}
+// core-001 strip: removed -- these validated the parked FFEDIT editor profile
+// verbs (CAPS toggle, PROFILE CAPS, LOCK on/off, HILITE on/logic/unknown). The
+// FFEDIT command environment and editor Context are parked in the core build;
+// these verbs are no longer claimed. See docs/reentry-register.md,
+// true-core-proposal.md s1/s2/s4.
 
 /// Validates: Requirement 17.1 -- SUBMIT with no JES returns descriptive error.
 #[test]

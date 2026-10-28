@@ -355,147 +355,12 @@ fn parse_two_args_preserves_argument_case() {
     assert_eq!(b, "MixedNew");
 }
 
-/// Validates: Requirement 16.1 -- CAPS ON converts typed chars to uppercase.
-#[test]
-fn caps_on_command_sets_caps_mode_on() {
-    // Validates: Requirement 16.1
-    use ff_edit_operations::CapsMode;
-    let mut shell = make_shell();
-    shell.handle_command("CAPS ON");
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
-    assert!(shell.open_error.is_none());
-}
-
-/// Validates: Requirement 16.1 -- CAPS OFF reverts to case-preserving input.
-#[test]
-fn caps_off_command_sets_caps_mode_off() {
-    // Validates: Requirement 16.1
-    use ff_edit_operations::CapsMode;
-    let mut shell = make_shell();
-    shell.handle_command("CAPS ON");
-    shell.handle_command("CAPS OFF");
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::Off);
-}
-
-/// Validates: Requirement 16.4 -- NULLS ON sets nulls mode.
-#[test]
-fn nulls_on_command_sets_nulls_mode_on() {
-    // Validates: Requirement 16.4
-    use ff_edit_operations::NullsMode;
-    let mut shell = make_shell();
-    shell.handle_command("NULLS ON");
-    assert_eq!(shell.tabs.active_tab().edit_profile.nulls, NullsMode::On);
-    assert!(shell.open_error.is_none());
-}
-
-/// Validates: Requirement 16.4 -- NULLS OFF clears nulls mode.
-#[test]
-fn nulls_off_command_sets_nulls_mode_off() {
-    // Validates: Requirement 16.4
-    use ff_edit_operations::NullsMode;
-    let mut shell = make_shell();
-    shell.handle_command("NULLS ON");
-    shell.handle_command("NULLS OFF");
-    assert_eq!(shell.tabs.active_tab().edit_profile.nulls, NullsMode::Off);
-}
-
-/// Validates: Requirement 16.5 -- PROFILE displays current settings.
-#[test]
-fn profile_command_sets_open_error_to_summary() {
-    // Validates: Requirement 16.5
-    let mut shell = make_shell();
-    shell.handle_command("PROFILE");
-    let msg = shell.open_error.as_deref().unwrap_or("");
-    assert!(
-        msg.contains("CAPS(OFF)"),
-        "summary should contain CAPS(OFF), got: {msg}"
-    );
-    assert!(
-        msg.contains("NULLS(OFF)"),
-        "summary should contain NULLS(OFF)"
-    );
-}
-
-/// Validates: Requirement 16.7 -- STATS ON sets stats mode.
-#[test]
-fn stats_on_command_sets_stats_mode_on() {
-    // Validates: Requirement 16.7
-    use ff_edit_operations::StatsMode;
-    let mut shell = make_shell();
-    shell.handle_command("STATS ON");
-    assert_eq!(shell.tabs.active_tab().edit_profile.stats, StatsMode::On);
-    assert!(shell.open_error.is_none());
-}
-
-/// Validates: Requirement 16.7 -- STATS OFF clears stats mode.
-#[test]
-fn stats_off_command_clears_stats_mode() {
-    // Validates: Requirement 16.7
-    use ff_edit_operations::StatsMode;
-    let mut shell = make_shell();
-    shell.handle_command("STATS ON");
-    shell.handle_command("STATS OFF");
-    assert_eq!(shell.tabs.active_tab().edit_profile.stats, StatsMode::Off);
-}
-
-/// Validates: Requirement 16.10; command-environments Requirement 21.1, 21.2
-/// (CR-CH-069) -- AUTONUM ON is claimed by FFEDIT ONLY when an editor Context is
-/// active (active-wins) and dispatches to NUMBER ON, exactly as before. The verb
-/// moved from the FFCMD ladder to the FFEDIT claim path, so the test opens a file
-/// (making the active Context an editor) before submitting. NUMBER ON is still
-/// handled by the CommandEngine; we only verify AUTONUM ON is aliased (not
-/// reported as an unknown AUTONUM command).
-#[test]
-fn autonum_on_dispatches_to_number_on() {
-    use crate::tab_state::KindTag;
-    use tempfile::TempDir;
-
-    let dir = TempDir::new().expect("tempdir");
-    let file = dir.path().join("doc.txt");
-    std::fs::write(&file, "one\ntwo\n").expect("seed");
-
-    let mut shell = make_shell();
-    shell
-        .shell_open_file(file.to_str().expect("path"))
-        .expect("open");
-    // CR-CH-069: AUTONUM is an FFEDIT verb now, claimed only on an editor Context.
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FileEditor);
-
-    shell.handle_command("AUTONUM ON");
-    // The key assertion: open_error does NOT contain "AUTONUM" (the verb was
-    // aliased/redirected to NUMBER, not reported unknown by the AUTONUM handler).
-    let err = shell.open_error.as_deref().unwrap_or("");
-    assert!(
-        !err.to_uppercase().contains("AUTONUM"),
-        "AUTONUM should be aliased, got: {err}"
-    );
-}
-
-/// Validates: Requirement 16.11; command-environments Requirement 21.1, 21.2
-/// (CR-CH-069) -- NUM is claimed by FFEDIT only on an editor Context and
-/// dispatches to NUMBER, exactly as before (the verb moved to the FFEDIT claim).
-#[test]
-fn num_command_dispatches_to_number() {
-    use crate::tab_state::KindTag;
-    use tempfile::TempDir;
-
-    let dir = TempDir::new().expect("tempdir");
-    let file = dir.path().join("doc.txt");
-    std::fs::write(&file, "one\ntwo\n").expect("seed");
-
-    let mut shell = make_shell();
-    shell
-        .shell_open_file(file.to_str().expect("path"))
-        .expect("open");
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FileEditor);
-
-    shell.handle_command("NUM ON");
-    let err = shell.open_error.as_deref().unwrap_or("");
-    assert!(
-        !err.to_uppercase().contains("NUM ON"),
-        "NUM should be aliased, got: {err}"
-    );
-}
+// core-001 strip: removed -- these validated the parked FFEDIT editor command
+// environment (CAPS/NULLS/PROFILE/STATS/AUTONUM/NUM edit-profile verbs, and the
+// file-open-into-editor path they depend on). FFEDIT and the editor Context are
+// parked in the core build; see docs/reentry-register.md and
+// true-core-proposal.md sections 1/2/4. The FFCMD base dispatch spine they used
+// to exercise remains retained and is still covered by the sibling tests below.
 
 /// Validates: command-environments Requirement 21.2 (CR-CH-069) -- on a
 /// NON-editor Context (the default POM Home Context) FFEDIT does NOT claim
@@ -856,16 +721,11 @@ fn dispatch_bound_command_resolves_user_definition() {
     );
 }
 
-// Validates: menu-workspace Requirement 10.2 -- a bound built-in command that
-// the resolver does not own still runs via the existing pipeline.
-#[test]
-fn dispatch_bound_command_falls_through_for_builtin() {
-    use ff_edit_operations::CapsMode;
-    let mut shell = make_shell();
-    // CAPS ON is a shell built-in, not a user definition; must still work.
-    shell.dispatch_bound_command("CAPS ON");
-    assert_eq!(shell.tabs.active_tab().edit_profile.caps, CapsMode::On);
-}
+// core-001 strip: removed -- this asserted a bound `CAPS ON` mutated the editor
+// edit_profile, i.e. the parked FFEDIT edit-profile verb. The base-dispatch
+// fall-through it meant to cover is retained and still proven by
+// `dispatch_bound_command_resolves_user_definition` and the FFCMD ladder tests.
+// See docs/reentry-register.md, true-core-proposal.md s1/s2/s4.
 
 // Validates: command-configurator Requirement 4.4 -- an explicit definition
 // reference runs the definition's target.
@@ -1597,36 +1457,12 @@ fn editor_ffedit_verb_still_resolves_after_gate_move() {
 // FFCMD verb is unaffected, a non-editor Context does not route through FFEDIT,
 // and the B062 case rule is preserved through the object path.
 
-/// Validates: command-environments Requirement 13.5, 13.6, 4.2, 6.3 -- a
-/// representative FFEDIT verb (EXCLUDE ALL) on an editor Context produces the
-/// identical observable result (exclusion recorded, no close/exit) through the
-/// registered `FfEditEnvironment` object as it did through the former method.
-#[test]
-fn ffedit_verb_via_registry_matches_prior_behaviour() {
-    use crate::tab_state::{KindTag, TabKind};
-
-    let mut shell = make_shell();
-    shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
-
-    // EXCLUDE ALL is claimed by the FFEDIT object (via the registry gate) and
-    // records an exclusion message in open_error; it never closes/exits.
-    shell.run_command_line("EXCLUDE ALL");
-
-    assert!(
-        !*shell.should_close.lock().expect("close lock"),
-        "EXCLUDE ALL on an editor Context is FFEDIT EXCLUDE via the registry, not a close/exit"
-    );
-
-    // CAPS ON mutates the edit profile through the FFEDIT object -- the same
-    // observable state change as the former method path.
-    shell.run_command_line("CAPS ON");
-    assert_eq!(
-        shell.tabs.active_tab().edit_profile.caps,
-        ff_edit_operations::CapsMode::On,
-        "CAPS ON must still toggle the edit profile through the registered FFEDIT object"
-    );
-}
+// core-001 strip: removed -- this exercised the parked FFEDIT command
+// environment claiming editor verbs (EXCLUDE ALL, CAPS ON) through the
+// registry. FFEDIT is parked in the core build; the retained FFCMD side of the
+// registry is still covered by `ffcmd_verb_unaffected_by_registry` and
+// `non_editor_context_does_not_route_through_ffedit` below.
+// See docs/reentry-register.md, true-core-proposal.md s1/s2/s4.
 
 /// Validates: command-environments Requirement 13.6, 13.7 -- a representative
 /// FFCMD verb is unaffected by the registry: `=X` (the universal escape hatch)
@@ -1705,72 +1541,10 @@ fn b062_change_case_preserved_via_registry() {
     );
 }
 
-// === CR-CH-053 E9: FFEDIT SAVE verb (dirty-aware, stays in editor) =========
-//
-// SAVE is an FFEDIT editor-buffer verb (Req 10.1): clean buffer -> no-op (no
-// write, no error); dirty buffer -> write via save_active_tab, STAY in the
-// editor, clear the dirty flag; a write failure (incl. untitled = no path) ->
-// STAY + surface the error. SAVE never leaves the editor and is not confirmable.
-
-/// Validates: command-environments Requirement 10.1 (E9) -- SAVE on a CLEAN
-/// editor buffer is a no-op: no write is attempted, no error is set, the buffer
-/// stays clean, and the editor is not left.
-#[test]
-fn editor_save_on_clean_buffer_is_noop() {
-    use crate::tab_state::{KindTag, TabKind};
-
-    let mut shell = make_shell();
-    shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
-    assert!(
-        !shell.tabs.active_tab().is_modified,
-        "precondition: a fresh untitled buffer is clean"
-    );
-
-    shell.run_command_line("SAVE");
-
-    assert!(
-        !shell.tabs.active_tab().is_modified,
-        "clean SAVE is a no-op; the buffer stays clean"
-    );
-    assert!(
-        shell.open_error.is_none(),
-        "clean SAVE sets no error (no write attempted)"
-    );
-    assert!(
-        !*shell.should_close.lock().expect("close lock"),
-        "SAVE never leaves/closes the editor"
-    );
-}
-
-/// Validates: command-environments Requirement 10.1 (E9) -- SAVE on a DIRTY
-/// untitled buffer (no backing path) cannot write, so it STAYS in the editor and
-/// surfaces the error; the dirty flag is NOT cleared (nothing was saved). This
-/// exercises the write-fail = stay + error path.
-#[test]
-fn editor_save_on_dirty_untitled_errors_and_stays() {
-    use crate::tab_state::{KindTag, TabKind};
-
-    let mut shell = make_shell();
-    shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
-    shell.tabs.active_tab_mut().is_modified = true;
-
-    shell.run_command_line("SAVE");
-
-    assert!(
-        shell.open_error.is_some(),
-        "dirty SAVE with no path must surface a save error (cannot save untitled)"
-    );
-    assert!(
-        shell.tabs.active_tab().is_modified,
-        "a failed SAVE must NOT clear the dirty flag (nothing was written)"
-    );
-    assert!(
-        !*shell.should_close.lock().expect("close lock"),
-        "SAVE stays in the editor even on failure"
-    );
-}
+// core-001 strip: removed -- the CR-CH-053 E9 FFEDIT SAVE verb tests
+// (clean-buffer no-op and dirty-untitled error-and-stay). SAVE is an FFEDIT
+// editor-buffer verb and the editor SAVE seam is parked in the core build.
+// See docs/reentry-register.md, true-core-proposal.md s1/s2/s4.
 
 // === B080 Step 3: Function family (EXIT/EDIT/BROWSE/VIEW/CLOSE) ============
 //
@@ -1867,54 +1641,13 @@ fn close_command_closes_the_active_tab() {
     );
 }
 
-/// Validates: command-environments Requirement 14.1 -- addressing the ACTIVE
-/// environment via `dispatch_to_environment` is identical to not addressing it:
-/// an editor Context is FFEDIT-active, so `dispatch_to_environment("FFEDIT", ..)`
-/// of an owned verb claims and executes it exactly as the active-env gate would.
-#[test]
-fn dispatch_to_environment_addressing_active_env_claims() {
-    use crate::shell::environment::EnvDispatchOutcome;
-    use crate::tab_state::KindTag;
-
-    let mut shell = make_shell();
-    shell.shell_new_untitled();
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
-
-    // CAPS ON is an owned FFEDIT verb; addressing FFEDIT claims+executes it.
-    let outcome = shell.dispatch_to_environment("FFEDIT", "CAPS ON");
-    assert_eq!(outcome, EnvDispatchOutcome::Claimed { rc: 0 });
-    assert_eq!(
-        shell.tabs.active_tab().edit_profile.caps,
-        ff_edit_operations::CapsMode::On,
-        "addressing the active FFEDIT env must execute the verb identically to the gate"
-    );
-}
-
-/// Validates: command-environments Requirement 14.1 -- the name match is
-/// case-insensitive on the stable env name (REXX ADDRESS style).
-#[test]
-fn dispatch_to_environment_name_is_case_insensitive() {
-    use crate::shell::environment::EnvDispatchOutcome;
-
-    let mut shell = make_shell();
-    shell.shell_new_untitled();
-    let outcome = shell.dispatch_to_environment("ffedit", "CAPS ON");
-    assert_eq!(outcome, EnvDispatchOutcome::Claimed { rc: 0 });
-}
-
-/// Validates: command-environments Requirement 14.1 -- a verb the named
-/// environment does not own yields `NotClaimed` (the caller falls through), not
-/// a spurious claim.
-#[test]
-fn dispatch_to_environment_declines_unowned_verb() {
-    use crate::shell::environment::EnvDispatchOutcome;
-
-    let mut shell = make_shell();
-    shell.shell_new_untitled();
-    // FILES is an FFCMD workbench verb, not an FFEDIT verb -> FFEDIT declines.
-    let outcome = shell.dispatch_to_environment("FFEDIT", "FILES");
-    assert_eq!(outcome, EnvDispatchOutcome::NotClaimed);
-}
+// core-001 strip: removed -- these addressed the parked FFEDIT environment by
+// name through `dispatch_to_environment` (active-env claim, case-insensitive
+// name match, and declining an unowned verb while FFEDIT is the active env).
+// FFEDIT is parked in the core build, so addressing "FFEDIT" now reports
+// NoSuchEnvironment. The RETAINED FFCMD-base side of this seam is still proven
+// by `dispatch_to_environment_base_declines_and_unknown_name_reports` below.
+// See docs/reentry-register.md, true-core-proposal.md s1/s2/s4.
 
 /// Validates: command-environments Requirement 14.1 -- addressing the FFCMD base
 /// at the active-env step yields `NotClaimed` (the base is reached through the
@@ -1935,156 +1668,10 @@ fn dispatch_to_environment_base_declines_and_unknown_name_reports() {
     );
 }
 
-/// Validates: command-environments Requirement 14.3, 14.4, 14.8 -- the
-/// store-affecting verb SAVE is routed through the address-by-name seam
-/// (`dispatch_to_environment`) and remains behaviour-preserving in this slice:
-/// SAVE on a clean editor buffer is a no-op (no error), exactly as the direct
-/// FFEDIT SAVE. (Task 20 later flips the SAVE target to the tab's owning
-/// environment; here it addresses FFEDIT and executes identically.)
-#[test]
-fn save_routes_through_dispatch_to_environment_and_is_behaviour_preserving() {
-    use crate::shell::environment::EnvDispatchOutcome;
-
-    let mut shell = make_shell();
-    shell.shell_new_untitled();
-    // A fresh untitled buffer is clean -> SAVE is a dirty-aware no-op.
-    let outcome = shell.dispatch_to_environment("FFEDIT", "SAVE");
-    assert_eq!(
-        outcome,
-        EnvDispatchOutcome::Claimed { rc: 0 },
-        "SAVE is a store-affecting FFEDIT verb routed via the address seam"
-    );
-    assert!(
-        shell.open_error.is_none(),
-        "SAVE on a clean buffer stays a no-op (behaviour-preserving in this slice)"
-    );
-}
-
-/// Validates: command-environments Requirement 15.1, 15.3 -- a plain host-path
-/// open binds the opened tab's Owning_Environment to the host FS environment
-/// (the DEFAULT_OWNING_ENVIRONMENT), so existing opens are behaviour-preserving.
-#[test]
-fn host_path_open_binds_owning_environment_to_host_fs() {
-    use crate::tab_state::DEFAULT_OWNING_ENVIRONMENT;
-    use tempfile::TempDir;
-
-    let dir = TempDir::new().expect("tempdir");
-    let file = dir.path().join("plain.txt");
-    std::fs::write(&file, "hello\n").expect("write");
-
-    let mut shell = make_shell();
-    shell
-        .shell_open_file(file.to_str().expect("path"))
-        .expect("open");
-    assert_eq!(
-        shell.active_owning_environment(),
-        DEFAULT_OWNING_ENVIRONMENT,
-        "a plain host-path open must bind the host FS Owning_Environment"
-    );
-}
-
-/// Validates: command-environments Requirement 15.2, 15.4 -- an open carrying an
-/// originating environment binds the opened tab to THAT environment, and FFEDIT
-/// reads the binding back as the SAVE target.
-#[test]
-fn open_with_origin_binds_that_owning_environment() {
-    use tempfile::TempDir;
-
-    let dir = TempDir::new().expect("tempdir");
-    let file = dir.path().join("owned.txt");
-    std::fs::write(&file, "hello\n").expect("write");
-
-    let mut shell = make_shell();
-    shell
-        .shell_open_file_with_env(file.to_str().expect("path"), Some("MAINFRAME"))
-        .expect("open");
-    assert_eq!(
-        shell.active_owning_environment(),
-        "MAINFRAME",
-        "an open carrying an origin must bind that Owning_Environment"
-    );
-}
-
-/// Validates: command-environments Requirement 15.6 -- binding/reading the
-/// Owning_Environment does not change observable SAVE behaviour for a
-/// host-path (native) file: SAVE on a clean host-bound buffer is a no-op.
-#[test]
-fn host_bound_save_is_behaviour_preserving() {
-    use crate::tab_state::DEFAULT_OWNING_ENVIRONMENT;
-    use tempfile::TempDir;
-
-    let dir = TempDir::new().expect("tempdir");
-    let file = dir.path().join("save.txt");
-    std::fs::write(&file, "hello\n").expect("write");
-
-    let mut shell = make_shell();
-    shell
-        .shell_open_file(file.to_str().expect("path"))
-        .expect("open");
-    assert_eq!(
-        shell.active_owning_environment(),
-        DEFAULT_OWNING_ENVIRONMENT
-    );
-
-    // SAVE on a freshly-opened (clean) buffer is a dirty-aware no-op, unchanged
-    // from before the owning-environment binding existed.
-    shell.run_command_line("SAVE");
-    assert!(
-        shell.open_error.is_none(),
-        "SAVE on a clean host-bound buffer stays a no-op (behaviour-preserving)"
-    );
-}
-
-/// Validates: command-environments Requirement 14.4, 14.5, 14.6, 10.1 (Task 20)
-/// -- a dirty host-path buffer SAVEd through FFEDIT is written to disk by the
-/// OWNING (host FS) environment via `dispatch_to_environment`, and the on-disk
-/// result + the cleared dirty flag + save point are identical to the former
-/// direct-write path. Only the EXECUTOR moved (FFEDIT -> host FS env); native
-/// SAVE behaviour is unchanged.
-#[test]
-fn ffedit_save_routes_dirty_host_file_write_through_owning_env() {
-    use crate::tab_state::{KindTag, DEFAULT_OWNING_ENVIRONMENT};
-    use tempfile::TempDir;
-
-    let dir = TempDir::new().expect("tempdir");
-    let file = dir.path().join("doc.txt");
-    std::fs::write(&file, "original\n").expect("seed");
-
-    let mut shell = make_shell();
-    shell
-        .shell_open_file(file.to_str().expect("path"))
-        .expect("open");
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FileEditor);
-    assert_eq!(
-        shell.active_owning_environment(),
-        DEFAULT_OWNING_ENVIRONMENT
-    );
-
-    // Make an in-buffer edit so the tab is dirty (insert a marker at the start).
-    {
-        let doc = shell.tabs.active_tab().document.clone();
-        shell.runtime.block_on(async {
-            let mut d = doc.write().await;
-            let _ = d.insert(ff_document_model::BytePosition(0), b"EDITED ");
-        });
-    }
-    shell.tabs.active_tab_mut().is_modified = true;
-
-    // SAVE via the command line -> FFEDIT -> addresses the host FS owning env,
-    // which performs the dirty-aware write.
-    shell.run_command_line("SAVE");
-
-    assert!(
-        shell.open_error.is_none(),
-        "a successful SAVE through the owning env clears any error"
-    );
-    assert!(
-        !shell.tabs.active_tab().is_modified,
-        "SAVE must clear the dirty flag (contract preserved through the reroute)"
-    );
-    let on_disk = std::fs::read_to_string(&file).expect("read back");
-    assert!(
-        on_disk.contains("EDITED"),
-        "the host FS owning environment must have written the edited buffer to disk"
-    );
-}
+// core-001 strip: removed -- these validated the parked editor SAVE seam and
+// the Owning_Environment binding reached via file-open-into-editor:
+// SAVE routed through FFEDIT by name, host-path/origin-bound opens (which now
+// return the parked "editor parked" Err from shell_open_file), and the
+// dirty host-file write through the owning environment. The editor Context,
+// FFEDIT SAVE verb and host/mainframe SAVE backend are all parked in the core
+// build. See docs/reentry-register.md, true-core-proposal.md s1/s2/s4.
