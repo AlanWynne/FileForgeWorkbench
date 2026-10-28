@@ -1,5 +1,7 @@
 # RESUME NOTE -- B054 Menus editor typing + Tab accessibility (paused)
 
+> STATUS: DONE pending close-out (B054 fixed + Tab-accessibility rework committed; awaiting owner in-app Tab confirmation). A bug-fix resume, NOT a forward-plan driver; close-out + a noted per-frame theme-validation follow-up remain. See docs/status/FORWARD-PLAN.md.
+
 Last updated: paused for a break. Pick up from here.
 
 ## One-line status

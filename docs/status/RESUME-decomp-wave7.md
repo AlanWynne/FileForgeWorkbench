@@ -1,5 +1,7 @@
 # RESUME: DECOMP Wave 7 (files_panel -- FINAL decomposition wave)
 
+> STATUS: DONE / SUPERSEDED (final decomposition wave; ROADMAP Section 6a records decomposition as merged). Historical -- not a forward-plan driver. See docs/status/FORWARD-PLAN.md.
+
 **Written:** 2026-10-01
 **Author:** Kiro
 **Branch to work on:** `decomp-and-scrm-wave` (at `3d75dff`, pushed to origin).

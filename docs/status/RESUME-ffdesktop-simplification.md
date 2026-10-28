@@ -1,5 +1,7 @@
 # RESUME: ff-desktop Architectural Simplification
 
+> STATUS: DONE (Phases 1-2 + B080 dispatch-unify, owner-verified full gate clean; low-priority follow-ups remain). Foundation for FORWARD-PLAN Phase 1 -- the single-front-door dispatch + wiring standard that SCRM/Help/extension wiring must follow. See docs/status/FORWARD-PLAN.md.
+
 **Written:** 2026-10-01
 **Author:** Kiro
 **Working style this effort:** edits made DIRECTLY in the main workspace --

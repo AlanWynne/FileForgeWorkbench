@@ -1,5 +1,7 @@
 # RESUME NOTE -- SCRM + ff-desktop decomposition (CR-NR-098)
 
+> STATUS: DONE (SCRM engine + decomposition Waves 0-3 gate-verified; SCRM is BUILT + core-wired). Detail for FORWARD-PLAN Phase 2 -- the remaining work is SURFACING (a menu-bar entry invoking the existing SNAPSHOT/CAPTURE verbs), not building. See docs/status/FORWARD-PLAN.md.
+
 Last updated: requirements draft complete, AWAITING OWNER REVIEW before the rest
 of the gate (design/tasks/master/TCR) and before any build.
 

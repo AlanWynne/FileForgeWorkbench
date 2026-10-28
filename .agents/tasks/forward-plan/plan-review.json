@@ -1,0 +1,34 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "MEDIUM",
+      "location": "docs/status/FORWARD-PLAN.md Phase 4 and Resolved decision 4 (also investigation sections E and H)",
+      "problem": "The plan states 'a Help group exists -- rows 7.1 / 7.1a / 7.1b' in core-acceptance-test-plan.md. Verified against the file: those rows exist but inside Group 7 'Function keys' (F1 opens Help); there is no standalone Help group (groups are 1 Shell, 2 Menu/Settings, 3 File navigator, 4 Editor, 5 Command-line, 6 Macros, 7 Function keys, 8 Theme, 9 Config recovery). The misstatement leaves the Phase-4 executor an unresolved choice about where the new rich-renderer Help rows go.",
+      "fix": "Correct both Phase 4 and decision 4: say the Help acceptance rows (7.1/7.1a/7.1b/7.1c/7.1d) currently live inside Group 7 'Function keys', there is no standalone Help group today, and state explicitly whether the new rich-renderer rows extend Group 7 in place or a new Help group is split out."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "location": "docs/status/FORWARD-PLAN.md CURRENT REALITY and Phase 5+ (cross-check against extension-integration/design.md lines 23-27)",
+      "problem": "The plan describes CR-CH-074 as TWO additive framework points, which matches extension-integration/requirements.md Req 10.3 and CR-CH-074. design.md still says 'exactly one additive core generalization'. This is design.md lagging the requirements, not a plan defect; the plan correctly follows the authoritative requirements.",
+      "fix": "No change to the plan required. Optionally note that extension-integration/design.md's 'one additive' sentence is the stale doc; correcting it is out of scope here."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "location": "docs/status/FORWARD-PLAN.md decision 2 / Phase 3",
+      "problem": "'egui_commonmark (the in-tree engine, used by the ffmdx app)' is accurate (egui_commonmark 0.22 is a workspace dep; ff-mdx-app/src/viewer.rs uses CommonMarkViewer) but slightly narrow: the change-log notes the same engine also backs the in-shell Markdown viewer path (ff-mdx-plugin / ff-viewers).",
+      "fix": "No change required. Optionally broaden to 'used by the ffmdx app and the in-shell Markdown viewer'."
+    },
+    {
+      "id": 4,
+      "severity": "NIT",
+      "location": "docs/status/FORWARD-PLAN.md Phase 2 / decision 1 (cross-check against extension-integration/design.md D4)",
+      "problem": "The plan resolves SCRM surfacing as a menu-bar entry only; design.md D4 says the owner wants it 'via a menu option AND the menu bar'. The design leaves placement to this core effort, so the plan's narrower owner-confirmed decision does not contradict it, and the wiring mechanism specified is framework-conformant.",
+      "fix": "No change required. Optionally add '(design.md D4 leaves placement to this core effort)' so the two are visibly reconciled."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\forward-plan\\plan-review.md"
+}

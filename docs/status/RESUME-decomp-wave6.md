@@ -1,5 +1,7 @@
 # RESUME: DECOMP Wave 6 (editor_panel substrate) + editor architecture re-eval
 
+> STATUS: DONE (Waves 1-6 owner-verified, merged). Historical -- ff-desktop decomposition into aspect crates; not a forward-plan driver (one low-priority CR-NR-099 editor-onto-aspect-crates note remains). See docs/status/FORWARD-PLAN.md.
+
 **Written:** 2026-10-01 (session paused by owner for a break)
 **Author:** Kiro
 **Branch to work on:** `decomp-and-scrm-wave` (currently at `525b5e8`, pushed to

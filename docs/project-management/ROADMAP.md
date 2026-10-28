@@ -99,11 +99,40 @@ begins. Order (owner-directed):
 All new plugin capability is framed as a FileForgePlugin on the core product
 (`plugin-architecture`, `plugin-manager-ui`, `connector-extensibility`).
 
+KEYSTONE PREREQUISITE (docs authored, OWNER-APPROVED, design review NEXT): the
+extension integration contract -- how an extension (renamed "plugin" ->
+"extension") integrates into the live workbench through the existing framework
+seams -- is specified in `docs/specs/extension-integration/` (requirements.md,
+design.md, tasks.md). It CONSOLIDATES `plugin-architecture` + `plugin-manager-ui`
+and is the cross-cutting prerequisite `docs/reentry-register.md` names as gating
+the first parked-domain re-entry. Owner-confirmed decisions: D1 plugin ->
+extension rename (ACCEPTED, final, staged migration), D2 Catalogs/Files return as
+an extension (CONFIRMED; coordinates with the Option B bare-core removal --
+commands/Contexts kept reachable, only default POM menu options removed), D3
+Extension Manager load model (in-tree feature-gated registry), D4 SCRM stays core
+(separate wiring effort), D5 command contribution to FFCMD (reworked against the
+code: ALIAS is a first-class surface->env+root+template binding but cannot create
+a capability; the dynamic-add is a RUNTIME-EXTENSIBLE root registry + classifier,
+flagged as an owner-confirmed framework change). Two additive framework extension
+points are owner-confirmed: the identifier-keyed extension-Context dispatch arm
+and the runtime-extensible root registry.
+
 ---
 
 ## 6. Current status + the SINGLE active phase
 
 **Active phase: CORE STABILISATION + TEST.**
+
+FIRST-READ POINTER: for the current core-stabilisation window, the active-phase
+ORDERING is owned by `docs/status/FORWARD-PLAN.md` (the read-first entry point).
+It sequences the five phases -- (1) finalise core, (2) SCRM surfacing (menu-bar
+entry), (3) HELP build-out (rich renderer + core help content), (4) full-core TCR
+sign-off, (5+) extensions -- and DEFERS to Section 6a below for the finalise-core
+task detail. This ROADMAP remains the control tower for the product backlog and
+the finalise-core detail; FORWARD-PLAN governs the phase ordering for this window.
+Where the two overlap, see FORWARD-PLAN's "Authority and relationship to the
+ROADMAP" section.
+
 Get the six core capabilities working and sign off `core-acceptance-test-plan.md`
 before resuming plugin work. The concrete, re-sequenced forward plan (established
 by the 2026-10-11 status review) lives in Section 6a: localisation string

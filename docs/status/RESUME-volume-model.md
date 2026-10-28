@@ -1,5 +1,7 @@
 # RESUME -- Volume Model (CR-NR-105 / CR-CH-057)
 
+> STATUS: ACTIVE-but-DEFERRED (requirements gate authored + owner-approved; code deferred into dataset rationalisation / RC.C.10). Detail for FORWARD-PLAN Phase 1 finalise-core -- ROADMAP Section 6a steps 2-6 (Volume UI + catalog/navigator rework). See docs/status/FORWARD-PLAN.md.
+
 Saved: 2026-10-04. Pick up here next session.
 
 ## One-line status

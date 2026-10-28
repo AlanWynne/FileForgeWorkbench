@@ -1,5 +1,7 @@
 # RESUME -- Localisation Phase 2 (CR-NR-103 L10N.4)
 
+> STATUS: ACTIVE (Tasks 7-8 merged; Task 9 NEXT, Task 10 capstone later). Detail for FORWARD-PLAN Phase 1 finalise-core -- this is ROADMAP Section 6a step 1, pulled to the front so later panels are written localisation-aware. See docs/status/FORWARD-PLAN.md.
+
 Updated 2026-10-21 after Slice 1 completed and merged. Open FileForgeWorkbench in
 a FRESH Kiro session (picks up the consolidated steering + the compile-only
 verification policy in testing.md "Execution split").

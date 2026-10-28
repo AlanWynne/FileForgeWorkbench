@@ -1,5 +1,7 @@
 # RESUME -- Dataset Rationalisation + Simplify-Core (session end 2026-10-08)
 
+> STATUS: DONE (RC.A..RC.B.8 committed + pushed, full-gate clean; record-aware MAINFRAME SAVE wired, one documented live-handle limitation). The dataset ENGINE is finished. Dependency for FORWARD-PLAN Phase 1 -- the CORE #4 editor-against-datasets test pass builds on it. See docs/status/FORWARD-PLAN.md.
+
 Saved at owner's request ("going to bed"). This captures the full state of the
 work done this session so the next session can resume cleanly.
 
