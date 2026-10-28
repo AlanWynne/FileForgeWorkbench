@@ -181,9 +181,11 @@ fn return_at_directly_rooted_non_pom_closes_workspace() {
 fn return_from_drilled_in_collapses_to_visual_root() {
     // Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052)
     let mut shell = make_shell();
-    // POM -> option 1 (Catalogs/Files) pushes the POM onto the stack, landing on
-    // a non-POM Context with a non-empty nav stack whose bottom is the POM.
-    shell.handle_command("1");
+    // POM -> option 0 (Settings) pushes the POM onto the stack, landing on a
+    // non-POM Context (the Settings Menu_Workspace) with a non-empty nav stack
+    // whose bottom is the POM. (CR-CH-073: formerly used option 1 -> Catalogs,
+    // removed from the trimmed barebones core.)
+    shell.handle_command("0");
     assert!(
         !shell.tabs.active_tab().is_home,
         "precondition: drilled into a sub-context"
@@ -266,10 +268,11 @@ fn bare_files_still_opens_file_explorer_via_front_door() {
 #[test]
 fn fastpath_notation_navigates_to_option() {
     // Validates: Requirement 19.4
-    // "2.1" navigates to option 2 then sub-option 1.
-    // Option 2 on POM -> FileExplorerPanel; then "1" on non-POM -> FilesPanel.
+    // "0.C" navigates to POM option 0 (Settings) then sub-option C (Config).
+    // (CR-CH-073: formerly "2.1" via the removed POM options 1/2; the trimmed
+    // barebones core keeps 0 -> Settings, whose sub-menu has C -> Config.)
     let mut shell = make_shell();
-    shell.handle_command("2.1");
+    shell.handle_command("0.C");
     // After fastpath, the active tab should have been navigated (no panic, no unknown-command error)
     // The exact final kind depends on sub-option routing; we verify no crash and no
     // "unknown command" error from the fastpath handler itself.
@@ -352,17 +355,20 @@ fn pom_key_s_routes_to_search() {
     assert!(has_search, "SEARCH must open a Search Results tab");
 }
 
-/// Validates: menu-workspace Req 2.1e/2.1i -- a POM key resolves to its
-/// configured command (key 2 -> FILES -> File Explorer), config-driven.
+/// Validates: menu-workspace Req 2.1e/2.1i/2.1h (CR-CH-073) -- a POM key
+/// resolves to its configured command. After the trim, the surviving default
+/// POM option key `0` resolves to its configured command (SETTINGS -> the
+/// Settings Menu_Workspace), config-driven. (Keys 1/2 -> Catalogs/Files were
+/// removed from the barebones core.)
 #[test]
 fn pom_key_resolves_to_configured_command() {
     let mut shell = make_shell();
-    shell.handle_command("2");
+    shell.handle_command("0");
     use crate::tab_state::{KindTag, TabKind};
     assert_eq!(
         shell.tabs.active_tab().kind.tag(),
-        KindTag::FileExplorerPanel,
-        "key 2 must resolve to its pom.toml command (FILES)"
+        KindTag::MenuWorkspace,
+        "key 0 must resolve to its pom.toml command (SETTINGS)"
     );
 }
 
@@ -637,59 +643,61 @@ fn pom_settings_click_equals_typed_settings() {
 // Validates: menu-workspace Requirement 19.1, 19.2; command-framework
 // Requirement 14.1 -- selecting a POM Option_Key by TYPING the key and by
 // CLICKING the row (dispatch_bound_command with that option's command) give an
-// IDENTICAL result. Uses POM option 1 (command `Catalogs`, navigates in place).
+// IDENTICAL result. Uses POM option 0 (command `Settings`, navigates in place).
 // Proves the POM option-key path and the click path are the one resolver (POM
 // is no longer a separate resolver from non-POM menus). The option's command is
 // read from the loaded POM menu so the test tracks the real defaults.
+// (CR-CH-073: formerly used key 1 -> Catalogs; that option was removed from the
+// trimmed barebones core, so this now exercises the retained key 0 -> Settings.)
 #[test]
 fn pom_option_key_type_and_click_same_result() {
-    // Discover POM option 1's real command from the loaded menu (defaults:
-    // `Catalogs`), so "type the key" and "click the row" use the same option.
+    // Discover POM option 0's real command from the loaded menu (defaults:
+    // `Settings`), so "type the key" and "click the row" use the same option.
     let mut probe = make_shell();
     probe.handle_command("START");
     probe.ensure_pom_menu_loaded();
-    let option1_command = probe
+    let option0_command = probe
         .tabs
         .active_tab()
         .kind
         .menu_workspace()
         .and_then(|mw| mw.menu.as_ref())
-        .and_then(|m| m.options.iter().find(|o| o.key == "1"))
+        .and_then(|m| m.options.iter().find(|o| o.key == "0"))
         .map(|o| o.command.clone())
-        .expect("POM must have an option with key 1");
+        .expect("POM must have an option with key 0");
 
-    // Path A: type the POM option key `1`.
+    // Path A: type the POM option key `0`.
     let mut typed = make_shell();
     typed.handle_command("START");
     assert!(typed.tabs.active_tab().is_home, "precondition: POM active");
     let tabs_before_typed = typed.tabs.len();
-    typed.handle_command("1");
+    typed.handle_command("0");
 
-    // Path B: click POM option 1 (dispatch its command through the click seam).
+    // Path B: click POM option 0 (dispatch its command through the click seam).
     let mut click = make_shell();
     click.handle_command("START");
     assert!(click.tabs.active_tab().is_home, "precondition: POM active");
     let tabs_before_click = click.tabs.len();
-    click.dispatch_bound_command(&option1_command);
+    click.dispatch_bound_command(&option0_command);
 
     assert_eq!(
         typed.tabs.len(),
         tabs_before_typed,
-        "typed `1` navigates in place"
+        "typed `0` navigates in place"
     );
     assert_eq!(
         click.tabs.len(),
         tabs_before_click,
-        "click of option 1 navigates in place"
+        "click of option 0 navigates in place"
     );
     assert_eq!(
         typed.tabs.active_tab().kind.tag(),
         click.tabs.active_tab().kind.tag(),
-        "typing the POM option key `1` and clicking its row must land on the same kind (Req 19.2 / 14.1)"
+        "typing the POM option key `0` and clicking its row must land on the same kind (Req 19.2 / 14.1)"
     );
     assert!(
         !typed.tabs.active_tab().is_home,
-        "typed `1` must leave the POM Home Context"
+        "typed `0` must leave the POM Home Context"
     );
 }
 

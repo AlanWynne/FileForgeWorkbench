@@ -46,10 +46,12 @@ fn command_equals_0_routes_to_settings() {
     assert!(is_shell_command("=0"));
 }
 
-/// Validates: menu-workspace Req 17.1/17.2 (CR-NR-080) -- the data-driven menu
-/// bar (the barebones POM) includes a File Catalogs entry (POM option 1).
+/// Validates: menu-workspace Req 17.2a (CR-CH-073) -- the trimmed data-driven
+/// menu bar (the barebones POM) NO LONGER includes a Catalogs or Files entry;
+/// they were removed from the barebones core (reserved for the future extension
+/// wf_21b74c6aa15ba293). The underlying commands remain reachable when typed.
 #[test]
-fn menu_bar_has_file_catalogs_menu() {
+fn menu_bar_omits_catalogs_and_files() {
     // The bar is the barebones POM; its bar-visible options are keyed by command.
     let cmds: Vec<String> = crate::menu_workspace::defaults::default_menubar_menu()
         .options
@@ -58,8 +60,12 @@ fn menu_bar_has_file_catalogs_menu() {
         .map(|o| o.command.clone())
         .collect();
     assert!(
-        cmds.iter().any(|c| c == "Catalogs"),
-        "default Menu_Bar must contain the File Catalogs (Catalogs) entry (POM option 1)"
+        !cmds.iter().any(|c| c == "Catalogs"),
+        "trimmed default Menu_Bar must NOT contain a Catalogs entry (CR-CH-073)"
+    );
+    assert!(
+        !cmds.iter().any(|c| c == "Files"),
+        "trimmed default Menu_Bar must NOT contain a Files entry (CR-CH-073)"
     );
 }
 
@@ -1548,8 +1554,9 @@ fn menus_editor_loads_recovery_baseline_when_no_file() {
     let (shell, _dir) = make_shell_with_menus_editor();
     let working = shell.menus_editor_panel.working.as_ref().expect("working");
     let keys: Vec<&str> = working.options.iter().map(|o| o.key.as_str()).collect();
-    // CR-NR-080: barebones POM is Settings/Catalogs/Files/Help/Return.
-    assert_eq!(keys, vec!["0", "1", "2", "3", "X"]);
+    // CR-CH-073: the trimmed barebones POM is Settings (0) / Help (3) /
+    // terminate (X); Catalogs (1) and Files (2) were removed from the core.
+    assert_eq!(keys, vec!["0", "3", "X"]);
 }
 
 // Validates: menu-workspace Requirement 13.5 -- add / delete / move mutate the

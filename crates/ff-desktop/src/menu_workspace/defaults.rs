@@ -18,32 +18,28 @@ use std::path::Path;
 /// This is the CODE-ONLY barebones POM: it is NEVER written to disk (CR-CH-021
 /// revised Req 4.1). It is the fallback rendered when no valid user
 /// `menus/pom.toml` exists, and it is deliberately minimal so a user whose
-/// configuration is missing or corrupt can always reach Settings, Catalogs,
-/// Files, the event Log, and the Menus editor to rebuild or recover.
+/// configuration is missing or corrupt can always reach Settings (and, through
+/// it, the Menus / Keys / Theme / Kinds editors and Reset-bare) and Help to
+/// rebuild or recover.
+///
+/// CR-CH-073: the barebones core was RECONSIDERED and TRIMMED to exactly three
+/// options -- `0` Settings, `3` Help, `X` terminate. The former `1` Catalogs and
+/// `2` Files options are REMOVED (reserved for a future extension,
+/// wf_21b74c6aa15ba293). The underlying `CATALOGS` / `FILES` commands and their
+/// Contexts REMAIN reachable when typed (owner-approved Option B); only the
+/// default MENU options are removed. Survivor keys `0`/`3`/`X` are unchanged.
 ///
 /// Selecting an option dispatches its `command` string (config-driven, no
 /// behaviour keyed to the key character). A single group means no stray
 /// separator is drawn.
 ///
-/// Validates: Requirement 12.1, 12.2, 12.7 (menu-workspace)
+/// Validates: Requirement 12.1, 12.2, 12.7, 2.1h (menu-workspace)
 pub const DEFAULT_POM_TOML: &str = r#"title = "FileForge Workbench -- Primary Option Menu"
 
 [[options]]
 key = "0"
 command = "Settings"
 description = "FFWB Settings and Client Parameters"
-group = "Core"
-
-[[options]]
-key = "1"
-command = "Catalogs"
-description = "Virtual File Catalogs -- Mainframe, POSIX, Native"
-group = "Core"
-
-[[options]]
-key = "2"
-command = "Files"
-description = "File Explorer -- Browse catalogs and files in a tree view"
 group = "Core"
 
 [[options]]
@@ -159,7 +155,8 @@ pub const DEFAULT_MENU_BAR_NAME: &str = "MB-POM";
 /// source of truth and the two can never diverge. The horizontal render skips
 /// options whose `show_in_menu_bar` is `false` (Req 17.2), so the barebones POM
 /// terminate option (key `X`, marked `show_in_menu_bar = false`) does NOT appear
-/// on the bar, leaving Settings / Catalogs / Files / Help.
+/// on the bar, leaving Settings / Help (CR-CH-073 trimmed core; Catalogs/Files
+/// removed).
 ///
 /// A top-level option's `command`, when it names a resolvable menu (e.g.
 /// `SETTINGS`), is PEEKED as a dropdown (Req 17.3); otherwise the button
@@ -238,19 +235,21 @@ mod tests {
         assert_eq!(content, "custom content", "user file must not be touched");
     }
 
-    // Validates: Requirement 12.1, 12.2, 12.7 -- Recovery_Baseline POM parses
-    // from the single compiled source and has the barebones option set.
+    // Validates: Requirement 12.2 (menu-workspace, CR-CH-073) -- Recovery_Baseline
+    // POM parses from the single compiled source and ships the reconsidered
+    // trimmed core option set. Catalogs (key 1) and Files (key 2) are REMOVED
+    // from the barebones core (reserved for the future extension
+    // wf_21b74c6aa15ba293); the keys 0/3/X of the survivors are retained unchanged.
     #[test]
     fn recovery_pom_menu_has_barebones_options() {
         let menu = recovery_pom_menu();
         let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
-        // CR-NR-080: barebones POM = Settings / Catalogs / Files / Help / Return
-        // (Menus moved to the Settings menu; Log dropped from the barebones set).
-        assert_eq!(keys, vec!["0", "1", "2", "3", "X"]);
+        // CR-CH-073: trimmed core = Settings (0) / Help (3) / terminate (X).
+        assert_eq!(keys, vec!["0", "3", "X"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
-        // CR-CH-052: the terminate option's command is now the uniform `X` close
+        // CR-CH-052: the terminate option's command is the uniform `X` close
         // verb (collapse-to-visual-root / close-workspace), not `Return`.
-        assert_eq!(commands, vec!["Settings", "Catalogs", "Files", "Help", "X"]);
+        assert_eq!(commands, vec!["Settings", "Help", "X"]);
         // Single group -> no stray separator boundary.
         let groups: std::collections::BTreeSet<&str> = menu
             .options
@@ -299,11 +298,12 @@ mod tests {
         );
     }
 
-    // Validates: menu-workspace Req 17.2 -- the barebones POM includes Help and
-    // marks the terminate (X) option hidden from the bar, so the bar-visible
-    // options are Settings / Catalogs / Files / Help (terminate excluded).
+    // Validates: menu-workspace Req 17.2a (CR-CH-073) -- the trimmed barebones
+    // POM includes Help and marks the terminate (X) option hidden from the bar,
+    // so the bar-visible options are Settings / Help (terminate excluded,
+    // Catalogs/Files removed).
     #[test]
-    fn default_menubar_bar_visible_options_are_settings_catalogs_files_help() {
+    fn default_menubar_bar_visible_options_are_settings_help() {
         let menu = default_menubar_menu();
         let bar_cmds: Vec<&str> = menu
             .options
@@ -313,8 +313,8 @@ mod tests {
             .collect();
         assert_eq!(
             bar_cmds,
-            vec!["Settings", "Catalogs", "Files", "Help"],
-            "bar-visible options must be Settings / Catalogs / Files / Help (RETURN hidden)"
+            vec!["Settings", "Help"],
+            "bar-visible options must be Settings / Help (terminate X hidden; Catalogs/Files removed)"
         );
         // The terminate option (key X, command X after CR-CH-052) is present in
         // the POM but hidden from the bar.
@@ -349,9 +349,10 @@ mod tests {
         assert!(result.is_ok(), "DEFAULT_POM_TOML must be valid TOML");
     }
 
-    // Validates: Requirement 12.2 (menu-workspace, CR-CH-021) -- the compiled
-    // Recovery_Baseline POM ships exactly the barebones option set whose commands
-    // the shell resolves by name.
+    // Validates: Requirement 12.2, 2.1h (menu-workspace, CR-CH-073) -- the
+    // compiled Recovery_Baseline POM ships EXACTLY the reconsidered trimmed core
+    // option set (Settings / Help / terminate) whose commands the shell resolves
+    // by name. Catalogs/Files removed from the barebones core.
     #[test]
     fn default_pom_toml_has_recovery_baseline_options() {
         let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
@@ -361,17 +362,16 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            5,
-            "Recovery_Baseline POM must contain exactly 5 options"
+            3,
+            "Recovery_Baseline POM must contain exactly 3 options (CR-CH-073 trim)"
         );
-        // CR-NR-080: barebones POM = Settings / Catalogs / Files / Help / Return
-        // (Menus moved under Settings; Log dropped from the barebones set).
+        // CR-CH-073: trimmed core = Settings / Help / terminate.
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
-        // CR-CH-052: terminate option command is now `X`, not `Return`.
-        assert_eq!(commands, vec!["Settings", "Catalogs", "Files", "Help", "X"],);
+        // CR-CH-052: terminate option command is `X`, not `Return`.
+        assert_eq!(commands, vec!["Settings", "Help", "X"],);
     }
 
     // Validates: Requirement 2.1g (menu-workspace, revised CR-CH-052) -- the POM

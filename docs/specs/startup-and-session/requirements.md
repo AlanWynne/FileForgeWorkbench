@@ -314,35 +314,31 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 2. THE Home Context (POM) tab SHALL display a centred title line in the format `FileForge Workbench -- Primary Option Menu` followed by the application version, a numbered list of menu options, and a live calendar panel. [ISPF-POM]
 
-3. THE Primary Option Menu SHALL display a numbered list of menu options, each with a short label and a one-line description. The built-in options SHALL be:
+3. THE Primary Option Menu SHALL display a keyed list of menu options, each with a short label and a one-line description, loaded from the Menu Workspace pattern (menu-workspace Requirement 12 -- the compiled Recovery_Baseline POM). The built-in barebones options SHALL be:
 
-   **Core options (0-8 -- unchanged from Phase AC):**
+   **Barebones core options (REVISED by CR-CH-073 -- the stripped core,
+   RECONSIDERED not merely edited; the `1 Catalogs` and `2 Files` options are
+   REMOVED and reserved for the future extension wf_21b74c6aa15ba293):**
    - `0 Settings` -- FFWB Settings and Client Parameters
-   - `1 File Catalogs` -- Virtual File Catalogs -- Mainframe, POSIX, Native
-   - `2 Files` -- File Explorer -- Browse catalogs and files in a tree view
-   - `3 Utilities` -- Perform utility functions
-   - `4 Compilers` -- Interactive language processing
-   - `5 Lua Scripts` -- Run and manage Lua macros
-   - `6 Terminals` -- Enter TSO or Workstation commands
-   - `7 Databases` -- Database tool and query browser
-   - `8 Plugins` -- Vendor added plugins
+   - `3 Help` -- Help -- workbench help and topics
+   - `X` -- terminate (collapse to the visual root / close workspace, exit when last; hidden from the Menu_Bar)
 
-   **Extended options (added Phase CV):**
-   - `9 Jobs` -- JES job monitor and spool viewer
-   - `S Search` -- Global search and replace across files
-   - `B Batch` -- Batch command execution (IKJEFT01 analogue)
+   These three (Settings, Help, terminate) are the complete reconsidered
+   bare core; the authoritative definition is menu-workspace Requirement 12.2.
 
    [ISPF-POM]
-   *(Phase CV revised this option list from 9 to 12 options, adding Jobs (9),
-   Search (S), and Batch (B). The POM will be migrated to the Menu Workspace
-   pattern backed by `menus/pom.toml` in Phase CU-impl. See
-   `docs/specs/menu-workspace/requirements.md` and
-   `docs/specs/menu-workspace/cv-requirements.md` for the pattern and
-   content definitions.)*
+   *(History: Phase AC shipped options 0-8 and Phase CV extended the list to 12
+   (adding Jobs, Search, Batch). The POM was then migrated to the Menu Workspace
+   pattern backed by `menus/pom.toml` (menu-workspace Requirement 12) and
+   stripped to the barebones Recovery_Baseline; CR-CH-073 removed the `Catalogs`
+   (option 1) and `Files` (option 2) entries from that barebones core. The full
+   barebones option set is defined authoritatively by menu-workspace Requirement
+   12.2; this criterion mirrors it. Options for features not yet built/tested are
+   added back as their functionality lands.)*
 
-14.3a Option `1` SHALL be labelled `File Catalogs` with description `Virtual File Catalogs -- Mainframe, POSIX, Native`. WHEN selected, it SHALL open the Catalog_Explorer_Context (a unified virtual catalog explorer) rather than the native OS file explorer. [ISPF-POM, WB]
+14.3a Options whose Option_Command maps to built, testable functionality SHALL be the only ones present in the barebones POM; `File Catalogs` / `Catalogs` (Catalog_Explorer_Context) and `Files` (File Explorer) are NOT barebones options after CR-CH-073. WHEN (under the CR-CH-073 design decision) the `CATALOGS` command remains reachable by typing, selecting it SHALL open the Catalog_Explorer_Context (a unified virtual catalog explorer) rather than the native OS file explorer. [ISPF-POM, WB]
 
-14.3b Option `8` SHALL be labelled `Plugins` with description `Vendor added plugins`. WHEN selected, it SHALL open a Plugins management panel. [ISPF-POM]
+14.3b Option `8 Plugins` is likewise not part of the barebones core; WHEN a Plugins option is present, selecting it SHALL open a Plugins management panel. [ISPF-POM]
 
 4. THE Primary Option Menu SHALL display a live calendar to the right of the option list showing the current month, year, day-of-week header, and highlighted current day. [ISPF-POM]
 
@@ -350,7 +346,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 6. WHEN the user types a menu option number (e.g., `1`) into the `Command ===>` field of a Home Context (POM) tab and presses Enter, THE shell SHALL transform that tab's content to the corresponding feature view (e.g., option `1` opens a file browser / editor view within the same tab). [ISPF-POM]
 
-7. THE menu bar SHALL include top-level menus that mirror the Primary Option Menu entries: `Settings`, `File Catalogs`, `Files`, `Utilities`, `Compilers`, `Lua`, `Terminals`, `Databases`, `Plugins`, `Help`. [ISPF-POM]
+7. THE menu bar SHALL mirror the bar-visible Primary Option Menu entries (the Default_Menu_Bar IS the barebones POM; menu-workspace Requirement 17.2/17.2a). For the barebones core after CR-CH-073 the bar-visible entries are `Settings` and `Help` (the `File Catalogs` / `Files` entries were removed with the POM options; the terminate option is hidden from the bar). Additional top-level entries appear as their options are added to the POM. [ISPF-POM]
 
 8. THE workbench tab bar SHALL act as a container for all open tabbed windows. Each tab represents an independent work context (Home Context (POM), Editor Context, utility panel, etc.). ALL tabs SHALL be attached by default and MAY be detached into separate floating OS windows. [ISPF-POM, WB]
 

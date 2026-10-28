@@ -552,13 +552,14 @@ fn plugins_command_routes_to_plugin_manager() {
 /// Validates: menu-workspace Req 2.1i -- a POM fastpath key resolves to its
 /// configured command and routes there.
 #[test]
-fn equals_8_command_routes_to_plugin_manager() {
-    // CR-CH-021: the Recovery_Baseline POM key set is 0/1/2/L/M/X. Exercise the
-    // fastpath resolver against a baseline key (=1 -> CATALOGS -> FilesPanel).
+fn equals_0_command_routes_to_settings() {
+    // CR-CH-073: the trimmed Recovery_Baseline POM key set is 0/3/X. Exercise the
+    // fastpath resolver against a surviving baseline key (=0 -> SETTINGS -> the
+    // Settings Menu_Workspace). (Formerly =1 -> CATALOGS; key 1 was removed.)
     let mut shell = make_shell();
-    shell.handle_command("=1");
+    shell.handle_command("=0");
     use crate::tab_state::{KindTag, TabKind};
-    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::FilesPanel);
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
 }
 
 /// Validates: notification-system Requirement 2.1 -- LOG command routes to EventLog.
@@ -584,16 +585,14 @@ fn macros_command_routes_to_macro_library() {
 /// Validates: menu-workspace Req 2.1i -- a POM fastpath key resolves to its
 /// configured command and routes there.
 #[test]
-fn equals_5_command_routes_to_macro_library() {
-    // CR-CH-021: MACROS is no longer a baseline POM key; exercise the fastpath
-    // resolver against a baseline key (=2 -> FILES -> File Explorer).
+fn equals_3_command_routes_to_help() {
+    // CR-CH-073: the trimmed Recovery_Baseline POM key set is 0/3/X. Exercise the
+    // fastpath resolver against a surviving baseline key (=3 -> HELP -> the Help
+    // Context). (Formerly =2 -> FILES; key 2 was removed.)
     let mut shell = make_shell();
-    shell.handle_command("=2");
+    shell.handle_command("=3");
     use crate::tab_state::{KindTag, TabKind};
-    assert_eq!(
-        shell.tabs.active_tab().kind.tag(),
-        KindTag::FileExplorerPanel
-    );
+    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::HelpContext);
 }
 
 // === Phase CX Tests =====================================================

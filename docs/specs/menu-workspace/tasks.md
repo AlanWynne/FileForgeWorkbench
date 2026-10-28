@@ -965,3 +965,51 @@ single new scoped test; the OWNER runs the full gate.
   - [x] 50.6 Update `docs/quality/TCR.md`: flip the CR-CH-066 menu-workspace
           Req 22.1-22.5 rows from NOT-COVERED to covered as the tests land.
           (Project standards)
+
+## Phase (strip-core-pom-trim) -- CR-CH-073: Trim the core default POM (remove Catalogs + Files; reconsidered trimmed set)
+
+Content-only change to the compiled Recovery_Baseline POM (`DEFAULT_POM_TOML` in
+`menu_workspace/defaults.rs`). SUBTRACTIVE half of a two-effort split; the
+extension re-introduction of Catalogs/Files is a separate effort
+(wf_21b74c6aa15ba293). Gate is docs-only; source edits below land after owner
+approval. Owner decision A/B (remove commands/Contexts vs keep reachable) is
+recorded in `.agents/tasks/strip-core-pom-trim/gate-approved.json`; tasks below
+are written for the RECOMMENDED Option B (keep the commands/Contexts).
+TDD applies; agents compile-verify SCOPED and run the single new scoped tests;
+the OWNER runs the full gate.
+
+- [ ] 51. Trim the compiled Recovery_Baseline POM to the reconsidered core set
+  - [ ] 51.1 Remove the `key = "1" / command = "Catalogs"` and
+          `key = "2" / command = "Files"` `[[options]]` blocks from
+          `DEFAULT_POM_TOML`; leave `0 Settings`, `3 Help`, `X` in a single `Core`
+          group. Keep it code-only (never written to disk). Update the
+          doc-comment prose that names "Settings, Catalogs, Files". (Req 12.2, 2.1h)
+  - [ ] 51.2 Update `recovery_pom_menu_has_barebones_options`: `keys == ["0","3","X"]`,
+          `commands == ["Settings","Help","X"]`, single group. (Validates Req 12.2)
+  - [ ] 51.3 Update `default_pom_toml_has_recovery_baseline_options`:
+          `options.len() == 3` and `commands == ["Settings","Help","X"]`.
+          (Validates Req 12.2)
+  - [ ] 51.4 Rename `default_menubar_bar_visible_options_are_settings_catalogs_files_help`
+          to `default_menubar_bar_visible_options_are_settings_help` and assert the
+          bar-visible set is `["Settings","Help"]` (terminate `X` hidden).
+          (Validates Req 17.2a)
+  - [ ] 51.5 Retarget the shell nav/menu tests coupled to POM options `1`/`2`:
+          `tests_nav_ladder.rs::equals_1_works_from_a_non_pom_tab`,
+          `tests_nav.rs::pom_key_resolves_to_configured_command`,
+          `tests_nav.rs::pom_option_key_type_and_click_same_result`, and any
+          `handle_command("1"/"2"/"2.1")` POM-option assertions. (Validates Req 12.2, 3.1)
+  - [ ] 51.6 Retire or retarget
+          `tests_menu_workspace.rs::menu_bar_has_file_catalogs_menu` (Catalogs no
+          longer a bar entry). (Validates Req 17.2a)
+  - [ ] 51.7 Confirm Option B regression guards stay GREEN: typed `FILES` /
+          `CATALOGS` and the `=FILES` jump still open their Contexts
+          (`equals_files_jump_path_still_opens_file_explorer`,
+          `bare_files_still_opens_file_explorer_via_front_door`). (Validates Req 12.2 note)
+    - DECISION: Option B is owner-APPROVED (`removeCommands: false`). The
+      commands/Contexts are KEPT; do NOT touch `command_config/mod.rs`,
+      `workspace_kind`, `TabKind`/`KindTag`, or descriptor reconstruction. (Option
+      A -- stripping those sites -- is NOT taken.)
+  - [ ] 51.8 Update `docs/quality/TCR.md`: correct the Recovery_Baseline POM
+          option-set shorthand and add a NOT-COVERED row per new/edited criterion
+          (menu-workspace Req 12.2, 2.1h; Req 17.2a; startup Req 14.3). (Project standards)
+  - [ ] 51.9 Append the CR-CH-073 entry to `docs/status/change-log.md`. (Project standards)

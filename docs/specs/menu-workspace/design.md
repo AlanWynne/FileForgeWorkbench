@@ -2070,3 +2070,168 @@ Notes:
   dispatches `CONFIG` (Req 22.3).
 - `ensure_menus_dir_does_not_materialise_settings` (existing, retained) -- the
   Settings menu is not written to disk (Req 22.4).
+
+---
+
+## CR-CH-073 -- Trim the core default POM: remove Catalogs and Files (reconsidered trimmed core set)
+
+### Overview
+
+CR-CH-073 SUBTRACTS the `1 -> CATALOGS` and `2 -> FILES` options from the compiled
+Recovery_Baseline POM (`DEFAULT_POM_TOML` in
+`crates/ff-desktop/src/menu_workspace/defaults.rs`), and -- per the owner's
+request to RECONSIDER the defaults rather than only delete two rows -- restates
+the bare POM as the minimal genuinely-core option set: `0 SETTINGS`, `3 HELP`,
+`X` (terminate). This is a content-only change to a code-only compiled constant;
+it builds ON the existing framework and introduces NO new mechanism.
+
+This effort is the SUBTRACTIVE half of a two-effort split. The re-introduction of
+Catalogs and Files as a first-class EXTENSION (the Extension contract, the
+Extension Manager, and how an extension contributes POM options) is a SEPARATE
+design effort, wf_21b74c6aa15ba293. This design delta coordinates with that
+effort but does NOT define the extension contract; it only removes the two
+options from the core now and records that re-exposure is owned there.
+
+### Why this is NOT a framework change
+
+Per `.kiro/steering/framework-conformance.md`, built-in menus are CODE-ONLY and
+the POM is the compiled `DEFAULT_POM_TOML` Recovery_Baseline. Editing the
+`[[options]]` content of that constant is CONTENT, not mechanism: the single
+command-dispatch front door (`resolve_target` -> `dispatch_command_target`), the
+menu-name resolution path, the per-tab Navigation_Stack, the WorkspaceContext
+focus-latch, and the `WorkspaceDescriptor` persistence model are all UNCHANGED.
+The default Menu_Bar is derived from the compiled POM (`default_menubar_menu()`
+returns `recovery_pom_menu()`), so trimming the POM options automatically trims
+the bar-visible entries to `Settings` and `Help` (single source of truth; Req
+17.2/17.2a).
+
+### The reconsidered trimmed core option set (Req 12.2)
+
+| Order | key | command    | description                                                    | group | show_in_menu_bar |
+|-------|-----|------------|----------------------------------------------------------------|-------|------------------|
+| 1     | `0` | `Settings` | FFWB Settings and Client Parameters                            | Core  | true (default)   |
+| 2     | `3` | `Help`     | Help -- workbench help and topics                              | Core  | true (default)   |
+| 3     | `X` | `X`        | Collapse to the visual root / close workspace (exit when last) | Core  | false            |
+
+Reasoning for the set (the "reconsider" the owner asked for):
+
+- `SETTINGS` is the recovery gateway -- through it the operator reaches the
+  Menus / Keys / Theme / Kinds editors and Reset-bare, so a bare or broken config
+  is always recoverable (the Recovery_Baseline User Story, Req 12).
+- `HELP` is the orientation affordance; it resolves by name (the `HELP` ladder
+  verb) and costs nothing to keep.
+- `X` is the uniform terminate / close verb (Req 2.1g), data-driven and hidden
+  from the horizontal Menu_Bar (`show_in_menu_bar = false`, Req 17.2a).
+- `CATALOGS` and `FILES` are REMOVED (future extension). `MENUS` and `LOG` were
+  already not POM options (Menus lives under Settings; Log is reachable via the
+  `LOG` command and Settings). No other verb is genuinely core yet -- an
+  Extensions/`PLUGINS` option is explicitly NOT added here; contributing POM
+  options is the future extension effort's concern.
+
+Option_Keys `0`/`3`/`X` are KEPT as-is. Renumbering `3 HELP` to `1` is an
+OPTIONAL owner-preference deferral, not part of this change.
+
+### The decision point: keep or remove the FILES / CATALOGS commands + Contexts
+
+Removing the menu OPTIONS is the firm requirement. The open question is whether
+the bare core should ALSO remove/disable the underlying `FILES` / `CATALOGS`
+commands and their Contexts now.
+
+- **Option A -- remove the menu options AND the commands/Contexts.** Truly strips
+  the capability. Large blast radius: `builtin_workspace_target_for` (the
+  `FILES` / `FILE CATALOGS` / `CATALOGS` arms), `BUILTIN_WORKSPACE_VERB_ROOTS`,
+  the `BuiltinKind::Catalogs` / `BuiltinKind::Files` Kind registry, the
+  `TabKind` / `KindTag` arms, descriptor reconstruction, and the `=FILES` /
+  bare-`FILES` tests would all change; risk of reintroducing "unknown command"
+  errors; and it would collide with the extension effort, which needs the
+  Context machinery to re-home.
+- **Option B (RECOMMENDED) -- remove ONLY the default menu options; keep the
+  commands and Contexts reachable if typed.** Minimal and surgical: edit only
+  `DEFAULT_POM_TOML` + its option-set tests + the two menu-bar tests. Typed
+  `FILES` / `CATALOGS` and the `=FILES` jump still work (those tests stay green),
+  and the extension effort (wf_21b74c6aa15ba293) owns re-homing the Context
+  machinery without a prior teardown-and-rebuild. This matches the literal firm
+  requirement ("remove the menu options") and keeps the two efforts decoupled.
+
+DECISION (owner APPROVED): **Option B** (`removeCommands: false`, recorded in
+`.agents/tasks/strip-core-pom-trim/gate-approved.json`). Remove ONLY the default
+menu options; KEEP the `FILES`/`CATALOGS` commands and Contexts reachable if
+typed. The implement step MUST NOT touch `command_config/mod.rs`,
+`workspace_kind`, `TabKind`/`KindTag`, or descriptor reconstruction, and MUST
+keep `equals_files_jump_path_still_opens_file_explorer` /
+`bare_files_still_opens_file_explorer_via_front_door` GREEN. The source-change
+scope below is written for Option B; the Option A sites are retained only as a
+record of the path NOT taken.
+
+### Error handling / edge cases
+
+- No new failure modes. The trimmed POM is still valid TOML, still ASCII-only,
+  still a single `Core` group (no stray separator boundary), and still parses via
+  the single `recovery_pom_menu()` source (Req 12.7).
+- Absent/corrupt user `menus/pom.toml` still falls back to this (now trimmed)
+  Recovery_Baseline (Req 12.4/12.5) -- unchanged path, fewer options.
+- Under Option B, typing `CATALOGS` / `FILES` / `=FILES` continues to open the
+  respective Context (no "unknown command" error), because the classifier arms
+  and Kinds are retained.
+
+### Source change scope (for the implement step -- NOT this gate)
+
+Option B (recommended) touches only `crates/ff-desktop/src/menu_workspace/defaults.rs`
+and the shell/menu tests coupled to POM options `1`/`2`:
+
+Constant + its unit tests (`menu_workspace/defaults.rs`):
+- `DEFAULT_POM_TOML` -- delete the `key = "1" / command = "Catalogs"` and
+  `key = "2" / command = "Files"` `[[options]]` blocks; update the doc-comment
+  prose that names "Settings, Catalogs, Files" as always-reachable.
+- `recovery_pom_menu_has_barebones_options` -- change `keys` to `["0","3","X"]`
+  and `commands` to `["Settings","Help","X"]`.
+- `default_pom_toml_has_recovery_baseline_options` -- change `options.len()` from
+  `5` to `3` and `commands` to `["Settings","Help","X"]`.
+- `default_menubar_bar_visible_options_are_settings_catalogs_files_help` -- RENAME
+  to e.g. `default_menubar_bar_visible_options_are_settings_help` and change the
+  body assertion to `["Settings","Help"]`.
+- `default_menubar_is_the_barebones_pom`, `default_pom_toml_terminate_is_x_x`,
+  `default_pom_toml_is_valid_toml`, `default_pom_toml_title_matches_spec`,
+  `default_pom_toml_ascii_only` -- stay green (terminate `X` retained); re-verify.
+
+Shell / menu tests coupled to POM option `1` (Catalogs) / `2` (Files):
+- `crates/ff-desktop/src/shell/tests_nav_ladder.rs::equals_1_works_from_a_non_pom_tab`
+  -- retarget away from POM option `1` (there is no option `1` after the trim).
+- `crates/ff-desktop/src/shell/tests_nav.rs`:
+  `pom_key_resolves_to_configured_command` (uses POM key `2` -> FILES),
+  `pom_option_key_type_and_click_same_result` (uses POM option `1` Catalogs), and
+  any `handle_command("1"/"2"/"2.1")` assertions that assume POM options `1`/`2`
+  exist -- retarget to a surviving option or to the typed command.
+- `crates/ff-desktop/src/shell/tests_menu_workspace.rs::menu_bar_has_file_catalogs_menu`
+  -- Catalogs is no longer a bar entry; retire or retarget this assertion.
+  `menu_bar_has_help_and_excludes_terminate_option` -- Help retained; verify.
+- `equals_files_jump_path_still_opens_file_explorer` /
+  `bare_files_still_opens_file_explorer_via_front_door` -- stay GREEN under Option
+  B (the `FILES` command is retained); they are the regression guard that Option B
+  did not break typed `FILES`.
+
+Additional sites ONLY if the owner picks Option A (remove commands/Contexts):
+- `crates/ff-desktop/src/command_config/mod.rs` -- remove the `FILES` /
+  `FILE CATALOGS` / `CATALOGS` arms from `builtin_workspace_target_for` and the
+  matching entries from `BUILTIN_WORKSPACE_VERB_ROOTS` (and its drift-guard test).
+- `crates/ff-desktop/src/workspace_kind/mod.rs` + `workspace_kind/tests.rs` --
+  remove `BuiltinKind::Catalogs` / `BuiltinKind::Files`, their `[CATALOGS]` /
+  `[FILES]` titles, and `resolve_base("catalogs")`.
+- `TabKind` / `KindTag` arms and descriptor reconstruction for those Contexts;
+  the `=FILES` / bare-`FILES` tests above would then need removal rather than
+  staying green.
+
+All source edits are deferred to the implement step after owner approval; this
+gate is docs-only.
+
+### Testability
+
+- Unit-testable at the constant level: the three `defaults.rs` option-set tests
+  pin the trimmed set (`keys`, `commands`, `len == 3`) and the menu-bar visible
+  set (`["Settings","Help"]`).
+- Integration-testable at the shell level: the retargeted nav/menu tests prove
+  the surviving options dispatch by name, and (Option B) the retained `FILES` /
+  `=FILES` tests prove the commands remain reachable when typed.
+- No GUI-harness-only behaviour is introduced; the first-Tab focus-ring tests for
+  the POM are driven by the loaded option list (Req 2.1f) and simply observe one
+  fewer / fewer option stops.

@@ -1,0 +1,21 @@
+{
+  "changeRequest": "CR-CH-073",
+  "title": "Trim the core default POM: remove Catalogs and Files (reconsidered trimmed core set)",
+  "specArea": "menu-workspace",
+  "approved": true,
+  "approvedBy": "owner",
+  "trimmedPomOptions": [
+    { "key": "0", "command": "Settings", "description": "FFWB Settings and Client Parameters", "group": "Core", "show_in_menu_bar": true },
+    { "key": "3", "command": "Help", "description": "Help -- workbench help and topics", "group": "Core", "show_in_menu_bar": true },
+    { "key": "X", "command": "X", "description": "Collapse to the visual root / close workspace (exit when last)", "group": "Core", "show_in_menu_bar": false }
+  ],
+  "removeCommands": false,
+  "renumberHelpToOne": false,
+  "notes": [
+    "Catalogs (key 1) and Files (key 2) removed from the barebones core; reserved for the extension effort wf_21b74c6aa15ba293.",
+    "Option B: keep the FILES/CATALOGS commands and their Contexts reachable if typed. Do NOT touch command_config/mod.rs, workspace_kind, TabKind/KindTag, or descriptor reconstruction.",
+    "Keep equals_files_jump_path_still_opens_file_explorer and bare_files_still_opens_file_explorer_via_front_door as GREEN regression guards.",
+    "Keys 0/3/X retained as-is (no renumber). No Extensions/PLUGINS option added.",
+    "Menu_Bar auto-trims to Settings/Help (bar IS the POM; single source of truth)."
+  ]
+}

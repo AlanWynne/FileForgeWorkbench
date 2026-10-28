@@ -205,13 +205,17 @@ and a `Command ===>` field -- so that the pattern is immediately familiar.
 1h. EVERY Option_Command in the default `menus/pom.toml` SHALL resolve through
     the shell command pipeline by command NAME (independent of any key). WHERE a
     needed command name does not already resolve, the command dispatcher SHALL be
-    extended to accept it (e.g. `CATALOGS` opening the File Catalogs Context). IN
-    NO CASE SHALL a default POM option dispatch to an "unknown command" error.
-    THE default `menus/pom.toml` SHALL contain ONLY options whose Option_Command
-    maps to built, testable functionality; options for unimplemented features
-    (e.g. Utilities, Compilers, Terminals, Databases, Jobs, interactive Batch)
-    SHALL be omitted and added later as their functionality is built and tested.
-    (CR-CH-018.)
+    extended to accept it (e.g. `SETTINGS` opening the Settings menu, `HELP`
+    opening Help). IN NO CASE SHALL a default POM option dispatch to an "unknown
+    command" error. THE default `menus/pom.toml` SHALL contain ONLY options whose
+    Option_Command maps to built, testable functionality; options for
+    unimplemented features (e.g. Utilities, Compilers, Terminals, Databases, Jobs,
+    interactive Batch) SHALL be omitted and added later as their functionality is
+    built and tested. (CR-CH-018.) REVISED by CR-CH-073: `CATALOGS` and `FILES`,
+    though their commands still resolve, are REMOVED from the default POM option
+    set (reserved for the future extension wf_21b74c6aa15ba293); the reconsidered
+    trimmed core default set is `SETTINGS`, `HELP`, `X` (Requirement 12.2), each
+    of which resolves by name.
 1i. THE fastpath `=<key>` notation (e.g. `=0`, `=1`, `=2`) SHALL continue to
     resolve to "the option whose Option_Key is `<key>` in the target menu, then
     dispatch that option's Option_Command", so fastpath navigation from the Home
@@ -579,8 +583,15 @@ user-created -- are reachable through one consistent verb.
 
 **User Story:** As an operator whose menu configuration is missing, deleted, or
 corrupted, I want the workbench to open with a minimal built-in menu set so that
-I can always reach Settings, Catalogs, Files, the event Log, and the Menus editor
-to rebuild or recover my configuration, instead of being locked out.
+I can always reach Settings (and, through it, the Menus editor) and Help to
+rebuild or recover my configuration, instead of being locked out.
+(REVISED by CR-CH-073 -- the barebones core no longer lists Catalogs or Files;
+recovery is via Settings -> Menus editor. The trimmed core default option set was
+RECONSIDERED, not merely edited: the genuinely-core bare POM is Settings + Help +
+the terminate option, and nothing else. Catalogs and Files are RESERVED for a
+future extension -- a separate design effort, wf_21b74c6aa15ba293, owns their
+re-introduction as an extension; this requirement only SUBTRACTS them from the
+core now.)
 
 **Source:** [CR-CH-021]
 
@@ -589,15 +600,40 @@ to rebuild or recover my configuration, instead of being locked out.
 1. THE workbench SHALL define a compiled Recovery_Baseline for the POM and for
    the Settings menu. These are the code-only built-in menus (Requirement 4.1)
    and are never written to disk.
-2. THE Recovery_Baseline POM SHALL contain exactly these options, in order
-   (REVISED by CR-NR-080): `0` -> `SETTINGS` (Settings), `1` -> `CATALOGS`
-   (Catalogs), `2` -> `FILES` (Files), `3` -> `HELP` (Help), `X` -> `RETURN`
-   (Return / exit when last, marked `show_in_menu_bar = false` so it is hidden
-   from the horizontal Menu_Bar, Requirement 17.2a). All in a single group (no
-   stray boundary). `MENUS` is NOT a POM option -- it belongs to the Settings
-   menu (criterion 12.3); `LOG` was dropped from the barebones set (still
-   reachable via the `LOG` command and Settings). This barebones POM is also the
-   Default_Menu_Bar (Requirement 17.2).
+2. THE Recovery_Baseline POM SHALL contain EXACTLY the following reconsidered
+   trimmed core option set, in order (REVISED by CR-NR-080; REVISED again by
+   CR-CH-073 -- the `1` -> `CATALOGS` and `2` -> `FILES` options are REMOVED from
+   the barebones core, so the stripped core app no longer presents Catalogs or
+   Files on its default menu):
+   - `0` -> `SETTINGS` (description `FFWB Settings and Client Parameters`),
+     group `Core` -- the gateway to the Settings menu and, through it, the Menus
+     / Keys / Theme / Kinds editors and Reset-bare recovery.
+   - `3` -> `HELP` (description `Help -- workbench help and topics`), group
+     `Core` -- workbench help and orientation.
+   - `X` -> `X` (description `Collapse to the visual root / close workspace (exit
+     when last)`), group `Core`, marked `show_in_menu_bar = false` so it is
+     hidden from the horizontal Menu_Bar (Requirement 17.2a) -- the uniform
+     terminate / close verb (Req 2.1g).
+
+   These THREE options are the complete bare POM; there SHALL be no other default
+   POM option. All are in a single group `Core` (no stray group boundary). The
+   `0`/`3`/`X` Option_Keys are RETAINED unchanged (CR-CH-073 removes options, it
+   does NOT renumber the survivors; the optional `3 HELP` -> `1` renumber was
+   DECLINED by the owner -- Help stays on key `3`). The trimmed set was
+   deliberately RECONSIDERED: Settings and Help are the only genuinely-core
+   landing options (Settings being the recovery gateway, Help the orientation
+   affordance) plus the terminate verb; `CATALOGS` and `FILES` are NO LONGER POM
+   options (CR-CH-073) and are RESERVED for the future extension
+   (wf_21b74c6aa15ba293). The underlying `CATALOGS` / `FILES` commands and their
+   Contexts REMAIN reachable when typed (owner-APPROVED Option B,
+   `removeCommands: false`): the firm requirement is the removal of the menu
+   options only; the command/Context machinery is left in place and the extension
+   effort owns re-homing it (see design.md). `MENUS` is NOT a POM
+   option -- it belongs to the Settings menu (criterion 12.3); `LOG` is likewise
+   not in the barebones set (reachable via the `LOG` command and Settings). Every
+   remaining default POM option's Option_Command (`SETTINGS`, `HELP`, `X`)
+   resolves through the command pipeline by NAME (Requirement 2.1h). This
+   barebones POM is also the Default_Menu_Bar (Requirement 17.2).
 3. THE Recovery_Baseline Settings menu SHALL contain exactly these options, in
    order (REVISED by CR-CH-025 -- reordered, regrouped, and repointed; REVISED
    again by CR-CH-029 -- added the `K` -> `KEYS` option; REVISED again by
@@ -1121,11 +1157,12 @@ user menu file overrides it. Menu-bar menus are conventionally named with an
 
 2a. THE bar SHALL render ONLY options whose `show_in_menu_bar` is `true`
    (Requirement 1.3). An option with `show_in_menu_bar = false` (e.g. the
-   barebones POM's `RETURN`) SHALL NOT appear on the bar, while remaining in the
-   vertical menu. The barebones POM (Requirement 12) SHALL contain, in order,
-   `SETTINGS`, `CATALOGS`, `FILES`, `HELP`, `RETURN`, with `RETURN` marked
-   `show_in_menu_bar = false`; so the bar-visible entries are Settings, Catalogs,
-   Files, Help.
+   barebones POM's terminate option) SHALL NOT appear on the bar, while remaining
+   in the vertical menu. The barebones POM (Requirement 12, REVISED by CR-CH-073)
+   SHALL contain, in order, `SETTINGS`, `HELP`, and the terminate option (key
+   `X`, command `X`) marked `show_in_menu_bar = false`; so the bar-visible
+   entries are Settings and Help. (`CATALOGS` and `FILES` were REMOVED by
+   CR-CH-073, so they are no longer bar-visible entries.)
 
 3. WHEN a top-level menu-bar button is opened (by mouse hover/click or keyboard
    focus), THE bar SHALL PEEK the menu referenced by that option's command: it

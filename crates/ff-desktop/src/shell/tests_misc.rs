@@ -206,7 +206,7 @@ fn swap_n_activates_nth_tab() {
 fn swap_n_out_of_range_errors_and_keeps_active() {
     // Validates: Requirement 18.2
     let mut shell = make_shell();
-    shell.handle_command("2"); // ensure >=2 tabs
+    shell.handle_command("START"); // ensure >=2 tabs (CR-CH-073: POM key 2 removed)
     shell.handle_command("SWAP 1");
     let before = shell.tabs.active_index();
 

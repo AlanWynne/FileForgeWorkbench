@@ -311,33 +311,33 @@ fn ffedit_bare_x_stays_exclude_but_equals_x_escapes() {
     );
 }
 
-/// Validates: command-framework Requirement 10.2 (CR-CH-052) -- `=1` from a
-/// non-POM tab reinitialises to the POM and resolves option 1 (Catalogs ->
-/// FilesPanel), proving `=` targets the FFCMD_Root from ANY tab.
+/// Validates: command-framework Requirement 10.2 (CR-CH-052; CR-CH-073) -- `=0`
+/// from a non-POM tab reinitialises to the POM and resolves option 0 (Settings
+/// -> the Settings Menu_Workspace), proving `=` targets the FFCMD_Root from ANY
+/// tab. (Formerly used `=1` -> Catalogs; key 1 was removed from the trimmed
+/// barebones core, so this now exercises the retained key 0.)
 #[test]
-fn equals_1_works_from_a_non_pom_tab() {
+fn equals_0_works_from_a_non_pom_tab() {
     let mut harness = harness_shell();
-    harness
-        .state_mut()
-        .dispatch_command_string("START SETTINGS");
+    harness.state_mut().dispatch_command_string("START KEYS");
     for _ in 0..4 {
         harness.run();
     }
     assert!(
         !harness.state().tabs.active_tab().is_home,
-        "precondition: on a non-POM (Settings) tab"
+        "precondition: on a non-POM (Keys) tab"
     );
 
-    harness.state_mut().dispatch_command_string("=1");
+    harness.state_mut().dispatch_command_string("=0");
     for _ in 0..4 {
         harness.run();
     }
 
-    // POM option 1 is `Catalogs` -> the Files (Catalog Explorer) panel.
+    // POM option 0 is `Settings` -> the Settings Menu_Workspace.
     assert_eq!(
         harness.state().tabs.active_tab().kind.tag(),
-        KindTag::FilesPanel,
-        "`=1` from a non-POM tab resolves as POM option 1 (Catalogs)"
+        KindTag::MenuWorkspace,
+        "`=0` from a non-POM tab resolves as POM option 0 (Settings)"
     );
 }
 
