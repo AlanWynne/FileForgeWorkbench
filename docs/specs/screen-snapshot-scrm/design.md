@@ -74,9 +74,17 @@ Two NEW workspace crates (owner-confirmed names, Q4):
     behind a `SnapshotFormat` enum. Box-drawing default + ASCII fallback (Req 5.1,
     5.2). Pure functions `ScreenModel -> String`.
 - **`ff-scrm`** (no egui; depends on `ff-screen-model`). Owns:
-  - `ScreenCollection` / `ScreenCapture` data model (Req 17).
+  - `ScreenCollection` / `ScreenCapture` data model (Req 17). `ScreenCapture`
+    carries an OPTIONAL `TriggeringCommand { command_string, target_kind }`
+    (Req 17.2a) -- the command, as resolved through the single dispatch path,
+    that caused the transition INTO this capture. `Option`, not an empty-string
+    sentinel, so a non-command cause (interval/rule) is explicitly absent
+    (Req 9.12). This is the "recorder" delta that turns a screen-only timeline
+    into a command + screen timeline (Req 9.10).
   - Persistence: the native zip archive (`collection.yaml`, `screens/`, `images/`,
-    `metadata/`) (Req 12.5, 17.3) + crash-recovery journal (Req 18.4).
+    `metadata/`) (Req 12.5, 17.3) + crash-recovery journal (Req 18.4). The
+    optional `TriggeringCommand` round-trips unchanged, present or absent
+    (Req 17.2a).
   - Capture rules + masking rules (Req 9.7-9.9, Req 13).
   - Replay engine (sequence, first/prev/next/last, autoplay, speed, timing)
     (Req 10) -- pure state machine, no egui.
@@ -113,6 +121,23 @@ model-diff guard so command-driven changes are caught without double-capturing
 "already captured this transition" flag). The configurable interval (Req 9.6) and
 rules (Req 9.7-9.9) filter what (1)/(2) emit. This introduces NO new navigation or
 dispatch mechanism (framework-conformance).
+
+### Recording the triggering command (Req 9.10-9.12, the recorder delta)
+
+When a capture is emitted by cause (2) -- a command completion that changed the
+screen -- the command just resolved by `ff_command::resolve_target` and
+dispatched by `shell/target_dispatch.rs` is the triggering command. The dispatch
+layer already holds both the canonical command string and the resolved
+`CommandTarget`; the auto-capture path threads that pair onto the new capture's
+`TriggeringCommand` (Req 9.10). No bespoke intercept is added -- the data is read
+at the existing seam the command already passes through (Req 9.11,
+framework-conformance). For cause (1) reached WITHOUT a command (there is no such
+path in v1: every Context transition is command-driven via navigate_to) and for
+interval/rule captures (Req 9.6/9.7), `TriggeringCommand` is left absent
+(Req 9.12). Replay shows a "caused by: <command>" line only where the field is
+present (Req 10.9-10.10). The schema is deliberately sufficient to later export
+the ordered commands as a macro (Req 21.2); the exporter itself is deferred
+(Req 21.1).
 
 ## 5. Q8 RESOLVED -- PDF library selection
 
@@ -225,6 +250,11 @@ affordance invokes the SAME command id (Req 11.4).
   clipboard delivery. Proves the vertical end to end with minimal ff-desktop code.
 - **Wave 2:** CAPTURE collection lifecycle + auto-capture hook at
   reconstruct_context + the ScrmViewer Context.
+- **Wave 2R (recorder delta):** optional `TriggeringCommand` on `ScreenCapture`,
+  populated from the dispatch seam at the auto-capture hook, round-tripped in
+  persistence, and surfaced as a "caused by" line in replay (Req 9.10-9.12,
+  10.9-10.10, 17.2a). Macro export (Req 21.1) is DEFERRED -- v1 only guarantees
+  the schema is macro-sufficient (Req 21.2).
 - **Wave 3:** exporters wired to commands, masking, evidence package, protected
   PDF.
 - **Waves 4+ (pure refactor, separate CRs as they land):** use the ScreenProvider
@@ -254,5 +284,7 @@ existing behaviour (Req 19.3).
 Every requirement in requirements.md maps to a section here: Req 1->S1/S3; Req
 2->S3; Req 3->S3; Req 4-6->S3/S7; Req 7-10->S3(ff-scrm)/S4; Req 11->S7; Req
 12->S3/S5; Req 13->S3; Req 14->S3; Req 15->S3 (DIDL fields on ScreenCapture);
-Req 16->S6; Req 17->S3; Req 18->S9; Req 19->S8; Req 20->S5. tasks.md will carry
-the per-criterion task breakdown and TCR rows.
+Req 16->S6; Req 17->S3; Req 18->S9; Req 19->S8; Req 20->S5; Req 9.10-9.12 /
+10.9-10.10 / 17.2a (recorder delta)->S3/S4; Req 21 (macro export)->DEFERRED, not
+designed in v1 beyond the schema-sufficiency guarantee (Req 21.2). tasks.md will
+carry the per-criterion task breakdown and TCR rows.

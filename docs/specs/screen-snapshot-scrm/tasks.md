@@ -109,6 +109,38 @@ tracked as separate CRs when they land; they are NOT in this list.
   - [ ] 9.6 Digital signature add-on: design-confirm the signer path before build;
         deferred configurable option, surfaced to owner. (Req 20.4a, Q6)
 
+## Wave 2R -- recorder delta (command + screen timeline)
+
+Extension of CR-NR-098 (owner-confirmed). Records the triggering command on each
+auto-Capture so a Collection becomes a command + screen timeline. Reuses
+CAPTURE START/STOP/REPLAY and the Collection format -- NO new RECORD verb, NO new
+artefact. TDD per testing.md: failing test first; each test carries its
+`// Validates:` annotation.
+
+- [ ] 11. TriggeringCommand on the Capture data model (`ff-scrm` / `ff-screen-model`)
+  - [ ] 11.1 Add an optional `TriggeringCommand { command_string, target_kind }`
+        to `ScreenCapture`; represent absence as `Option`, not an empty-string
+        sentinel. (Req 17.2, 17.2a, 9.12)
+  - [ ] 11.2 Round-trip `TriggeringCommand` (present and absent) through the zip
+        archive persistence unchanged -- extend the Wave-0 round-trip proptest.
+        (Req 17.2a, 12.5)
+- [ ] 12. Populate TriggeringCommand from the dispatch seam
+  - [ ] 12.1 At the auto-capture hook (task 5), thread the command just resolved
+        by `resolve_target` / dispatched by `shell/target_dispatch.rs` into the
+        Capture as its `TriggeringCommand`; NO bespoke intercept. (Req 9.10, 9.11)
+  - [ ] 12.2 Leave `TriggeringCommand` absent for interval-driven (Req 9.6) and
+        rule-driven (Req 9.7) captures. (Req 9.12)
+  - [ ] 12.3 Unit test: a command-caused transition records the canonical command
+        string + resolved target kind; an interval/rule capture records none.
+        (Req 9.10, 9.12)
+- [ ] 13. Show the cause in Replay
+  - [ ] 13.1 In `ScrmViewerContext` replay render, show a selectable "caused by:
+        <command>" line for a Capture that carries a TriggeringCommand; omit it
+        when absent. (Req 10.9, 10.10)
+  - [ ] 13.2 Full-shell egui_kittest: a recorded command-caused transition shows
+        its cause line as selectable text; an interval capture shows no cause
+        line. (Req 10.9, 10.10)
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

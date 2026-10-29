@@ -279,6 +279,20 @@ automatically on screen transitions, optionally filtered by rules.
 9.8 THE system SHALL support rule conditions on: Screen Name, Program Name,
     Message Class, Transaction ID, Dataset Name, User ID. `[SCRM-017]`
 9.9 THE system SHALL support multiple active rules simultaneously. `[SCRM-018]`
+9.10 WHEN an automatic Capture is created because a command caused a screen
+     transition THE system SHALL record, on that Capture, the triggering command
+     as resolved through the single dispatch path (the canonical command string
+     and its resolved `CommandTarget` kind), so the Collection is a command + screen
+     timeline and not a screen-only timeline. (Owner-confirmed recorder scope;
+     amends Req 9, extends Req 17.2.) `[recorder]`
+9.11 THE triggering-command record SHALL be obtained from the existing
+     command-dispatch seam (`ff_command::resolve_target` / `shell/target_dispatch.rs`)
+     and SHALL NOT be gathered via a bespoke command intercept. (framework-conformance;
+     extends Req 11.3.) `[recorder]`
+9.12 WHERE an automatic Capture is created by a non-command cause (a timed
+     interval per Req 9.6, or a rule per Req 9.7) THE triggering-command record
+     SHALL be absent for that Capture, and absence SHALL be a valid, explicitly
+     representable state (not an empty-string sentinel). `[recorder]`
 
 ---
 
@@ -296,6 +310,13 @@ automatically on screen transitions, optionally filtered by rules.
 10.7 THE system SHALL display elapsed time between captures. `[SCRM-036]`
 10.8 THE replayed screen content SHALL be shown as selectable text (consistent
      with Requirement 1). `[ARCH]`
+10.9 WHERE a Capture carries a triggering command (Req 9.10) THE replay view
+     SHALL display that command as the cause of the transition INTO that Capture
+     (e.g. a "caused by: <command>" line shown with the screen), as selectable
+     text. `[recorder]`
+10.10 WHERE a Capture has no triggering command (Req 9.12) THE replay view SHALL
+     omit the cause line for that Capture rather than showing an empty one.
+     `[recorder]`
 
 ---
 
@@ -471,8 +492,12 @@ other FFWB workspace (tab, focus, persistence).
      Description, CreatedBy, CreatedTimestamp, SessionId, Screens[]. `[SCRM-10]`
 17.2 THE system SHALL model a `ScreenCapture` with: CaptureId, SequenceNumber,
      Timestamp, ScreenName, ProgramName, DialogState, CursorRow, CursorColumn,
-     TextBuffer, AttributeBuffer, ImageBuffer (optional), Notes, Metadata.
-     `[SCRM-10]`
+     TextBuffer, AttributeBuffer, ImageBuffer (optional), Notes, Metadata,
+     TriggeringCommand (optional). `[SCRM-10]` `[recorder]`
+17.2a THE optional `TriggeringCommand` SHALL carry the canonical command string
+     AND the resolved `CommandTarget` kind (Req 9.10), and SHALL be representable
+     as absent (Req 9.12). It SHALL round-trip through the persisted Collection
+     format (Req 17.3) unchanged. `[recorder]`
 17.3 THE persisted Collection format SHALL be the native zip-compatible archive of
      Requirement 12.5. `[SCRM-048]`
 
@@ -522,13 +547,43 @@ proves the new boundaries rather than more weight in the monolith.
 
 ---
 
+## Requirement 21 -- Export a recording as a macro (DEFERRED, NOT v1)
+
+**User story:** As a user, I want to turn a command + screen recording into a
+re-runnable macro, so a captured navigation flow can be replayed as ACTIONS, not
+just reviewed as screens.
+
+### Status
+
+DEFERRED by owner decision. This requirement is recorded so the v1 data model is
+designed to make it possible, but the macro EXPORTER itself is NOT built in v1.
+v1 delivers only the captured triggering-command data (Req 9.10, 17.2a) in a
+shape a later exporter can consume. Tracked as NOT-COVERED in the coverage record.
+
+#### Acceptance Criteria (deferred)
+21.1 THE system SHALL (in a later phase) export the ordered sequence of
+     `TriggeringCommand` entries from a Collection as a macro artefact compatible
+     with the FFWB macro facility (Lua macro engine / Macro Library). `[recorder-deferred]`
+21.2 THE v1 `TriggeringCommand` schema (Req 17.2a) SHALL be sufficient to drive
+     21.1 without a further data-model change -- i.e. it SHALL capture enough to
+     reconstruct each command as issued. THIS is the only part of Requirement 21
+     that v1 MUST satisfy; 21.1 is the deferred exporter. `[recorder]`
+21.3 WHERE a Capture has no triggering command (Req 9.12) THE macro export SHALL
+     skip it rather than emit an empty action. `[recorder-deferred]`
+
+---
+
 ## Out of scope (v1) / future enhancements
 
 Recorded from the SCRM source "Future Enhancements"; NOT gated here, listed so the
-architecture does not preclude them: screen differencing, session recording, user
-activity heat maps, process mining, AI-generated walkthroughs/training manuals,
-voice-narrated replay, automated test evidence generation, PowerPoint export,
-Git-managed collections. `[SCRM section 12]`
+architecture does not preclude them: screen differencing, user activity heat
+maps, process mining, AI-generated walkthroughs/training manuals, voice-narrated
+replay, automated test evidence generation, PowerPoint export, Git-managed
+collections. `[SCRM section 12]`
+
+NOTE: "session recording" is no longer purely future -- its core (command +
+screen timeline) is gated by Req 9.10-9.12, 10.9-10.10, and 17.2a. Exporting that
+recording as a re-runnable MACRO remains deferred (Req 21).
 
 ---
 
