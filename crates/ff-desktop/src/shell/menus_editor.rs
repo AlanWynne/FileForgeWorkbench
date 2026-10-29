@@ -97,38 +97,47 @@ impl WorkbenchShell {
                 }
             }
             A::Save => {
-                if let Some(name) = self.menus_editor_panel.selected.clone() {
-                    self.save_working_menu(&name);
-                }
+                // Delegate to the shared persist path so the in-panel Save button
+                // and the ISPF SAVE/END commands are ONE behaviour (B081,
+                // project-master Req 11.8). The error (if any) is surfaced inline
+                // by `save_working_menu`; the button ignores the Result.
+                let _ = self.menus_editor_persist();
             }
             A::SaveAs(new_name) => {
-                self.save_working_menu(&new_name);
+                let _ = self.save_working_menu(&new_name);
                 self.menus_editor_panel.name_buffer.clear();
             }
         }
     }
 
     /// Validate then serialise+write the working menu to `menus/<name>.toml`,
-    /// refreshing the list and re-selecting the saved menu on success.
+    /// refreshing the list and re-selecting the saved menu on success. Returns
+    /// ok/err so the editable-Context seam's END can branch save-then-leave vs
+    /// stay-with-error; the error is ALSO surfaced inline on failure.
+    ///
+    /// `pub(super)` so the save-convention seam (`commands_menus_save.rs`) shares
+    /// the SINGLE persist path (project-master Req 11.8).
     ///
     /// Validates: menu-workspace Requirement 13.7, 13.8, 13.9, 13.13
-    fn save_working_menu(&mut self, name: &str) {
+    pub(super) fn save_working_menu(&mut self, name: &str) -> Result<(), String> {
         let Some(menu) = self.menus_editor_panel.working.clone() else {
-            return;
+            // Nothing loaded -> nothing to persist; a clean no-op.
+            return Ok(());
         };
         let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
         // Shared validation: the editor cannot produce a file the loader rejects.
         if let Err(e) = crate::menu_workspace::loader::validate_menu(&menu, limits) {
-            self.menus_editor_panel.error = Some(e);
-            return;
+            self.menus_editor_panel.error = Some(e.clone());
+            return Err(e);
         }
         if let Err(e) = self.write_menu_file(name, &menu) {
-            self.menus_editor_panel.error = Some(e);
-            return;
+            self.menus_editor_panel.error = Some(e.clone());
+            return Err(e);
         }
         self.menus_editor_panel.error = None;
         self.refresh_menus_editor_list();
         self.menus_editor_panel.load_working(name, menu);
+        Ok(())
     }
 
     /// Serialise `menu` and write it to `<menus_dir>/<file-stem>.toml`.
@@ -151,7 +160,10 @@ impl WorkbenchShell {
     /// Load a menu by editor name into a `MenuFile` for editing. A built-in name
     /// (POM / Settings) with no user file falls back to the compiled
     /// Recovery_Baseline (Req 13.3); a user file is parsed from disk.
-    fn load_menu_for_editor(&self, name: &str) -> MenuFile {
+    ///
+    /// `pub(super)` so the save-convention seam (`commands_menus_save.rs`) can
+    /// re-open the persisted working copy on discard/reload.
+    pub(super) fn load_menu_for_editor(&self, name: &str) -> MenuFile {
         let menus_dir = self.menus_dir();
         let stem = menu_file_stem(name);
         let path = menus_dir.join(format!("{stem}.toml"));

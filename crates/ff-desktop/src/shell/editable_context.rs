@@ -31,6 +31,11 @@ use crate::tab_state::KindTag;
 /// only [`EditableKind::AliasEditor`]; the sibling config editors are the
 /// fast-follow set (see the module docs and the TODO below).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Each variant names a concrete editable Context whose product name ends in
+// "Editor" (Alias/Theme/Menus/Keys/Kinds Editor), so the shared "Editor" suffix
+// is intentional and matches the Context names; renaming them would diverge from
+// the UI vocabulary for no benefit.
+#[allow(clippy::enum_variant_names)]
 pub(super) enum EditableKind {
     /// The Alias Editor Context (the v1 deliverable).
     AliasEditor,
@@ -38,6 +43,18 @@ pub(super) enum EditableKind {
     /// shared seam so typed SAVE / END / RETURN / REFRESH persist/discard/reload
     /// the working theme, matching the convention the Alias Editor already meets.
     ThemeEditor,
+    /// The Menus Editor Context (project-master Req 11, B081 second fix). Typed
+    /// SAVE persists + stays, END persists + exits, RETURN/REFRESH discard the
+    /// working menu and re-open the persisted copy.
+    MenusEditor,
+    /// The Keys Editor Context (project-master Req 11, B081 second fix). Typed
+    /// SAVE persists + stays, END persists + exits, RETURN/REFRESH discard the
+    /// working key rows and re-open the persisted copy.
+    KeysEditor,
+    /// The Kinds Editor Context (project-master Req 11, B081 second fix). Typed
+    /// SAVE persists + stays, END persists + exits, RETURN/REFRESH discard the
+    /// working Kind config and re-open the persisted copy.
+    KindsEditor,
 }
 
 impl WorkbenchShell {
@@ -60,16 +77,20 @@ impl WorkbenchShell {
             // shared seam, so typed SAVE persists, END persists-then-exits, and
             // RETURN/REFRESH discard the working theme and revert the live preview.
             KindTag::ThemeEditor => Some(EditableKind::ThemeEditor),
-            // TODO(CR-CH-071 fast-follow, command-environments tasks 34.1-34.5):
-            // wire the remaining sibling config editors. Each adds an
-            // `EditableKind` arm + its persist (its existing save action) /
-            // discard+reload (drop and re-open its working copy):
-            //   KindTag::ConfigPanel  -> Settings (ConfigPanel model)   (34.1)
-            //   KindTag::MenusEditor  -> Menus (save_working_menu)      (34.2)
-            //   KindTag::KeysEditor   -> Keys (save_keys_for_kind)      (34.4)
-            //   KindTag::KindsEditor  -> Kinds (apply_kinds_editor_action) (34.5)
-            // Until wired they fall through as non-editable (plain nav), exactly
-            // as today -- no behaviour change for them (Req 20a.14).
+            // B081 second fix / project-master Req 11: the Menus / Keys / Kinds
+            // editors are now wired into the shared seam (each already owned a
+            // working copy + an in-panel Save button; the only gap was the ISPF
+            // command verbs). Each persist delegates to that editor's EXISTING
+            // save function; each discard/reload re-opens the persisted copy.
+            KindTag::MenusEditor => Some(EditableKind::MenusEditor),
+            KindTag::KeysEditor => Some(EditableKind::KeysEditor),
+            KindTag::KindsEditor => Some(EditableKind::KindsEditor),
+            // TODO(CR-CH-071 fast-follow, command-environments task 34.1): wire
+            // the Settings / Config panel. It differs from the five sibling
+            // editors in that it currently AUTOSAVES on every edit (no working
+            // copy yet), so it needs a working-copy buffer before it can join the
+            // seam; see save-convention-audit findings 4.3. Until wired it falls
+            // through as non-editable (plain nav), exactly as today (Req 20a.14).
             _ => None,
         }
     }
@@ -83,6 +104,9 @@ impl WorkbenchShell {
         match self.editable_context_kind() {
             Some(EditableKind::AliasEditor) => self.alias_editor_persist(),
             Some(EditableKind::ThemeEditor) => self.theme_editor_persist(),
+            Some(EditableKind::MenusEditor) => self.menus_editor_persist(),
+            Some(EditableKind::KeysEditor) => self.keys_editor_persist(),
+            Some(EditableKind::KindsEditor) => self.kinds_editor_persist(),
             None => Ok(()),
         }
     }
@@ -96,6 +120,9 @@ impl WorkbenchShell {
         match self.editable_context_kind() {
             Some(EditableKind::AliasEditor) => self.alias_editor_discard(),
             Some(EditableKind::ThemeEditor) => self.theme_editor_discard(),
+            Some(EditableKind::MenusEditor) => self.menus_editor_discard(),
+            Some(EditableKind::KeysEditor) => self.keys_editor_discard(),
+            Some(EditableKind::KindsEditor) => self.kinds_editor_discard(),
             None => {}
         }
     }
@@ -109,6 +136,9 @@ impl WorkbenchShell {
         match self.editable_context_kind() {
             Some(EditableKind::AliasEditor) => self.alias_editor_reload(),
             Some(EditableKind::ThemeEditor) => self.theme_editor_reload(),
+            Some(EditableKind::MenusEditor) => self.menus_editor_reload(),
+            Some(EditableKind::KeysEditor) => self.keys_editor_reload(),
+            Some(EditableKind::KindsEditor) => self.kinds_editor_reload(),
             None => {}
         }
     }

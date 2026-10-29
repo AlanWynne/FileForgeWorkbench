@@ -130,26 +130,42 @@ impl WorkbenchShell {
                     self.kinds_editor_panel.kind_names.sort();
                 }
             }
-            A::Save => self.save_selected_kind(),
+            A::Save => {
+                // Delegate to the shared persist path so the in-panel Save button
+                // and the ISPF SAVE/END commands are ONE behaviour (B081,
+                // project-master Req 11.8). The status/error is surfaced inline by
+                // `save_selected_kind`; the button ignores the Result.
+                let _ = self.save_selected_kind();
+            }
         }
     }
 
     /// Serialise the working Kind config to `workspace-kinds/<name>.toml` and
     /// reload the registry so the change is live (title / menu bar / key list /
-    /// profile-on-open all recompute from the registry).
+    /// profile-on-open all recompute from the registry). Returns ok/err so the
+    /// editable-Context seam's END can branch save-then-leave vs stay-with-error;
+    /// the status/error is ALSO surfaced inline.
+    ///
+    /// `pub(super)` so the save-convention seam (`commands_kinds_save.rs`) shares
+    /// the SINGLE persist path (project-master Req 11.8).
     ///
     /// Validates: workspace-kinds Requirement 6.3
-    fn save_selected_kind(&mut self) {
+    pub(super) fn save_selected_kind(&mut self) -> Result<(), String> {
         let Some(cfg) = self.kinds_editor_panel.working.clone() else {
-            self.kinds_editor_panel.error = Some("No Kind selected".to_string());
-            return;
+            let msg = "No Kind selected".to_string();
+            self.kinds_editor_panel.error = Some(msg.clone());
+            return Err(msg);
         };
         match self.persist_kind_config(&cfg) {
             Ok(()) => {
                 self.kinds_editor_panel.error =
                     Some(format!("Saved workspace-kinds/{}.toml", cfg.name));
+                Ok(())
             }
-            Err(e) => self.kinds_editor_panel.error = Some(e),
+            Err(e) => {
+                self.kinds_editor_panel.error = Some(e.clone());
+                Err(e)
+            }
         }
     }
 

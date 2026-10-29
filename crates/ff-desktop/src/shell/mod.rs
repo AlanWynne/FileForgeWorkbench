@@ -39,11 +39,14 @@ mod command_line_outcome;
 mod commands;
 mod commands_environment;
 mod commands_fastpath;
+mod commands_keys_save;
+mod commands_kinds_save;
 mod commands_ladder_a;
 mod commands_ladder_b;
 mod commands_ladder_c;
 mod commands_line;
 mod commands_menu;
+mod commands_menus_save;
 mod commands_scrm;
 mod commands_session;
 mod commands_theme;
@@ -134,11 +137,17 @@ mod tests_common;
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]
+mod tests_keys_save_convention;
+#[cfg(test)]
+mod tests_kinds_save_convention;
+#[cfg(test)]
 mod tests_locale_menu;
 #[cfg(test)]
 mod tests_locale_menu_full;
 #[cfg(test)]
 mod tests_menu_workspace;
+#[cfg(test)]
+mod tests_menus_save_convention;
 #[cfg(test)]
 mod tests_misc;
 #[cfg(test)]

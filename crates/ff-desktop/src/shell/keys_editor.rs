@@ -83,7 +83,10 @@ impl WorkbenchShell {
 
     /// Load the effective key map for a workspace kind: the `keymaps/<kind>.toml`
     /// override file when present and parseable, else the compiled default map.
-    fn load_key_map_for_kind(&self, kind: &str) -> KeyMap {
+    ///
+    /// `pub(super)` so the save-convention seam (`commands_keys_save.rs`) can
+    /// re-open the persisted working copy on discard/reload.
+    pub(super) fn load_key_map_for_kind(&self, kind: &str) -> KeyMap {
         let path = self.keymaps_dir().join(format!("{kind}.toml"));
         if let Ok(text) = std::fs::read_to_string(&path) {
             if let Ok(table) = toml::from_str::<toml::Table>(&text) {
@@ -106,9 +109,11 @@ impl WorkbenchShell {
                 self.keys_editor_panel.load_kind(&kind, &map);
             }
             A::Save => {
-                if let Some(kind) = self.keys_editor_panel.selected_kind.clone() {
-                    self.save_keys_for_kind(&kind);
-                }
+                // Delegate to the shared persist path so the in-panel Save button
+                // and the ISPF SAVE/END commands are ONE behaviour (B081,
+                // project-master Req 11.8). The status/error is surfaced inline by
+                // `save_keys_for_kind`; the button ignores the Result.
+                let _ = self.keys_editor_persist();
             }
             A::Reset => {
                 if let Some(kind) = self.keys_editor_panel.selected_kind.clone() {
@@ -121,25 +126,34 @@ impl WorkbenchShell {
 
     /// Serialise the working rows to `keymaps/<kind>.toml` and reload that kind's
     /// context map into the resolver so the new bindings take effect at once.
+    /// Returns ok/err so the editable-Context seam's END can branch
+    /// save-then-leave vs stay-with-error; on failure the error is ALSO surfaced
+    /// inline, and on success a confirmation status line is set.
+    ///
+    /// `pub(super)` so the save-convention seam (`commands_keys_save.rs`) shares
+    /// the SINGLE persist path (project-master Req 11.8).
     ///
     /// Validates: function-keys-and-history Requirement 22.4
-    fn save_keys_for_kind(&mut self, kind: &str) {
+    pub(super) fn save_keys_for_kind(&mut self, kind: &str) -> Result<(), String> {
         let map = rows_to_map(&self.keys_editor_panel.rows, kind);
         let toml_text = key_map_to_toml(&map);
         let dir = self.keymaps_dir();
         if let Err(e) = std::fs::create_dir_all(&dir) {
-            self.keys_editor_panel.error = Some(format!("Could not create keymaps dir: {e}"));
-            return;
+            let msg = format!("Could not create keymaps dir: {e}");
+            self.keys_editor_panel.error = Some(msg.clone());
+            return Err(msg);
         }
         let path = dir.join(format!("{kind}.toml"));
         if let Err(e) = std::fs::write(&path, toml_text) {
-            self.keys_editor_panel.error = Some(format!("Save failed: {e}"));
-            return;
+            let msg = format!("Save failed: {e}");
+            self.keys_editor_panel.error = Some(msg.clone());
+            return Err(msg);
         }
         // Reload this kind's context map from the freshly written file so the
         // binding change is live without a relaunch.
         self.key_map_resolver.set_context_map(kind.to_string(), map);
         self.keys_editor_panel.error = Some(format!("Saved keymaps/{kind}.toml"));
+        Ok(())
     }
 }
 
