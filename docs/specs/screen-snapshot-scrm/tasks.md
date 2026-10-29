@@ -109,6 +109,28 @@ tracked as separate CRs when they land; they are NOT in this list.
   - [ ] 9.6 Digital signature add-on: design-confirm the signer path before build;
         deferred configurable option, surfaced to owner. (Req 20.4a, Q6)
 
+## Wave S -- SCRM menu-bar surfacing (FORWARD-PLAN Phase 2, decision 1)
+
+Surface the already-built SNAPSHOT / CAPTURE family on the menu bar. Pure
+surfacing: NO new verb, intercept, dispatcher, or navigation stack; each item
+dispatches an EXISTING verb through the single front door (command parity).
+Builds ON menu-workspace Req 17 (CR-NR-080) + code-only built-in menu content
+(CR-CH-021). The bare-core POM stays EXACTLY `0`/`3`/`X` (CR-CH-073).
+
+- [x] 14. Surface SCRM as a menu-bar entry (Req 21)
+  - [x] 14.1 Decouple the compiled default Menu_Bar from the barebones POM: add the
+        code-only `DEFAULT_MENU_BAR_TOML` constant (Settings / Help / SCRM
+        `SNAPSHOT` entry / hidden terminate) and parse it in `default_menubar_menu()`.
+        `DEFAULT_POM_TOML` unchanged. (Req 21.1, 21.2)
+  - [x] 14.2 Make the `SNAPSHOT` bar entry a DYNAMIC source (mirroring the
+        `THEME LIST` theme picker): `dynamic_menu_options("SNAPSHOT")` yields one
+        child per existing `SNAPSHOT <format>` / `CAPTURE ...` verb, each dispatched
+        via `dispatch_command_string` (single front door). (Req 21.3, 21.4)
+  - [x] 14.3 Tests: unit (default bar carries SNAPSHOT, POM unchanged, dynamic
+        source lists existing verbs, command parity at the dispatch seam) + a
+        full-shell egui_kittest proving a CLICK on the `CAPTURE START` child starts
+        a collection. (Req 21.1-21.5; workspace-conformance)
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

@@ -522,6 +522,47 @@ proves the new boundaries rather than more weight in the monolith.
 
 ---
 
+## Requirement 21 -- SCRM surfaced on the menu bar (core discoverability)
+
+**User story:** As a user, I want the already-built SCRM snapshot/capture family
+to be discoverable from the Workbench menu bar, not only by typing, so I can reach
+it without memorising the verbs -- while the bare-core POM stays minimal.
+
+### Context (FORWARD-PLAN resolved decision 1, owner-confirmed)
+
+SCRM is BUILT and core-wired (Requirements 1-20): the `SNAPSHOT` and
+`CAPTURE START/STOP/SCREEN/STATUS/LIST/PURGE/REPLAY` verbs already dispatch
+through the single front door and the `[REPLAY]` Context is wired. This
+requirement is pure SURFACING: it places those EXISTING verbs on the menu bar.
+It builds ON the framework (menu-workspace Requirement 17 menu-bar support,
+CR-NR-080; code-only built-in menu content, CR-CH-021) and introduces NO new
+verb, NO bespoke intercept, NO second dispatcher, and NO second navigation stack
+(framework-conformance). It is the menu-bar analogue of the existing dynamic
+`THEME LIST` theme-picker dropdown.
+
+#### Acceptance Criteria
+21.1 THE compiled default Menu_Bar SHALL present an SCRM entry (in addition to
+     the existing bar-visible options), so SCRM is reachable from the menu bar.
+     (FORWARD-PLAN decision 1.)
+21.2 THE bare-core POM (`DEFAULT_POM_TOML`) SHALL remain EXACTLY `0` Settings /
+     `3` Help / `X` terminate (CR-CH-073); surfacing SCRM SHALL NOT re-expand the
+     POM. (FORWARD-PLAN Phase 2 / CR-CH-073.)
+21.3 EACH SCRM menu-bar item's `command` SHALL be an EXISTING SCRM verb
+     (`SNAPSHOT`[/`TEXT`/`ANSI`/`MARKDOWN`/`MD`/`HTML`/`YAML`/`AI`] or
+     `CAPTURE START/STOP/SCREEN/STATUS/LIST/PURGE/REPLAY`), so activating it
+     routes through `ff_command::resolve_target` and the shared dispatch path
+     identically to typing the verb. NO new verb, intercept, dispatcher, or
+     navigation stack SHALL be introduced. (framework-conformance; extends
+     Requirement 11.3, 11.4.)
+21.4 WHEN the user activates an SCRM menu-bar item THE system SHALL dispatch the
+     item's existing verb through the single front door (`dispatch_command_string`
+     -> `resolve_target`), with the same observable effect as the typed command
+     (command parity). (extends Requirement 11.4.)
+21.5 Typed access to `SNAPSHOT` / `CAPTURE ...` SHALL continue to work unchanged
+     (the surfacing is additive). (FORWARD-PLAN decision 1.)
+
+---
+
 ## Out of scope (v1) / future enhancements
 
 Recorded from the SCRM source "Future Enhancements"; NOT gated here, listed so the

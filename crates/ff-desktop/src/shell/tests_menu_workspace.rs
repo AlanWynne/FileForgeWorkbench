@@ -161,6 +161,53 @@ fn menu_bar_dynamic_theme_list_generates_one_item_per_theme() {
     );
 }
 
+/// Validates: screen-snapshot-scrm Req 21.1, 21.3 (CR-NR-098) -- the SCRM
+/// `SNAPSHOT` menu-bar entry is a DYNAMIC source: its dropdown lists the existing
+/// SNAPSHOT-format and CAPTURE-lifecycle verbs, each dispatching an EXISTING SCRM
+/// verb (no bare `SNAPSHOT` duplicate; no new verb introduced).
+#[test]
+fn menu_bar_dynamic_scrm_source_lists_existing_verbs() {
+    let shell = make_shell();
+    let dynamic = shell
+        .dynamic_menu_options("SNAPSHOT")
+        .expect("SNAPSHOT is a dynamic SCRM source");
+    let cmds: Vec<&str> = dynamic.iter().map(|o| o.command.as_str()).collect();
+    // The one-shot snapshot formats are present.
+    assert!(
+        cmds.contains(&"SNAPSHOT TEXT") && cmds.contains(&"SNAPSHOT MARKDOWN"),
+        "SCRM dropdown must list the SNAPSHOT format verbs, got: {cmds:?}"
+    );
+    // The CAPTURE lifecycle verbs are present.
+    for expected in [
+        "CAPTURE START",
+        "CAPTURE STOP",
+        "CAPTURE SCREEN",
+        "CAPTURE STATUS",
+        "CAPTURE LIST",
+        "CAPTURE PURGE",
+        "CAPTURE REPLAY",
+    ] {
+        assert!(
+            cmds.contains(&expected),
+            "SCRM dropdown must list {expected}, got: {cmds:?}"
+        );
+    }
+    // No bare `SNAPSHOT` child (the top-level button already heads the group;
+    // a duplicate label would be ambiguous).
+    assert!(
+        !cmds.contains(&"SNAPSHOT"),
+        "SCRM dropdown must not duplicate the bare SNAPSHOT label"
+    );
+    // Every child dispatches an EXISTING SCRM verb (SNAPSHOT* or CAPTURE*).
+    for opt in &dynamic {
+        assert!(
+            opt.command.starts_with("SNAPSHOT ") || opt.command.starts_with("CAPTURE "),
+            "each SCRM item must dispatch an existing SNAPSHOT/CAPTURE verb, got: {}",
+            opt.command
+        );
+    }
+}
+
 /// Validates: menu-workspace Req 17.10 -- a non-dynamic command yields no
 /// dynamic options (so the bar falls back to peek / direct dispatch).
 #[test]
@@ -169,6 +216,77 @@ fn menu_bar_dynamic_options_none_for_ordinary_command() {
     assert!(
         shell.dynamic_menu_options("SETTINGS").is_none(),
         "an ordinary command must not be a dynamic source"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 21.4 (CR-NR-098) -- activating an SCRM
+/// menu-bar item dispatches its EXISTING verb through the single front door,
+/// observably identical to typing the verb. This asserts command parity directly
+/// at the dispatch seam the bar uses (`dispatch_command_string`), the same seam
+/// the render arm invokes on click.
+#[test]
+fn scrm_menu_bar_item_dispatch_is_command_parity() {
+    // The bar entry for SCRM is a dynamic dropdown; its children carry existing
+    // verbs. Activating `CAPTURE START` must start a collection exactly as typing
+    // it would.
+    let mut via_bar = make_shell();
+    assert!(
+        !via_bar.scrm.is_active(),
+        "precondition: no active SCRM collection"
+    );
+    // The bar render dispatches the child's command through this exact seam.
+    via_bar.dispatch_command_string("CAPTURE START");
+    assert!(
+        via_bar.scrm.is_active(),
+        "activating the SCRM `CAPTURE START` bar item must start a collection \
+         (front-door dispatch, command parity)"
+    );
+
+    // Equivalence: a shell driven by the typed command reaches the same state.
+    let mut via_typed = make_shell();
+    via_typed.handle_command("CAPTURE START");
+    assert_eq!(
+        via_bar.scrm.is_active(),
+        via_typed.scrm.is_active(),
+        "the bar item and the typed command must have the same observable effect"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 21.1, 21.4 (CR-NR-098),
+/// workspace-conformance -- a FULL-SHELL render: the SCRM `SNAPSHOT` entry is a
+/// live, rendered menu-bar button, AND clicking it dispatches through the front
+/// door with the same effect as typing.
+///
+/// Two parts:
+/// 1. The rendered accessibility tree carries a live `SNAPSHOT` bar BUTTON (the
+///    entry is actually on the bar, not just in the data model). This is the
+///    rendered-menu-bar behaviour assertion required by testing.md /
+///    workspace-conformance.md.
+/// 2. Driving the exact dispatch seam the bar's click handler uses
+///    (`dispatch_command_string`) on the rendered shell starts a collection,
+///    identical to the typed command. (egui nested-menu popups are not reliably
+///    walkable in `egui_kittest` across a single click frame, so the activation
+///    is asserted at the dispatch seam the render arm invokes -- the closest
+///    harness-expressible proof of click parity, per the task note.)
+#[test]
+fn full_shell_scrm_menu_bar_entry_is_live_and_dispatches() {
+    use egui_kittest::kittest::Queryable;
+    let mut harness = harness_shell();
+    // Part 1: the SNAPSHOT bar button is actually rendered on the menu bar.
+    // `get_by_label` panics if absent, so a successful lookup is the assertion
+    // that the SCRM entry is a live, rendered bar button (not just data-model).
+    let _snapshot_btn = harness.get_by_label("SNAPSHOT");
+    // Part 2: the seam the bar click invokes starts a collection, as typing would.
+    assert!(
+        !harness.state().scrm.is_active(),
+        "precondition: no active SCRM collection at startup"
+    );
+    harness.state_mut().dispatch_command_string("CAPTURE START");
+    harness.run();
+    assert!(
+        harness.state().scrm.is_active(),
+        "activating the SCRM menu-bar family via the front-door seam the bar uses \
+         must start a collection (Req 21.4, command parity)"
     );
 }
 
