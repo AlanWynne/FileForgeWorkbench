@@ -139,6 +139,55 @@ pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
         .expect("compiled Recovery_Baseline Settings menu must parse")
 }
 
+/// Compiled Recovery_Baseline content for the default Menu_Bar (menu-workspace
+/// Req 17, CR-NR-080; screen-snapshot-scrm Req 21, CR-NR-098).
+///
+/// CODE-ONLY, never written to disk. The bar mirrors the barebones POM's
+/// bar-visible core (`Settings` / `Help`, with the terminate `X` option retained
+/// but hidden via `show_in_menu_bar = false`) and ADDS one SCRM entry so the
+/// already-built snapshot/capture family is discoverable from the menu bar
+/// (FORWARD-PLAN resolved decision 1).
+///
+/// CR-CH-073 invariant: this is a SEPARATE constant from [`DEFAULT_POM_TOML`], so
+/// the bare-core POM stays EXACTLY `0` Settings / `3` Help / `X` and is NOT
+/// re-expanded by the SCRM surfacing. The SCRM entry lives ONLY on the bar.
+///
+/// The `SNAPSHOT` entry is a DYNAMIC source (see
+/// `shell::render_chrome::dynamic_menu_options`): its dropdown children are the
+/// existing `SNAPSHOT <format>` / `CAPTURE ...` verbs, each dispatched through the
+/// single front door (command parity, Req 21.3/21.4). No new verb, intercept,
+/// dispatcher, or navigation stack is introduced (framework-conformance).
+///
+/// Validates: menu-workspace Requirement 17.1, 17.2; screen-snapshot-scrm
+/// Requirement 21.1, 21.2, 21.3 (CR-NR-098)
+pub const DEFAULT_MENU_BAR_TOML: &str = r#"title = "FileForge Workbench -- Menu Bar"
+
+[[options]]
+key = "0"
+command = "Settings"
+description = "FFWB Settings and Client Parameters"
+group = "Core"
+
+[[options]]
+key = "3"
+command = "Help"
+description = "Help -- workbench help and topics"
+group = "Core"
+
+[[options]]
+key = "S"
+command = "SNAPSHOT"
+description = "Screen snapshot / capture (SCRM)"
+group = "Core"
+
+[[options]]
+key = "X"
+command = "X"
+description = "Collapse to the visual root / close workspace (exit when last)"
+group = "Core"
+show_in_menu_bar = false
+"#;
+
 /// The default Menu_Bar NAME (menu-workspace Req 17.8, CR-NR-080). A user file
 /// at `menus/<slug>.toml` (slug = `mb-pom`) OVERRIDES the compiled default bar;
 /// the `MB-` prefix is a naming CONVENTION, not an enforced rule. Slice C will
@@ -147,25 +196,31 @@ pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
 pub const DEFAULT_MENU_BAR_NAME: &str = "MB-POM";
 
 /// Build the compiled default Menu_Bar `MenuFile` (menu-workspace Req 17,
-/// CR-NR-080).
+/// CR-NR-080; screen-snapshot-scrm Req 21, CR-NR-098).
 ///
 /// A Menu_Bar is a `MenuFile` rendered HORIZONTALLY (each top-level option is a
-/// dropdown button). Per owner decision, the barebones menu bar is the SAME as
-/// the barebones POM: this returns [`recovery_pom_menu`] so there is a SINGLE
-/// source of truth and the two can never diverge. The horizontal render skips
-/// options whose `show_in_menu_bar` is `false` (Req 17.2), so the barebones POM
+/// dropdown button). It parses [`DEFAULT_MENU_BAR_TOML`] so there is a SINGLE
+/// source for the compiled bar content (Req 12.7 analogue). The horizontal
+/// render skips options whose `show_in_menu_bar` is `false` (Req 17.2), so the
 /// terminate option (key `X`, marked `show_in_menu_bar = false`) does NOT appear
 /// on the bar, leaving Settings / Help (CR-CH-073 trimmed core; Catalogs/Files
-/// removed).
+/// removed) plus the SCRM `SNAPSHOT` entry (FORWARD-PLAN decision 1).
+///
+/// The bar is INTENTIONALLY distinct from the barebones POM
+/// ([`recovery_pom_menu`]): the POM stays exactly `0` Settings / `3` Help / `X`
+/// (CR-CH-073, do NOT re-expand), while the bar additionally surfaces SCRM. The
+/// two therefore no longer share a source constant.
 ///
 /// A top-level option's `command`, when it names a resolvable menu (e.g.
-/// `SETTINGS`), is PEEKED as a dropdown (Req 17.3); otherwise the button
-/// dispatches the command directly (Req 17.4). Later slices add named user
-/// menu-bar files and per-kind assignment; until then the bar is the POM.
+/// `SETTINGS`), is PEEKED as a dropdown (Req 17.3); when it names a DYNAMIC
+/// source (`SNAPSHOT`, `THEME LIST`) its children are generated at runtime
+/// (Req 17.10); otherwise the button dispatches the command directly (Req 17.4).
 ///
-/// Validates: menu-workspace Requirement 17.1, 17.2
+/// Validates: menu-workspace Requirement 17.1, 17.2; screen-snapshot-scrm
+/// Requirement 21.1, 21.2 (CR-NR-098)
 pub fn default_menubar_menu() -> crate::menu_workspace::MenuFile {
-    recovery_pom_menu()
+    crate::menu_workspace::loader::parse_menu_str(DEFAULT_MENU_BAR_TOML)
+        .expect("compiled default Menu_Bar must parse")
 }
 
 // === ensure_default_menu_files ==============================================
@@ -286,24 +341,33 @@ mod tests {
         );
     }
 
-    // Validates: menu-workspace Req 17.1, 17.2 (CR-NR-080) -- the default Menu_Bar
-    // is the barebones POM (single source): default_menubar_menu() equals
+    // Validates: menu-workspace Req 17.1, 17.2 (CR-NR-080); screen-snapshot-scrm
+    // Req 21.1, 21.2 (CR-NR-098) -- the default Menu_Bar is NOW a DISTINCT source
+    // from the barebones POM: it adds the SCRM `SNAPSHOT` entry the POM must not
+    // carry (CR-CH-073). So default_menubar_menu() must NOT equal
     // recovery_pom_menu().
     #[test]
-    fn default_menubar_is_the_barebones_pom() {
+    fn default_menubar_differs_from_barebones_pom_by_scrm_entry() {
+        let bar = default_menubar_menu();
+        let pom = recovery_pom_menu();
+        assert_ne!(
+            bar, pom,
+            "the default Menu_Bar must differ from the POM (it adds SCRM; POM stays 0/3/X)"
+        );
+        // The POM itself is unchanged: still exactly Settings / Help / terminate.
+        let pom_cmds: Vec<&str> = pom.options.iter().map(|o| o.command.as_str()).collect();
         assert_eq!(
-            default_menubar_menu(),
-            recovery_pom_menu(),
-            "the default Menu_Bar must be the barebones POM (single source of truth)"
+            pom_cmds,
+            vec!["Settings", "Help", "X"],
+            "the bare-core POM must stay EXACTLY 0 Settings / 3 Help / X (CR-CH-073)"
         );
     }
 
-    // Validates: menu-workspace Req 17.2a (CR-CH-073) -- the trimmed barebones
-    // POM includes Help and marks the terminate (X) option hidden from the bar,
-    // so the bar-visible options are Settings / Help (terminate excluded,
-    // Catalogs/Files removed).
+    // Validates: menu-workspace Req 17.2a (CR-CH-073); screen-snapshot-scrm
+    // Req 21.1 (CR-NR-098) -- the bar-visible options are Settings / Help / the
+    // SCRM SNAPSHOT entry (terminate X excluded; Catalogs/Files removed).
     #[test]
-    fn default_menubar_bar_visible_options_are_settings_help() {
+    fn default_menubar_bar_visible_options_are_settings_help_snapshot() {
         let menu = default_menubar_menu();
         let bar_cmds: Vec<&str> = menu
             .options
@@ -313,20 +377,72 @@ mod tests {
             .collect();
         assert_eq!(
             bar_cmds,
-            vec!["Settings", "Help"],
-            "bar-visible options must be Settings / Help (terminate X hidden; Catalogs/Files removed)"
+            vec!["Settings", "Help", "SNAPSHOT"],
+            "bar-visible options must be Settings / Help / SNAPSHOT \
+             (terminate X hidden; Catalogs/Files removed; SCRM surfaced per \
+             FORWARD-PLAN decision 1)"
         );
         // The terminate option (key X, command X after CR-CH-052) is present in
-        // the POM but hidden from the bar.
+        // the bar menu but hidden from the bar.
         let ret = menu
             .options
             .iter()
             .find(|o| o.key == "X")
-            .expect("terminate (X) option present in POM");
+            .expect("terminate (X) option present in the bar menu");
         assert!(
             !ret.show_in_menu_bar,
             "the terminate (X) option must be hidden from the menu bar (show_in_menu_bar = false)"
         );
+    }
+
+    // Validates: screen-snapshot-scrm Req 21.1, 21.2 (CR-NR-098, CR-CH-073) --
+    // adding the SCRM entry to the BAR must NOT re-expand the bare-core POM: the
+    // DEFAULT_POM_TOML still has exactly three options and no SNAPSHOT entry.
+    #[test]
+    fn scrm_surfacing_does_not_expand_the_pom() {
+        let pom = recovery_pom_menu();
+        assert_eq!(
+            pom.options.len(),
+            3,
+            "POM must stay at 3 options (CR-CH-073)"
+        );
+        assert!(
+            !pom.options.iter().any(|o| o.command == "SNAPSHOT"),
+            "the POM must NOT carry the SCRM SNAPSHOT entry (it lives only on the bar)"
+        );
+        assert!(
+            !DEFAULT_POM_TOML.contains("SNAPSHOT"),
+            "DEFAULT_POM_TOML must not mention SNAPSHOT"
+        );
+    }
+
+    // Validates: screen-snapshot-scrm Req 21.1, 21.3 (CR-NR-098) -- the compiled
+    // default Menu_Bar carries a top-level SCRM entry whose command is the
+    // existing SNAPSHOT verb (so it routes through the single front door).
+    #[test]
+    fn default_menubar_has_scrm_snapshot_entry() {
+        let menu = default_menubar_menu();
+        let scrm = menu
+            .options
+            .iter()
+            .find(|o| o.command == "SNAPSHOT")
+            .expect("default Menu_Bar must carry a SNAPSHOT entry");
+        assert!(
+            scrm.show_in_menu_bar,
+            "the SCRM SNAPSHOT entry must be visible on the bar"
+        );
+    }
+
+    // Validates: screen-snapshot-scrm Req 21.2 (CR-NR-098) -- DEFAULT_MENU_BAR_TOML
+    // is valid ASCII TOML.
+    #[test]
+    fn default_menu_bar_toml_is_valid_ascii_toml() {
+        assert!(
+            DEFAULT_MENU_BAR_TOML.is_ascii(),
+            "DEFAULT_MENU_BAR_TOML must use only ASCII characters"
+        );
+        let result: Result<toml::Value, _> = toml::from_str(DEFAULT_MENU_BAR_TOML);
+        assert!(result.is_ok(), "DEFAULT_MENU_BAR_TOML must be valid TOML");
     }
 
     // Validates: menu-workspace Req 17.3 -- the Settings top-level option's

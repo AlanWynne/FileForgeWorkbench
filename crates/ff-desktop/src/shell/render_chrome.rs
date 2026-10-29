@@ -252,34 +252,92 @@ impl WorkbenchShell {
     /// names one (menu-workspace Requirement 17.10, CR-NR-080 Slice D).
     ///
     /// A dynamic source produces its child options at RUNTIME rather than from a
-    /// file. The first (and currently only) source is `THEME LIST`: it yields one
-    /// child per available theme (`ff_theme::list_all_themes`, in list order),
-    /// each labelled by the theme name and dispatching `THEME <name>` (command
-    /// parity, theme-and-appearance Requirement 17.2, applied via the shared
-    /// `set_active_theme` path). This delivers the CR-NR-077 theme picker via the
-    /// menu bar. Returns `None` for any command that is not a dynamic source, so
-    /// the caller falls back to `peek_menu_options` / direct dispatch.
+    /// file. Two sources exist:
     ///
-    /// Validates: menu-workspace Requirement 17.10, 17.11
+    /// - `THEME LIST`: yields one child per available theme
+    ///   (`ff_theme::list_all_themes`, in list order), each labelled by the theme
+    ///   name and dispatching `THEME <name>` (command parity,
+    ///   theme-and-appearance Requirement 17.2, via the shared `set_active_theme`
+    ///   path). Delivers the CR-NR-077 theme picker.
+    /// - `SNAPSHOT`: the SCRM surfacing dropdown (FORWARD-PLAN decision 1,
+    ///   screen-snapshot-scrm Requirement 21). Yields one child per EXISTING
+    ///   SCRM verb (the `SNAPSHOT <format>` family and the `CAPTURE ...`
+    ///   lifecycle verbs); each child dispatches its existing verb through the
+    ///   single front door, so a click is observably identical to typing it. This
+    ///   is the menu-bar analogue of the theme picker -- code-only, additive, with
+    ///   NO new verb, intercept, dispatcher, or navigation stack.
+    ///
+    /// Returns `None` for any command that is not a dynamic source, so the caller
+    /// falls back to `peek_menu_options` / direct dispatch.
+    ///
+    /// Validates: menu-workspace Requirement 17.10, 17.11;
+    /// screen-snapshot-scrm Requirement 21.1, 21.3, 21.4 (CR-NR-098)
     pub(super) fn dynamic_menu_options(
         &self,
         command: &str,
     ) -> Option<Vec<crate::menu_workspace::MenuOption>> {
-        if !command.trim().eq_ignore_ascii_case("THEME LIST") {
-            return None;
+        let trimmed = command.trim();
+        if trimmed.eq_ignore_ascii_case("THEME LIST") {
+            let options = ff_theme::list_all_themes(&self.themes_dir())
+                .into_iter()
+                .map(|t| crate::menu_workspace::MenuOption {
+                    key: String::new(),
+                    command: format!("THEME {}", t.name),
+                    description: t.name.clone(),
+                    enabled: true,
+                    group: None,
+                    show_in_menu_bar: true,
+                    target: None,
+                })
+                .collect();
+            return Some(options);
         }
-        let options = ff_theme::list_all_themes(&self.themes_dir())
-            .into_iter()
-            .map(|t| crate::menu_workspace::MenuOption {
-                key: String::new(),
-                command: format!("THEME {}", t.name),
-                description: t.name.clone(),
-                enabled: true,
-                group: None,
-                show_in_menu_bar: true,
-                target: None,
-            })
-            .collect();
-        Some(options)
+        if trimmed.eq_ignore_ascii_case("SNAPSHOT") {
+            return Some(scrm_menu_bar_options());
+        }
+        None
     }
+}
+
+/// The SCRM menu-bar dropdown children (screen-snapshot-scrm Requirement 21,
+/// FORWARD-PLAN decision 1). Each item's `command` is an EXISTING SCRM verb; the
+/// bar renderer dispatches it through `dispatch_command_string` (the single front
+/// door), so activating an item is observably identical to typing the verb.
+///
+/// The list is a dedicated function (not inline) so the unit test can assert the
+/// exact verb set without rendering. No bare `SNAPSHOT` child is included: the
+/// top-level bar button itself is labelled `SNAPSHOT` and heads this group, so a
+/// duplicate label is avoided; the default one-shot is reachable as
+/// `SNAPSHOT TEXT`.
+///
+/// Validates: screen-snapshot-scrm Requirement 21.1, 21.3, 21.4 (CR-NR-098)
+pub(super) fn scrm_menu_bar_options() -> Vec<crate::menu_workspace::MenuOption> {
+    // EXISTING verbs only (handled by shell/commands_ladder_b.rs via the single
+    // front door). Order: one-shot snapshot formats, then the capture lifecycle.
+    const SCRM_VERBS: &[&str] = &[
+        "SNAPSHOT TEXT",
+        "SNAPSHOT ANSI",
+        "SNAPSHOT MARKDOWN",
+        "SNAPSHOT HTML",
+        "SNAPSHOT YAML",
+        "CAPTURE START",
+        "CAPTURE STOP",
+        "CAPTURE SCREEN",
+        "CAPTURE STATUS",
+        "CAPTURE LIST",
+        "CAPTURE PURGE",
+        "CAPTURE REPLAY",
+    ];
+    SCRM_VERBS
+        .iter()
+        .map(|verb| crate::menu_workspace::MenuOption {
+            key: String::new(),
+            command: (*verb).to_string(),
+            description: (*verb).to_string(),
+            enabled: true,
+            group: None,
+            show_in_menu_bar: true,
+            target: None,
+        })
+        .collect()
 }
