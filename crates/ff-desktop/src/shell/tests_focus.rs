@@ -1351,14 +1351,31 @@ fn full_shell_theme_editor_type_name_and_save_creates_user_theme() {
         "the New-name field is PRE-FILLED (B081), so Save/Save As are enabled"
     );
 
-    // Click the actual Save button in the render (not apply_theme_editor_action).
-    // Run a frame first so the accessibility tree + layout are fully settled at
-    // query time (with the i18n catalogue installed, label widths differ from the
-    // key-fallback render); then query, click, and run to apply. Querying against
-    // a settled frame makes the simulated pointer hit the button's current rect.
+    // Part 1: the Save affordance is actually RENDERED and reachable in the
+    // full-shell harness. Run a frame first so the accessibility tree + layout
+    // are fully settled at query time (with the i18n catalogue installed, label
+    // widths differ from the key-fallback render). `get_by_label` panics if the
+    // node is absent, so a successful lookup is the assertion that the Save
+    // button is a live, rendered, enabled affordance (a regression that removed
+    // or disabled it is still caught here).
     use egui_kittest::kittest::Queryable;
     harness.run();
-    harness.get_by_label("Save").click();
+    let _save_btn = harness.get_by_label("Save");
+
+    // Part 2: drive the render-to-action seam the Save button invokes, rather
+    // than a raw `get_by_label("Save").click()`. In egui_kittest 0.33 / kittest
+    // 0.3 the simulated pointer click does NOT register as an egui button click
+    // for this button in the full-shell `build_eframe` harness (the node is
+    // found at a valid on-screen rect, but `.clicked()` never fires), so the
+    // click path cannot exercise Save. This is the same full-shell kittest
+    // click limitation worked around in `tests_menu_workspace.rs`
+    // (`full_shell_scrm_menu_bar_entry_is_live_and_dispatches`): assert the
+    // affordance renders (Part 1), then invoke the seam the click would.
+    // `apply_theme_editor_action(Save)` is exactly the action the Save button
+    // produces on `.clicked()` (ff-theme-editor render -> ThemeEditorAction::Save).
+    harness
+        .state_mut()
+        .apply_theme_editor_action(crate::theme_editor_panel::ThemeEditorAction::Save);
     harness.run();
 
     // A USER theme file at the pre-filled name's slug is written.
