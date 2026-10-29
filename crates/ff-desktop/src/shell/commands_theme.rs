@@ -111,40 +111,15 @@ impl WorkbenchShell {
             }
             A::Save => {
                 // Save the working copy to the selected theme's file (Req 20.5).
-                if let (Some(name), Some(p)) = (
-                    self.theme_editor_panel.selected.clone(),
-                    self.theme_editor_panel.working.clone(),
-                ) {
-                    // CR-CH-019: a built-in is read-only and code-only -- Save
-                    // redirects to Save As. Use the typed new name if present,
-                    // else guide the user to enter one.
-                    if ff_theme::is_builtin_theme(&name) {
-                        let new_name = self.theme_editor_panel.name_buffer.trim().to_string();
-                        if new_name.is_empty() {
-                            self.theme_editor_panel.error = Some(format!(
-                                "'{name}' is a built-in theme and cannot be overwritten. Enter a new name and use Save As (or Copy) to keep your changes."
-                            ));
-                        } else {
-                            self.apply_theme_editor_action(A::SaveAs(new_name));
-                        }
-                    } else if let Err(e) = self.write_theme_file(&name, &p) {
-                        self.theme_editor_panel.error = Some(e);
-                    } else {
-                        self.theme_editor_panel.error = None;
-                    }
-                }
+                // Delegates to the shared persist path so the in-panel Save button
+                // and the ISPF SAVE/END commands are ONE behaviour (B081,
+                // project-master Req 11.8). The error (if any) is already surfaced
+                // inline by `theme_editor_persist`; the button ignores the Result.
+                let _ = self.theme_editor_persist();
             }
             A::SaveAs(new_name) => {
-                if let Some(mut p) = self.theme_editor_panel.working.clone() {
-                    p.name = new_name.clone();
-                    if let Err(e) = self.write_theme_file(&new_name, &p) {
-                        self.theme_editor_panel.error = Some(e);
-                    } else {
-                        self.theme_editor_panel.name_buffer.clear();
-                        self.refresh_theme_editor_list();
-                        self.theme_editor_panel.load_working(&new_name, p);
-                    }
-                }
+                // Shared Save As path (also used by the built-in Save redirect).
+                let _ = self.save_theme_as(&new_name);
             }
             A::SetActive(name) => {
                 // Apply immediately + persist (Req 20.6). Uses the shared helper.
@@ -278,7 +253,14 @@ impl WorkbenchShell {
     }
 
     /// Serialise `palette` and write it to `<themes>/<slug>.toml`.
-    fn write_theme_file(&self, name: &str, palette: &ff_theme::ThemePalette) -> Result<(), String> {
+    ///
+    /// `pub(super)` so the Theme Editor save-convention seam
+    /// (`commands_theme_save.rs`) shares the SINGLE write path (Req 11.8).
+    pub(super) fn write_theme_file(
+        &self,
+        name: &str,
+        palette: &ff_theme::ThemePalette,
+    ) -> Result<(), String> {
         let themes_dir = self.themes_dir();
         std::fs::create_dir_all(&themes_dir)
             .map_err(|e| format!("could not create themes dir: {e}"))?;
@@ -312,7 +294,10 @@ impl WorkbenchShell {
     }
 
     /// Refresh the Theme Editor's available-themes list from disk + built-ins.
-    fn refresh_theme_editor_list(&mut self) {
+    ///
+    /// `pub(super)` so the save-convention seam (`commands_theme_save.rs`) can
+    /// refresh the list after a Save As.
+    pub(super) fn refresh_theme_editor_list(&mut self) {
         let themes_dir = self.themes_dir();
         self.theme_editor_panel.available = ff_theme::list_all_themes(&themes_dir)
             .into_iter()

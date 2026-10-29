@@ -34,6 +34,10 @@ use crate::tab_state::KindTag;
 pub(super) enum EditableKind {
     /// The Alias Editor Context (the v1 deliverable).
     AliasEditor,
+    /// The Theme Editor Context (project-master Req 11, B081 fix). Wired into the
+    /// shared seam so typed SAVE / END / RETURN / REFRESH persist/discard/reload
+    /// the working theme, matching the convention the Alias Editor already meets.
+    ThemeEditor,
 }
 
 impl WorkbenchShell {
@@ -52,13 +56,16 @@ impl WorkbenchShell {
     pub(super) fn editable_context_kind(&self) -> Option<EditableKind> {
         match self.tabs.active_tab().kind.tag() {
             KindTag::AliasEditor => Some(EditableKind::AliasEditor),
+            // B081 / project-master Req 11: the Theme Editor is now wired into the
+            // shared seam, so typed SAVE persists, END persists-then-exits, and
+            // RETURN/REFRESH discard the working theme and revert the live preview.
+            KindTag::ThemeEditor => Some(EditableKind::ThemeEditor),
             // TODO(CR-CH-071 fast-follow, command-environments tasks 34.1-34.5):
-            // wire the sibling config editors. Each adds an `EditableKind` arm +
-            // its persist (its existing save action) / discard+reload (drop and
-            // re-open its working copy):
+            // wire the remaining sibling config editors. Each adds an
+            // `EditableKind` arm + its persist (its existing save action) /
+            // discard+reload (drop and re-open its working copy):
             //   KindTag::ConfigPanel  -> Settings (ConfigPanel model)   (34.1)
             //   KindTag::MenusEditor  -> Menus (save_working_menu)      (34.2)
-            //   KindTag::ThemeEditor  -> Theme (apply_theme_editor_action) (34.3)
             //   KindTag::KeysEditor   -> Keys (save_keys_for_kind)      (34.4)
             //   KindTag::KindsEditor  -> Kinds (apply_kinds_editor_action) (34.5)
             // Until wired they fall through as non-editable (plain nav), exactly
@@ -75,6 +82,7 @@ impl WorkbenchShell {
     pub(super) fn editable_persist(&mut self) -> Result<(), String> {
         match self.editable_context_kind() {
             Some(EditableKind::AliasEditor) => self.alias_editor_persist(),
+            Some(EditableKind::ThemeEditor) => self.theme_editor_persist(),
             None => Ok(()),
         }
     }
@@ -85,8 +93,10 @@ impl WorkbenchShell {
     ///
     /// Validates: command-environments Requirement 20a.3, 20a.6
     pub(super) fn editable_discard(&mut self) {
-        if let Some(EditableKind::AliasEditor) = self.editable_context_kind() {
-            self.alias_editor_discard();
+        match self.editable_context_kind() {
+            Some(EditableKind::AliasEditor) => self.alias_editor_discard(),
+            Some(EditableKind::ThemeEditor) => self.theme_editor_discard(),
+            None => {}
         }
     }
 
@@ -96,8 +106,10 @@ impl WorkbenchShell {
     ///
     /// Validates: command-environments Requirement 20a.4, 20a.6
     pub(super) fn editable_reload(&mut self) {
-        if let Some(EditableKind::AliasEditor) = self.editable_context_kind() {
-            self.alias_editor_reload();
+        match self.editable_context_kind() {
+            Some(EditableKind::AliasEditor) => self.alias_editor_reload(),
+            Some(EditableKind::ThemeEditor) => self.theme_editor_reload(),
+            None => {}
         }
     }
 }

@@ -47,6 +47,7 @@ mod commands_menu;
 mod commands_scrm;
 mod commands_session;
 mod commands_theme;
+mod commands_theme_save;
 mod configurator;
 mod construct;
 mod construct_commands;
@@ -150,3 +151,5 @@ mod tests_scrm;
 mod tests_session;
 #[cfg(test)]
 mod tests_split_detach;
+#[cfg(test)]
+mod tests_theme_save_convention;
