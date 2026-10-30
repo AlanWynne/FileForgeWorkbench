@@ -79,6 +79,7 @@ The following specs exist under `docs/specs/`:
 - multi-tab-editor
 - navigation-commands
 - platform-core
+- portable-installation (CR: portable self-contained install -- one ff-paths path-resolution authority owning an application root; PORTABLE (portable.ffw marker / FFW_HOME / CLI flag) default with MANAGED per-user dirs fallback; resources/config/data/extensions/logs/cache/tmp layout; redirectable disposable dirs + [maintenance] retention cleanup; resolves the FFWorkbench vs FileForgeWorkbench vs .fileforgewb naming divergence. Flagged framework change, owner-approved. Requirements/design/tasks drafted, gate pending)
 - plugin-architecture
 - record-selection-criteria
 - screen-snapshot-scrm (CR-NR-098: Screen Snapshot Service + Screen Collection/Replay Manager -- logical copy/paste-able TEXT capture, NOT raster; delivered together with the ff-desktop decomposition. Requirements drafted, gate pending owner approval; design/tasks not yet written)
