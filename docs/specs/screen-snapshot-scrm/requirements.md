@@ -25,13 +25,39 @@ lets the capture engine read a logical model without touching egui and (b) is on
 of the seams that lets panels move out of the monolith. This ties the two owner
 goals into one program of work.
 
-### The hard owner constraint (first-class requirement)
+### The owner constraint (first-class requirement) -- REVISED (CR-NR-114, multi-flavor clipboard)
 
-Capture MUST be COPY/PASTE-ABLE TEXT derived from a LOGICAL screen model, NOT a
-raster image (no jpeg/png as the primary artefact). A bitmap MAY be produced as an
-OPTIONAL secondary artefact, but the authoritative capture is always selectable,
-copyable text. This constraint drives Requirement 3 (Screen Model) and
-Requirement 5 (Text-first renderers) and constrains all export requirements.
+The capture text MUST be derived from a LOGICAL screen model, NOT grabbed from
+egui pixels. That part of the constraint is unchanged and still drives
+Requirement 3 (Screen Model) and Requirement 5 (Text-first renderers).
+
+What is REVISED (owner-confirmed this gate): the earlier wording required the
+copyable TEXT to be the single authoritative artefact, with a bitmap only as an
+OPTIONAL SECONDARY artefact. The owner has relaxed this to a MULTI-FLAVOR
+CLIPBOARD model in which the picture and the text are CO-EQUAL clipboard flavors,
+neither subordinate:
+
+- A single SNAPSHOT places BOTH representations on the clipboard at once: the PNG
+  picture of the screen AND the box-drawn ANSI/TEXT rendering (both derived from
+  the same logical screen model).
+- The DESTINATION application chooses which flavor it can consume: a rich target
+  (Word, PowerPoint) takes BOTH (the image and the monospaced text block); a
+  plain-text target (Notepad, a code editor) takes ONLY the text and drops the
+  picture -- the familiar behaviour of pasting mixed image+text content from a
+  word processor into a text editor.
+
+The text is therefore no longer the sole authoritative artefact for the
+CLIPBOARD; it is one of two co-equal flavors offered simultaneously. The
+logical-model-first rule (text and picture both rendered FROM the logical model,
+never a raw egui screengrab) remains in force and still constrains all export
+requirements. See Requirement 23 for the clipboard-flavor acceptance criteria.
+
+NOTE (implementation feasibility, to confirm during design): offering image and
+text clipboard flavors simultaneously is well-supported by the OS clipboard
+(e.g. Windows CF_DIB/PNG + CF_UNICODETEXT), but the app's current clipboard
+backend may expose text only. This revised constraint is subject to the clipboard
+layer supporting an image flavor; if it does not today, adding that capability is
+part of the SCRM stream, not a reason to weaken the requirement.
 
 ### Plugin vs core (owner decision, recorded)
 
@@ -154,6 +180,28 @@ the screen so the record is faithful.
 3.7 THE Screen_Model SHALL record screen dimensions. `[SCRM-025]`
 3.8 THE Screen_Model SHALL represent title, fields (label/value), tables,
     messages, status bar, and command line as distinct logical elements. `[ARCH]`
+3.9 WHEN the POM / menu `ScreenProvider` yields its Screen_Model THE model SHALL
+    include the FULL on-screen chrome a user sees, not a trimmed menu-option list:
+    the window chrome / title bar, the menu bar, the tab header (the `[XXX]`
+    Workspace Kind tag), the title line (the descriptive display title), the
+    Command line WITH its current value, the POM option rows WITH their command
+    values, the calendar, and the PF-key footer. (Extends Req 3.8; closes the
+    "captures a trimmed model" gap.) `[master-directive]`
+3.10 WHERE the PF-key footer is SHOWN (pfshow on, per the active
+    `key_bar_visible` / `key_bar_scope`) THE Screen_Model SHALL include the PF-key
+    footer line(s); WHERE it is HIDDEN (pfshow off) THE model SHALL omit the
+    PF-key footer, so the capture faithfully reflects the pfshow state. (Extends
+    Req 3.8.) `[master-directive]`
+3.11 THE command-line element SHALL carry the command line's current VALUE (the
+    text the user has typed), not merely the command-line label, so a capture
+    records what was being entered. (Confirms existing `model.command_line`
+    behaviour; extends Req 3.8.) `[master-directive]`
+3.12 EACH POM option row SHALL carry both its displayed text (mnemonic +
+    description) AND its command value, so the capture records what each option
+    invokes. (Confirms existing behaviour; extends Req 3.8.) `[master-directive]`
+3.13 THE enriched POM / menu Screen_Model SHALL be built purely from the logical
+    model (menu-workspace state, key-bar state, calendar state), NOT by reading
+    egui widgets (consistent with Req 2.2, Req 5.4). `[master-directive]`
 
 ---
 
@@ -178,6 +226,17 @@ the format I choose, without having to start a collection.
 4.6 WHEN the user issues `SNAPSHOT YAML` (alias `SNAPSHOT AI`) THE system SHALL
     render a structured YAML document (title, fields as name/value, tables,
     buttons, cursor). `[ARCH]`
+4.7 WHEN the user issues `SNAPSHOT` with NO format argument THE system SHALL
+    present a FORMAT PICKER from which the user chooses the output format (the
+    text formats of Req 4.2-4.6 AND the picture formats of Requirement 23),
+    rather than silently defaulting; the picker SHALL dispatch the chosen
+    `SNAPSHOT <format>` through the single front door (`dispatch_command_string`
+    -> `resolve_target`) so a picked format is identical to the typed form
+    (command parity, Req 11.4). (Owner-confirmed D(formats): no-arg pops a
+    picker.) `[forward-plan]`
+4.8 WHEN the user issues `SNAPSHOT <format>` with an explicit format THE system
+    SHALL render that format directly WITHOUT showing the picker (the picker is
+    only for the no-argument form). `[forward-plan]`
 
 ---
 
@@ -293,6 +352,16 @@ automatically on screen transitions, optionally filtered by rules.
      interval per Req 9.6, or a rule per Req 9.7) THE triggering-command record
      SHALL be absent for that Capture, and absence SHALL be a valid, explicitly
      representable state (not an empty-string sentinel). `[recorder]`
+9.13 WHEN capture START records a per-transition Capture THE Capture SHALL store,
+     alongside the triggering-command metadata (Req 9.10), the transition's
+     screen in BOTH text form (the ANSI/TEXT rendering) AND, where the capture
+     configuration enables it, a picture rendering (the bitmap of Requirement 23)
+     and a Markdown rendering, so each Capture is a bitmap + ANSI + Markdown +
+     command record. This CONFIRMS and extends the Wave 2R recorder (Req 9.10-9.12,
+     17.2a) to carry the picture + Markdown variants per Capture. `[forward-plan]`
+9.14 THE per-transition bitmap of Req 9.13 SHALL be produced by rasterising the
+     logical TEXT render (Requirement 23), NOT by screen-grabbing egui
+     (consistent with Req 1 and Req 2.2). `[forward-plan]`
 
 ---
 
@@ -317,6 +386,27 @@ automatically on screen transitions, optionally filtered by rules.
 10.10 WHERE a Capture has no triggering command (Req 9.12) THE replay view SHALL
      omit the cause line for that Capture rather than showing an empty one.
      `[recorder]`
+10.11 A captured session SHALL be SAVED TO A FILE (the native zip-compatible
+     Collection archive, Req 12.5 / 17.3) so that it can be REOPENED and replayed
+     later, independent of the live session that captured it. Replay SHALL NOT be
+     limited to the active in-memory collection. (Owner-confirmed D(replay/save):
+     the real requirement is save-to-file + reopen, not whether the viewer screen
+     self-captures.) `[forward-plan]`
+10.12 THE system SHALL LIST the saved sessions and let the user OPEN / SELECT one
+     from that list for replay (a saved-session picker), reachable through the
+     single command front door; selecting a session SHALL open it in the replay
+     Context (Requirement 16). (Owner-confirmed D(replay/save).) `[forward-plan]`
+10.13 A saved session SHALL be EXPORTABLE to PDF (now, reusing the existing
+     `ff-scrm/pdf.rs` path, Req 12.4) and to ODT / ODP (later, deferred), via the
+     existing `CAPTURE EXPORT ...` commands (command parity, Req 11.4); the export
+     SHALL keep screen content as selectable text where the format supports it
+     (Req 1.4, 12.6). (Owner-confirmed D(replay/save) + D(formats).) `[forward-plan]`
+10.14 THE replay story SHALL therefore be: capture STOP -> Save-As (Requirement
+     24) names the session and picks the output type -> the saved session is
+     listed and can be opened/selected for replay (Req 10.12) -> the saved session
+     can be exported to PDF now / ODT / ODP later (Req 10.13). The requirement is
+     centred on save-to-file + reopen/select + export, NOT on the viewer screen
+     self-capturing. `[forward-plan]`
 
 ---
 
@@ -579,7 +669,7 @@ shape a later exporter can consume. Tracked as NOT-COVERED in the coverage recor
 to be discoverable from the Workbench menu bar, not only by typing, so I can reach
 it without memorising the verbs -- while the bare-core POM stays minimal.
 
-### Context (FORWARD-PLAN resolved decision 1, owner-confirmed)
+### Context (FORWARD-PLAN decision 1, RE-PHRASED under owner-confirmed menu-bar-from-POM model)
 
 SCRM is BUILT and core-wired (Requirements 1-20): the `SNAPSHOT` and
 `CAPTURE START/STOP/SCREEN/STATUS/LIST/PURGE/REPLAY` verbs already dispatch
@@ -591,26 +681,298 @@ verb, NO bespoke intercept, NO second dispatcher, and NO second navigation stack
 (framework-conformance). It is the menu-bar analogue of the existing dynamic
 `THEME LIST` theme-picker dropdown.
 
+### OWNER-CONFIRMED FRAMEWORK CHANGE -- the menu bar is a RUNTIME ECHO of the POM TOML
+
+This requirement is RE-PHRASED from the earlier "additive SNAPSHOT bar entry, bare
+POM stays 0/3/X" wording under two owner-confirmed framework changes (recorded in
+`docs/status/change-log.md` CR-NR-114 and per framework-conformance.md as
+confirmed framework changes, NOT workarounds):
+
+- **(a) Menu-bar-from-POM.** The menu bar is NOT a separate hardwired menu. It is
+  a RUNTIME ECHO of the POM TOML: every option in the POM TOML appears as a
+  top-level menu-bar item, built at runtime, and each bar item's DROPDOWN is built
+  at runtime from that item's SUBMENU TOML. Nothing on the menu bar is hardwired.
+  This REPLACES the current hardwired `DEFAULT_MENU_BAR_TOML` + dynamic-`SNAPSHOT`
+  arrangement (Wave S task 14). SCRM is a NEW menu SCREEN with its own submenu
+  TOML, which serves as the dropdown for the SCRM bar item.
+- **(b) CR-CH-073 bare-POM invariant change.** The bare-core POM GAINS an SCRM
+  option. This DELIBERATELY changes the CR-CH-073 bare-POM invariant (previously
+  EXACTLY `0` Settings / `3` Help / `X`): the bare POM now CONTAINS SCRM by
+  design. Because SCRM is then in the POM, it appears on the bar automatically,
+  and the old hardwired Snapshot bar entry is gone, replaced by SCRM-from-POM.
+
+Built-in defaults REMAIN code-only `DEFAULT_*_TOML`, never written to disk
+(CR-CH-021). Everything resolves through the SINGLE dispatch seam
+(`resolve_target` / `open_menu_by_name`): no second dispatcher, no hardwired bar,
+no new navigation stack.
+
 #### Acceptance Criteria
-22.1 THE compiled default Menu_Bar SHALL present an SCRM entry (in addition to
-     the existing bar-visible options), so SCRM is reachable from the menu bar.
-     (FORWARD-PLAN decision 1.)
-22.2 THE bare-core POM (`DEFAULT_POM_TOML`) SHALL remain EXACTLY `0` Settings /
-     `3` Help / `X` terminate (CR-CH-073); surfacing SCRM SHALL NOT re-expand the
-     POM. (FORWARD-PLAN Phase 2 / CR-CH-073.)
-22.3 EACH SCRM menu-bar item's `command` SHALL be an EXISTING SCRM verb
+22.1 THE menu bar SHALL be built at RUNTIME as an echo of the POM TOML: for each
+     option in the active POM menu, THE system SHALL render a top-level menu-bar
+     item; NO menu-bar item SHALL be hardwired. (Owner-confirmed framework change
+     (a); REPLACES the hardwired `DEFAULT_MENU_BAR_TOML`.) `[forward-plan]`
+22.2 EACH menu-bar item's DROPDOWN SHALL be built at RUNTIME from that item's
+     SUBMENU TOML (the submenu menu screen the option opens), so the dropdown
+     content is the submenu's options. `[forward-plan]`
+22.3 THE bare-core POM (`DEFAULT_POM_TOML`) SHALL CONTAIN an SCRM option
+     (label/description "SCRM : Screen Capture and Recording"), in ADDITION to the
+     existing `0` Settings / `3` Help / `X` terminate options. This DELIBERATELY
+     changes the CR-CH-073 bare-POM invariant (owner-confirmed framework change
+     (b)); the bare POM is NO LONGER exactly 0/3/X. `[forward-plan]`
+22.4 BECAUSE SCRM is a POM option (Req 22.3) THE SCRM bar item SHALL appear on the
+     menu bar automatically via the POM-echo (Req 22.1), and the old hardwired
+     Snapshot bar entry SHALL be GONE, replaced by SCRM-from-POM. `[forward-plan]`
+22.5 THE SCRM bar item's dropdown SHALL be built from the SCRM submenu TOML (the
+     new SCRM menu screen, Requirement 25), whose options are the SCRM verbs
+     (Snapshot / Capture start / Capture stop / Capture replay / SCRM Help /
+     Exit). `[forward-plan]`
+22.6 EACH SCRM submenu option's `command` SHALL be an EXISTING SCRM verb
      (`SNAPSHOT`[/`TEXT`/`ANSI`/`MARKDOWN`/`MD`/`HTML`/`YAML`/`AI`] or
      `CAPTURE START/STOP/SCREEN/STATUS/LIST/PURGE/REPLAY`), so activating it
      routes through `ff_command::resolve_target` and the shared dispatch path
      identically to typing the verb. NO new verb, intercept, dispatcher, or
      navigation stack SHALL be introduced. (framework-conformance; extends
-     Requirement 11.3, 11.4.)
-22.4 WHEN the user activates an SCRM menu-bar item THE system SHALL dispatch the
-     item's existing verb through the single front door (`dispatch_command_string`
-     -> `resolve_target`), with the same observable effect as the typed command
-     (command parity). (extends Requirement 11.4.)
-22.5 Typed access to `SNAPSHOT` / `CAPTURE ...` SHALL continue to work unchanged
-     (the surfacing is additive). (FORWARD-PLAN decision 1.)
+     Requirement 11.3, 11.4.) `[forward-plan]`
+22.7 WHEN the user activates any menu-bar item or submenu option THE system SHALL
+     dispatch its command through the single front door (`dispatch_command_string`
+     -> `resolve_target`, or `open_menu_by_name` for a submenu-open), with the same
+     observable effect as the typed command (command parity). (extends
+     Requirement 11.4.) `[forward-plan]`
+22.8 WHEN the user issues RESET BARE THE system SHALL (a) write/generate the
+     default SCRM submenu menu screen (from the code-only `DEFAULT_SCRM_MENU_TOML`,
+     never materialising a built-in default to disk, CR-CH-021), and (b) produce a
+     bare POM TOML that CONTAINS the SCRM option (Req 22.3). `[forward-plan]`
+22.9 Typed access to `SNAPSHOT` / `CAPTURE ...` SHALL continue to work unchanged
+     (the menu/bar surfacing is additive to typed access). `[forward-plan]`
+
+---
+
+## Requirement 23 -- Picture snapshot formats (PNG first, then PDF-reuse)
+
+**User story:** As a user, I want a screen SNAPSHOT to place BOTH a picture (PNG)
+and the box-drawn ANSI/TEXT on the clipboard at once, so that pasting into Word or
+PowerPoint brings in both the image and the text, while pasting into a plain-text
+editor brings in just the text (the picture is dropped) -- the familiar behaviour
+of pasting mixed image+text content from a word processor into a text editor.
+
+### Context (owner-confirmed D(formats))
+
+PNG is the FIRST picture format: lossless, crisp for monospaced text, mature Rust
+encoder. PDF is SECOND, reusing the EXISTING `ff-scrm/pdf.rs` path. ODT / ODP are
+DEFERRED. The picture is produced by RASTERISING the monospaced TEXT render to a
+bitmap (a fixed-width font), NOT by screen-grabbing egui -- keeping the
+logical-model-first constraint (Requirement 1) intact.
+
+#### Acceptance Criteria
+23.1 THE set of SNAPSHOT picture formats SHALL be PNG (first) and PDF (reusing
+     `ff-scrm/pdf.rs`); ODT and ODP SHALL be DEFERRED and recorded as NOT-COVERED,
+     not built in this phase. (Owner-confirmed D(formats).) `[forward-plan]`
+23.2 WHEN the user issues `SNAPSHOT PNG` THE system SHALL produce a PNG bitmap by
+     RASTERISING the logical TEXT render (fixed-width font), NOT by grabbing egui
+     pixels (consistent with Req 1, Req 2.2). `[forward-plan]`
+23.3 WHEN the user issues `SNAPSHOT PDF` THE system SHALL produce a single-screen
+     PDF by REUSING the existing `ff-scrm/pdf.rs` path, keeping the screen content
+     as selectable text (Req 12.6), not a rasterised page image. `[forward-plan]`
+23.4 WHEN the user issues a SNAPSHOT that targets the CLIPBOARD, THE system SHALL
+     place BOTH flavors on the clipboard SIMULTANEOUSLY: the PNG picture AND the
+     box-drawn ANSI/TEXT rendering (both derived from the same logical screen
+     model). The two are CO-EQUAL clipboard flavors; neither is subordinate.
+     (Owner-confirmed CR-NR-114 multi-flavor clipboard model; revises the former
+     text-only-primary constraint.) `[forward-plan]`
+23.5c WHEN the clipboard content is pasted into a RICH target (e.g. a word
+     processor or presentation app that accepts an image flavor), THE target
+     SHALL be able to consume BOTH the picture and the monospaced text; WHEN it is
+     pasted into a PLAIN-TEXT target (e.g. a text editor), THE target SHALL
+     receive ONLY the ANSI/TEXT and the picture SHALL be dropped. The destination
+     application selects the flavor; the SNAPSHOT offers both. `[forward-plan]`
+23.5d THE simultaneous image+text clipboard offer SHALL use the OS multi-flavor
+     clipboard (e.g. an image flavor plus a Unicode-text flavor). WHERE the app's
+     current clipboard backend exposes text only, ADDING the image-flavor
+     capability SHALL be part of this work; the logical-model-first rule (both
+     flavors rendered from the logical model, never an egui screengrab) SHALL NOT
+     be weakened to achieve it. `[forward-plan]`
+23.4a WHERE a FILE/document output format (as opposed to the clipboard) supports
+     carrying BOTH a picture and the ANSI/TEXT rendering, THE SNAPSHOT SHALL embed
+     BOTH; WHERE it supports only text, the text SHALL be written. (Owner-confirmed
+     D(formats): produce both where the format supports it.) `[forward-plan]`
+23.5 THE picture bitmap SHALL be an OPTIONAL secondary artefact (Req 1.3): it
+     SHALL NOT replace the selectable-text capture. `[forward-plan]`
+23.6 EACH picture-format SNAPSHOT verb SHALL resolve through
+     `ff_command::resolve_target` to a `Function` target and dispatch through the
+     shared path, with command parity for the format picker (Req 4.7, 11.3, 11.4);
+     NO bespoke intercept. `[forward-plan]`
+23.7 ADDING a picture encoder dependency (e.g. the `image` / `png` crate) SHALL
+     be pinned to an exact version (`.kiro/steering` dependency discipline); the
+     logical-model-first constraint SHALL NOT be weakened to add it. `[forward-plan]`
+
+---
+
+## Requirement 24 -- Capture STOP Save-As dialog
+
+**User story:** As a user, when I stop a capture I want to name the session and
+choose how it is saved, so the captured session becomes a reopenable, exportable
+record rather than being lost when the live collection ends.
+
+### Context (owner-confirmed D(replay/save))
+
+Today `CAPTURE STOP` ends the active collection with no dialog. The owner-
+confirmed requirement is a Save-As dialog on STOP that names the session and
+picks the output type, embedding the bitmap alongside the monospaced text where
+the type supports it. The dialog INVOKES the EXISTING `CAPTURE SAVE` / `CAPTURE
+EXPORT ...` commands (command parity), not a new persistence path.
+
+#### Acceptance Criteria
+24.1 WHEN the user issues `CAPTURE STOP` THE system SHALL present a Save-As dialog
+     to NAME the session and CHOOSE the output type. `[forward-plan]`
+24.2 THE Save-As output-type choices SHALL be ANSI/TEXT, HTML, Markdown, PDF
+     (now), and ODT / ODP (later, deferred); the dialog SHALL offer the IMPLEMENTED
+     subset at any time and record ODT/ODP as deferred. `[forward-plan]`
+24.3 WHERE the chosen output type supports it, THE saved artefact SHALL embed the
+     per-Capture bitmap (Req 9.13, 23) ALONGSIDE the monospaced selectable text,
+     never replacing the text (Req 1.3). `[forward-plan]`
+24.4 THE Save-As dialog SHALL persist the session as the native zip-compatible
+     Collection archive (Req 12.5 / 17.3) so it can be reopened and replayed
+     (Req 10.11), and SHALL invoke the EXISTING `CAPTURE SAVE` / `CAPTURE EXPORT`
+     commands through the single front door (command parity, Req 11.4); it SHALL
+     NOT introduce a new save path. `[forward-plan]`
+24.5 WHERE the user CANCELS the Save-As dialog THE capture SHALL still STOP (no
+     further automatic captures) but the session SHALL NOT be written to a file;
+     the in-memory collection SHALL remain available until the session ends
+     (consistent with Req 7.6). `[forward-plan]`
+24.6 IF the Save-As dialog is a Workspace Context (rather than a modal overlay)
+     THE Context SHALL satisfy the master screen design directive
+     (`docs/specs/master-screen-directive/`): the focus latch, and a
+     `ScreenProvider` or documented opt-out. `[master-directive]`
+
+---
+
+## Requirement 25 -- SCRM menu screen (keys, labels, title)
+
+**User story:** As a user, I want a dedicated SCRM menu screen whose options are
+the SCRM actions, so the SCRM bar dropdown and the SCRM POM option both open a
+consistent, named menu.
+
+### Context (owner-confirmed D(SCRM menu keys/labels), STILL TUNABLE)
+
+The SCRM submenu is a new code-only menu screen (`DEFAULT_SCRM_MENU_TOML`, never
+written to disk, CR-CH-021) that serves as the dropdown for the SCRM bar item
+(Req 22.5) and the target the SCRM POM option opens. The keys/labels below are
+the owner's refined draft and are RECORDED AS SETTLED-BUT-TUNABLE (the owner may
+adjust them at implementation).
+
+#### Acceptance Criteria
+25.1 THE SCRM menu screen SHALL have the title "FileForge Workbench -- Screen
+     Capture and Recording". `[forward-plan]`
+25.2 THE SCRM POM option (Req 22.3) SHALL have the label/description
+     "SCRM : Screen Capture and Recording". `[forward-plan]`
+25.3 THE SCRM menu screen SHALL list these options with these mnemonic keys
+     (owner-confirmed, tunable): Snapshot = `S`; Capture start = `CS`; Capture
+     stop = `CT`; Capture replay = `CR`; SCRM Help = `H`; Exit = `X`.
+     `[forward-plan]`
+25.4 EACH SCRM menu-screen option's `command` SHALL be an EXISTING SCRM verb
+     resolved through `resolve_target` / `open_menu_by_name` (Req 22.6): Snapshot
+     -> `SNAPSHOT` (invoking the format picker, Req 4.7); Capture start ->
+     `CAPTURE START`; Capture stop -> `CAPTURE STOP` (invoking the Save-As dialog,
+     Req 24); Capture replay -> `CAPTURE REPLAY` (opening the saved-session picker,
+     Req 10.12); SCRM Help -> the SCRM help topic; Exit -> the menu END/exit verb.
+     NO new verb SHALL be introduced. `[forward-plan]`
+25.5 THE SCRM menu screen SHALL be generated by RESET BARE (Req 22.8) from the
+     code-only default; it SHALL NOT be materialised to disk as a built-in
+     (CR-CH-021). A user `menus/<scrm>.toml` MAY override it (the standard
+     user-override-of-default rule). `[forward-plan]`
+
+---
+
+## Requirement 26 -- Mnemonic-letter menu-bar accelerators
+
+**User story:** As a keyboard user, I want each menu-bar item reachable by a
+mnemonic-letter accelerator (Alt+<letter>), so I can open a bar menu without the
+mouse, without overloading the POM numeric option keys.
+
+### Context (owner-confirmed D(hotkeys))
+
+Accelerators are MNEMONIC LETTERS (Alt+S Settings, Alt+H Help, Alt+C SCRM, etc.),
+resolved through the EXISTING key map framework (menu-and-statusbar Requirement
+17, function-keys-and-history, menu-workspace Requirement 17), NOT a new
+accelerator mechanism. Mnemonics must avoid collisions with existing Alt-bindings
+in the active key profile.
+
+#### Acceptance Criteria
+26.1 EACH menu-bar item SHALL have a MNEMONIC-LETTER accelerator (Alt+<letter>)
+     that opens that bar item's menu, reusing the option's existing `key` where it
+     is a letter and assigning a distinct mnemonic where the `key` is a digit.
+     (Owner-confirmed D(hotkeys).) `[forward-plan]`
+26.2 THE accelerators SHALL be resolved through the EXISTING key map framework
+     (menu-and-statusbar Req 17, function-keys-and-history, menu-workspace Req 17)
+     as modified-key bindings; NO new accelerator mechanism SHALL be introduced.
+     `[forward-plan]`
+26.3 THE chosen mnemonics SHALL NOT collide with existing Alt-bindings in the
+     active key profile; a collision SHALL be resolved by choosing a distinct
+     mnemonic, not by overriding an existing binding. `[forward-plan]`
+26.4 THE accelerators SHALL NOT overload the POM numeric option keys (digits
+     already select POM options); mnemonic LETTERS are used precisely to avoid
+     that overload. `[forward-plan]`
+26.5 WHEN an accelerator fires THE system SHALL open the bar item's menu through
+     the SAME dispatch seam as a click (Req 22.7); NO bespoke path. `[forward-plan]`
+
+---
+
+## Requirement 27 -- Message boxes and dialog boxes are capturable (copy/paste-able)
+
+**User story:** As a user, I want to copy the text of ANY message box or dialog
+box -- not just Workspace Contexts -- so I never hit the Windows frustration of an
+error or confirmation message whose text cannot be selected or copied.
+
+### Context (owner-confirmed CR-NR-114)
+
+A message box or modal dialog is a TRANSIENT OVERLAY on top of the active Context,
+NOT a Workspace Context. The every-Context snapshot/capture obligation
+(Requirement 2, master screen directive Requirement 4) therefore does not
+automatically reach it; this requirement extends the snapshot/capture contract to
+these transient surfaces. Owner intent: EVERYTHING must be copy/paste-able. The
+ONLY permitted exception is a CREDENTIAL SECRET (password, token, API key, secret
+key) field, which SHALL be redacted from the capture -- never emitted in clear.
+
+Both kinds are in scope:
+- (a) Message / notification / error / confirmation popups (mostly a text
+  message plus buttons).
+- (b) Modal dialogs with structure (fields, lists, buttons) -- e.g. the dataset
+  allocator, catalog manager, the SCRM Save-As dialog (Req 24), the format picker
+  (Req 4.7).
+
+#### Acceptance Criteria
+27.1 EVERY message box and dialog box SHALL be capturable: its content SHALL be
+     available as a logical screen model (title, message/body text, field
+     labels+values, list rows, button labels) through the same `ScreenProvider`
+     seam the master directive mandates (master-screen-directive Req 4;
+     screen-snapshot-scrm Req 2). NO dialog or message box SHALL present text that
+     cannot be copied. `[master-directive]`
+27.2 WHEN a message box or dialog box is showing AND the user issues SNAPSHOT, THE
+     system SHALL capture the FRONTMOST surface -- the dialog/message box itself
+     (its logical model), not the Context hidden behind it -- and place it on the
+     clipboard per the multi-flavor model (Req 23.4, 23.5c): both the PNG picture
+     and the box-drawn ANSI/TEXT. `[forward-plan]`
+27.3 IN ADDITION to SNAPSHOT, EVERY message box and dialog box SHALL offer a
+     direct COPY affordance (e.g. a copy action / right-click copy / a copy
+     button) that places its text on the clipboard, so copying a message does NOT
+     require invoking the full SNAPSHOT machinery. This directly addresses the
+     uncopyable-message-box frustration. `[forward-plan]`
+27.4 THE ONLY content a message box or dialog box MAY withhold from a capture or
+     copy SHALL be a CREDENTIAL SECRET (password / token / API key / secret-key
+     field): such a field SHALL be REDACTED (e.g. replaced with a masked
+     placeholder) in the captured model and on the clipboard, never emitted in
+     clear. All other content SHALL be copy/paste-able. `[forward-plan]`
+27.5 A dialog's secret-field redaction SHALL be a DELIBERATE, declared property of
+     that field (the dialog marks which fields are secret), analogous to the
+     documented capture opt-out (master-screen-directive Req 4.3); a field SHALL
+     NOT be silently uncopyable for any other reason. `[forward-plan]`
+27.6 WHERE a dialog box is itself a Workspace Context (rather than a transient
+     overlay), it SHALL ALSO satisfy the master screen directive in full
+     (Req 24.6); this requirement additionally binds the transient (non-Context)
+     message boxes and modal overlays that the master directive's every-Context
+     wording does not reach. `[master-directive]`
+27.7 THE capture of a dialog/message box SHALL render from its logical model, NOT
+     from an egui pixel grab (consistent with Req 1, Req 2.2). `[forward-plan]`
 
 ---
 
@@ -625,6 +987,11 @@ collections. `[SCRM section 12]`
 NOTE: "session recording" is no longer purely future -- its core (command +
 screen timeline) is gated by Req 9.10-9.12, 10.9-10.10, and 17.2a. Exporting that
 recording as a re-runnable MACRO remains deferred (Req 21).
+
+DEFERRED picture/document formats: ODT and ODP snapshot/export (Req 23.1, 24.2,
+10.13) are DEFERRED by owner decision D(formats); PNG (first) and PDF-reuse
+(second) are in scope. ODT/ODP are recorded as NOT-COVERED, to be revisited after
+PNG + PDF land.
 
 ---
 

@@ -163,6 +163,118 @@ Builds ON menu-workspace Req 17 (CR-NR-080) + code-only built-in menu content
         full-shell egui_kittest proving a CLICK on the `CAPTURE START` child starts
         a collection. (Req 22.1-22.5; workspace-conformance)
 
+NOTE: Wave S (task 14) is SUPERSEDED by Wave F below. The hardwired
+`DEFAULT_MENU_BAR_TOML` + dynamic-`SNAPSHOT` arrangement is REPLACED by the
+owner-confirmed menu-bar-from-POM model (Req 22 re-phrased); task 14 is left
+`[x]` as the record of the interim surfacing it delivered.
+
+## Wave F -- forward-plan end-state (CR-NR-114 gate; owner-confirmed decisions)
+
+Builds on the master screen design directive (`docs/specs/master-screen-directive/`)
+and the owner-confirmed decisions D(formats)/D(hotkeys)/D(menu-bar model)/D(SCRM
+keys-labels)/D(replay-save). TDD per testing.md: failing test first, each with a
+`// Validates:` annotation. Every capability resolves through the single front
+door; no second dispatcher, no new navigation stack.
+
+- [ ] 15. Enrich the POM / menu ScreenProvider to the FULL screen (Req 3.9-3.13)
+  - [ ] 15.1 Populate the menu Screen_Model with window chrome / title bar, menu
+        bar, tab header, title line, command line WITH value, POM option rows WITH
+        command values, calendar, and PF-key footer. (Req 3.9, 3.11, 3.12)
+  - [ ] 15.2 Show the PF-key footer per pfshow on; omit it per pfshow off.
+        (Req 3.10)
+  - [ ] 15.3 Build it purely from the logical model, not egui widgets. (Req 3.13)
+  - [ ] 15.4 Tests: snapshot text contains the calendar + PF-key line when pfshow
+        on, omits the PF-key line when off. (Req 3.9, 3.10)
+
+- [ ] 16. Picture snapshot formats + format picker (Req 4.7-4.8, 23)
+  - [ ] 16.1 Add PNG as a SNAPSHOT picture format by rasterising the TEXT render
+        (pinned encoder dep, exact version). (Req 23.1, 23.2, 23.7)
+  - [ ] 16.2 Add `SNAPSHOT PDF` reusing `ff-scrm/pdf.rs`, selectable text.
+        (Req 23.3)
+  - [ ] 16.3 No-arg `SNAPSHOT` pops a format picker dispatching the chosen
+        `SNAPSHOT <format>` through the single front door; explicit-format form
+        skips the picker. (Req 4.7, 4.8, 23.6)
+  - [ ] 16.4 Where the format supports it, produce BOTH the picture AND the
+        ANSI/TEXT rendering; picture is optional-secondary. (Req 23.4, 23.5)
+  - [ ] 16.5 Tests: PNG bytes produced from the text render; picker dispatches the
+        chosen format; both-outputs where supported. (Req 23.2, 4.7, 23.4)
+
+- [ ] 17. Capture START records bitmap + ANSI + Markdown + command (Req 9.13-9.14)
+  - [ ] 17.1 At the auto-capture hook, store per Capture the bitmap (task 16
+        encoder) + ANSI + Markdown + the triggering-command metadata (confirm
+        Wave 2R tasks 11-13). (Req 9.13, 9.10-9.12, 17.2a)
+  - [ ] 17.2 The per-transition bitmap is rasterised from the TEXT render, not an
+        egui grab. (Req 9.14)
+  - [ ] 17.3 Tests: a command-caused transition records command + bitmap + ANSI +
+        Markdown; an interval/rule capture records no command. (Req 9.13, 9.12)
+
+- [ ] 18. Capture STOP Save-As dialog (Req 24)
+  - [ ] 18.1 On `CAPTURE STOP`, show a Save-As dialog naming the session and
+        choosing the output type (ANSI/TEXT | HTML | Markdown | PDF now; ODT/ODP
+        deferred). (Req 24.1, 24.2)
+  - [ ] 18.2 Embed the bitmap alongside the monospaced text where the type
+        supports it; text stays authoritative. (Req 24.3)
+  - [ ] 18.3 Dialog invokes the EXISTING `CAPTURE SAVE` / `CAPTURE EXPORT`
+        commands through the single front door; persists as the zip archive.
+        (Req 24.4)
+  - [ ] 18.4 Cancel stops the capture but writes nothing; in-memory collection
+        remains. (Req 24.5)
+  - [ ] 18.5 If the dialog is a Context, it satisfies the master directive (focus
+        + ScreenProvider/opt-out). (Req 24.6)
+  - [ ] 18.6 Tests: the dialog choice dispatches the matching export command;
+        cancel writes nothing. (Req 24.4, 24.5)
+
+- [ ] 19. Replay: save-to-file + list/open/select + export (Req 10.11-10.14)
+  - [ ] 19.1 A captured session saves to the zip archive and can be reopened for
+        replay independent of the live session. (Req 10.11)
+  - [ ] 19.2 List saved sessions and open/select one from a saved-session picker,
+        reachable via the single front door; selecting opens the replay Context.
+        (Req 10.12)
+  - [ ] 19.3 Export a saved session to PDF now (reuse `ff-scrm/pdf.rs`); ODT/ODP
+        deferred; via existing `CAPTURE EXPORT` commands. (Req 10.13)
+  - [ ] 19.4 The saved-session picker Context satisfies workspace-conformance
+        (InteriorFocus, first-Tab test) and the master directive. (Req 16.2,
+        master-directive)
+  - [ ] 19.5 Tests: save then reopen replays the same captures; picker lists and
+        opens a saved session; export dispatches the matching command. (Req 10.11,
+        10.12, 10.13)
+
+- [ ] 20. Menu-bar-from-POM + SCRM menu family + RESET BARE (Req 22, 25)
+  - [ ] 20.1 Build the menu bar at RUNTIME from the POM TOML (one bar item per POM
+        option); no hardwired bar. (Req 22.1)
+  - [ ] 20.2 Build each bar item's dropdown at runtime from that item's submenu
+        TOML. (Req 22.2)
+  - [ ] 20.3 Add the SCRM option to `DEFAULT_POM_TOML` (label "SCRM : Screen
+        Capture and Recording"); record the CR-CH-073 invariant change. (Req 22.3,
+        25.2)
+  - [ ] 20.4 Add the code-only `DEFAULT_SCRM_MENU_TOML` SCRM menu screen (title
+        "FileForge Workbench -- Screen Capture and Recording"; options Snapshot S /
+        Capture start CS / Capture stop CT / Capture replay CR / SCRM Help H /
+        Exit X); never written to disk (CR-CH-021). (Req 25.1, 25.3)
+  - [ ] 20.5 Each SCRM option's command is an EXISTING verb resolved through
+        `resolve_target` / `open_menu_by_name`; Snapshot invokes the picker (task
+        16), Capture stop invokes the Save-As (task 18), Capture replay opens the
+        saved-session picker (task 19). (Req 22.6, 25.4)
+  - [ ] 20.6 RESET BARE generates the SCRM submenu screen AND a bare POM
+        containing SCRM. (Req 22.8, 25.5)
+  - [ ] 20.7 Remove the old hardwired Snapshot bar entry (superseded by
+        SCRM-from-POM). (Req 22.4)
+  - [ ] 20.8 Tests: the bar echoes the POM at runtime; bare POM contains SCRM;
+        SCRM dropdown lists the SCRM options; each option dispatches its verb
+        through the single front door (command parity); RESET BARE regenerates
+        both. (Req 22.1-22.9, 25.3-25.5)
+
+- [ ] 21. Mnemonic-letter menu-bar accelerators (Req 26)
+  - [ ] 21.1 Add Alt+<letter> accelerators per bar item via the EXISTING key map
+        framework, reusing the option `key` where a letter, distinct mnemonic
+        where a digit. (Req 26.1, 26.2)
+  - [ ] 21.2 Avoid collisions with existing Alt-bindings; do not overload POM
+        numeric option keys. (Req 26.3, 26.4)
+  - [ ] 21.3 An accelerator opens the bar menu through the SAME dispatch seam as a
+        click. (Req 26.5)
+  - [ ] 21.4 Tests: an accelerator resolves to the bar item's menu via the active
+        key map; no collision with an existing Alt-binding. (Req 26.1, 26.3)
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

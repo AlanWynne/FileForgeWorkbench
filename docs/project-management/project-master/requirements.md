@@ -584,6 +584,43 @@ These requirements span multiple sub-projects and must be honoured throughout.
 
 ---
 
+### Requirement 11: Workspace Save Convention -- ISPF-Style Explicit Commit
+
+**User Story:** As a user, I want every editable workspace screen to persist my changes only when I explicitly commit them (SAVE or END) and to discard them when I cancel (RETURN), so that I always have one reliable, predictable mental model of when a change becomes real across the whole product.
+
+**Source:** Owner standing decision (B081), captured in `.kiro/steering/save-convention.md`. Supersedes the autosave behaviour previously present in individual panels. [WB, B081]
+
+#### Acceptance Criteria
+
+1. EVERY editable Workspace Context (Settings/Config, Theme Editor, Menus Editor, Keys Editor, Kinds Editor, Alias Editor, Command Configurator, and any future editable Context) SHALL operate on a WORKING COPY taken from the persisted state when the Context is entered; edits SHALL mutate the working copy only.
+2. WHILE a Context is being edited, THE persisted/backing store SHALL remain unchanged until a commit command (SAVE or END) is issued -- NO Context SHALL persist on a bare edit (autosave-on-edit is prohibited).
+3. WHEN the user issues the SAVE command, THE active editable Context SHALL persist the working copy to its backing store AND remain open, after which the working copy and persisted state are equal (no dirty state).
+4. WHEN the user issues the END command (default F3), THE active editable Context SHALL persist the working copy to its backing store AND THEN exit the Context (END implies SAVE); IF persistence fails, THEN THE Context SHALL remain open and report the error rather than exit.
+5. WHEN the user issues the RETURN command, THE active editable Context SHALL discard the working copy WITHOUT persisting AND THEN exit, leaving the backing store exactly as it was on entry (RETURN is a cancel).
+6. WHERE a Context displays a live PREVIEW of the working copy (e.g. the Theme Editor palette preview), THE preview SHALL be treated as a view of the working copy only and SHALL NOT constitute persistence; WHEN the user issues RETURN, THE live preview SHALL revert to the persisted state.
+7. THE SAVE / END / RETURN commands SHALL reach every editable Context through the single shared command seam; NO editable Context SHALL be exempt and NONE SHALL persist exclusively through an in-panel button while the typed/keyed commands are no-ops.
+8. WHERE a Context exposes a SAVE affordance (button or menu option), THAT affordance SHALL gate persistence identically to the SAVE command -- a visible SAVE affordance SHALL NOT imply a save model the Context does not actually follow.
+9. A Context MAY track whether the working copy differs from the persisted state (dirty) to reflect unsaved changes; a confirm-on-discard prompt on RETURN with unsaved changes is OPTIONAL and not required by this requirement.
+10. THERE SHALL be NO per-Context exception to this convention. Any future save-on-certain-events (auto-commit) behaviour SHALL be an explicitly approved, separately gated additive change and SHALL NOT be assumed or pre-built.
+
+**Per-Context conformance (current state, refreshed from the B081 audit + the scrm-saveconv-extensions investigation):**
+
+| Context | Current state | Remaining change |
+|---------|---------------|------------------|
+| Alias Editor | COMPLIANT on main (reference impl) | none |
+| Theme Editor | COMPLIANT on main (wired into the seam; preview reverts on RETURN) | none |
+| Menus Editor | COMPLIANT on main (wired; delegates persist to the existing save path) | none |
+| Keys Editor | COMPLIANT on main (wired) | none |
+| Kinds Editor | COMPLIANT on main (wired) | none |
+| Config / Settings | PENDING: fixed on the unmerged branch `config-save-convention` (working-copy buffer, SAVE affordance, SAVE/END commit, RETURN discards, autosave dropped), NOT yet on main | rebase + merge `config-save-convention` to main |
+| Command Configurator | OUTSTANDING: per-row add/edit/delete still write immediately (incl. delete) | adopt whole-store working copy; defer all writes (incl. delete) to SAVE/END; RETURN discards; add `EditableKind::CommandConfigurator` to the CR-CH-071 seam |
+
+**Forward directive (every FUTURE editable Context):** EVERY future editable Workspace Context SHALL wire the CR-CH-071 editable-Context seam (`crates/ff-desktop/src/shell/editable_context.rs`: `editable_context_kind()` / `editable_persist` / `editable_discard` / `editable_reload`) so that SAVE / END / RETURN reach it through the single shared command seam, BEFORE it ships -- a new editable Context SHALL NOT introduce a per-panel autosave. This directive is the save-convention arm of the MASTER SCREEN DESIGN DIRECTIVE (`docs/specs/master-screen-directive/`, Requirement 3), which binds it together with the focus contract and the snapshot/capture contract so each screen is retrofitted once.
+
+**Cross-references:** `theme-and-appearance` (Theme Editor), `configuration-system` (Config/Settings), `command-configurator` (Alias Editor + Command Configurator), the menu/keys/kinds editor specs, and `docs/specs/master-screen-directive/` (Requirement 3, the forward directive) each carry a reference row to this requirement in their own `requirements.md`.
+
+---
+
 ## Initial Release Connectivity Scope
 
 The initial release of FileForgeWorkbench provides:

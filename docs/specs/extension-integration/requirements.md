@@ -238,7 +238,14 @@ Context behaves like every built-in Context without the core editing a `match`
 arm for it.
 
 **Source:** wiring-standard "View Integration"; workspace-conformance
-(CR-CH-023); framework-conformance mechanism 5.
+(CR-CH-023); framework-conformance mechanism 5; master screen design directive
+(`docs/specs/master-screen-directive/`, Req 6 -- the extension side of the
+cross-reference).
+
+**Cross-reference:** The full every-Context contract an extension Context must
+satisfy (focus + save-convention-if-editable + ScreenProvider) is defined ONCE in
+`docs/specs/master-screen-directive/requirements.md`. AC 6 below binds an
+extension Context to it. This spec does NOT duplicate those criteria.
 
 ### Acceptance Criteria
 
@@ -263,6 +270,19 @@ arm for it.
    longer be navigable and any open tab of that Context SHALL be closed or
    transformed to an "unavailable" notice through the existing navigation path
    (not left dangling).
+6. AN extension-contributed Context SHALL satisfy the MASTER SCREEN DESIGN
+   DIRECTIVE (`docs/specs/master-screen-directive/requirements.md`) in full, not
+   only the focus latch of AC 1-4: it SHALL (a) report interior focus through the
+   single latch path (AC 1-4 / master directive Req 2); (b) WHERE the Context is
+   EDITABLE, comply with the ISPF save convention
+   (`docs/project-management/project-master/requirements.md` Requirement 11;
+   master directive Req 3) by wiring the CR-CH-071 editable-Context seam rather
+   than an in-panel autosave; and (c) provide a per-Context `ScreenProvider` so
+   SNAPSHOT / CAPTURE work on it (screen-snapshot-scrm Req 2; master directive
+   Req 4), OR declare the explicit documented opt-out for a Context that has no
+   logical screen. THIS is a CROSS-REFERENCE to the master directive; the
+   criteria are NOT duplicated here. (framework-conformance: all three contracts
+   are delivered on existing seams.)
 
 ---
 

@@ -74,6 +74,7 @@ The following specs exist under `docs/specs/`:
 - logging-subsystem
 - lua-macro-engine
 - markdown-rendering (CR-NR-101: configurable Markdown element styling -- TOML config consumed by FFWB + ffmdx + HTML/PDF export; composes ff-theme Colour_Tokens, owns markdown typography/layout; requirements drafted, gate pending)
+- master-screen-directive (CR-NR-114: cross-cutting every-Context directive -- mandates the WorkspaceContext/InteriorFocus focus contract + ISPF save convention (central Req 11) for editable Contexts + per-Context ScreenProvider snapshot/capture with a documented opt-out; sibling of the focus contract; carries the Core Context retrofit matrix; requirements/design/tasks drafted, gate pending)
 - menu-and-statusbar
 - multi-tab-editor
 - navigation-commands
