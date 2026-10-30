@@ -153,7 +153,7 @@ pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
 /// re-expanded by the SCRM surfacing. The SCRM entry lives ONLY on the bar.
 ///
 /// The `SNAPSHOT` entry is a DYNAMIC source (see
-/// `shell::render_chrome::dynamic_menu_options`): its dropdown children are the
+/// `shell::render_menu_bar::dynamic_menu_options`): its dropdown children are the
 /// existing `SNAPSHOT <format>` / `CAPTURE ...` verbs, each dispatched through the
 /// single front door (command parity, Req 21.3/21.4). No new verb, intercept,
 /// dispatcher, or navigation stack is introduced (framework-conformance).

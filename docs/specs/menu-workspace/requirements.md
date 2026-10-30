@@ -1178,9 +1178,89 @@ user menu file overrides it. Menu-bar menus are conventionally named with an
    any bar-specific code path distinct from normal command dispatch.
 
 5. WHILE a menu-bar dropdown is open, THE items within it SHALL be
-   keyboard-navigable using the egui-native menu behaviour (arrow keys move
-   between items, Enter activates, Escape closes), consistent with a standard
-   application menu. (No bespoke Tab-ring entry for dropdown items is added.)
+   keyboard-navigable (Down/Up arrow keys move keyboard focus between the
+   dropdown items, Enter activates the focused item, Escape closes the
+   dropdown), consistent with a standard application menu. Specifically:
+   5a. WHEN a dropdown is first opened AND no dropdown item yet holds focus,
+       THE first Down arrow SHALL move focus to the FIRST dropdown item.
+   5b. WHILE a dropdown item holds focus, THE Down arrow SHALL move focus to
+       the NEXT dropdown item and the Up arrow to the PREVIOUS item, clamping
+       at the last/first item (focus does not wrap or leave the dropdown).
+   5c. WHEN Enter (or Space) is pressed on a focused dropdown item, THE
+       workbench SHALL activate it exactly as a mouse click does -- dispatching
+       its command through the single command front door
+       (`dispatch_command_string`, command parity, criterion 17.4) and closing
+       the dropdown.
+   5d. WHEN the FIRST dropdown item holds focus (tracked item index 0) AND the
+       Up arrow is pressed, THE workbench SHALL move focus UP to the PARENT
+       top-level heading (the bar button that opened the dropdown), rather than
+       clamping on the first item. WHILE a heading holds focus with its dropdown
+       open (bar keyboard mode), THE Down arrow SHALL re-enter that dropdown at
+       its first item (consistent with criterion 5a). This refines the 5b
+       clamping rule: Up clamps only BETWEEN items; from the first item it
+       escapes UP to the heading.
+   5e. WHILE focus is on a top-level heading (bar keyboard mode, dropdown open),
+       THE Left and Right arrows SHALL move focus BETWEEN the bar-visible
+       top-level headings: Right to the NEXT heading, Left to the PREVIOUS,
+       CLAMPING at the last/first heading (focus does not wrap). As focus moves
+       to another heading, THE workbench SHALL OPEN that newly-focused heading's
+       dropdown and close the others (standard desktop menu-bar convention:
+       moving along the bar follows focus with the open dropdown). THE Left/Right
+       consume SHALL be GATED on a menu-bar dropdown being open, so when the bar
+       is idle Left/Right remain available to other consumers (the command field,
+       the config-tree collapse/expand, the nav-stack walk) and are NOT starved.
+   5f. WHEN keyboard focus is on a top-level menu-bar heading (e.g. reached by
+       Tab, criterion 17.6) AND that heading's dropdown is NOT yet open, THE Down
+       arrow SHALL OPEN that heading's dropdown and move focus to its FIRST item
+       -- the SAME end state as opening the heading (click or Enter) then pressing
+       Down (criterion 5a). THE Down consume for this case SHALL be GATED on a bar
+       heading actually holding keyboard focus (detected by the focused
+       `egui::Id` matching one of `menu_bar_heading_ids`), so when focus is NOT on
+       a bar heading (command field, config tree, nav stack, or any central-panel
+       consumer) the Down arrow is NOT consumed by the bar and remains available
+       to those consumers. This closes the gap left by 5a/5d, which only handled a
+       dropdown that was ALREADY open: a Tab-focused heading with a closed
+       dropdown is now handled by the SAME shell-owned mechanism, opening the
+       dropdown via `egui::Popup::open_id` (as the 5e Left/Right path does) before
+       egui's `MenuBar` renders so the first-item focus lands this frame.
+   5g. WHILE a menu-bar dropdown is OPEN (the bar interaction is active), THE Tab
+       key SHALL behave EXACTLY like the Right arrow (criterion 5e) and THE
+       Shift+Tab key SHALL behave EXACTLY like the Left arrow: Tab moves focus to
+       the NEXT top-level heading and OPENS its dropdown, Shift+Tab to the
+       PREVIOUS heading and opens its dropdown, CLAMPING at the last/first heading
+       (no wrap), reusing the SAME heading-move-and-open code path as 5e. THE
+       Tab/Shift+Tab consume for the bar SHALL be GATED on a menu-bar dropdown
+       being open, so when NO dropdown is open Tab/Shift+Tab behave EXACTLY as the
+       unified Tab-order model (Requirement 15/17.6): normal focus traversal into,
+       through, and out of the bar headings and the rest of the page, and are NOT
+       hijacked by the bar. WHEN the bar consumes Tab/Shift+Tab in the
+       dropdown-open case, THE consume SHALL also suppress egui's default Tab
+       focus move for that frame, so focus moves ONLY along the bar and does not
+       ALSO advance egui's own focus.
+   (No bespoke Tab-ring entry for dropdown items is added.) IMPLEMENTATION NOTE
+   (B-fix): each dropdown item is rendered with a STABLE `egui::Id`, and the
+   SHELL owns the Down/Up focus walk as a tracked item index. egui 0.33's own
+   `MenuBar`/`Popup` navigation moves focus on the arrow keys ITSELF and does so
+   regardless of a content-closure `consume_key`; an earlier attempt that ALSO
+   moved focus from the dropdown therefore STACKED on egui's move and
+   DOUBLE-ADVANCED -- the first Down landed on item 1 (Aliases) instead of item 0
+   (Config) and Enter invoked the wrong option (the reported regression), and
+   egui's own Up escaped the dropdown. The fix CONSUMES both arrow keys before
+   egui's `MenuBar` renders (so egui never also navigates), advances/retreats a
+   tracked index (clamped per 5a/5b), and FORCES the selected item into focus
+   after the `MenuBar` has run -- the frame's last focus request, which egui
+   cannot drift. The forced focus is re-asserted only when it actually differs
+   from the current focus, so the open dropdown does not spin repaints. Enter on
+   the forced-focus item fires the button's `clicked()`, so dispatch runs through
+   the single front door (5c), identical to a mouse click. The SAME shell-owned
+   mechanism is EXTENDED for 5d/5e: ArrowUp-to-heading, and ArrowLeft/ArrowRight
+   between headings, are ALSO consumed before the `MenuBar` renders (gated on a
+   dropdown being open); the focused heading is tracked as a clamped bar index in
+   `FocusState` (`menu_bar_index`, with all heading ids captured per frame as
+   `menu_bar_heading_ids`); after the `MenuBar` runs the shell FORCES focus onto
+   the active heading button and OPENS that heading's dropdown via
+   `egui::Popup::open_id` (closing the others), so bar navigation is deterministic
+   the same way the item walk is.
 
 6. THE menu bar SHALL continue to participate in the unified Tab-order model
    (Requirement 15, CR-CH-023): the FIRST and LAST top-level menu-bar buttons'

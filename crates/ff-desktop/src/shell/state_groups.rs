@@ -163,6 +163,48 @@ pub(crate) struct FocusState {
     pub menu_first_id: Option<egui::Id>,
     /// Egui id of the LAST top-level Menu_Bar button.
     pub menu_last_id: Option<egui::Id>,
+    /// One-shot: egui id of the open menu-bar dropdown item that the arrow-key
+    /// walk wants focused NEXT frame (menu-workspace Req 17.5). It is stashed
+    /// INSIDE the dropdown content closure and applied by the bar renderer AFTER
+    /// egui's own `MenuBar` navigation has run, so the shell's deterministic
+    /// walk is the LAST focus request and wins over egui's (which otherwise
+    /// double-advances on Down and escapes the dropdown on Up). Cleared each
+    /// frame once applied.
+    pub menu_dropdown_focus_target: Option<egui::Id>,
+    /// Index of the keyboard-selected item in the currently OPEN menu-bar
+    /// dropdown, or `None` when no dropdown is open or none is selected yet
+    /// (menu-workspace Req 17.5). The shell owns this walk deterministically:
+    /// Down advances it, Up retreats it (clamped), and the selected item's id is
+    /// FORCED into focus every frame via `menu_dropdown_focus_target` so egui's
+    /// own menu navigation cannot drift it. Reset to `None` when the dropdown is
+    /// not rendered (closed).
+    pub menu_dropdown_index: Option<usize>,
+    /// Set true by the dropdown renderer each frame a menu-bar dropdown is OPEN;
+    /// the bar renderer reads it after egui's MenuBar runs to tell an open
+    /// dropdown from a closed one (so it can reset `menu_dropdown_index` on
+    /// close) and clears it for the next frame.
+    pub menu_dropdown_open_this_frame: bool,
+    /// Egui ids of ALL top-level Menu_Bar buttons (headings) that are visible on
+    /// the bar, captured in bar order every frame (menu-workspace Req 17.5d/e).
+    /// The shell-owned Left/Right walk along the bar indexes INTO this list to
+    /// focus the previous/next heading and open its dropdown. Rebuilt each frame
+    /// by the bar renderer; empty until the first render.
+    pub menu_bar_heading_ids: Vec<egui::Id>,
+    /// Index into `menu_bar_heading_ids` of the heading that currently owns the
+    /// keyboard focus on the BAR (menu-workspace Req 17.5d/e). `Some` means the
+    /// bar is in keyboard mode: the heading is focused and its dropdown is held
+    /// open, Left/Right move between headings, and Down enters the open dropdown.
+    /// `None` means the bar is not keyboard-driving the headings (focus is on a
+    /// dropdown ITEM, or the bar is idle). Set when a dropdown opens, when Up
+    /// returns from the first item to its heading, and when Left/Right move along
+    /// the bar; cleared when the dropdowns all close or Down enters an item.
+    pub menu_bar_index: Option<usize>,
+    /// Index (into the bar order) of the heading whose dropdown actually RENDERED
+    /// this frame, captured inside that heading's dropdown content closure
+    /// (menu-workspace Req 17.5d). Lets the bar renderer learn which heading a
+    /// CLICK opened (a click does not set `menu_bar_index`) so Left/Right and
+    /// Up-to-heading know the current heading. Reset each frame before render.
+    pub menu_dropdown_owner_index: Option<usize>,
     /// Active tab index observed on the previous frame (focus re-arm trigger).
     pub last_active_tab: usize,
     /// One-shot latch: focus the active Workspace's FIRST interior this frame.

@@ -2,10 +2,13 @@
 //!
 //! Menu bar rendering for WorkbenchShell. Theme application lives in
 //! `render_theme.rs` and tab-bar rendering in `render_tab_bar.rs` after the
-//! Phase 2 task 2.2 file-size split.
+//! Phase 2 task 2.2 file-size split. The per-dropdown item rendering, keyboard
+//! navigation (menu-workspace Req 17.5), and the menu peek/dynamic/SCRM helpers
+//! live in `render_menu_bar.rs` (file-size rule).
 
 use eframe::egui;
 
+use super::render_menu_bar::MenuDropdownNav;
 use super::WorkbenchShell;
 
 /// Map a Menu_Bar name to its file stem (menu-workspace Req 17.8, CR-NR-080),
@@ -108,8 +111,8 @@ impl WorkbenchShell {
     /// the active Workspace (Req 17.3); WHERE the command does not name a menu,
     /// the dropdown holds a single item that dispatches the command directly
     /// (Req 17.4). Selecting any item routes through `handle_command` (command
-    /// parity) and closes the dropdown. Dropdown items are keyboard-navigable via
-    /// egui-native menu behaviour (Req 17.5).
+    /// parity) and closes the dropdown. Dropdown items are keyboard-navigable
+    /// (Req 17.5).
     ///
     /// The FIRST and LAST top-level button ids are captured into
     /// `menu_first_id` / `menu_last_id` for the CR-CH-023 Boundary_Policy
@@ -145,6 +148,131 @@ impl WorkbenchShell {
         ui: &mut egui::Ui,
         menu: &crate::menu_workspace::MenuFile,
     ) {
+        // B-fix (Req 17.5a/17.5b): CONSUME both dropdown-navigation arrow keys
+        // HERE, before egui's `MenuBar` renders, so egui's own menu navigation
+        // never also moves focus. egui processes the arrows inside its `MenuBar`
+        // `.ui()` call -- BEFORE the per-dropdown content closure runs -- so a
+        // consume inside that closure is too late, and leaving egui to navigate
+        // made the shell walk double-advance (the reported regression: first Down
+        // landed on item 1 / Aliases instead of item 0 / Config) and escape the
+        // dropdown on Up. The shell owns the walk as a tracked index and FORCES
+        // the selected item into focus after the MenuBar runs (below).
+        //
+        // CONSUME ONLY WHILE A DROPDOWN IS OPEN. `menu_dropdown_open_this_frame`
+        // still holds the PREVIOUS frame's value at this point (it is cleared
+        // just below, after the consume), so it tells us whether a dropdown was
+        // open last frame. When no dropdown is open the arrows belong to other
+        // consumers (command-field history recall, config-tree navigation, the
+        // nav-stack walk); swallowing them here unconditionally was a regression
+        // that broke those paths. The dropdown is only ever opened by a prior
+        // Enter/click on a top-level button, so by the time the user can press
+        // an arrow the flag is already set and the first Down is still consumed.
+        // Req 17.5e: ALSO consume Left/Right while a dropdown is open, so the
+        // shell owns the walk ALONG the bar (between headings) just as it owns
+        // the Down/Up walk WITHIN a dropdown. Gated on `dropdown_open` for the
+        // same reason as Down/Up: when the bar is idle, Left/Right belong to
+        // other consumers (the command field, the config tree collapse/expand,
+        // the nav stack), and swallowing them unconditionally was the prior
+        // regression. The dropdown is only ever open after a prior Enter/click on
+        // a heading, so by the time the user can press an arrow the flag is set.
+        // Req 17.5f: ALSO handle Down when a bar heading holds keyboard focus
+        // but NO dropdown is open yet (the Tab-to-heading case). The Down/Up/
+        // Left/Right consume above is gated on a dropdown ALREADY being open, so
+        // a heading reached by Tab (focus on the heading button, popup closed)
+        // never saw Down and nothing happened. Detect that case here -- BEFORE
+        // the flags are cleared -- by matching the currently focused egui id
+        // against last frame's captured heading ids (`menu_bar_heading_ids`,
+        // which like `menu_dropdown_open_this_frame` still holds the PREVIOUS
+        // frame's value at this point). The consume stays TIGHTLY gated: it fires
+        // ONLY when a heading actually holds focus, so Down is never stolen from
+        // the command field, config tree, or nav-stack walk (the prior over-broad
+        // arrow-consume regression).
+        let dropdown_open = self.focus.menu_dropdown_open_this_frame;
+        let focused_id = ui.ctx().memory(|m| m.focused());
+        let focused_heading_index = focused_id.and_then(|id| {
+            self.focus
+                .menu_bar_heading_ids
+                .iter()
+                .position(|&h| h == id)
+        });
+        // Down is consumed when a dropdown is open (the existing walk) OR when a
+        // bar heading holds focus with no dropdown open (the new Tab-to-heading
+        // open). Up/Left/Right stay gated on a dropdown being open only.
+        let down_for_closed_heading = !dropdown_open && focused_heading_index.is_some();
+        let down_consumed = (dropdown_open || down_for_closed_heading)
+            && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown));
+        // When Down opens a CLOSED focused heading (below), the dropdown walk is
+        // SEEDED to item 0 directly, so the dropdown render must NOT also treat
+        // this Down as an advance (that would double-advance to item 1). Only the
+        // already-open case forwards Down into the per-item walk.
+        let open_closed_heading = down_consumed && down_for_closed_heading;
+        // Req 17.5g: WHILE a dropdown is open, Tab behaves like Right and
+        // Shift+Tab like Left -- the user asked that Tab keep navigating the bar
+        // instead of being swallowed. CONSUME the Tab event here (before egui's
+        // `MenuBar` runs) so egui's own Tab focus traversal does NOT ALSO move
+        // focus this frame; the consumed Tab is folded into the SAME heading-
+        // move-and-open path as Left/Right (nav.left/nav.right below). The
+        // consume is GATED on `dropdown_open` for the SAME reason as Left/Right:
+        // when the bar is idle, Tab belongs to the unified Tab-order traversal
+        // (Req 15/17.6) and must NOT be hijacked by the bar.
+        //
+        // Direction is read from the SHIFT modifier on the Tab event, not from
+        // two separate `consume_key` calls: the plain-Tab and Shift+Tab variants
+        // are both consumed here (so neither leaks to egui's own focus
+        // traversal) and the SHIFT state sampled at consume time decides Right
+        // (no shift) vs Left (shift). Sampling the modifier is robust to how the
+        // Tab event's modifiers are normalised by the backend/harness.
+        let (tab_right, tab_left) = if dropdown_open {
+            let shift = ui.input(|i| i.modifiers.shift);
+            let plain = ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
+            let with_shift =
+                ui.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab));
+            let tab_pressed = plain || with_shift;
+            (tab_pressed && !shift, tab_pressed && shift)
+        } else {
+            (false, false)
+        };
+        let nav = MenuDropdownNav {
+            down: down_consumed && !open_closed_heading,
+            up: dropdown_open
+                && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)),
+            left: tab_left
+                || dropdown_open
+                    && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft)),
+            right: tab_right
+                || dropdown_open
+                    && ui
+                        .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight)),
+        };
+        // Clear per-frame dropdown-walk flags before the dropdowns render.
+        self.focus.menu_dropdown_focus_target = None;
+        self.focus.menu_dropdown_open_this_frame = false;
+        self.focus.menu_dropdown_owner_index = None;
+
+        // Req 17.5f: a Down on a focused-but-closed heading OPENS that heading's
+        // dropdown and lands focus on its FIRST item. Open the heading's `Popup`
+        // BEFORE egui's `MenuBar` renders so the dropdown content closure runs
+        // THIS frame (the 5e Left/Right path opens popups the same way, via
+        // `egui::Popup::open_id`). SEED `menu_dropdown_index` to `Some(0)` so,
+        // regardless of which frame the dropdown content first renders, the walk
+        // forces focus onto item 0 -- the same end state as opening the heading
+        // then pressing Down (criterion 5a). Record the heading as the bar's
+        // keyboard index so a later Up-to-heading / Left-Right knows the open one.
+        if open_closed_heading {
+            if let Some(idx) = focused_heading_index {
+                if let Some(&heading) = self.focus.menu_bar_heading_ids.get(idx) {
+                    egui::Popup::open_id(ui.ctx(), heading.with("popup"));
+                    self.focus.menu_bar_index = Some(idx);
+                    self.focus.menu_dropdown_index = Some(0);
+                    ui.ctx().request_repaint();
+                }
+            }
+        }
+
+        // Rebuilt every frame: the ids of all visible top-level headings, in bar
+        // order, so the Left/Right walk can index previous/next (Req 17.5e).
+        let mut heading_ids: Vec<egui::Id> = Vec::new();
+
         egui::MenuBar::new().ui(ui, |ui| {
             // Bar shows only options flagged for the menu bar (Req 17.2):
             // e.g. a terminal `RETURN` option (show_in_menu_bar = false) is
@@ -153,52 +281,24 @@ impl WorkbenchShell {
                 menu.options.iter().filter(|o| o.show_in_menu_bar).collect();
             let last_index = bar_options.len().saturating_sub(1);
             for (i, option) in bar_options.iter().enumerate() {
-                // A DYNAMIC source (e.g. `THEME LIST`) generates its children
-                // at runtime (Req 17.10); otherwise PEEK the referenced menu's
-                // options (Req 17.3). Empty peek => a plain direct command.
-                let dynamic = self.dynamic_menu_options(&option.command);
-                let peeked = if dynamic.is_some() {
-                    Vec::new()
-                } else {
-                    self.peek_menu_options(&option.command)
-                };
+                // The ordered child item commands this top-level button's
+                // dropdown offers (Req 17.3/17.4/17.10). Computed BEFORE opening
+                // the dropdown so the id-salt (the top-level command) is stable.
+                let items = self.menu_bar_dropdown_items(&option.command);
                 // Bar buttons are labelled by the option's COMMAND (the verb
                 // the user would type), not its description (CR-NR-080).
                 let btn = ui.menu_button(option.command.clone(), |ui| {
-                    if let Some(children) = &dynamic {
-                        // Dynamic children (Req 17.10, 17.11): labelled by the
-                        // theme name (description), dispatch `THEME <name>`.
-                        for child in children {
-                            if ui.button(child.description.clone()).clicked() {
-                                // B080 Step 7: route menu-bar clicks through the
-                                // single front door so a clicked verb resolves via
-                                // resolve_target (identical observable open to the
-                                // typed line), not the superseded ladder arm.
-                                self.dispatch_command_string(&child.command);
-                                ui.close();
-                            }
-                        }
-                    } else if peeked.is_empty() {
-                        // Non-menu command: one item that dispatches it (Req 17.4).
-                        if ui.button(option.command.clone()).clicked() {
-                            // B080 Step 7: front-door dispatch (see above).
-                            self.dispatch_command_string(&option.command);
-                            ui.close();
-                        }
-                    } else {
-                        // Peeked submenu options: each is labelled by its
-                        // COMMAND and dispatches that command (Req 17.3,
-                        // 17.4, command parity) -- consistent with the
-                        // top-level buttons.
-                        for child in &peeked {
-                            if ui.button(child.command.clone()).clicked() {
-                                // B080 Step 7: front-door dispatch (see above).
-                                self.dispatch_command_string(&child.command);
-                                ui.close();
-                            }
-                        }
-                    }
+                    // The dropdown content closure runs ONLY while the dropdown
+                    // is open. Render the items with stable ids and drive the
+                    // shell-owned Down/Up focus walk + Enter dispatch (Req 17.5,
+                    // B-fix: egui's own menu navigation is unreliable, so the
+                    // arrows were consumed above and the shell owns the move).
+                    // `i` is this heading's bar index, recorded so the bar
+                    // renderer's Left/Right and Up-to-heading logic (below) knows
+                    // the open heading (Req 17.5d/17.5e).
+                    self.render_menu_bar_dropdown(ui, &option.command, &items, nav, i);
                 });
+                heading_ids.push(btn.response.id);
                 // CR-CH-023 Boundary_Policy: capture the FIRST and LAST
                 // top-level button ids for the next frame (Req 17.6).
                 if i == 0 {
@@ -209,135 +309,81 @@ impl WorkbenchShell {
                 }
             }
         });
-    }
+        self.focus.menu_bar_heading_ids = heading_ids.clone();
 
-    /// Peek the options of the menu referenced by `command`, WITHOUT navigating.
-    ///
-    /// Returns the referenced menu's `[MenuOption]` when `command`'s first token
-    /// names a resolvable menu (a user `menus/<name>.toml` or a compiled built-in
-    /// `pom`/`settings`); otherwise returns an empty vec (the caller then treats
-    /// the option as a direct command). This uses the SAME resolver the command
-    /// line uses (`ShellTargetResolver::menu_name_target`), so the bar and typed
-    /// commands agree on what names a menu.
-    ///
-    /// Validates: menu-workspace Requirement 17.3
-    pub(super) fn peek_menu_options(
-        &self,
-        command: &str,
-    ) -> Vec<crate::menu_workspace::MenuOption> {
-        use ff_command::{CommandTarget, TargetResolver};
-        let resolver = crate::command_config::ShellTargetResolver::new(
-            &self.command_store.definitions,
-            &self.cmd_registry,
-            self.menus_dir(),
-        );
-        let name = match resolver.menu_name_target(command) {
-            Some(CommandTarget::Menu { name }) => name,
-            _ => return Vec::new(),
-        };
-        // Load the referenced menu's options: a user file if present, else the
-        // compiled Recovery_Baseline for the built-in names.
-        let menus_dir = self.menus_dir();
-        let path = menus_dir.join(format!("{name}.toml"));
-        let menu = crate::menu_workspace::loader::load_menu_file(&path)
-            .ok()
-            .unwrap_or_else(|| match name.as_str() {
-                "settings" => crate::menu_workspace::defaults::recovery_settings_menu(),
-                _ => crate::menu_workspace::defaults::recovery_pom_menu(),
-            });
-        menu.options
-    }
-
-    /// Generate a DYNAMIC option source for a menu-bar dropdown, if `command`
-    /// names one (menu-workspace Requirement 17.10, CR-NR-080 Slice D).
-    ///
-    /// A dynamic source produces its child options at RUNTIME rather than from a
-    /// file. Two sources exist:
-    ///
-    /// - `THEME LIST`: yields one child per available theme
-    ///   (`ff_theme::list_all_themes`, in list order), each labelled by the theme
-    ///   name and dispatching `THEME <name>` (command parity,
-    ///   theme-and-appearance Requirement 17.2, via the shared `set_active_theme`
-    ///   path). Delivers the CR-NR-077 theme picker.
-    /// - `SNAPSHOT`: the SCRM surfacing dropdown (FORWARD-PLAN decision 1,
-    ///   screen-snapshot-scrm Requirement 21). Yields one child per EXISTING
-    ///   SCRM verb (the `SNAPSHOT <format>` family and the `CAPTURE ...`
-    ///   lifecycle verbs); each child dispatches its existing verb through the
-    ///   single front door, so a click is observably identical to typing it. This
-    ///   is the menu-bar analogue of the theme picker -- code-only, additive, with
-    ///   NO new verb, intercept, dispatcher, or navigation stack.
-    ///
-    /// Returns `None` for any command that is not a dynamic source, so the caller
-    /// falls back to `peek_menu_options` / direct dispatch.
-    ///
-    /// Validates: menu-workspace Requirement 17.10, 17.11;
-    /// screen-snapshot-scrm Requirement 21.1, 21.3, 21.4 (CR-NR-098)
-    pub(super) fn dynamic_menu_options(
-        &self,
-        command: &str,
-    ) -> Option<Vec<crate::menu_workspace::MenuOption>> {
-        let trimmed = command.trim();
-        if trimmed.eq_ignore_ascii_case("THEME LIST") {
-            let options = ff_theme::list_all_themes(&self.themes_dir())
-                .into_iter()
-                .map(|t| crate::menu_workspace::MenuOption {
-                    key: String::new(),
-                    command: format!("THEME {}", t.name),
-                    description: t.name.clone(),
-                    enabled: true,
-                    group: None,
-                    show_in_menu_bar: true,
-                    target: None,
-                })
-                .collect();
-            return Some(options);
+        // Req 17.5e: apply the shell-owned Left/Right walk ALONG the bar, AFTER
+        // egui's MenuBar has run. Determine the current heading index: the bar's
+        // tracked keyboard index if set, else the index of whichever heading's
+        // dropdown rendered this frame (so a mouse-opened dropdown is picked up).
+        // Left/Right move the index (clamped at the first/last heading -- desktop
+        // convention is clamp, not wrap); the newly-focused heading's dropdown is
+        // opened and all others closed, and `menu_dropdown_index` is reset to
+        // None so focus lands on the heading (not a stale item).
+        if dropdown_open && !heading_ids.is_empty() && (nav.left || nav.right) {
+            let current = self
+                .focus
+                .menu_bar_index
+                .or(self.focus.menu_dropdown_owner_index)
+                .unwrap_or(0);
+            let last = heading_ids.len() - 1;
+            let next = if nav.right {
+                (current + 1).min(last)
+            } else {
+                current.saturating_sub(1)
+            };
+            self.focus.menu_bar_index = Some(next);
+            self.focus.menu_dropdown_index = None;
+            // Open the newly-focused heading's dropdown (closes all others): a
+            // `menu_button`'s popup id is `button_id.with("popup")` in egui 0.33.
+            let popup_id = heading_ids[next].with("popup");
+            egui::Popup::open_id(ui.ctx(), popup_id);
+            ui.ctx().request_repaint();
         }
-        if trimmed.eq_ignore_ascii_case("SNAPSHOT") {
-            return Some(scrm_menu_bar_options());
-        }
-        None
-    }
-}
 
-/// The SCRM menu-bar dropdown children (screen-snapshot-scrm Requirement 21,
-/// FORWARD-PLAN decision 1). Each item's `command` is an EXISTING SCRM verb; the
-/// bar renderer dispatches it through `dispatch_command_string` (the single front
-/// door), so activating an item is observably identical to typing the verb.
-///
-/// The list is a dedicated function (not inline) so the unit test can assert the
-/// exact verb set without rendering. No bare `SNAPSHOT` child is included: the
-/// top-level bar button itself is labelled `SNAPSHOT` and heads this group, so a
-/// duplicate label is avoided; the default one-shot is reachable as
-/// `SNAPSHOT TEXT`.
-///
-/// Validates: screen-snapshot-scrm Requirement 21.1, 21.3, 21.4 (CR-NR-098)
-pub(super) fn scrm_menu_bar_options() -> Vec<crate::menu_workspace::MenuOption> {
-    // EXISTING verbs only (handled by shell/commands_ladder_b.rs via the single
-    // front door). Order: one-shot snapshot formats, then the capture lifecycle.
-    const SCRM_VERBS: &[&str] = &[
-        "SNAPSHOT TEXT",
-        "SNAPSHOT ANSI",
-        "SNAPSHOT MARKDOWN",
-        "SNAPSHOT HTML",
-        "SNAPSHOT YAML",
-        "CAPTURE START",
-        "CAPTURE STOP",
-        "CAPTURE SCREEN",
-        "CAPTURE STATUS",
-        "CAPTURE LIST",
-        "CAPTURE PURGE",
-        "CAPTURE REPLAY",
-    ];
-    SCRM_VERBS
-        .iter()
-        .map(|verb| crate::menu_workspace::MenuOption {
-            key: String::new(),
-            command: (*verb).to_string(),
-            description: (*verb).to_string(),
-            enabled: true,
-            group: None,
-            show_in_menu_bar: true,
-            target: None,
-        })
-        .collect()
+        // B-fix (Req 17.5a/17.5b): FORCE the dropdown walk's selected ITEM into
+        // focus AFTER egui's MenuBar has run, so the shell's request is the LAST
+        // focus request of the frame and egui's own menu navigation cannot drift
+        // it. The open dropdown stashed the id into `menu_dropdown_focus_target`.
+        if let Some(target) = self.focus.menu_dropdown_focus_target.take() {
+            // Only request focus (and a follow-up repaint) when the target is
+            // not ALREADY focused. Re-requesting an already-focused id every
+            // frame would keep scheduling repaints and spin the UI (the harness
+            // caps this and real apps waste frames). Once focus has settled on
+            // the selected item, this becomes a no-op and the UI goes idle.
+            let already = ui.ctx().memory(|m| m.focused()) == Some(target);
+            if !already {
+                ui.ctx().memory_mut(|m| m.request_focus(target));
+                ui.ctx().request_repaint();
+            }
+        } else if dropdown_open {
+            // Req 17.5d/17.5e: no item is selected but a dropdown is open, so
+            // focus belongs on the HEADING (Up returned from item 0, or Left/
+            // Right moved along the bar). Force focus onto the active heading
+            // button and keep its dropdown open for the next frame.
+            if let Some(idx) = self
+                .focus
+                .menu_bar_index
+                .or(self.focus.menu_dropdown_owner_index)
+            {
+                if let Some(&heading) = heading_ids.get(idx) {
+                    let already = ui.ctx().memory(|m| m.focused()) == Some(heading);
+                    if !already {
+                        ui.ctx().memory_mut(|m| m.request_focus(heading));
+                        ui.ctx().request_repaint();
+                    }
+                }
+            }
+        }
+        // No dropdown rendered this frame -> it is closed; reset the walk indices
+        // so the next open starts fresh (Req 17.5a: first Down -> item 0, and the
+        // bar leaves keyboard mode). EXCEPTION (Req 17.5f): when this frame just
+        // opened a focused-but-closed heading via `open_id`, the newly-opened
+        // dropdown's content closure may not render until NEXT frame; preserve
+        // the seeded `menu_dropdown_index`/`menu_bar_index` so the first item is
+        // still forced into focus once it renders, instead of being wiped here.
+        if !self.focus.menu_dropdown_open_this_frame && !open_closed_heading {
+            self.focus.menu_dropdown_index = None;
+            self.focus.menu_bar_index = None;
+        }
+    }
 }
