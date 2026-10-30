@@ -1142,6 +1142,59 @@ fn end_from_help_returns_to_drilled_context() {
     );
 }
 
+// Validates: project-master Req 11 (Help END is pure navigation for a
+// NON-editable Context) + the Help END key-path criterion (Bug A).
+//
+// This drives the LIVE KEY PATH (`dispatch_key_command("END")` -- the method
+// F3 resolves to via `resolve_function_key_command` -> `dispatch_bound_command`
+// -> `resolve_and_dispatch_command`), NOT `handle_command("END")`. The existing
+// `end_from_help_context_returns_to_previous_context_not_exit` test uses the
+// ladder entry point (`handle_command`), which MASKED Bug A: on the live key
+// path END fell through to the CommandEngine stub and produced
+// "Error in END: command not yet implemented" instead of navigating back. This
+// test asserts the key path navigates back to the opener with NO such error.
+#[test]
+fn f3_end_from_help_context_navigates_back_without_error_key_path() {
+    use crate::tab_state::KindTag;
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    let tabs_before = shell.tabs.len();
+
+    // F1 / HELP opens the Help Context (pushing the Home Context onto the stack).
+    shell.handle_command("HELP");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::HelpContext,
+        "setup: HELP opens the Help Context"
+    );
+    shell.open_error = None;
+
+    // Drive the LIVE KEY PATH for F3 = "END" (NOT handle_command). This is the
+    // exact method `resolve_function_key_command` dispatches to.
+    shell.dispatch_key_command("END");
+
+    assert!(
+        shell.tabs.active_tab().is_home,
+        "F3/END from the Help Context (key path) must restore the previous Home Context"
+    );
+    assert_ne!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::HelpContext,
+        "F3/END must leave the Help Context"
+    );
+    assert_eq!(
+        shell.tabs.len(),
+        tabs_before,
+        "F3/END from Help must not close the Workspace"
+    );
+    assert!(
+        shell.open_error.is_none(),
+        "F3/END from Help must NOT produce a command error (Bug A: no 'command not yet implemented'): {:?}",
+        shell.open_error
+    );
+}
+
 // === CR-NR-098 Wave 1: SNAPSHOT command + POM ScreenProvider ===============
 
 /// Validates: screen-snapshot-scrm Req 4.1, 2.1 -- SNAPSHOT on the POM renders

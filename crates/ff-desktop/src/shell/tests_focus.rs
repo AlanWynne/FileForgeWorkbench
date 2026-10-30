@@ -1945,6 +1945,48 @@ fn full_shell_help_first_tab_focuses_search_field() {
     );
 }
 
+// Validates: project-master Req 11 (Help END = pure navigation for a
+// NON-editable Context) + the Help END key-path criterion (Bug A).
+//
+// Drives the REAL live F3 path end-to-end: a PHYSICAL F3 key press flows through
+// `eframe::App::update` -> `resolve_function_key_command` (default F3 = "END")
+// -> `dispatch_key_command` -> `dispatch_bound_command`. The existing
+// `tests_nav` END test uses the ladder entry point (`handle_command`), which
+// masked Bug A ("Error in END: command not yet implemented" on the key path).
+// This full-shell test asserts F3 in the Help Context navigates back to the
+// opener with NO command error.
+#[test]
+fn full_shell_f3_in_help_navigates_back_without_error() {
+    use crate::tab_state::KindTag;
+    let mut harness = harness_shell();
+    harness.state_mut().handle_command("HELP");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::HelpContext,
+        "setup: HELP opens the Help Context"
+    );
+    harness.state_mut().open_error = None;
+
+    // Physical F3 -> the live key path (NOT handle_command).
+    harness.key_press(egui::Key::F3);
+    harness.run();
+    harness.run();
+
+    assert_ne!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::HelpContext,
+        "F3 in the Help Context must leave Help (navigate back to the opener)"
+    );
+    assert!(
+        harness.state().open_error.is_none(),
+        "F3 in Help must NOT produce a command error (Bug A regression guard): {:?}",
+        harness.state().open_error
+    );
+}
+
 // === CR-NR-092 (B046 Slice 2b): in-window split behaviour ===================
 // These drive the REAL WorkbenchShell headlessly (build_eframe) through the
 // SPLIT / FOCUS / UNSPLIT command path (command parity: the menu/keys route

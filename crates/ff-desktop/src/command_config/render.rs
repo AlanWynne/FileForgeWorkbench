@@ -12,6 +12,7 @@ use eframe::egui;
 
 use super::edit::EditForm;
 use super::store::CommandStore;
+use super::CommandDefinition;
 
 /// An action produced by the Command Configurator render, applied by the shell.
 ///
@@ -40,6 +41,18 @@ pub struct CommandConfiguratorState {
     pub pending_delete: Option<String>,
     /// The most recent validation or save error, shown inline.
     pub error: Option<String>,
+    /// The WHOLE-STORE WORKING COPY (B081, project-master Req 11). `None` means
+    /// clean -- the Context mirrors the persisted `CommandStore` exactly. On the
+    /// FIRST edit (add/edit/delete) a working copy is taken from the persisted
+    /// definitions; every subsequent add/edit/delete mutates THIS buffer ONLY,
+    /// never the backing `commands.toml`. SAVE/END flush it; RETURN/REFRESH drop
+    /// it. This replaces the former autosave model (each add/edit/delete wrote
+    /// the store immediately). Transient; not serialised.
+    pub working: Option<Vec<CommandDefinition>>,
+    /// The most recent SAVE/END persist error (the backing-store write failed),
+    /// shown inline as a banner. Distinct from `error` (a validation / form
+    /// error). Transient; not serialised.
+    pub persist_error: Option<String>,
     /// The egui id of the FIRST interior control (the "Add" button), captured
     /// each frame so the shell Boundary_Policy can latch the command-field ->
     /// first-interior Tab jump to a real widget (CR-CH-023, B059). Transient
@@ -56,6 +69,48 @@ impl CommandConfiguratorState {
     /// Create an empty state.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// True when the working copy differs from the persisted store (there are
+    /// unsaved edits). The working copy is taken from the persisted definitions
+    /// on the first edit, so a `Some` buffer that still equals `persisted` is
+    /// NOT dirty.
+    ///
+    /// Validates: project-master Requirement 11.9
+    pub fn is_dirty(&self, persisted: &[CommandDefinition]) -> bool {
+        match &self.working {
+            Some(w) => w.as_slice() != persisted,
+            None => false,
+        }
+    }
+
+    /// Ensure a working copy exists, taking it from `persisted` on first edit,
+    /// and return a mutable reference to it. All structural edits (add / edit /
+    /// delete) go through this so the persisted store is never mutated directly
+    /// (Req 11.2 -- no autosave).
+    pub fn working_mut(&mut self, persisted: &[CommandDefinition]) -> &mut Vec<CommandDefinition> {
+        if self.working.is_none() {
+            self.working = Some(persisted.to_vec());
+        }
+        self.working.as_mut().expect("just initialised")
+    }
+
+    /// The definitions the Context should DISPLAY: the working copy when one has
+    /// been taken, else the persisted store (unchanged, no edits yet).
+    pub fn displayed<'a>(&'a self, persisted: &'a [CommandDefinition]) -> &'a [CommandDefinition] {
+        match &self.working {
+            Some(w) => w.as_slice(),
+            None => persisted,
+        }
+    }
+
+    /// Drop the working copy (RETURN / REFRESH discard): the Context reverts to
+    /// the persisted store with no unsaved edits.
+    ///
+    /// Validates: project-master Requirement 11.5
+    pub fn clear_working(&mut self) {
+        self.working = None;
+        self.persist_error = None;
     }
 }
 
@@ -93,13 +148,32 @@ pub fn render(
     if let Some(err) = &state.error {
         ui.colored_label(egui::Color32::RED, err);
     }
+    // Persist error banner (B081, project-master Req 11.4): a SAVE/END write
+    // failure keeps the Context open with this message.
+    if let Some(err) = &state.persist_error {
+        ui.colored_label(egui::Color32::RED, err);
+    }
+    // Unsaved-changes indicator (B081, project-master Req 11.9): the Context
+    // edits a working copy; nothing is written until SAVE / END.
+    if state.is_dirty(&store.definitions) {
+        ui.colored_label(
+            egui::Color32::from_rgb(0xC8, 0x8A, 0x00),
+            ff_i18n::t("ff-desktop-command-config-unsaved"),
+        );
+    }
     ui.separator();
+
+    // The definitions the Context displays: the WORKING COPY when one has been
+    // taken (there are pending edits), else the persisted store (B081). Cloned
+    // once per frame so the table can be drawn while `state` is mutably borrowed
+    // for the form / delete handlers below.
+    let displayed: Vec<CommandDefinition> = state.displayed(&store.definitions).to_vec();
 
     // Definitions table (Requirement 2.2).
     egui::ScrollArea::vertical()
         .id_salt("command_configurator_list")
         .show(ui, |ui| {
-            if store.definitions.is_empty() {
+            if displayed.is_empty() {
                 ui.label(ff_i18n::t("ff-desktop-command-config-empty"));
             } else {
                 egui::Grid::new("command_configurator_grid")
@@ -113,7 +187,7 @@ pub fn render(
                         ui.strong(ff_i18n::t("ff-desktop-command-config-col-actions"));
                         ui.end_row();
 
-                        for def in &store.definitions {
+                        for def in &displayed {
                             ui.monospace(&def.id);
                             ui.label(&def.label);
                             ui.label(def.target.variant_name());

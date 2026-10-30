@@ -55,6 +55,20 @@ pub(super) enum EditableKind {
     /// SAVE persists + stays, END persists + exits, RETURN/REFRESH discard the
     /// working Kind config and re-open the persisted copy.
     KindsEditor,
+    /// The Config / Settings Context (project-master Req 11, B081 third fix).
+    /// Unlike the sibling editors it used to AUTOSAVE on every edit; it now owns
+    /// a WORKING-COPY BUFFER in `ConfigPanelState`, so typed SAVE flushes the
+    /// buffer + stays, END flushes + exits, and RETURN/REFRESH drop the buffer
+    /// (reverting all pending edits). The `ConfigHandle` store semantics are
+    /// unchanged; the working copy lives in the panel.
+    ConfigPanel,
+    /// The Command Configurator Context (project-master Req 11, B081 -- the LAST
+    /// non-compliant editable Context). It used to write `commands.toml` on every
+    /// add / edit / delete (autosave); it now owns a WHOLE-STORE WORKING COPY in
+    /// `CommandConfiguratorState`, so typed SAVE flushes the working copy + stays,
+    /// END flushes + exits, and RETURN/REFRESH drop the working copy (reverting
+    /// all pending edits, including a staged delete).
+    CommandConfigurator,
 }
 
 impl WorkbenchShell {
@@ -85,12 +99,19 @@ impl WorkbenchShell {
             KindTag::MenusEditor => Some(EditableKind::MenusEditor),
             KindTag::KeysEditor => Some(EditableKind::KeysEditor),
             KindTag::KindsEditor => Some(EditableKind::KindsEditor),
-            // TODO(CR-CH-071 fast-follow, command-environments task 34.1): wire
-            // the Settings / Config panel. It differs from the five sibling
-            // editors in that it currently AUTOSAVES on every edit (no working
-            // copy yet), so it needs a working-copy buffer before it can join the
-            // seam; see save-convention-audit findings 4.3. Until wired it falls
-            // through as non-editable (plain nav), exactly as today (Req 20a.14).
+            // B081 third fix / project-master Req 11: the Config / Settings panel
+            // is now wired into the shared seam. It differs from the five sibling
+            // editors in that it previously AUTOSAVED on every edit; it now owns a
+            // WORKING-COPY BUFFER in `ConfigPanelState`, so persist flushes the
+            // buffer, discard drops it, and reload re-snapshots from the store.
+            // See save-convention-audit findings 4.3.
+            KindTag::ConfigPanel => Some(EditableKind::ConfigPanel),
+            // B081 / project-master Req 11 (the LAST editable Context): the
+            // Command Configurator is now wired into the shared seam. It used to
+            // autosave each add/edit/delete; it now owns a whole-store working
+            // copy, so persist flushes it, discard drops it, reload re-reads the
+            // store from disk.
+            KindTag::CommandConfigurator => Some(EditableKind::CommandConfigurator),
             _ => None,
         }
     }
@@ -107,6 +128,8 @@ impl WorkbenchShell {
             Some(EditableKind::MenusEditor) => self.menus_editor_persist(),
             Some(EditableKind::KeysEditor) => self.keys_editor_persist(),
             Some(EditableKind::KindsEditor) => self.kinds_editor_persist(),
+            Some(EditableKind::ConfigPanel) => self.config_panel_persist(),
+            Some(EditableKind::CommandConfigurator) => self.command_configurator_persist(),
             None => Ok(()),
         }
     }
@@ -123,6 +146,8 @@ impl WorkbenchShell {
             Some(EditableKind::MenusEditor) => self.menus_editor_discard(),
             Some(EditableKind::KeysEditor) => self.keys_editor_discard(),
             Some(EditableKind::KindsEditor) => self.kinds_editor_discard(),
+            Some(EditableKind::ConfigPanel) => self.config_panel_discard(),
+            Some(EditableKind::CommandConfigurator) => self.command_configurator_discard(),
             None => {}
         }
     }
@@ -139,6 +164,8 @@ impl WorkbenchShell {
             Some(EditableKind::MenusEditor) => self.menus_editor_reload(),
             Some(EditableKind::KeysEditor) => self.keys_editor_reload(),
             Some(EditableKind::KindsEditor) => self.kinds_editor_reload(),
+            Some(EditableKind::ConfigPanel) => self.config_panel_reload(),
+            Some(EditableKind::CommandConfigurator) => self.command_configurator_reload(),
             None => {}
         }
     }

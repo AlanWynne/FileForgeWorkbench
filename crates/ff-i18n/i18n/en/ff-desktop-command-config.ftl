@@ -21,6 +21,7 @@ ff-desktop-command-config-col-mode = Mode
 ff-desktop-command-config-col-actions = Actions
 ff-desktop-command-config-edit = Edit
 ff-desktop-command-config-delete = Delete
+ff-desktop-command-config-unsaved = Unsaved changes -- SAVE or END to commit, RETURN to discard.
 
 # --- Delete confirmation ----------------------------------------------------
 ff-desktop-command-config-confirm-delete-title = Confirm delete

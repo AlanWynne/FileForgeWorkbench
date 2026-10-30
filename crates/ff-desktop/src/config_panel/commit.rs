@@ -7,9 +7,13 @@ use ff_config::ConfigHandle;
 
 use super::ConfigPanelState;
 
-/// Commit a new value: validate against schema constraints, then write to user layer.
+/// Commit a new value: validate against schema constraints, then STAGE it into
+/// the panel's WORKING-COPY BUFFER (project-master Requirement 11, B081). The
+/// backing `ConfigHandle` store is NOT written here -- staged edits are flushed
+/// only by an explicit SAVE/END (`config_panel_persist`), and dropped by RETURN.
+/// This replaces the former autosave-on-edit write (Req 11.2).
 ///
-/// Validates: Requirement 15.4, 15.5
+/// Validates: Requirement 15.4, 15.5; project-master Requirement 11.2
 pub(super) fn commit_value(
     state: &mut ConfigPanelState,
     config: &ConfigHandle,
@@ -29,8 +33,8 @@ pub(super) fn commit_value(
             }
         }
     }
-    state.errors.remove(key);
-    let _ = config.set_user_value(key, value);
+    // Stage into the working buffer (no autosave): SAVE/END will flush it.
+    state.stage_set(key, value);
 }
 
 /// Validate a value against schema constraints. Returns Some(error message) on failure.

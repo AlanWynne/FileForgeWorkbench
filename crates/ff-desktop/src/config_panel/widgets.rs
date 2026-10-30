@@ -24,6 +24,12 @@ pub(super) fn render_widget(
 
     let key = entry.key.clone();
 
+    // Display/edit the WORKING-COPY value: a staged edit (Req 11.1) if present,
+    // else the persisted effective value. The widget then edits the buffer via
+    // `commit_value` (which stages, not persists).
+    let working = state.working_value(&key, effective);
+    let effective = &working;
+
     match entry.value_type {
         // Boolean -> checkbox -- Req 15.3
         ValueType::Boolean => {

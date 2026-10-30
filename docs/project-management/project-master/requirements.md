@@ -612,8 +612,8 @@ These requirements span multiple sub-projects and must be honoured throughout.
 | Menus Editor | COMPLIANT on main (wired; delegates persist to the existing save path) | none |
 | Keys Editor | COMPLIANT on main (wired) | none |
 | Kinds Editor | COMPLIANT on main (wired) | none |
-| Config / Settings | PENDING: fixed on the unmerged branch `config-save-convention` (working-copy buffer, SAVE affordance, SAVE/END commit, RETURN discards, autosave dropped), NOT yet on main | rebase + merge `config-save-convention` to main |
-| Command Configurator | OUTSTANDING: per-row add/edit/delete still write immediately (incl. delete) | adopt whole-store working copy; defer all writes (incl. delete) to SAVE/END; RETURN discards; add `EditableKind::CommandConfigurator` to the CR-CH-071 seam |
+| Config / Settings | COMPLIANT -- working-copy buffer in `ConfigPanelState`; bare edits stage only; SAVE/END flush the buffer, RETURN discards; Save affordance enqueues the SAVE command; autosave removed (`EditableKind::ConfigPanel`) | none |
+| Command Configurator | COMPLIANT -- whole-store working copy in `CommandConfiguratorState`; add/edit/DELETE stage into the working copy only; SAVE/END flush it (END stays-open-on-error), RETURN/REFRESH discard; autosave removed (`EditableKind::CommandConfigurator`) | none |
 
 **Forward directive (every FUTURE editable Context):** EVERY future editable Workspace Context SHALL wire the CR-CH-071 editable-Context seam (`crates/ff-desktop/src/shell/editable_context.rs`: `editable_context_kind()` / `editable_persist` / `editable_discard` / `editable_reload`) so that SAVE / END / RETURN reach it through the single shared command seam, BEFORE it ships -- a new editable Context SHALL NOT introduce a per-panel autosave. This directive is the save-convention arm of the MASTER SCREEN DESIGN DIRECTIVE (`docs/specs/master-screen-directive/`, Requirement 3), which binds it together with the focus contract and the snapshot/capture contract so each screen is retrofitted once.
 

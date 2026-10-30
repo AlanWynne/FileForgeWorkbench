@@ -12,6 +12,7 @@
 use std::collections::HashMap;
 
 use eframe::egui;
+use ff_config::value::ConfigValue;
 
 mod tree;
 pub use tree::{
@@ -24,6 +25,20 @@ mod keyboard;
 mod render;
 mod widgets;
 pub use render::render;
+
+/// A single pending edit held in the Config panel's WORKING-COPY BUFFER
+/// (project-master Requirement 11, B081). The panel edits this buffer only; the
+/// backing `ConfigHandle` store is untouched until an explicit SAVE/END flushes
+/// it (Req 11.2 -- no autosave-on-edit). A `Set` stages a new user-layer value;
+/// a `Reset` stages removal of the user override (restoring the lower-layer
+/// default), deferred until commit.
+#[derive(Debug, Clone, PartialEq)]
+pub enum WorkingEdit {
+    /// Stage a new value for the key (flushed via `set_user_value`).
+    Set(ConfigValue),
+    /// Stage a Reset-to-default for the key (flushed via `remove_user_value`).
+    Reset,
+}
 
 /// Persistent state for the Config Panel tab (the flat config-key browser).
 ///
@@ -39,10 +54,23 @@ pub struct ConfigPanelState {
     pub namespace_filter: Option<String>,
     /// Collapsed state per namespace group (true = collapsed).
     pub collapsed: HashMap<String, bool>,
-    /// Pending edit values keyed by schema key (before commit).
+    /// Pending text held WHILE a text/number field has focus (before the value
+    /// is parsed into the working buffer). Transient per-widget edit state, NOT
+    /// the working copy itself.
     pub pending: HashMap<String, String>,
     /// Inline validation error messages keyed by schema key.
     pub errors: HashMap<String, String>,
+    /// The WORKING-COPY BUFFER of unsaved edits (project-master Requirement 11,
+    /// B081). Keyed by schema key; a `Set` stages a value, a `Reset` stages
+    /// removal of the user override. Empty == no unsaved edits (the displayed
+    /// values equal the persisted store). Editing a widget mutates THIS buffer
+    /// only; SAVE/END flush it to the `ConfigHandle`, RETURN drops it. This
+    /// replaces the former autosave-on-edit model (Req 11.2).
+    pub working: HashMap<String, WorkingEdit>,
+    /// The error from the LAST persist attempt (SAVE/END), if any, so END can
+    /// stay-open-and-report on a persist failure (Req 11.4). Cleared on a
+    /// successful flush and on discard/reload.
+    pub persist_error: Option<String>,
     /// The keyboard Tree_Cursor: the node the arrow keys act on (CR-CH-039,
     /// Requirement 21.2). `None` until navigation first enters the tree.
     pub cursor: Option<ConfigNodeId>,
@@ -62,9 +90,61 @@ impl ConfigPanelState {
             collapsed: HashMap::new(),
             pending: HashMap::new(),
             errors: HashMap::new(),
+            working: HashMap::new(),
+            persist_error: None,
             cursor: None,
             widget_ids: HashMap::new(),
         }
+    }
+
+    /// Stage a value edit into the WORKING-COPY BUFFER (Req 11.2). The backing
+    /// store is NOT written -- the edit is held until an explicit SAVE/END.
+    pub fn stage_set(&mut self, key: &str, value: ConfigValue) {
+        self.errors.remove(key);
+        self.working
+            .insert(key.to_string(), WorkingEdit::Set(value));
+    }
+
+    /// Stage a Reset-to-default into the WORKING-COPY BUFFER (Req 11.2): the
+    /// user override is removed on the next SAVE/END, not immediately.
+    pub fn stage_reset(&mut self, key: &str) {
+        self.pending.remove(key);
+        self.errors.remove(key);
+        self.working.insert(key.to_string(), WorkingEdit::Reset);
+    }
+
+    /// The value the panel should DISPLAY/EDIT for `key`: the staged buffer
+    /// value if the key has a pending `Set`, otherwise the persisted effective
+    /// value passed in. A staged `Reset` falls through to the persisted value
+    /// shown by the caller (the reset only takes effect on flush).
+    ///
+    /// Validates: project-master Requirement 11.1
+    pub fn working_value(&self, key: &str, persisted: &ConfigValue) -> ConfigValue {
+        match self.working.get(key) {
+            Some(WorkingEdit::Set(v)) => v.clone(),
+            _ => persisted.clone(),
+        }
+    }
+
+    /// Whether the working buffer holds any unsaved edits (dirty state, Req 11.9).
+    pub fn is_dirty(&self) -> bool {
+        !self.working.is_empty()
+    }
+
+    /// Drop the working buffer WITHOUT writing the backing store (the RETURN /
+    /// discard path, Req 11.5). Leaves the persisted store exactly as it was.
+    pub fn clear_working(&mut self) {
+        self.working.clear();
+        self.pending.clear();
+        self.errors.clear();
+        self.persist_error = None;
+    }
+
+    /// Take the staged edits out of the buffer, leaving it empty, so the caller
+    /// (`config_panel_persist`) can flush them to the store. On a flush FAILURE
+    /// the caller is responsible for restoring the unflushed edits.
+    pub fn take_working(&mut self) -> HashMap<String, WorkingEdit> {
+        std::mem::take(&mut self.working)
     }
 }
 
@@ -84,17 +164,19 @@ pub fn filter_field_id() -> egui::Id {
 
 /// `WorkspaceContext` impl (CR-NR-078): the Config panel renders the flat
 /// config-key browser and reports the Filter field as its single interior focus
-/// stop. Config changes are committed in-place through the `ConfigHandle`, so
-/// there are no `ShellRequest`s to enqueue.
+/// stop. Edits stage into the panel's WORKING-COPY BUFFER (project-master
+/// Req 11, B081); the in-panel Save affordance enqueues a `SAVE` `ShellRequest`
+/// so persistence is gated through the shared SAVE/END seam, not an in-place
+/// autosave.
 ///
-/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1.
+/// Validates: workspace-framework Requirement 1.4, 1.5, 6.1; project-master Req 11.
 impl crate::shell::workspace_context::WorkspaceContext for ConfigPanelState {
     fn render(
         &mut self,
         ui: &mut egui::Ui,
         services: &mut crate::shell::workspace_context::ShellServices<'_>,
     ) -> crate::shell::workspace_context::InteriorFocus {
-        render(ui, self, services.config);
+        render(ui, self, services.config, services.requests);
         crate::shell::workspace_context::InteriorFocus::single(filter_field_id())
     }
 }

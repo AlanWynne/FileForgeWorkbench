@@ -768,18 +768,39 @@ fn commands_opens_command_configurator_context() {
 }
 
 // Validates: command-configurator Requirement 2.4 -- editing an existing
-// definition updates it in place without adding a duplicate.
+// definition updates it in place without adding a duplicate; project-master
+// Requirement 11.2, 11.3 -- under the ISPF-style save convention an edit mutates
+// the WORKING COPY only (no store write on a bare edit) and is persisted on
+// SAVE. (B081: the Command Configurator no longer autosaves each edit, so the
+// in-place update and the no-duplicate guarantee are asserted against the
+// working copy, with persistence proven after an explicit SAVE.)
 #[test]
 fn configurator_edit_updates_in_place() {
     use crate::command_config::edit::{EditForm, TargetVariant};
     use crate::command_config::render::ConfiguratorAction;
     let mut shell = make_shell();
     let _dir = point_store_at_temp(&mut shell);
+    shell.dispatch_command_string("COMMANDS");
     set_add_function_form(&mut shell, "edit.me", "file.save");
     shell.apply_configurator_action(ConfiguratorAction::Save);
 
+    // A bare add stages into the working copy only -- the backing store is NOT
+    // written yet (Req 11.2 -- no autosave).
+    assert!(
+        shell.command_store.find("edit.me").is_none(),
+        "a bare add must not write the store before SAVE"
+    );
+    let staged = shell
+        .command_configurator_panel
+        .displayed(&shell.command_store.definitions)
+        .to_vec();
+    let def = staged
+        .iter()
+        .find(|d| d.id == "edit.me")
+        .expect("the staged add is in the working copy")
+        .clone();
+
     // Open an edit form for the same id and change the label.
-    let def = shell.command_store.find("edit.me").unwrap().clone();
     let mut form = EditForm::from_definition(&def);
     assert!(form.is_edit);
     form.label = "Renamed".to_string();
@@ -788,10 +809,23 @@ fn configurator_edit_updates_in_place() {
     shell.command_configurator_panel.form = Some(form);
     shell.apply_configurator_action(ConfiguratorAction::Save);
 
+    // The edit updates the row in place in the WORKING COPY -- no duplicate added.
+    let working = shell
+        .command_configurator_panel
+        .displayed(&shell.command_store.definitions);
+    assert_eq!(working.len(), 1, "no duplicate added (working copy)");
+    assert_eq!(
+        working.iter().find(|d| d.id == "edit.me").unwrap().label,
+        "Renamed"
+    );
+
+    // SAVE flushes the working copy: the persisted store now reflects the edit
+    // in place, still with no duplicate (Req 2.4, Req 11.3).
+    shell.dispatch_command_string("SAVE");
     assert_eq!(
         shell.command_store.definitions.len(),
         1,
-        "no duplicate added"
+        "no duplicate added (persisted)"
     );
     assert_eq!(
         shell.command_store.find("edit.me").unwrap().label,

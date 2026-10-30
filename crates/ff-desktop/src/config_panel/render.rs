@@ -14,10 +14,16 @@ use super::widgets::render_widget;
 use super::{
     filter_field_id, reconcile_cursor, visible_rows, ConfigNodeId, ConfigPanelState, TreeEntry,
 };
+use crate::shell::workspace_context::ShellRequest;
 
-/// Validates: Requirement 15.1-15.8
-pub fn render(ui: &mut egui::Ui, state: &mut ConfigPanelState, config: &ConfigHandle) {
-    // == Filter bar -- Req 15.7 ===
+/// Validates: Requirement 15.1-15.8; project-master Requirement 11.8
+pub fn render(
+    ui: &mut egui::Ui,
+    state: &mut ConfigPanelState,
+    config: &ConfigHandle,
+    requests: &mut Vec<ShellRequest>,
+) {
+    // == Filter + Save bar -- Req 15.7; save-convention Req 11.8 ===
     ui.horizontal(|ui| {
         ui.label(ff_i18n::t("ff-desktop-config-panel-filter"));
         // Stable id so Tab focus round-trips and the shell can anchor the
@@ -26,7 +32,31 @@ pub fn render(ui: &mut egui::Ui, state: &mut ConfigPanelState, config: &ConfigHa
         if ui.small_button("X").clicked() {
             state.filter.clear();
         }
+
+        // SAVE affordance (project-master Req 11.8): the Save button enqueues the
+        // SAVE command, so it gates persistence through the EXACT same single
+        // dispatch seam as the typed SAVE verb (framework-conformance: no bespoke
+        // intercept). Enabled only when there are unsaved buffered edits.
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let dirty = state.is_dirty();
+            ui.add_enabled_ui(dirty, |ui| {
+                if ui.button("Save").clicked() {
+                    requests.push(ShellRequest::Command("SAVE".to_string()));
+                }
+            });
+            if dirty {
+                ui.colored_label(
+                    egui::Color32::from_rgb(220, 180, 100),
+                    "\u{25cf} unsaved changes",
+                );
+            }
+        });
     });
+
+    // Surface a persist error from the last SAVE/END attempt (Req 11.4).
+    if let Some(err) = &state.persist_error {
+        ui.colored_label(egui::Color32::RED, err.as_str());
+    }
     ui.separator();
 
     // == Source file indicator -- Req 15.8 ===
@@ -192,13 +222,29 @@ fn render_entry(
                     .color(badge_color),
             ));
 
-            // Reset to Default button -- Req 15.6 (disabled when locked or at Default)
+            // A staged (unsaved) edit on this key shows an asterisk after the
+            // provenance badge so the working-copy state is visible (Req 11.9).
+            if state.working.contains_key(key) {
+                ui.add(egui::Button::selectable(
+                    false,
+                    egui::RichText::new("*")
+                        .small()
+                        .color(egui::Color32::from_rgb(220, 180, 100)),
+                ));
+            }
+
+            // Reset to Default button -- Req 15.6 (disabled when locked or at
+            // Default WITH no staged edit). A key with a staged Set can still be
+            // Reset to revert the pending edit; a key already at Default with a
+            // staged Reset needs no further Reset.
             let is_at_default = provenance_label == "Default";
-            ui.add_enabled_ui(!is_at_default && !locked, |ui| {
+            let has_staged_edit = state.working.contains_key(key);
+            let reset_enabled = !locked && (!is_at_default || has_staged_edit);
+            ui.add_enabled_ui(reset_enabled, |ui| {
                 if ui.small_button("\u{21ba} Reset").clicked() {
-                    let _ = config.remove_user_value(key);
-                    state.pending.remove(key);
-                    state.errors.remove(key);
+                    // Stage a Reset into the working buffer (Req 11.2): the user
+                    // override is removed on the next SAVE/END, not immediately.
+                    state.stage_reset(key);
                 }
             });
         });

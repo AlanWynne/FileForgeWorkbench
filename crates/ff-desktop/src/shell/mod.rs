@@ -37,6 +37,8 @@ pub(crate) mod alias_reader;
 mod alias_template;
 mod command_line_outcome;
 mod commands;
+mod commands_config_save;
+mod commands_configurator_save;
 mod commands_environment;
 mod commands_fastpath;
 mod commands_keys_save;
@@ -133,6 +135,10 @@ mod tests_alias_template;
 mod tests_command;
 #[cfg(test)]
 mod tests_common;
+#[cfg(test)]
+mod tests_config_save_convention;
+#[cfg(test)]
+mod tests_configurator_save_convention;
 // core-001 strip: tests_crch061 (mainframe catalog-backed SAVE routing) and
 // tests_crch071 (FFEDIT/FFCMD editor verb seam) validated now-parked domains
 // (catalog, mainframe CE, FFEDIT) and were removed with those features.

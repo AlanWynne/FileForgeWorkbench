@@ -703,30 +703,52 @@ fn tab_state_workspace_name_defaults_to_none() {
     assert!(shell.tabs.active_tab().workspace_name.is_none());
 }
 
-// Validates: command-configurator Requirement 2.3, 2.4 -- Save commits a new
-// definition to the store and closes the form.
+// Validates: command-configurator Requirement 2.3, 2.4; project-master
+// Requirement 11.2, 11.3 -- under the ISPF-style save convention (B081) a bare
+// form Save STAGES the new definition into the WHOLE-STORE working copy and
+// closes the form, but does NOT write the backing store (no autosave); the
+// typed SAVE command then flushes the working copy to the store.
 #[test]
 fn configurator_save_adds_definition_to_store() {
     use crate::command_config::render::ConfiguratorAction;
     let mut shell = make_shell();
     let _dir = point_store_at_temp(&mut shell);
+    shell.dispatch_command_string("COMMANDS");
     set_add_function_form(&mut shell, "my.build", "file.save");
 
+    // A bare form Save stages into the working copy and closes the form (Req
+    // 2.3), but the backing store is NOT written yet (Req 11.2 -- no autosave).
     shell.apply_configurator_action(ConfiguratorAction::Save);
-
     assert!(
-        shell.command_store.find("my.build").is_some(),
-        "Save must add the definition to the store"
+        shell.command_store.find("my.build").is_none(),
+        "a bare form Save must not write the store before an explicit SAVE"
     );
     assert!(
         shell.command_configurator_panel.form.is_none(),
         "a successful Save closes the form"
     );
     assert!(shell.command_configurator_panel.error.is_none());
+    assert!(
+        shell
+            .command_configurator_panel
+            .displayed(&shell.command_store.definitions)
+            .iter()
+            .any(|d| d.id == "my.build"),
+        "the staged add is present in the working copy"
+    );
+
+    // The explicit SAVE command flushes the working copy to the store (Req 11.3).
+    shell.dispatch_command_string("SAVE");
+    assert!(
+        shell.command_store.find("my.build").is_some(),
+        "SAVE must flush the staged definition to the store"
+    );
 }
 
-// Validates: command-configurator Requirement 4.1 -- Save rejects an invalid id
-// and leaves the store unchanged.
+// Validates: command-configurator Requirement 4.1; project-master Requirement
+// 11.2 -- Save rejects an invalid id: the form stays open with an error and the
+// rejected add is NOT staged, so neither the working copy nor the backing store
+// gains a definition (store stays empty).
 #[test]
 fn configurator_save_rejects_invalid_id() {
     use crate::command_config::render::ConfiguratorAction;
@@ -751,8 +773,10 @@ fn configurator_save_rejects_invalid_id() {
     );
 }
 
-// Validates: command-configurator Requirement 4.6 -- Save rejects an id that
-// shadows a reserved built-in command.
+// Validates: command-configurator Requirement 4.6; project-master Requirement
+// 11.2 -- Save rejects an id that shadows a reserved built-in command: the
+// rejected add is NOT staged, so the reserved id never reaches the working copy
+// or the backing store.
 #[test]
 fn configurator_save_rejects_reserved_id() {
     use crate::command_config::render::ConfiguratorAction;
@@ -767,21 +791,43 @@ fn configurator_save_rejects_reserved_id() {
     assert!(shell.command_configurator_panel.error.is_some());
 }
 
-// Validates: command-configurator Requirement 2.5 -- Delete removes a
-// definition from the store.
+// Validates: command-configurator Requirement 2.5; project-master Requirement
+// 11.2, 11.3 -- Delete removes a definition from the store, but under the
+// ISPF-style save convention (B081) a bare Delete only STAGES the removal into
+// the working copy; it is committed to the backing store by an explicit SAVE.
 #[test]
 fn configurator_delete_removes_definition() {
     use crate::command_config::render::ConfiguratorAction;
     let mut shell = make_shell();
     let _dir = point_store_at_temp(&mut shell);
+    shell.dispatch_command_string("COMMANDS");
+    // Stage an add, then SAVE so the definition is genuinely persisted.
     set_add_function_form(&mut shell, "temp.cmd", "file.save");
     shell.apply_configurator_action(ConfiguratorAction::Save);
+    shell.dispatch_command_string("SAVE");
     assert!(shell.command_store.find("temp.cmd").is_some());
 
+    // A bare Delete stages the removal in the working copy only -- the store is
+    // unchanged until the next SAVE (Req 11.2 -- delete is deferred).
     shell.apply_configurator_action(ConfiguratorAction::Delete("temp.cmd".to_string()));
     assert!(
+        shell.command_store.find("temp.cmd").is_some(),
+        "a bare Delete must not write the store before SAVE"
+    );
+    assert!(
+        !shell
+            .command_configurator_panel
+            .displayed(&shell.command_store.definitions)
+            .iter()
+            .any(|d| d.id == "temp.cmd"),
+        "the staged delete removes the row from the working copy"
+    );
+
+    // SAVE commits the deferred delete (Req 11.3).
+    shell.dispatch_command_string("SAVE");
+    assert!(
         shell.command_store.find("temp.cmd").is_none(),
-        "Delete must remove the definition"
+        "SAVE must commit the deferred delete -- the definition is gone"
     );
 }
 

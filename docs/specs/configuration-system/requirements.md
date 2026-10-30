@@ -619,3 +619,32 @@ the standard desktop tree-control convention.
     an explicit tree + cursor model (mirroring `explorer_view::reduce_key`), so the transitions are
     covered by automated tests independent of rendering; the rendered focus/selection behaviour
     SHALL additionally have an `egui_kittest` test per the GUI Behaviour Testing rule.
+
+---
+
+## Cross-Cutting: Save Convention (project-master Requirement 11)
+
+The Config / Settings Workspace Context follows the ISPF-style explicit-commit
+convention (`.kiro/steering/save-convention.md`, project-master Requirement 11),
+the SAME as every other editable Context. This governs the Config PANEL'S
+edit-commit behaviour ONLY; it does NOT change `ff-config`'s layered-store
+semantics (layers, precedence, hot-reload engine of Requirements 1-14), which
+are unchanged.
+
+1. ON entry to the Config Context, the panel operates on a WORKING-COPY BUFFER
+   held in `ConfigPanelState`; the persisted store (the `ConfigHandle` user
+   layer) is the source of the displayed values and is untouched by editing.
+   (Req 11.1)
+2. A bare widget edit (checkbox/slider/text/combo change, or a Reset click)
+   stages into the working buffer ONLY -- it does NOT call `set_user_value` /
+   `remove_user_value`. The former autosave-on-edit behaviour is removed.
+   (Req 11.2)
+3. SAVE flushes every staged edit to the backing store in one commit and leaves
+   the Context open (buffer == persisted afterwards). (Req 11.3)
+4. END flushes then exits; on a flush failure the Context stays open and reports
+   the error. (Req 11.4)
+5. RETURN discards the working buffer without writing the store and exits,
+   leaving the store exactly as it was on entry. (Req 11.5)
+6. The in-panel Save affordance enqueues the SAVE command, so it gates
+   persistence through the SAME single dispatch seam as the typed/keyed SAVE
+   verb -- no divergent save path. (Req 11.7, 11.8)
