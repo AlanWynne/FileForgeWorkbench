@@ -95,10 +95,53 @@ pub(crate) fn is_shell_command(cmd: &str) -> bool {
 
 // === Phase BW Group 2 -- Edit Profile Commands ===========================
 
+/// Isolate the process-global User_Locale_Override_Store BASE from ambient
+/// machine state for EVERY ff-desktop test.
+///
+/// The alias store is overlaid with `user_aliases::user_alias_override_base()` at
+/// `WorkbenchShell` CONSTRUCTION time (before any test can set the per-shell
+/// `dir_overrides.user_aliases` seam). That global base otherwise resolves to the
+/// developer's real `dirs::data_dir()/FileForgeWorkbench/aliases/`, so a stray
+/// `en/FFCMD.toml` there leaks rows into every freshly-built shell. Pointing the
+/// `FFWB_USER_ALIASES_DIR` seam (`user_aliases.rs`) at an EMPTY temp dir makes the
+/// construction overlay find nothing, so tests see the true no-override effective
+/// table regardless of ambient on-disk state.
+///
+/// Env vars are PROCESS-GLOBAL and `cargo test`/nextest run many tests in parallel
+/// threads in ONE process, so a per-test `set_var` would race. This sets the var
+/// exactly ONCE per process via a `OnceLock`, to a single empty temp dir kept
+/// alive for the whole process -- the same set-once discipline the i18n catalogue
+/// bootstrap uses. Tests needing specific alias content still write into their own
+/// `dir_overrides.user_aliases` temp dir (consulted at SAVE/REFRESH time), which
+/// this leaves untouched.
+fn isolate_user_alias_base_once() {
+    use std::sync::OnceLock;
+    // Hold the TempDir for the whole process so the empty base dir is not deleted
+    // out from under a later-constructed shell.
+    static ALIAS_BASE: OnceLock<tempfile::TempDir> = OnceLock::new();
+    let dir = ALIAS_BASE.get_or_init(|| {
+        let dir = tempfile::TempDir::new().expect("alias-base tempdir");
+        // set_var runs inside get_or_init, which OnceLock guarantees executes
+        // exactly once across all threads, so no other thread writes
+        // FFWB_USER_ALIASES_DIR concurrently with this one-time write.
+        std::env::set_var("FFWB_USER_ALIASES_DIR", dir.path());
+        dir
+    });
+    // Belt-and-braces: if some other code cleared the var after init, restore it.
+    if std::env::var_os("FFWB_USER_ALIASES_DIR").is_none() {
+        std::env::set_var("FFWB_USER_ALIASES_DIR", dir.path());
+    }
+}
+
 /// Construct a minimal WorkbenchShell for command-dispatch unit tests.
 pub(crate) fn make_shell() -> super::WorkbenchShell {
     use ff_config::init;
     use ff_config::ConfigInitOptions;
+
+    // Test isolation: point the process-global alias override BASE at an empty
+    // temp dir BEFORE the shell (and its construction-time alias overlay) is built,
+    // so no ambient machine-global `aliases/<locale>/<ENV>.toml` leaks rows.
+    isolate_user_alias_base_once();
 
     // CR-NR-103 (Task 9): command-dispatch tests now assert on status/error
     // messages that resolve through the ff_i18n seam. Install the English
@@ -168,6 +211,9 @@ pub(crate) fn make_shell_with_history_path(
     use ff_config::init;
     use ff_config::ConfigInitOptions;
     use ff_core::WorkbenchApp;
+
+    // Same construction-time alias-base isolation as make_shell() (see above).
+    isolate_user_alias_base_once();
     use ff_keys::HistoryStore;
     use ff_logging::LoggingStatus;
     use ff_theme::defaults::dark_palette;
