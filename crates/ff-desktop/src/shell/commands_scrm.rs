@@ -26,29 +26,36 @@ impl WorkbenchShell {
     ) -> Result<(String, ff_screen_model::SnapshotFormat), String> {
         let format = ff_screen_model::SnapshotFormat::parse_arg(arg)
             .ok_or_else(|| format!("SNAPSHOT: unknown format '{}'", arg.trim()))?;
-        match self.active_screen_model() {
-            Some(model) => Ok((
+        match self.active_screen_capture() {
+            super::screen_provider::ScreenCapture::Model(model) => Ok((
                 crate::screen_snapshot::render_snapshot(&model, format),
                 format,
             )),
-            None => Err("SNAPSHOT: the active workspace cannot be captured yet.".to_string()),
+            // Req 2.3 / master-screen-directive Req 4.3: a Context that declares
+            // the documented opt-out is not capturable; surface the opt-out
+            // reason so the "cannot be captured yet" response names WHY.
+            super::screen_provider::ScreenCapture::OptOut(reason) => Err(format!(
+                "SNAPSHOT: the active workspace cannot be captured yet ({reason})."
+            )),
         }
     }
 
     /// Build the logical [`ScreenModel`] of the ACTIVE Context via its
-    /// `ScreenProvider`, or `None` when the active Context is not capturable.
+    /// `ScreenProvider`, or `None` when the active Context declares the
+    /// documented opt-out (master-screen-directive Requirement 4.3).
     ///
-    /// Wave 1/2: the capturable Contexts are Menu_Workspaces (POM and other
-    /// menus). Later waves add providers for more Contexts. This is the single
-    /// place the SNAPSHOT command and the CAPTURE engine obtain screen content
-    /// (Requirement 2.2 -- via a provider, never egui).
+    /// This delegates to the per-Context [`super::screen_provider`] dispatch
+    /// seam -- the SINGLE place SNAPSHOT and the CAPTURE engine obtain screen
+    /// content (screen-snapshot-scrm Requirement 2.2 -- via a provider, never
+    /// egui). Phase 1A: `MenuWorkspace` Contexts yield a model exactly as
+    /// before; every other Context flows through the opt-out default until its
+    /// provider lands (Stream SCRM C.2). The former hard-coded menu-only check
+    /// has been replaced by that seam.
     ///
-    /// Validates: screen-snapshot-scrm Requirement 2.1, 2.2, 2.3.
+    /// Validates: master-screen-directive Requirement 4.1, 4.2, 4.3;
+    /// screen-snapshot-scrm Requirement 2.1, 2.2, 2.3.
     pub(super) fn active_screen_model(&self) -> Option<ff_screen_model::ScreenModel> {
-        let tab = self.tabs.active_tab();
-        tab.kind
-            .menu_workspace()
-            .map(|mw| crate::screen_snapshot::menu_workspace_screen_model(mw, &self.command_text))
+        self.active_screen_capture().into_model()
     }
 
     /// A human label for the active Context, used as a capture's screen name.

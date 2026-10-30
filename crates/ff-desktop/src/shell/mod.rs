@@ -84,6 +84,7 @@ mod render_status;
 mod render_tab_bar;
 mod render_theme;
 mod reset_bare;
+mod screen_provider;
 mod state;
 mod state_groups;
 mod target_dispatch;
@@ -163,6 +164,8 @@ mod tests_misc;
 mod tests_nav;
 #[cfg(test)]
 mod tests_nav_ladder;
+#[cfg(test)]
+mod tests_screen_directive;
 #[cfg(test)]
 mod tests_scrm;
 #[cfg(test)]
