@@ -34,6 +34,7 @@
 use ff_screen_model::ScreenModel;
 
 use super::WorkbenchShell;
+use crate::screen_snapshot::MenuScreenChrome;
 use crate::tab_state::KindTag;
 
 /// The outcome of asking the active Context for its logical screen.
@@ -63,12 +64,13 @@ impl ScreenCapture {
     }
 }
 
-/// The reason attached to the Phase 1A default opt-out for a non-menu Context
-/// whose `ScreenProvider` has not been added yet. Tracked by the
-/// master-screen-directive Requirement 5 retrofit matrix; Stream SCRM task C.2
-/// replaces this default with a real provider per Context.
-pub(super) const PENDING_PROVIDER_REASON: &str =
-    "no ScreenProvider yet (tracked by the master-screen-directive retrofit matrix, Req 5)";
+/// The documented opt-out reason for the editor Context (FileEditor / Untitled).
+/// After Stream SCRM C.2/C.3 every other core Context has a provider, so the
+/// editor -- PARKED by the core-001 strip -- is the sole remaining documented
+/// opt-out (master-screen-directive Req 4.3). The constant is the single source
+/// of the reason text so the dispatch and the conformance harness agree.
+pub(super) const PARKED_EDITOR_REASON: &str =
+    "editor Context is parked (core-001 strip); provider returns when the editor re-enters";
 
 impl WorkbenchShell {
     /// Ask the ACTIVE Context for its logical screen via the per-Context
@@ -91,15 +93,126 @@ impl WorkbenchShell {
             // unchanged. A MenuWorkspace tab that is not yet seeded has no
             // loaded menu, so it declares the documented opt-out below.
             KindTag::MenuWorkspace => match tab.kind.menu_workspace() {
-                Some(mw) => ScreenCapture::Model(Box::new(
-                    crate::screen_snapshot::menu_workspace_screen_model(mw, &self.command_text),
-                )),
+                Some(mw) => {
+                    // Stream SCRM C.1: the POM/menu snapshot is now the FULL
+                    // screen (chrome + calendar + PF-keys), built from the
+                    // shell's logical state (screen-snapshot-scrm Req 3.9-3.13).
+                    let chrome = self.menu_screen_chrome(mw);
+                    ScreenCapture::Model(Box::new(
+                        crate::screen_snapshot::menu_workspace_screen_model_full(
+                            mw,
+                            &self.command_text,
+                            &chrome,
+                        ),
+                    ))
+                }
                 None => ScreenCapture::OptOut("Menu_Workspace not yet seeded (no loaded menu)"),
             },
-            // Every other Context: no provider yet in Phase 1A. The opt-out is
-            // the explicit, documented path (master-screen-directive Req 4.3);
-            // Stream SCRM C.2 flips each of these to a real provider.
-            _ => ScreenCapture::OptOut(PENDING_PROVIDER_REASON),
+            // Stream SCRM C.2/C.3: each retrofitted Context provides a model from
+            // its logical state (master-screen-directive Req 4.1, 4.2).
+            KindTag::ConfigPanel => {
+                ScreenCapture::Model(Box::new(self.config_panel_screen_model()))
+            }
+            KindTag::ThemeEditor => {
+                ScreenCapture::Model(Box::new(self.theme_editor_screen_model()))
+            }
+            KindTag::MenusEditor => {
+                ScreenCapture::Model(Box::new(self.menus_editor_screen_model()))
+            }
+            KindTag::KeysEditor => ScreenCapture::Model(Box::new(self.keys_editor_screen_model())),
+            KindTag::KindsEditor => {
+                ScreenCapture::Model(Box::new(self.kinds_editor_screen_model()))
+            }
+            KindTag::AliasEditor => {
+                ScreenCapture::Model(Box::new(self.alias_editor_screen_model()))
+            }
+            KindTag::CommandConfigurator => {
+                ScreenCapture::Model(Box::new(self.command_configurator_screen_model()))
+            }
+            KindTag::FilesPanel => ScreenCapture::Model(Box::new(self.files_panel_screen_model())),
+            KindTag::FileExplorerPanel => {
+                ScreenCapture::Model(Box::new(self.file_explorer_screen_model()))
+            }
+            KindTag::SearchResults => {
+                ScreenCapture::Model(Box::new(self.search_results_screen_model()))
+            }
+            KindTag::PluginManager => {
+                ScreenCapture::Model(Box::new(self.plugin_manager_screen_model()))
+            }
+            KindTag::EventLog => ScreenCapture::Model(Box::new(self.event_log_screen_model())),
+            KindTag::MacroLibrary => {
+                ScreenCapture::Model(Box::new(self.macro_library_screen_model()))
+            }
+            KindTag::HelpContext => {
+                ScreenCapture::Model(Box::new(self.help_context_screen_model()))
+            }
+            KindTag::ScrmViewer => ScreenCapture::Model(Box::new(self.scrm_viewer_screen_model())),
+            // The editor Context (FileEditor / Untitled) is PARKED (core-001
+            // strip): no logical screen is rendered while the editor plugin is
+            // out of the core build. This is the one DOCUMENTED opt-out
+            // (master-screen-directive Req 4.3); it flips to a provider when the
+            // editor re-enters.
+            KindTag::FileEditor | KindTag::Untitled => ScreenCapture::OptOut(PARKED_EDITOR_REASON),
+        }
+    }
+
+    /// Build the full-screen chrome for a Menu_Workspace snapshot from the
+    /// shell's LOGICAL state (never egui): window title bar, menu bar, tab
+    /// header, title line, the calendar (when the menu shows one), and the
+    /// PF-key footer (only when the Key_Label_Bar is shown, pfshow on).
+    ///
+    /// Validates: screen-snapshot-scrm Req 3.9, 3.10, 3.13.
+    fn menu_screen_chrome(
+        &self,
+        mw: &crate::menu_workspace::MenuWorkspaceState,
+    ) -> MenuScreenChrome {
+        let tab = self.tabs.active_tab();
+
+        // Menu bar: the bar-visible option descriptions, in order.
+        let menu_bar: Vec<String> = self
+            .resolve_menu_bar_menu()
+            .options
+            .iter()
+            .filter(|o| o.show_in_menu_bar)
+            .map(|o| o.description.clone())
+            .collect();
+
+        // Tab header tag (e.g. "[POM]") -- the command-derived Menu_Name, same
+        // as the on-screen tab label -- and the descriptive title line.
+        let tab_header = mw
+            .menu_name_label()
+            .map(|n| format!("[{n}]"))
+            .unwrap_or_else(|| mw.tab_title());
+        let title_line = super::title_line_text(tab);
+
+        // Calendar: only when the loaded menu shows it (POM yes, Settings no).
+        let calendar_lines = match &mw.menu {
+            Some(menu) if menu.show_calendar => {
+                use chrono::Datelike;
+                let today = chrono::Local::now().date_naive();
+                crate::screen_snapshot::calendar_lines(today.year(), today.month(), today.day())
+            }
+            _ => Vec::new(),
+        };
+
+        // PF-key footer: present ONLY when the Key_Label_Bar is shown (Req 3.10).
+        let key_bar_lines = if self.key_bar_visible {
+            vec![crate::screen_snapshot::key_bar_line(
+                self.key_map_resolver.active_key_map(),
+                self.key_bar_scope.segment_label(),
+                self.key_bar_scope.to_modifier(),
+            )]
+        } else {
+            Vec::new()
+        };
+
+        MenuScreenChrome {
+            window_title: "FileForge Workbench".to_string(),
+            menu_bar,
+            tab_header,
+            title_line,
+            calendar_lines,
+            key_bar_lines,
         }
     }
 }
@@ -135,15 +248,15 @@ mod tests {
         }
     }
 
-    // Validates: master-screen-directive Req 4.3, 4.4 -- a non-menu Context with
-    // no provider yet flows through the DOCUMENTED opt-out seam (not the old
-    // menu-only hard check). Stream SCRM C.2 will flip this to a model.
+    // Validates: master-screen-directive Req 4.1, 4.2 -- after Stream SCRM
+    // C.2/C.3 a non-menu Context (Event Log) now has a provider and yields a
+    // model through the seam (flipped from the Phase 1A opt-out).
     #[test]
-    fn non_menu_context_reports_documented_opt_out() {
+    fn non_menu_context_now_provides_a_model() {
         use ff_session::session_state::WorkspaceKind;
         let mut shell = seeded_pom_shell();
-        // Transform the POM to a non-menu Context (Event Log is read-only, no
-        // provider in Phase 1A) through the shared `navigate_to` choke point.
+        // Transform the POM to a non-menu Context through the shared
+        // `navigate_to` choke point.
         shell.nav_to_kind(WorkspaceKind::EventLog);
         assert_eq!(
             shell.tabs.active_tab().kind.tag(),
@@ -151,11 +264,14 @@ mod tests {
             "test precondition: active Context is the Event Log"
         );
         match shell.active_screen_capture() {
-            ScreenCapture::OptOut(reason) => {
-                assert_eq!(reason, PENDING_PROVIDER_REASON);
+            ScreenCapture::Model(model) => {
+                assert!(
+                    !model.fields.is_empty(),
+                    "Event Log provider must yield a populated model"
+                );
             }
-            ScreenCapture::Model(_) => {
-                panic!("Event Log has no provider in Phase 1A; expected the opt-out")
+            ScreenCapture::OptOut(reason) => {
+                panic!("Event Log now has a provider; got opt-out: {reason}")
             }
         }
     }

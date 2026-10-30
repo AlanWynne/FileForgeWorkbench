@@ -164,9 +164,9 @@ impl PomColours {
 }
 
 // B084: the live calendar header now resolves month names via the i18n
-// catalogue (see `render_calendar`), so this English array is retained only as
-// reference data for the `format_calendar_header` fixed-width unit test.
-#[allow(dead_code)]
+// catalogue (see `render_calendar`), so this English array is retained as
+// reference data for the `format_calendar_header` fixed-width unit test AND as
+// the source for the screen-snapshot calendar text (`month_name`).
 const MONTH_NAMES: [&str; 12] = [
     "January",
     "February",
@@ -181,6 +181,15 @@ const MONTH_NAMES: [&str; 12] = [
     "November",
     "December",
 ];
+
+/// The English month name for a 1-based `month` (1 = January). Used by the
+/// screen-snapshot calendar text builder (screen-snapshot-scrm Req 3.9); the
+/// live on-screen calendar still localises month names via the i18n catalogue.
+/// Out-of-range input clamps to a valid month so the function is total.
+pub fn month_name(month: u32) -> &'static str {
+    let idx = (month.clamp(1, 12) - 1) as usize;
+    MONTH_NAMES[idx]
+}
 
 /// Calendar navigation direction returned when the user clicks < or >.
 ///

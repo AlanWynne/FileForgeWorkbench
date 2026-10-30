@@ -154,12 +154,29 @@ impl Default for Dimensions {
 pub struct ScreenModel {
     /// The screen title.
     pub title: String,
+    /// Full-screen chrome shown ABOVE the title, in visual order: the window
+    /// chrome / title bar, the menu bar, and the tab header (the `[XXX]`
+    /// Workspace Kind tag). Each entry is one selectable line. Empty for a
+    /// Context that does not model the surrounding chrome.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 3.9.
+    #[serde(default)]
+    pub header_lines: Vec<String>,
     /// Labelled fields, in visual order.
     pub fields: Vec<Field>,
     /// Tabular elements, in visual order.
     pub tables: Vec<Table>,
     /// Free-standing messages (errors, info lines).
     pub messages: Vec<String>,
+    /// Full-screen chrome shown BELOW the body, in visual order: the calendar
+    /// lines and the PF-key footer line(s). Each entry is one selectable line.
+    /// The PF-key footer entries are present only when the Key_Label_Bar is
+    /// shown (pfshow on); when pfshow is off they are omitted, so the capture
+    /// reflects the live pfshow state.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 3.9, 3.10.
+    #[serde(default)]
+    pub footer_lines: Vec<String>,
     /// Action buttons/commands shown on the screen (e.g. "Save", "Cancel").
     pub buttons: Vec<String>,
     /// The status bar.
@@ -190,6 +207,22 @@ impl ScreenModel {
     /// Add a button (builder-style).
     pub fn with_button(mut self, label: impl Into<String>) -> Self {
         self.buttons.push(label.into());
+        self
+    }
+
+    /// Add a header chrome line shown above the title (builder-style).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 3.9.
+    pub fn with_header_line(mut self, line: impl Into<String>) -> Self {
+        self.header_lines.push(line.into());
+        self
+    }
+
+    /// Add a footer chrome line shown below the body (builder-style).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 3.9, 3.10.
+    pub fn with_footer_line(mut self, line: impl Into<String>) -> Self {
+        self.footer_lines.push(line.into());
         self
     }
 }
@@ -232,5 +265,22 @@ mod tests {
     #[test]
     fn colour_defaults_to_default_variant() {
         assert_eq!(Colour::default(), Colour::Default);
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.9, 3.10 -- the model carries
+    // header/footer chrome lines (title bar, menu bar, tab header / calendar,
+    // PF-keys) as distinct ordered selectable elements.
+    #[test]
+    fn screen_model_carries_header_and_footer_chrome_lines() {
+        let m = ScreenModel::new("Primary Option Menu")
+            .with_header_line("FileForgeWorkbench")
+            .with_header_line("Settings | Help")
+            .with_header_line("[POM]")
+            .with_footer_line("October 2026")
+            .with_footer_line("Base | F1 Help | F3 Exit");
+        assert_eq!(m.header_lines.len(), 3);
+        assert_eq!(m.header_lines[2], "[POM]");
+        assert_eq!(m.footer_lines.len(), 2);
+        assert!(m.footer_lines[1].contains("F1 Help"));
     }
 }

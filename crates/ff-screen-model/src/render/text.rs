@@ -52,6 +52,15 @@ pub fn render_plain(model: &ScreenModel, options: RenderOptions) -> String {
     let mut lines: Vec<String> = Vec::new();
     lines.push(model.title.clone());
 
+    // Header chrome (window title bar, menu bar, tab header) directly under the
+    // title row (Requirement 3.9).
+    if !model.header_lines.is_empty() {
+        lines.push(String::new());
+        for h in &model.header_lines {
+            lines.push(h.clone());
+        }
+    }
+
     if !model.fields.is_empty() {
         lines.push(String::new());
         for f in &model.fields {
@@ -93,6 +102,15 @@ pub fn render_plain(model: &ScreenModel, options: RenderOptions) -> String {
                 .collect::<Vec<_>>()
                 .join(" "),
         );
+    }
+
+    // Footer chrome (calendar, PF-key footer) below the body, still inside the
+    // frame (Requirement 3.9, 3.10).
+    if !model.footer_lines.is_empty() {
+        lines.push(String::new());
+        for f in &model.footer_lines {
+            lines.push(f.clone());
+        }
     }
 
     let inner_width = lines

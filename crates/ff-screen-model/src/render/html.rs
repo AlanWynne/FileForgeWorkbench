@@ -48,6 +48,10 @@ fn field_span(field: &Field) -> String {
 pub fn render_html(model: &ScreenModel) -> String {
     let mut out = String::new();
     out.push_str("<div class=\"ffwb-screen\">\n");
+    // Header chrome (title bar, menu bar, tab header) -- Requirement 3.9.
+    for h in &model.header_lines {
+        out.push_str(&format!("  <p class=\"ffwb-header\">{}</p>\n", escape(h)));
+    }
     out.push_str(&format!("  <h2>{}</h2>\n", escape(&model.title)));
 
     if !model.fields.is_empty() {
@@ -99,6 +103,11 @@ pub fn render_html(model: &ScreenModel) -> String {
             out.push_str(&format!("<button>{}</button> ", escape(b)));
         }
         out.push_str("</p>\n");
+    }
+
+    // Footer chrome (calendar, PF-key footer) -- Requirement 3.9, 3.10.
+    for f in &model.footer_lines {
+        out.push_str(&format!("  <p class=\"ffwb-footer\">{}</p>\n", escape(f)));
     }
 
     if !model.command_line.is_empty() {

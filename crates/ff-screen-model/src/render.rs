@@ -55,6 +55,8 @@ pub(crate) fn visible_text_fragments(model: &ScreenModel) -> Vec<String> {
     if !model.title.is_empty() {
         out.push(model.title.clone());
     }
+    out.extend(model.header_lines.iter().filter(|h| !h.is_empty()).cloned());
+    out.extend(model.footer_lines.iter().filter(|f| !f.is_empty()).cloned());
     for f in &model.fields {
         if !f.label.is_empty() {
             out.push(f.label.clone());

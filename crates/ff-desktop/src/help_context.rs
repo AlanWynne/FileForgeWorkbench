@@ -64,6 +64,18 @@ impl HelpContextPanel {
     pub fn model(&self) -> &HelpPanelModel {
         &self.model
     }
+
+    /// The currently displayed topic's `(title, body)`, or `None` when no topic
+    /// is shown. Used by the Help Context ScreenProvider to build a capturable
+    /// logical screen (master-screen-directive Req 4).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 2.1; master-screen-directive
+    /// Requirement 4.1.
+    pub fn current_topic_text(&self) -> Option<(String, String)> {
+        self.model
+            .current_topic()
+            .map(|t| (t.title().to_string(), t.body().to_string()))
+    }
 }
 
 impl Default for HelpContextPanel {

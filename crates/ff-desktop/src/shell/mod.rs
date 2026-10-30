@@ -87,6 +87,7 @@ mod render_tab_bar;
 mod render_theme;
 mod reset_bare;
 mod screen_provider;
+mod screen_providers;
 mod state;
 mod state_groups;
 mod target_dispatch;

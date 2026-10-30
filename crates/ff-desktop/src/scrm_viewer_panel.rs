@@ -48,6 +48,28 @@ impl ScrmViewerState {
         self.collection = collection;
     }
 
+    /// A compact logical summary for the ScreenProvider: the replayed
+    /// collection's `(count, position)` where position is 0-based, or `(0, 0)`
+    /// when no collection is staged. Lets the SCRM viewer be CAPTURABLE through
+    /// the per-Context ScreenProvider seam (master-screen-directive Req 4).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 2.1; master-screen-directive
+    /// Requirement 4.1.
+    pub fn replay_summary(&self) -> (usize, usize) {
+        match &self.replay {
+            Some(r) => (r.len(), r.position()),
+            None => (0, 0),
+        }
+    }
+
+    /// The current capture's screen rendered as plain selectable text (the
+    /// ScreenProvider reuses this). Public mirror of the private renderer helper.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 2.1, 10.8.
+    pub fn current_screen_snapshot_text(&self) -> String {
+        self.current_screen_text()
+    }
+
     /// The current capture's screen rendered as plain selectable text, or a
     /// placeholder when the Collection is empty / absent.
     fn current_screen_text(&self) -> String {

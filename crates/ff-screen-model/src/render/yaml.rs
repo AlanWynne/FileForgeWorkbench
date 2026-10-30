@@ -17,6 +17,14 @@ pub fn render_yaml(model: &ScreenModel) -> String {
     out.push_str("screen:\n");
     out.push_str(&format!("  title: {}\n", q(&model.title)));
 
+    // Header chrome (title bar, menu bar, tab header) -- Requirement 3.9.
+    if !model.header_lines.is_empty() {
+        out.push_str("  header:\n");
+        for h in &model.header_lines {
+            out.push_str(&format!("    - {}\n", q(h)));
+        }
+    }
+
     out.push_str("  fields:\n");
     if model.fields.is_empty() {
         out.push_str("    []\n");
@@ -62,6 +70,14 @@ pub fn render_yaml(model: &ScreenModel) -> String {
         out.push_str("  messages:\n");
         for m in &model.messages {
             out.push_str(&format!("    - {}\n", q(m)));
+        }
+    }
+
+    // Footer chrome (calendar, PF-key footer) -- Requirement 3.9, 3.10.
+    if !model.footer_lines.is_empty() {
+        out.push_str("  footer:\n");
+        for f in &model.footer_lines {
+            out.push_str(&format!("    - {}\n", q(f)));
         }
     }
 
