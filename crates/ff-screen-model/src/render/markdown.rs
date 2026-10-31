@@ -14,9 +14,11 @@ pub fn render_markdown(model: &ScreenModel) -> String {
         out.push_str(&format!("# {}\n\n", model.title));
     }
 
-    // The framed screen text as a fenced code block (Requirement 4.4). Use the
-    // ASCII frame inside code fences for maximum portability.
-    let body = text::render_plain(model, RenderOptions { unicode_box: false });
+    // The framed screen text as a fenced code block (Requirement 4.4, 5.1). Use
+    // the UNICODE box-drawing frame inside the code fence: a Markdown-aware
+    // target renders the fenced block monospaced, so the U+2500-family glyphs
+    // line up into a proper box rather than the ASCII +/-/| fallback.
+    let body = text::render_plain(model, RenderOptions { unicode_box: true });
     out.push_str("```\n");
     out.push_str(&body);
     if !body.ends_with('\n') {
@@ -101,6 +103,50 @@ mod tests {
         assert!(out.contains("```"));
         assert!(out.contains("| Property | Value |"));
         assert!(out.contains("| RECFM | FB |"));
+    }
+
+    // Validates: screen-snapshot-scrm Req 4.4, 5.1 -- the fenced code block
+    // frames the screen with UNICODE box-drawing glyphs (U+2500 family), not the
+    // ASCII +/-/| fallback, so a Markdown-aware target renders a proper box. The
+    // expected glyphs are built from char constants (no raw box glyph in source).
+    #[test]
+    fn fenced_block_uses_unicode_box_drawing_not_ascii() {
+        let m = ScreenModel::new("Dataset Properties").with_field(Field::new("RECFM", "FB"));
+        let out = render_markdown(&m);
+
+        // Isolate the fenced code block body (between the first and second ```).
+        let mut parts = out.split("```");
+        let _before = parts.next();
+        let body = parts.next().expect("a fenced code block is present");
+
+        // The frame uses Unicode box-drawing glyphs.
+        let top_left = '\u{250C}';
+        let horizontal = '\u{2500}';
+        let vertical = '\u{2502}';
+        assert!(
+            body.contains(top_left),
+            "fenced body frames with the Unicode top-left corner U+250C"
+        );
+        assert!(
+            body.contains(horizontal),
+            "fenced body frames with the Unicode horizontal rule U+2500"
+        );
+        assert!(
+            body.contains(vertical),
+            "fenced body frames with the Unicode vertical rule U+2502"
+        );
+
+        // The ASCII frame glyphs do NOT appear in the fenced body. The '-' check
+        // is scoped to the body (the property-table separator outside the fence
+        // legitimately uses '-').
+        assert!(
+            !body.contains('+'),
+            "no ASCII '+' corner glyph in the Unicode-framed fence"
+        );
+        assert!(
+            !body.contains('|'),
+            "no ASCII '|' vertical glyph in the Unicode-framed fence"
+        );
     }
 
     // Validates: Requirement 4.4 -- a table element becomes a Markdown table.

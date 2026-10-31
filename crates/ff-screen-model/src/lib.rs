@@ -20,11 +20,13 @@
 //! Validates: screen-snapshot-scrm Requirement 2.1, 2.4, 3.x, 4.x, 5.x.
 
 mod model;
+mod raster;
 mod render;
 
 pub use model::{
     Colour, Cursor, Dimensions, Field, FieldAttributes, ScreenModel, StatusBar, Table,
 };
+pub use raster::{encode_png, rasterise_screen, rasterise_text, screen_png, RasterImage};
 pub use render::{render, RenderOptions};
 
 /// The set of snapshot output formats.
@@ -42,6 +44,13 @@ pub enum SnapshotFormat {
     Html,
     /// Structured YAML (the "AI" format).
     Yaml,
+    /// PNG picture, rasterised from the plain-text render (Requirement 23.2).
+    /// A PICTURE format: rendered to bytes via [`screen_png`], never the text
+    /// `render` path.
+    Png,
+    /// PDF document, a single-screen reuse of the Collection PDF path
+    /// (Requirement 23.3). A BINARY format: rendered to bytes by the shell.
+    Pdf,
 }
 
 impl SnapshotFormat {
@@ -57,7 +66,52 @@ impl SnapshotFormat {
             "MARKDOWN" | "MD" => Some(Self::Markdown),
             "HTML" => Some(Self::Html),
             "YAML" | "AI" => Some(Self::Yaml),
+            "PNG" => Some(Self::Png),
+            "PDF" => Some(Self::Pdf),
             _ => None,
+        }
+    }
+
+    /// Whether this format produces a BINARY artefact (PNG picture or PDF
+    /// document) rather than selectable text. Binary formats do NOT flow through
+    /// the text [`render`] path.
+    ///
+    /// Validates: Requirement 23.1, 23.2, 23.3.
+    pub fn is_binary(self) -> bool {
+        matches!(self, Self::Png | Self::Pdf)
+    }
+
+    /// Every snapshot format a picker offers, in display order: the text formats
+    /// (Req 4.2-4.6) then the picture/binary formats (Requirement 23).
+    ///
+    /// Validates: Requirement 4.7, 23.1.
+    pub fn all() -> &'static [SnapshotFormat] {
+        &[
+            Self::PlainText,
+            Self::Ansi,
+            Self::Markdown,
+            Self::Html,
+            Self::Yaml,
+            Self::Png,
+            Self::Pdf,
+        ]
+    }
+
+    /// The canonical command-argument verb for this format (the word that
+    /// follows `SNAPSHOT`). Used by the format picker so a picked format
+    /// dispatches the exact typed form (`SNAPSHOT <verb>`), giving command
+    /// parity (Req 4.7, 11.4).
+    ///
+    /// Validates: Requirement 4.7.
+    pub fn verb(self) -> &'static str {
+        match self {
+            Self::PlainText => "TEXT",
+            Self::Ansi => "ANSI",
+            Self::Markdown => "MARKDOWN",
+            Self::Html => "HTML",
+            Self::Yaml => "YAML",
+            Self::Png => "PNG",
+            Self::Pdf => "PDF",
         }
     }
 }
@@ -107,7 +161,36 @@ mod tests {
             SnapshotFormat::parse_arg("yaml"),
             Some(SnapshotFormat::Yaml)
         );
+        assert_eq!(SnapshotFormat::parse_arg("png"), Some(SnapshotFormat::Png));
+        assert_eq!(SnapshotFormat::parse_arg("PDF"), Some(SnapshotFormat::Pdf));
         assert_eq!(SnapshotFormat::parse_arg("bogus"), None);
+    }
+
+    // Validates: Req 23.1 -- PNG and PDF are the binary/picture formats; the
+    // text formats are not.
+    #[test]
+    fn binary_classification_is_correct() {
+        assert!(SnapshotFormat::Png.is_binary());
+        assert!(SnapshotFormat::Pdf.is_binary());
+        for f in [
+            SnapshotFormat::PlainText,
+            SnapshotFormat::Ansi,
+            SnapshotFormat::Markdown,
+            SnapshotFormat::Html,
+            SnapshotFormat::Yaml,
+        ] {
+            assert!(!f.is_binary(), "{f:?} is a text format");
+        }
+    }
+
+    // Validates: Req 4.7 -- the picker offers all seven formats, each round-
+    // tripping through its verb back to the same format.
+    #[test]
+    fn all_formats_verbs_round_trip() {
+        assert_eq!(SnapshotFormat::all().len(), 7);
+        for &f in SnapshotFormat::all() {
+            assert_eq!(SnapshotFormat::parse_arg(f.verb()), Some(f));
+        }
     }
 
     // Validates: Requirement 2.1 -- a ScreenProvider yields a ScreenModel.

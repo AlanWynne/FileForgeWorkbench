@@ -14,6 +14,8 @@ mod batch;
 // core-001 strip: catalog / editor / navigator modules parked (see
 // docs/reentry-register.md). Their mod declarations are removed so the parked
 // crates are no longer compiled into `ffwb`.
+mod clipboard_backend;
+mod clipboard_html;
 mod command_config;
 mod command_palette;
 mod config_panel;
@@ -30,6 +32,7 @@ mod notification;
 mod plugin_manager_panel;
 mod primary_option_menu;
 mod screen_snapshot;
+mod screenshot;
 mod scrm_session;
 mod scrm_viewer_panel;
 mod search_results_panel;

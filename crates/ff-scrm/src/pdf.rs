@@ -19,7 +19,7 @@
 //!
 //! Validates: screen-snapshot-scrm Requirement 12.4, 12.6.
 
-use ff_screen_model::{render, RenderOptions, SnapshotFormat};
+use ff_screen_model::{render, RenderOptions, ScreenModel, SnapshotFormat};
 
 use crate::export::Masking;
 use crate::model::ScreenCollection;
@@ -125,6 +125,25 @@ pub fn export_pdf(
     }
 
     build_pdf(&pages)
+}
+
+/// Render a SINGLE [`ScreenModel`] to a PDF by REUSING the Collection PDF path
+/// (screen-snapshot-scrm Requirement 23.3). This is a thin wrapper over
+/// [`export_pdf`]: it wraps the one screen in a one-capture Collection so the
+/// snapshot PDF uses exactly the same selectable-text PDF infrastructure as a
+/// full Collection export (Req 12.6 -- selectable text, never a page image), not
+/// a new PDF code path. `name` labels the collection/screen; `timestamp` is
+/// threaded in so the output is deterministic for tests.
+///
+/// Validates: screen-snapshot-scrm Requirement 23.3, 12.6.
+pub fn export_screen_pdf(
+    screen: ScreenModel,
+    name: &str,
+    timestamp: chrono::DateTime<chrono::Utc>,
+) -> Vec<u8> {
+    let mut collection = ScreenCollection::new("snapshot", name, "user", timestamp);
+    collection.append_capture("snapshot-1", timestamp, screen);
+    export_pdf(&collection, Masking::Off, &MaskingRules::default())
 }
 
 /// Truncate a label to `max` characters for the index line.
@@ -257,6 +276,36 @@ mod tests {
             text.contains("/Count 3"),
             "title + index + one capture page"
         );
+    }
+
+    // Validates: Req 23.3, 12.6 -- a single-screen SNAPSHOT PDF reuses the
+    // Collection PDF path and keeps the content as selectable text.
+    #[test]
+    fn single_screen_pdf_reuses_collection_path_with_selectable_text() {
+        let screen = ScreenModel::new("Login").with_field(Field::new("User", "alan"));
+        let ts = chrono::DateTime::from_timestamp(1_700_000_000, 0).expect("ts");
+        let bytes = export_screen_pdf(screen, "Login", ts);
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.starts_with("%PDF-1.7"), "valid PDF header");
+        assert!(text.contains(" Tj"), "selectable text operator present");
+        assert!(text.contains("alan"), "field value is selectable text");
+        assert!(
+            text.contains("/BaseFont /Courier"),
+            "reuses the Courier text PDF, not an image"
+        );
+        // One screen -> title + index + 1 capture page = 3 pages (same layout as
+        // the Collection exporter it reuses).
+        assert!(text.contains("/Count 3"), "title + index + one screen page");
+    }
+
+    // Validates: Req 23.3 -- the single-screen PDF is deterministic for a fixed
+    // model + timestamp.
+    #[test]
+    fn single_screen_pdf_is_deterministic() {
+        let ts = chrono::DateTime::from_timestamp(1_700_000_000, 0).expect("ts");
+        let a = export_screen_pdf(ScreenModel::new("S"), "S", ts);
+        let b = export_screen_pdf(ScreenModel::new("S"), "S", ts);
+        assert_eq!(a, b);
     }
 
     // Validates: Req 13.3 -- masking hides a sensitive value in the PDF text.

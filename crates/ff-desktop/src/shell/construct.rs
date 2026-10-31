@@ -310,6 +310,7 @@ impl WorkbenchShell {
             event_log_panel: EventLogPanelState::new(),
             scrm: crate::scrm_session::ScrmSession::default(),
             scrm_viewer: crate::scrm_viewer_panel::ScrmViewerState::default(),
+            snapshot: state_groups::SnapshotState::default(),
             notification_rx,
             notification_tx,
             notification_queue,

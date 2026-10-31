@@ -1216,18 +1216,31 @@ fn help_command_generates_index_topic() {
     assert!(body.contains("Help Index"), "index body: {body}");
 }
 
-/// Validates: screen-snapshot-scrm Req 6.1, 6.2 -- the SNAPSHOT command sets a
-/// confirmation status message in the command area.
+/// Validates: screen-snapshot-scrm Req 4.1, 4.7 (RETIRED CR-NR-114) -- bare
+/// SNAPSHOT is the two-phase async REQUEST (FEAT-002): the former format picker
+/// is gone AND the command phase no longer synchronously places the clipboard
+/// payload. It stashes the pending payload and asks the frame loop for a live
+/// window screenshot; the observable effect on a headless host is the pending
+/// request, NOT a picker and NOT an unknown-format error. (The pending contract
+/// and per-format behaviour live in tests_snapshot_picture.rs.)
 #[test]
-fn snapshot_command_sets_status_message() {
+fn bare_snapshot_sets_pending_request_not_picker() {
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
     shell.handle_command("SNAPSHOT");
+    assert!(
+        shell.snapshot.screenshot_requested,
+        "bare SNAPSHOT requests an async window screenshot"
+    );
+    assert!(
+        shell.snapshot.pending.is_some(),
+        "bare SNAPSHOT stashes a pending composite payload"
+    );
     let msg = shell.open_error.as_deref().unwrap_or("");
     assert!(
-        msg.contains("Snapshot"),
-        "SNAPSHOT must confirm the outcome in the command area; got: {msg:?}"
+        !msg.contains("unknown format"),
+        "bare SNAPSHOT is not an unknown-format error, got: {msg:?}"
     );
 }
 

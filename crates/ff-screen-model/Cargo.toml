@@ -8,6 +8,10 @@ description = "Logical screen model + ScreenProvider trait + text/ANSI/Markdown/
 
 [dependencies]
 serde = { workspace = true }
+# PNG encoder for the picture SNAPSHOT (screen-snapshot-scrm Req 23.2, 23.7).
+# Pinned to an EXACT version per the dependency-discipline steering (Req 23.7);
+# `png` is the mature image-rs encoder and is a pure-Rust, well-maintained crate.
+png = "=0.18.1"
 
 [dev-dependencies]
 proptest = { workspace = true }

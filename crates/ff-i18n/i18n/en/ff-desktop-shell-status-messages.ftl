@@ -77,6 +77,10 @@ ff-desktop-shell-msg-scrm-unknown-subcommand = CAPTURE: unknown subcommand '{ $s
 ff-desktop-shell-msg-scrm-no-collection-replay = No screen collection to replay.
 ff-desktop-shell-msg-scrm-snapshot-copied = Snapshot copied to clipboard ({ $format }).
 ff-desktop-shell-msg-scrm-snapshot-no-clipboard = Snapshot rendered ({ $format }) but the clipboard was unavailable.
+ff-desktop-shell-msg-scrm-snapshot-both-copied = Snapshot copied to clipboard: picture + { $format }.
+ff-desktop-shell-msg-scrm-snapshot-written = Snapshot { $format } written to { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-written = Snapshot PDF written to { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-failed = SNAPSHOT PDF failed: { $error }.
 
 # === TASK 9.3 -- verb-embedding command-ladder messages ===
 # Verb + keyword tokens (DETACH/UNSPLIT/FOCUS/SWAP/SUBMIT/STATUS/CREATE/REPLACE/

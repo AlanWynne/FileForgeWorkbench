@@ -49,6 +49,10 @@ ff-desktop-shell-msg-scrm-unknown-subcommand = CAPTURE : sous-commande inconnue 
 ff-desktop-shell-msg-scrm-no-collection-replay = Aucune collection d'{ "\u00e9" }crans { "\u00e0" } rejouer.
 ff-desktop-shell-msg-scrm-snapshot-copied = Instantan{ "\u00e9" } copi{ "\u00e9" } dans le presse-papiers ({ $format }).
 ff-desktop-shell-msg-scrm-snapshot-no-clipboard = Instantan{ "\u00e9" } rendu ({ $format }) mais le presse-papiers { "\u00e9" }tait indisponible.
+ff-desktop-shell-msg-scrm-snapshot-both-copied = Instantan{ "\u00e9" } copi{ "\u00e9" } dans le presse-papiers : image + { $format }.
+ff-desktop-shell-msg-scrm-snapshot-written = Instantan{ "\u00e9" } { $format } { "\u00e9" }crit dans { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-written = PDF d'instantan{ "\u00e9" } { "\u00e9" }crit dans { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-failed = { "\u00c9" }chec de SNAPSHOT PDF : { $error }.
 
 # === verb-embedding command-ladder messages ===
 ff-desktop-shell-msg-detach-max-reached = Nombre maximum d'espaces de travail d{ "\u00e9" }tach{ "\u00e9" }s (16) atteint.

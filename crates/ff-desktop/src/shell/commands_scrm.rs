@@ -1,45 +1,15 @@
 //! # Shell Command Dispatch -- SCRM / Snapshot / PFSHOW handlers
 //!
-//! Screen Snapshot Service and Screen Collection/Replay Manager command
-//! handlers (SNAPSHOT, CAPTURE ...), plus the key-label-bar PFSHOW command.
-//! Split out of `commands.rs` (TASK 2.2, pure code movement, no behaviour
-//! change). All methods are on `WorkbenchShell` and keep their exact
-//! signatures and `pub(super)` visibility.
+//! Screen Collection/Replay Manager command handlers (CAPTURE ...), plus the
+//! key-label-bar PFSHOW command. The SNAPSHOT command family lives in the
+//! sibling `commands_snapshot.rs` (split out in Phase 2B to keep this file
+//! under the 400-line limit; pure code movement, no behaviour change). All
+//! methods are on `WorkbenchShell` and keep their `pub(super)` visibility.
 
 use super::helpers::*;
 use super::WorkbenchShell;
 
 impl WorkbenchShell {
-    /// Produce the snapshot text for the ACTIVE Context in the requested format,
-    /// or an error message when the format is unknown or the Context is not
-    /// capturable (has no `ScreenProvider`).
-    ///
-    /// This is the pure, side-effect-free core of the SNAPSHOT command (no
-    /// clipboard, no status mutation), so it is unit-testable. `arg` is the raw
-    /// (case-preserving) argument after `SNAPSHOT` (empty selects the default
-    /// PlainText format).
-    ///
-    /// Validates: screen-snapshot-scrm Requirement 2.3, 4.1-4.6.
-    pub(super) fn snapshot_text_for_active(
-        &self,
-        arg: &str,
-    ) -> Result<(String, ff_screen_model::SnapshotFormat), String> {
-        let format = ff_screen_model::SnapshotFormat::parse_arg(arg)
-            .ok_or_else(|| format!("SNAPSHOT: unknown format '{}'", arg.trim()))?;
-        match self.active_screen_capture() {
-            super::screen_provider::ScreenCapture::Model(model) => Ok((
-                crate::screen_snapshot::render_snapshot(&model, format),
-                format,
-            )),
-            // Req 2.3 / master-screen-directive Req 4.3: a Context that declares
-            // the documented opt-out is not capturable; surface the opt-out
-            // reason so the "cannot be captured yet" response names WHY.
-            super::screen_provider::ScreenCapture::OptOut(reason) => Err(format!(
-                "SNAPSHOT: the active workspace cannot be captured yet ({reason})."
-            )),
-        }
-    }
-
     /// Build the logical [`ScreenModel`] of the ACTIVE Context via its
     /// `ScreenProvider`, or `None` when the active Context declares the
     /// documented opt-out (master-screen-directive Requirement 4.3).
@@ -317,40 +287,6 @@ impl WorkbenchShell {
         if let Some(model) = self.active_screen_model() {
             let name = self.active_screen_name();
             self.scrm.capture(model, name);
-        }
-    }
-
-    /// Handle the SNAPSHOT command: render the active Context to selectable text
-    /// and copy it to the OS clipboard, reporting the outcome in the command
-    /// area.
-    ///
-    /// Validates: screen-snapshot-scrm Requirement 4.1-4.6, 6.1, 6.2, 6.3, 2.3.
-    pub(super) fn handle_snapshot(&mut self, arg: &str) {
-        match self.snapshot_text_for_active(arg) {
-            Ok((text, format)) => {
-                // Req 6.1: copy the rendered text to the OS clipboard.
-                let copied = match arboard::Clipboard::new() {
-                    Ok(mut cb) => cb.set_text(&text).is_ok(),
-                    Err(_) => false,
-                };
-                // Req 6.2: confirm to the user, including the format.
-                let fmt = snapshot_format_label(format);
-                self.open_error = Some(if copied {
-                    ff_i18n::t_args(
-                        "ff-desktop-shell-msg-scrm-snapshot-copied",
-                        &ff_i18n::MessageArgs::new().set("format", fmt),
-                    )
-                } else {
-                    ff_i18n::t_args(
-                        "ff-desktop-shell-msg-scrm-snapshot-no-clipboard",
-                        &ff_i18n::MessageArgs::new().set("format", fmt),
-                    )
-                });
-            }
-            // Req 6.3 / 2.3: unknown format or not-capturable Context.
-            Err(message) => {
-                self.open_error = Some(message);
-            }
         }
     }
 

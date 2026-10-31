@@ -40,6 +40,11 @@ pub fn render(model: &ScreenModel, format: SnapshotFormat, options: RenderOption
         SnapshotFormat::Markdown => markdown::render_markdown(model),
         SnapshotFormat::Html => html::render_html(model),
         SnapshotFormat::Yaml => yaml::render_yaml(model),
+        // PNG/PDF are BINARY formats (Requirement 23): they are produced as bytes
+        // by the raster/PDF paths, not here. The text render is the ASCII-safe
+        // basis the raster rasterises, so returning it keeps this function total
+        // and still yields the exact text the picture is drawn from.
+        SnapshotFormat::Png | SnapshotFormat::Pdf => text::render_plain(model, options),
     }
 }
 

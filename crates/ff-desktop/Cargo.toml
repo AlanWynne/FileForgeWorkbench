@@ -65,6 +65,18 @@ regex = "1"
 dirs = { workspace = true }
 egui-file-dialog = "0.12"
 
+# Windows multi-flavor clipboard (screen-snapshot-scrm Req 23.5d): via its RAW
+# API (raw::set_without_clear / raw::register_format) it opens the clipboard
+# ONCE and writes CF_UNICODETEXT + CF_DIB + CF_DIBV5 (+ a registered PNG) in one
+# transaction, so the picture AND text flavors are offered simultaneously and
+# the DIB flavors are the ones Word / PowerPoint actually paste -- which
+# `arboard` alone cannot do (single-flavor per set(), and the higher-level
+# CF_BITMAP publish did not render in Office). The raw API is available in
+# 5.4.3, so the pin stays EXACT per Req 23.7. Non-Windows targets fall back to
+# `arboard` behind the same trait.
+[target.'cfg(windows)'.dependencies]
+clipboard-win = "=5.4.3"
+
 [build-dependencies]
 winres = "0.1"
 

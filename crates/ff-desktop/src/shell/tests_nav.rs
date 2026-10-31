@@ -1223,6 +1223,9 @@ fn snapshot_text_for_active_pom_contains_menu_content() {
 #[test]
 fn full_shell_snapshot_on_pom_captures_selectable_text() {
     let mut harness = harness_shell();
+    // Keep the single-format file (Req 4.8) out of the real user data dir.
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    harness.state_mut().dir_overrides.scrm = Some(dir.path().to_path_buf());
     // The startup Context is the POM (Home). Snapshot it via the command path.
     harness.state_mut().handle_command("SNAPSHOT TEXT");
     harness.run();

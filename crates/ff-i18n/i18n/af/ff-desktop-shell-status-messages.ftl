@@ -49,6 +49,10 @@ ff-desktop-shell-msg-scrm-unknown-subcommand = CAPTURE: onbekende subopdrag '{ $
 ff-desktop-shell-msg-scrm-no-collection-replay = Geen skermversameling om te herspeel nie.
 ff-desktop-shell-msg-scrm-snapshot-copied = Kiekie na knipbord gekopieer ({ $format }).
 ff-desktop-shell-msg-scrm-snapshot-no-clipboard = Kiekie gelewer ({ $format }) maar die knipbord was onbeskikbaar.
+ff-desktop-shell-msg-scrm-snapshot-both-copied = Kiekie na knipbord gekopieer: prent + { $format }.
+ff-desktop-shell-msg-scrm-snapshot-written = Kiekie { $format } geskryf na { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-written = Kiekie-PDF geskryf na { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-failed = SNAPSHOT PDF het misluk: { $error }.
 
 # --- detach / split / swap ---
 ff-desktop-shell-msg-detach-max-reached = Maksimum aantal losgemaakte werkspasies (16) bereik.

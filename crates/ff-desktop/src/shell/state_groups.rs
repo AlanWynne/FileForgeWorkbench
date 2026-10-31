@@ -117,6 +117,51 @@ pub(crate) struct PendingTabActions {
     pub return_to_pom: bool,
 }
 
+// === PendingSnapshot ================================================
+// The two-phase async bare-SNAPSHOT state (CR-NR-114, FEAT-002). Bare SNAPSHOT
+// is a REQUEST: the command phase resolves the active Context's screen, renders
+// its text flavors, stashes them here, and asks the egui frame loop for a live
+// window screenshot (which is ASYNC in egui 0.33). The frame loop issues the
+// ViewportCommand::Screenshot, and when the Event::Screenshot arrives a later
+// frame it assembles the composite picture+text+CF_HTML payload and places it
+// on the clipboard in one transaction. Grouped (not two loose god-struct
+// fields) per wiring-standard.md.
+
+/// The deferred bare-SNAPSHOT request (CR-NR-114, FEAT-002). A plain data
+/// container holding the pre-rendered text flavors captured in the command
+/// phase, waiting for the async window screenshot the frame loop requests.
+///
+/// Both strings are rendered from the SAME logical screen model in the command
+/// phase (where the `ScreenProvider` seam lives), so the frame loop stays
+/// egui-only and never touches the model: `text` is the Markdown-fenced
+/// rendering published as the `CF_UNICODETEXT` flavor; `pre_text` is the plain
+/// Unicode box-drawn body placed inside the CF_HTML `<pre>` block.
+///
+/// Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct PendingSnapshot {
+    /// The Markdown-fenced text flavor (`CF_UNICODETEXT`).
+    pub text: String,
+    /// The plain Unicode box-drawn screen body (the CF_HTML `<pre>` body).
+    pub pre_text: String,
+}
+
+/// The shell's two-phase bare-SNAPSHOT state (CR-NR-114, FEAT-002). A grouped
+/// sub-struct (not loose `WorkbenchShell` fields) per wiring-standard.md.
+///
+/// Validates: screen-snapshot-scrm Requirement 4.1, 23.4.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SnapshotState {
+    /// When `Some`, a bare SNAPSHOT is waiting for the async window screenshot;
+    /// the frame loop assembles and places the composite payload on the
+    /// `Event::Screenshot` frame, then clears this.
+    pub pending: Option<PendingSnapshot>,
+    /// One-shot: set by the command phase to ask the frame loop to issue
+    /// `ViewportCommand::Screenshot` next frame. Cleared once the request is
+    /// issued (the `pending` payload stays in place until the image arrives).
+    pub screenshot_requested: bool,
+}
+
 // === I18nState =======================================================
 // Localization runtime state owned by the shell (CR-NR-109). Currently holds the
 // locale-overlaid per-environment alias store, shared with the process-global

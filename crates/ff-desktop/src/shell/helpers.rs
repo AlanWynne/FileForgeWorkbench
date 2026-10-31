@@ -210,6 +210,26 @@ pub(super) fn snapshot_format_label(format: ff_screen_model::SnapshotFormat) -> 
         SnapshotFormat::Markdown => "Markdown",
         SnapshotFormat::Html => "HTML",
         SnapshotFormat::Yaml => "YAML",
+        SnapshotFormat::Png => "PNG",
+        SnapshotFormat::Pdf => "PDF",
+    }
+}
+
+/// Natural file extension for a single-format SNAPSHOT written to a file
+/// (Req 4.8). ANSI shares the `.ans` extension by convention; PDF/PNG are
+/// handled by their own paths but included for totality.
+///
+/// Validates: screen-snapshot-scrm Requirement 4.8.
+pub(super) fn snapshot_file_extension(format: ff_screen_model::SnapshotFormat) -> &'static str {
+    use ff_screen_model::SnapshotFormat;
+    match format {
+        SnapshotFormat::PlainText => "txt",
+        SnapshotFormat::Ansi => "ans",
+        SnapshotFormat::Markdown => "md",
+        SnapshotFormat::Html => "html",
+        SnapshotFormat::Yaml => "yaml",
+        SnapshotFormat::Png => "png",
+        SnapshotFormat::Pdf => "pdf",
     }
 }
 

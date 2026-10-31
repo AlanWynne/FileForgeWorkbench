@@ -347,6 +347,17 @@ pub struct WorkbenchShell {
     ///
     /// Validates: screen-snapshot-scrm Requirement 16.
     pub(super) scrm_viewer: crate::scrm_viewer_panel::ScrmViewerState,
+
+    /// Two-phase bare-SNAPSHOT state (CR-NR-114, FEAT-002). The command phase
+    /// stashes the pre-rendered text flavors and requests an async window
+    /// screenshot; the frame loop (`update.rs`) issues the
+    /// `ViewportCommand::Screenshot` and, on the `Event::Screenshot` frame,
+    /// assembles the composite picture+text+CF_HTML payload and places it on the
+    /// clipboard in one transaction. Grouped sub-struct (not loose god-struct
+    /// fields) per wiring-standard.md.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d.
+    pub(super) snapshot: state_groups::SnapshotState,
     /// Notification channel receiver -- drained each frame.
     ///
     /// Validates: notification-system Requirement 1.1

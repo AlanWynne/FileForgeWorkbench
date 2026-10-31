@@ -51,6 +51,7 @@ mod commands_menu;
 mod commands_menus_save;
 mod commands_scrm;
 mod commands_session;
+mod commands_snapshot;
 mod commands_theme;
 mod commands_theme_save;
 mod configurator;
@@ -177,6 +178,8 @@ mod tests_screen_directive;
 mod tests_scrm;
 #[cfg(test)]
 mod tests_session;
+#[cfg(test)]
+mod tests_snapshot_picture;
 #[cfg(test)]
 mod tests_split_detach;
 #[cfg(test)]

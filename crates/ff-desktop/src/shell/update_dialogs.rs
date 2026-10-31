@@ -360,6 +360,10 @@ impl WorkbenchShell {
             }
         }
 
+        // The SNAPSHOT format picker (Req 4.7) was RETIRED under CR-NR-114: bare
+        // SNAPSHOT now places the composite clipboard payload directly, so there
+        // is no format to choose and no overlay to render here.
+
         // core-001 strip: the Catalog Manager dialogs (update_dialogs_catalog.rs)
         // are parked with the catalog domain.
     }

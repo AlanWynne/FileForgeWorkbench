@@ -128,16 +128,30 @@ report, a Git commit, or an AI prompt and edit it, rather than an image I cannot
 select.
 
 #### Acceptance Criteria
-1.1 WHEN a screen is captured THE system SHALL produce a text representation
+1.1 WHEN a screen is captured THE system SHALL produce a TEXT representation
     derived from the Screen_Model whose visible characters can be selected and
-    copied as text. `[ARCH]`
-1.2 THE system SHALL NOT require a raster image (jpeg/png/bmp) as the authoritative
-    capture artefact. `[ARCH]` `[SCRM-026]`
-1.3 WHERE a bitmap rendering is produced THE system SHALL treat it as an OPTIONAL
-    secondary artefact stored alongside the text, never as a replacement for it.
-    `[SCRM-026]`
+    copied as text. THE text representation SHALL use proper Unicode box-drawing
+    characters (`+U250x` family: `|_ - | _|` i.e. the box glyphs) for frames and
+    separators, NOT the ASCII `+`/`-`/`|` fallback, so it reads as a real screen.
+    (Unicode box-drawing in captured OUTPUT is deliberate runtime product content,
+    exempt from the ASCII-only documentation rule.) `[ARCH]`
+1.2 THE TEXT representation SHALL remain the authoritative SELECTABLE-TEXT capture
+    (not a raster image of text). A raster PICTURE flavor (Requirement 23) is
+    produced IN ADDITION, for pasting a visual of the window; it does not replace
+    the text. `[ARCH]` `[SCRM-026]`
+1.3 REVISED (CR-NR-114): the PICTURE flavor SHALL be a REAL SCREENSHOT of the
+    FileForge application WINDOW (the window's actual rendered pixels -- fonts,
+    colours, layout, box-drawing as drawn on screen), NOT a text-painted raster of
+    the Screen_Model. This DELIBERATELY REVERSES the former "logical-model-first,
+    never a screengrab" constraint FOR THE PICTURE FLAVOR ONLY (the earlier
+    text-rasterised PNG looked identical to the text and added no value). The TEXT
+    and HTML flavors remain Screen_Model-derived; only the picture becomes a true
+    window screengrab. The screengrab captures the WINDOW, not the whole desktop.
+    (Owner-confirmed framework/constraint change.) `[ARCH]` `[SCRM-026]`
 1.4 WHEN a Capture is exported in any text-bearing format THE exported screen
-    content SHALL remain selectable text (not an embedded image of text). `[ARCH]`
+    content SHALL remain selectable text (not an embedded image of text); a
+    picture MAY be embedded ALONGSIDE the selectable text (e.g. the HTML composite
+    of Requirement 23), never as a replacement for it. `[ARCH]`
 
 ---
 
@@ -211,9 +225,11 @@ the screen so the record is faithful.
 the format I choose, without having to start a collection.
 
 #### Acceptance Criteria
-4.1 WHEN the user issues `SNAPSHOT` THE system SHALL render the current
-    Screen_Model to the default text format and place it where the user can copy
-    it (see Requirement 6). `[ARCH]`
+4.1 WHEN the user issues `SNAPSHOT` with NO format argument THE system SHALL
+    place the COMPOSITE clipboard payload (the PNG picture AND the Markdown-fenced
+    text, Requirement 23) on the clipboard directly, WITHOUT any format picker.
+    (Owner-confirmed CR-NR-114 clipboard revision: the composite carries both
+    flavors, so asking the user to choose a format is redundant.) `[ARCH]`
 4.2 WHEN the user issues `SNAPSHOT TEXT` THE system SHALL render plain text.
     `[ARCH]`
 4.3 WHEN the user issues `SNAPSHOT ANSI` THE system SHALL render text with ANSI
@@ -226,17 +242,16 @@ the format I choose, without having to start a collection.
 4.6 WHEN the user issues `SNAPSHOT YAML` (alias `SNAPSHOT AI`) THE system SHALL
     render a structured YAML document (title, fields as name/value, tables,
     buttons, cursor). `[ARCH]`
-4.7 WHEN the user issues `SNAPSHOT` with NO format argument THE system SHALL
-    present a FORMAT PICKER from which the user chooses the output format (the
-    text formats of Req 4.2-4.6 AND the picture formats of Requirement 23),
-    rather than silently defaulting; the picker SHALL dispatch the chosen
-    `SNAPSHOT <format>` through the single front door (`dispatch_command_string`
-    -> `resolve_target`) so a picked format is identical to the typed form
-    (command parity, Req 11.4). (Owner-confirmed D(formats): no-arg pops a
-    picker.) `[forward-plan]`
-4.8 WHEN the user issues `SNAPSHOT <format>` with an explicit format THE system
-    SHALL render that format directly WITHOUT showing the picker (the picker is
-    only for the no-argument form). `[forward-plan]`
+4.7 RETIRED (CR-NR-114). The former no-argument FORMAT PICKER is removed: bare
+    `SNAPSHOT` now always places the composite clipboard payload (Req 4.1, Req 23)
+    and there is nothing to choose, so a picker is redundant. No format-picker
+    dialog SHALL be presented. (Supersedes the earlier owner decision that bare
+    SNAPSHOT pops a picker.) `[forward-plan]`
+4.8 WHEN the user issues `SNAPSHOT <format>` with an EXPLICIT format
+    (TEXT/ANSI/MARKDOWN/MD/HTML/YAML/AI/PNG/PDF) THE system SHALL render/produce
+    that single format directly -- these explicit verbs are RETAINED for
+    single-format output (e.g. writing one format to a file). Only the no-argument
+    picker is removed. `[forward-plan]`
 
 ---
 
@@ -749,58 +764,91 @@ no new navigation stack.
 
 ## Requirement 23 -- Picture snapshot formats (PNG first, then PDF-reuse)
 
-**User story:** As a user, I want a screen SNAPSHOT to place BOTH a picture (PNG)
-and the box-drawn ANSI/TEXT on the clipboard at once, so that pasting into Word or
-PowerPoint brings in both the image and the text, while pasting into a plain-text
-editor brings in just the text (the picture is dropped) -- the familiar behaviour
-of pasting mixed image+text content from a word processor into a text editor.
+**User story:** As a user, I want a screen SNAPSHOT to place a real PICTURE of the
+window AND the box-drawn text on the clipboard so that pasting into Word or
+PowerPoint brings in BOTH the screenshot image and the text together, while
+pasting into a plain-text editor brings in just the text.
 
-### Context (owner-confirmed D(formats))
+### Context (owner-confirmed CR-NR-114, three-flavor clipboard -- REVISED)
 
-PNG is the FIRST picture format: lossless, crisp for monospaced text, mature Rust
-encoder. PDF is SECOND, reusing the EXISTING `ff-scrm/pdf.rs` path. ODT / ODP are
-DEFERRED. The picture is produced by RASTERISING the monospaced TEXT render to a
-bitmap (a fixed-width font), NOT by screen-grabbing egui -- keeping the
-logical-model-first constraint (Requirement 1) intact.
+The clipboard SNAPSHOT now carries THREE flavors from one copy:
+
+- PICTURE (PNG) = a REAL SCREENSHOT of the FileForge application WINDOW (its
+  actual rendered pixels), per the revised Requirement 1.3 -- NOT a text-painted
+  raster. The earlier text-rasterised PNG was pointless because it looked
+  identical to the text flavor; the picture must be a true print-screen of the
+  window.
+- TEXT = the Screen_Model text rendering using proper Unicode box-drawing
+  characters (Req 1.1), as a Markdown-fenced block so a plain-text target pastes
+  readable, aligned text.
+- COMPOSITE RICH (HTML, `CF_HTML`) = an HTML fragment that EMBEDS the window
+  screenshot image AND the box-drawn text together, so a rich target (Word /
+  PowerPoint) that prefers HTML pastes BOTH the picture and the text in one go.
+
+This is why "paste into Word shows both": Word consumes the HTML composite flavor
+(image + text), a plain-text editor consumes the text flavor, and an
+image-only target can consume the DIB/picture flavor. A single clipboard paste
+always yields ONE flavor chosen by the target -- the composite HTML flavor is how
+we get image+text appearing together.
+
+PDF stays a FILE/single-format output (`SNAPSHOT PDF`) reusing `ff-scrm/pdf.rs`.
+ODT/ODP deferred.
 
 #### Acceptance Criteria
 23.1 THE set of SNAPSHOT picture formats SHALL be PNG (first) and PDF (reusing
      `ff-scrm/pdf.rs`); ODT and ODP SHALL be DEFERRED and recorded as NOT-COVERED,
      not built in this phase. (Owner-confirmed D(formats).) `[forward-plan]`
-23.2 WHEN the user issues `SNAPSHOT PNG` THE system SHALL produce a PNG bitmap by
-     RASTERISING the logical TEXT render (fixed-width font), NOT by grabbing egui
-     pixels (consistent with Req 1, Req 2.2). `[forward-plan]`
+23.2 WHEN the user issues `SNAPSHOT PNG` (or a clipboard SNAPSHOT) THE system
+     SHALL produce a PNG that is a REAL SCREENSHOT of the FileForge application
+     WINDOW (its actual rendered pixels), per revised Req 1.3 -- NOT a
+     text-rasterised image. The screenshot captures the WINDOW, not the whole
+     desktop. (Reverses the former text-raster approach for the picture flavor.)
+     `[forward-plan]`
 23.3 WHEN the user issues `SNAPSHOT PDF` THE system SHALL produce a single-screen
      PDF by REUSING the existing `ff-scrm/pdf.rs` path, keeping the screen content
      as selectable text (Req 12.6), not a rasterised page image. `[forward-plan]`
 23.4 WHEN the user issues a SNAPSHOT that targets the CLIPBOARD, THE system SHALL
-     place BOTH flavors on the clipboard SIMULTANEOUSLY: the PNG picture AND the
-     box-drawn ANSI/TEXT rendering (both derived from the same logical screen
-     model). The two are CO-EQUAL clipboard flavors; neither is subordinate.
-     (Owner-confirmed CR-NR-114 multi-flavor clipboard model; revises the former
-     text-only-primary constraint.) `[forward-plan]`
-23.5c WHEN the clipboard content is pasted into a RICH target (e.g. a word
-     processor or presentation app that accepts an image flavor), THE target
-     SHALL be able to consume BOTH the picture and the monospaced text; WHEN it is
-     pasted into a PLAIN-TEXT target (e.g. a text editor), THE target SHALL
-     receive ONLY the ANSI/TEXT and the picture SHALL be dropped. The destination
-     application selects the flavor; the SNAPSHOT offers both. `[forward-plan]`
-23.5d THE simultaneous image+text clipboard offer SHALL use the OS multi-flavor
-     clipboard (e.g. an image flavor plus a Unicode-text flavor). WHERE the app's
-     current clipboard backend exposes text only, ADDING the image-flavor
-     capability SHALL be part of this work; the logical-model-first rule (both
-     flavors rendered from the logical model, never an egui screengrab) SHALL NOT
-     be weakened to achieve it. `[forward-plan]`
+     place THREE flavors on the clipboard SIMULTANEOUSLY in one transaction:
+     (a) the PICTURE -- a real window screenshot (Req 23.2) in a DIB flavor
+     (`CF_DIB`/`CF_DIBV5`) a rich/image target accepts; (b) the TEXT -- the
+     Markdown-fenced Unicode-box-drawing rendering as `CF_UNICODETEXT`; and
+     (c) the COMPOSITE HTML (`CF_HTML`) -- an HTML fragment embedding the window
+     screenshot image AND the box-drawn text together. All three derive from the
+     SAME capture. (Owner-confirmed CR-NR-114: three-flavor clipboard.)
+     `[forward-plan]`
+23.5c WHEN the clipboard content is pasted into a RICH target that prefers HTML
+     (Word / PowerPoint), THE target SHALL consume the COMPOSITE HTML flavor and
+     render BOTH the window screenshot image AND the box-drawn text together in
+     one paste; WHEN pasted into a PLAIN-TEXT target (Notepad / a code editor),
+     THE target SHALL receive ONLY the Markdown-fenced text; WHEN pasted into an
+     image-only target (e.g. an image editor), THE target SHALL receive the
+     screenshot picture. The destination application selects ONE flavor; the
+     composite HTML is what makes image+text appear together in Word.
+     `[forward-plan]`
+23.5d THE multi-flavor offer SHALL use the OS multi-flavor clipboard in ONE
+     clipboard-open transaction, publishing `CF_HTML` (the composite, the flavor
+     Word prefers), `CF_DIB`/`CF_DIBV5` (the window screenshot), and
+     `CF_UNICODETEXT` (the Markdown text). The `CF_HTML` payload SHALL carry the
+     correct CF_HTML header (Version/StartHTML/EndHTML/StartFragment/EndFragment
+     byte offsets) and embed the screenshot as a base64 `data:` image inside the
+     fragment. The implementation SHALL be VERIFIED by a real paste into Word
+     (both the picture and the text must appear), not only by a layer-level test.
+     `[forward-plan]`
+23.5e ANSI output (text with colour escape sequences) SHALL be available ONLY as
+     an EXPLICIT `SNAPSHOT ANSI` single-format output (Req 4.3), intended for a
+     terminal / ANSI-aware viewer or a file; ANSI SHALL NOT be a clipboard flavor
+     (raw escape codes paste as garbage in ordinary editors). Colour fidelity on
+     the clipboard is carried by the PNG picture, not by ANSI. `[forward-plan]`
 23.4a WHERE a FILE/document output format (as opposed to the clipboard) supports
      carrying BOTH a picture and the ANSI/TEXT rendering, THE SNAPSHOT SHALL embed
      BOTH; WHERE it supports only text, the text SHALL be written. (Owner-confirmed
      D(formats): produce both where the format supports it.) `[forward-plan]`
 23.5 THE picture bitmap SHALL be an OPTIONAL secondary artefact (Req 1.3): it
      SHALL NOT replace the selectable-text capture. `[forward-plan]`
-23.6 EACH picture-format SNAPSHOT verb SHALL resolve through
-     `ff_command::resolve_target` to a `Function` target and dispatch through the
-     shared path, with command parity for the format picker (Req 4.7, 11.3, 11.4);
-     NO bespoke intercept. `[forward-plan]`
+23.6 EACH picture-format SNAPSHOT verb (`SNAPSHOT PNG` / `SNAPSHOT PDF`) SHALL
+     resolve through `ff_command::resolve_target` to a `Function` target and
+     dispatch through the shared path, command parity with the typed verb (Req
+     11.3, 11.4); NO bespoke intercept. `[forward-plan]`
 23.7 ADDING a picture encoder dependency (e.g. the `image` / `png` crate) SHALL
      be pinned to an exact version (`.kiro/steering` dependency discipline); the
      logical-model-first constraint SHALL NOT be weakened to add it. `[forward-plan]`
@@ -871,7 +919,7 @@ adjust them at implementation).
      `[forward-plan]`
 25.4 EACH SCRM menu-screen option's `command` SHALL be an EXISTING SCRM verb
      resolved through `resolve_target` / `open_menu_by_name` (Req 22.6): Snapshot
-     -> `SNAPSHOT` (invoking the format picker, Req 4.7); Capture start ->
+     -> `SNAPSHOT` (placing the composite clipboard payload, Req 4.1); Capture start ->
      `CAPTURE START`; Capture stop -> `CAPTURE STOP` (invoking the Save-As dialog,
      Req 24); Capture replay -> `CAPTURE REPLAY` (opening the saved-session picker,
      Req 10.12); SCRM Help -> the SCRM help topic; Exit -> the menu END/exit verb.
@@ -937,8 +985,7 @@ Both kinds are in scope:
 - (a) Message / notification / error / confirmation popups (mostly a text
   message plus buttons).
 - (b) Modal dialogs with structure (fields, lists, buttons) -- e.g. the dataset
-  allocator, catalog manager, the SCRM Save-As dialog (Req 24), the format picker
-  (Req 4.7).
+  allocator, catalog manager, the SCRM Save-As dialog (Req 24).
 
 #### Acceptance Criteria
 27.1 EVERY message box and dialog box SHALL be capturable: its content SHALL be

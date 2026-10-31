@@ -49,6 +49,10 @@ ff-desktop-shell-msg-scrm-unknown-subcommand = CAPTURE: unbekannter Unterbefehl 
 ff-desktop-shell-msg-scrm-no-collection-replay = Keine Bildschirmsammlung zum Wiedergeben.
 ff-desktop-shell-msg-scrm-snapshot-copied = Schnappschuss in die Zwischenablage kopiert ({ $format }).
 ff-desktop-shell-msg-scrm-snapshot-no-clipboard = Schnappschuss gerendert ({ $format }), aber die Zwischenablage war nicht verf{ "\u00fc" }gbar.
+ff-desktop-shell-msg-scrm-snapshot-both-copied = Schnappschuss in die Zwischenablage kopiert: Bild + { $format }.
+ff-desktop-shell-msg-scrm-snapshot-written = Schnappschuss { $format } geschrieben nach { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-written = Schnappschuss-PDF geschrieben nach { $path }.
+ff-desktop-shell-msg-scrm-snapshot-pdf-failed = SNAPSHOT PDF fehlgeschlagen: { $error }.
 
 # === verb-embedding command-ladder messages ===
 ff-desktop-shell-msg-detach-max-reached = Maximale Anzahl abgekoppelter Arbeitsbereiche (16) erreicht.

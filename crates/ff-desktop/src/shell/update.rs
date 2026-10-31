@@ -1,6 +1,30 @@
 //! # eframe::App implementation
 //!
 //! The `update()` frame loop and `on_exit()` callback for WorkbenchShell.
+//!
+//! ## Bare SNAPSHOT two-phase async flow (CR-NR-114, FEAT-002)
+//!
+//! Bare `SNAPSHOT` is a REQUEST: the command phase
+//! (`commands_snapshot::snapshot_composite_to_clipboard`) stashes the
+//! pre-rendered text flavors in `self.snapshot.pending` and sets
+//! `self.snapshot.screenshot_requested`. This frame loop then drives the async
+//! parts (egui 0.33's window screenshot is asynchronous):
+//!
+//! 1. When `screenshot_requested` is set, it is cleared and
+//!    `ViewportCommand::Screenshot(UserData::default())` is sent; the pending
+//!    payload stays in place.
+//! 2. A LATER frame delivers `egui::Event::Screenshot { image, .. }`. With a
+//!    pending request waiting, the frame loop adapts the real window RGBA to a
+//!    `RasterImage`, builds the composite picture + Markdown-fenced text +
+//!    CF_HTML payload, and places all three flavors on the clipboard in one
+//!    transaction, then clears the pending request.
+//!
+//! The captured picture is whatever is ACTUALLY ON THE WINDOW at the frame egui
+//! renders the screenshot. A SNAPSHOT taken with a modal dialog or overlay up
+//! therefore captures that overlay too -- the picture is the live window, not a
+//! synthetic model render. The TEXT flavors still come from the logical screen
+//! model resolved in the command phase, so they reflect the Context's content
+//! rather than any transient overlay.
 
 use eframe::egui;
 
@@ -127,6 +151,33 @@ impl eframe::App for WorkbenchShell {
         if let Some(option) = self.pending_menu_option.take() {
             self.activate_menu_option(option.target.as_ref(), &option.command);
         }
+
+        // Bare SNAPSHOT two-phase async flow (CR-NR-114, FEAT-002). (a) Issue the
+        // live window-screenshot request egui fulfils ASYNCHRONOUSLY (the image
+        // arrives a later frame as Event::Screenshot). The pending payload stays
+        // in place until the image arrives. (b) When the screenshot event is
+        // seen AND a pending bare SNAPSHOT is waiting, assemble the composite
+        // picture (real window RGBA) + Markdown-fenced text + CF_HTML and place
+        // all three flavors on the clipboard in one transaction.
+        // Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d.
+        if self.snapshot.screenshot_requested {
+            self.snapshot.screenshot_requested = false;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+        }
+        if self.snapshot.pending.is_some() {
+            let shot = ctx.input(|i| {
+                i.raw.events.iter().find_map(|e| match e {
+                    egui::Event::Screenshot { image, .. } => Some(image.clone()),
+                    _ => None,
+                })
+            });
+            if let Some(image) = shot {
+                if let Some(pending) = self.snapshot.pending.take() {
+                    self.place_snapshot_composite(&image, pending);
+                }
+            }
+        }
+
         if let Some(idx) = self.detach_split.detach_pending.take() {
             if let Some(tab) = self.tabs.tabs_mut().get_mut(idx) {
                 tab.is_floating = true;
