@@ -101,7 +101,14 @@ inventory.
   classified as preserve-on-upgrade.
 - 3.4 THE `data/` directory SHALL hold user state (menus, macros, keymaps,
   aliases, workspace-kinds, screen-collections, command config, sessions,
-  recovery) and SHALL be classified as preserve-on-upgrade.
+  recovery) and SHALL be classified as preserve-on-upgrade. NOTE: the SCRM
+  capture / Save-As default directory (screen-snapshot-scrm Req 24, the
+  discoverable captures folder the capture-STOP Save-As dialog defaults to) IS
+  the `screen-collections` location named here. When this portability reorg
+  lands, that default SHALL resolve through `ff-paths` to the
+  `data/screen-collections/` root (preserve-on-upgrade), NOT a bespoke path.
+  Until then, SCRM resolves it against the current ffwb domain convention; the
+  reorg migrates it to this root.
 - 3.5 THE `extensions/` directory SHALL hold installed extensions and SHALL be
   classified as preserve-on-upgrade.
 - 3.6 THE `logs/`, `cache/`, and `tmp/` directories SHALL be classified as

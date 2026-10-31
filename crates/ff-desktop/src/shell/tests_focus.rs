@@ -2470,11 +2470,23 @@ fn full_shell_split_tab_stays_within_focused_region() {
 /// full-shell first-Tab focus test for the new Context.
 #[test]
 fn full_shell_scrm_viewer_first_tab_focuses_first_control() {
+    // Isolate the screen-collections dir so CAPTURE SAVE / REPLAY <file> round
+    // trip through a TempDir (kept alive for the whole test).
+    let dir = tempfile::TempDir::new().expect("tempdir");
     let mut harness = harness_shell();
-    // Seed a collection with one capture of the POM, then open the viewer.
+    harness.state_mut().dir_overrides.scrm = Some(dir.path().to_path_buf());
+    // Seed a collection with one capture of the POM, save it, then open the
+    // viewer via the FILE form (bare CAPTURE REPLAY now opens the picker,
+    // FEAT-003 Req 10.12; the file form loads-then-opens, Req 10.11).
     harness.state_mut().handle_command("CAPTURE START C");
     harness.state_mut().handle_command("CAPTURE SCREEN");
-    harness.state_mut().handle_command("CAPTURE REPLAY");
+    harness
+        .state_mut()
+        .handle_command("CAPTURE SAVE viewer.ffscrm");
+    let archive = dir.path().join("viewer.ffscrm");
+    harness
+        .state_mut()
+        .handle_command(&format!("CAPTURE REPLAY {}", archive.display()));
     for _ in 0..4 {
         harness.run();
     }

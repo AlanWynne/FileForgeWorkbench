@@ -348,6 +348,14 @@ pub struct WorkbenchShell {
     /// Validates: screen-snapshot-scrm Requirement 16.
     pub(super) scrm_viewer: crate::scrm_viewer_panel::ScrmViewerState,
 
+    /// SCRM shell-side bookkeeping: the last command dispatched at the single
+    /// seam, consumed by the Context-transition auto-capture hook to record the
+    /// triggering command (CR-NR-098 Wave 2R). Grouped sub-struct per
+    /// wiring-standard.md.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 9.10, 9.11, 9.12.
+    pub(super) scrm_ui: state_groups::ScrmUiState,
+
     /// Two-phase bare-SNAPSHOT state (CR-NR-114, FEAT-002). The command phase
     /// stashes the pre-rendered text flavors and requests an async window
     /// screenshot; the frame loop (`update.rs`) issues the

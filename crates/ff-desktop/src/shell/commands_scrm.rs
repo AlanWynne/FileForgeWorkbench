@@ -1,10 +1,10 @@
-//! # Shell Command Dispatch -- SCRM / Snapshot / PFSHOW handlers
+//! # Shell Command Dispatch -- SCRM / Snapshot handlers
 //!
-//! Screen Collection/Replay Manager command handlers (CAPTURE ...), plus the
-//! key-label-bar PFSHOW command. The SNAPSHOT command family lives in the
-//! sibling `commands_snapshot.rs` (split out in Phase 2B to keep this file
-//! under the 400-line limit; pure code movement, no behaviour change). All
-//! methods are on `WorkbenchShell` and keep their `pub(super)` visibility.
+//! Screen Collection/Replay Manager command handlers (CAPTURE ...). The SNAPSHOT
+//! command family lives in the sibling `commands_snapshot.rs` and the
+//! key-label-bar PFSHOW command in `commands_pfshow.rs` (both split out to keep
+//! this file under the 400-line limit; pure code movement, no behaviour change).
+//! All methods are on `WorkbenchShell` and keep their `pub(super)` visibility.
 
 use super::helpers::*;
 use super::WorkbenchShell;
@@ -53,7 +53,7 @@ impl WorkbenchShell {
                 self.scrm.set_auto_capture(true);
                 m
             }
-            "STOP" => self.scrm.stop(),
+            "STOP" => return self.handle_capture_stop(),
             "SCREEN" => match self.active_screen_model() {
                 Some(model) => {
                     let name = self.active_screen_name();
@@ -68,10 +68,7 @@ impl WorkbenchShell {
             "STATUS" => self.scrm.status(),
             "LIST" => self.scrm.list(),
             "PURGE" => self.scrm.purge(),
-            "REPLAY" => {
-                self.open_scrm_viewer();
-                return;
-            }
+            "REPLAY" => return self.handle_capture_replay(arg),
             "EXPORT" => self.handle_capture_export(arg),
             "EVIDENCE" => self.handle_capture_evidence(arg),
             "SAVE" => self.handle_capture_save(arg),
@@ -82,6 +79,30 @@ impl WorkbenchShell {
                 &ff_i18n::MessageArgs::new().set("subcommand", other.to_string()),
             ),
         };
+        self.open_error = Some(msg);
+    }
+
+    /// Handle `CAPTURE STOP` (Stream SCRM Phase 2C FEAT-002): stop the session
+    /// (Req 7.6) and, when a non-empty active Collection exists, open the Save-As
+    /// modal defaulting the save location to `scrm_dir()` (Req 24.1). With no
+    /// collection (or an empty one) no modal opens and the status message stands.
+    ///
+    /// The modal only CAPTURES the user's choice; the actual persistence runs
+    /// through the EXISTING `CAPTURE SAVE` / `CAPTURE EXPORT` front door when the
+    /// overlay resolves to SAVE (Req 24.4). CANCEL writes nothing (Req 24.5).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 7.6, 24.1, 24.5.
+    fn handle_capture_stop(&mut self) {
+        let msg = self.scrm.stop();
+        let default_name = self
+            .scrm
+            .active_collection()
+            .filter(|c| !c.is_empty())
+            .map(|c| c.name.clone());
+        if let Some(name) = default_name {
+            let dir = self.scrm_dir();
+            self.scrm_ui.save_as = Some(crate::scrm_save_as_dialog::SaveAsState::new(name, dir));
+        }
         self.open_error = Some(msg);
     }
 
@@ -261,6 +282,42 @@ impl WorkbenchShell {
         }
     }
 
+    /// Handle `CAPTURE REPLAY [file]` (Stream SCRM Phase 2C FEAT-003):
+    ///
+    /// - With a NON-EMPTY `arg`: LOAD the saved `.ffscrm` archive into the active
+    ///   session (reusing the single `handle_capture_load` path -> `ff_scrm::load_archive`)
+    ///   and, on success, open the ScrmViewer Context on the loaded Collection
+    ///   (Req 10.11). A load failure reports the error and does NOT open the
+    ///   viewer.
+    /// - With an EMPTY `arg`: open the saved-session PICKER modal (Req 10.12).
+    ///   The overlay (`shell/update_dialogs_scrm.rs`) enumerates `scrm_dir()` for
+    ///   `*.ffscrm` and, on selection, dispatches `CAPTURE REPLAY <path>` through
+    ///   the single front door -- which re-enters this method's NON-EMPTY branch.
+    ///   When a Collection is already active, the picker still opens so the user
+    ///   can choose a saved session rather than only the in-memory one.
+    ///
+    /// All paths share the one load seam and the one dispatch seam -- no second
+    /// dispatcher, no bespoke intercept (framework-conformance, Req 11).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 10.11, 10.12, 16.1.
+    pub(super) fn handle_capture_replay(&mut self, arg: &str) {
+        let arg = arg.trim();
+        if arg.is_empty() {
+            self.scrm_ui.replay_picker = Some(crate::scrm_session_picker::ReplayPickerState::new());
+            self.open_error = None;
+            return;
+        }
+        let msg = self.handle_capture_load(arg);
+        if msg.starts_with("Loaded collection") {
+            // Load succeeded: open the viewer on the freshly loaded Collection.
+            self.open_scrm_viewer();
+        } else {
+            // Load failed: surface the error and do NOT open the viewer (which
+            // could otherwise show a stale previously-active Collection).
+            self.open_error = Some(msg);
+        }
+    }
+
     /// Open (navigate the current tab to) the SCRM Replay viewer Context
     /// (CAPTURE REPLAY). Reports when there is nothing to replay.
     ///
@@ -279,71 +336,31 @@ impl WorkbenchShell {
     /// hook (`reconstruct_context`). A no-op when auto-capture is off or the
     /// Context has no provider, so it never interrupts navigation.
     ///
-    /// Validates: screen-snapshot-scrm Requirement 9.1, 9.5.
+    /// CR-NR-098 Wave 2R (Req 9.10/9.11/9.12): when the transition was CAUSED by
+    /// a command, the triggering command (recorded at the single dispatch seam)
+    /// is read-and-cleared here and attached to the capture. A timed-interval /
+    /// rule capture finds `last_dispatched` already `None`, so the triggering
+    /// command is recorded as explicitly absent (Req 9.12). The command is never
+    /// gathered via a bespoke intercept -- only from the seam-recorded value.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 9.1, 9.5, 9.10, 9.11, 9.12.
     pub(super) fn auto_capture_active_context(&mut self) {
         if !self.scrm.auto_capture_enabled() {
+            // Always clear so a stale command never attaches to a LATER capture.
+            self.scrm_ui.last_dispatched = None;
             return;
         }
+        let triggering = self
+            .scrm_ui
+            .last_dispatched
+            .take()
+            .map(|(command, target_kind)| ff_scrm::TriggeringCommand {
+                command,
+                target_kind,
+            });
         if let Some(model) = self.active_screen_model() {
             let name = self.active_screen_name();
-            self.scrm.capture(model, name);
-        }
-    }
-
-    /// Handle the PFSHOW command (CR-CH-046).
-    ///
-    /// `arg` is the uppercased, trimmed argument after `PFSHOW` (empty for the
-    /// bare form). Bare PFSHOW cycles the five-state mode
-    /// `Off -> Base -> Shift -> Ctrl -> Alt -> Off`; the scope keywords jump
-    /// directly to a scope and show the bar; `ON`/`OFF` toggle visibility; an
-    /// unrecognised argument leaves the mode unchanged and sets a non-fatal error.
-    ///
-    /// Validates: Requirement 12.1, 12.2, 12.3, 12.6, 12.7, 12.8, 12.9, 12.13
-    pub(super) fn handle_pfshow(&mut self, arg: &str) {
-        use super::KeyBarScope;
-        match arg {
-            // Bare PFSHOW: advance the five-state cycle.
-            "" => {
-                if !self.key_bar_visible {
-                    // Off -> Base
-                    self.key_bar_visible = true;
-                    self.key_bar_scope = KeyBarScope::Base;
-                } else {
-                    match self.key_bar_scope {
-                        KeyBarScope::Base => self.key_bar_scope = KeyBarScope::Shift,
-                        KeyBarScope::Shift => self.key_bar_scope = KeyBarScope::Ctrl,
-                        KeyBarScope::Ctrl => self.key_bar_scope = KeyBarScope::Alt,
-                        // Alt -> Off (bar hidden; scope retained for PFSHOW ON).
-                        KeyBarScope::Alt => self.key_bar_visible = false,
-                    }
-                }
-                self.open_error = None;
-            }
-            // PFSHOW ON: show at the current-or-retained scope (12.1).
-            "ON" => {
-                self.key_bar_visible = true;
-                self.open_error = None;
-            }
-            // PFSHOW OFF: hide (12.2). Scope retained.
-            "OFF" => {
-                self.key_bar_visible = false;
-                self.open_error = None;
-            }
-            // Explicit scope jump (12.9).
-            _ => {
-                if let Some(scope) = KeyBarScope::parse(arg) {
-                    self.key_bar_scope = scope;
-                    self.key_bar_visible = true;
-                    self.open_error = None;
-                } else {
-                    // Unknown argument (12.13): leave the mode unchanged, surface a
-                    // clear non-fatal error.
-                    self.open_error = Some(ff_i18n::t_args(
-                        "ff-desktop-shell-msg-pfshow-bad-arg",
-                        &ff_i18n::MessageArgs::new().set("arg", arg.to_string()),
-                    ));
-                }
-            }
+            self.scrm.capture_with_command(model, name, triggering);
         }
     }
 }

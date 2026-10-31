@@ -71,15 +71,26 @@ impl ScrmViewerState {
     }
 
     /// The current capture's screen rendered as plain selectable text, or a
-    /// placeholder when the Collection is empty / absent.
+    /// placeholder when the Collection is empty / absent. When the current
+    /// capture carries a triggering command (Req 9.10) a `caused by: <command>`
+    /// line is prepended as selectable text (Req 10.9); it is omitted entirely
+    /// when the capture has no triggering command (Req 10.10).
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 10.8, 10.9, 10.10.
     fn current_screen_text(&self) -> String {
         match (&self.collection, &self.replay) {
             (Some(c), Some(r)) => match r.current_index().and_then(|i| c.screens.get(i)) {
-                Some(cap) => render_screen(
-                    &cap.screen,
-                    SnapshotFormat::PlainText,
-                    RenderOptions::default(),
-                ),
+                Some(cap) => {
+                    let body = render_screen(
+                        &cap.screen,
+                        SnapshotFormat::PlainText,
+                        RenderOptions::default(),
+                    );
+                    match &cap.triggering_command {
+                        Some(tc) => format!("caused by: {}\n{}", tc.command, body),
+                        None => body,
+                    }
+                }
                 None => "(empty collection)".to_string(),
             },
             _ => "(no collection to replay)".to_string(),
@@ -238,5 +249,36 @@ mod tests {
     fn no_collection_yields_placeholder() {
         let s = ScrmViewerState::default();
         assert!(s.current_screen_text().contains("no collection"));
+    }
+
+    // Validates: Req 10.9 -- a capture with a triggering command shows a
+    // selectable 'caused by: <command>' line.
+    #[test]
+    fn caused_by_line_shown_when_triggering_command_present() {
+        let mut c = collection_with(1);
+        c.screens[0].triggering_command = Some(ff_scrm::TriggeringCommand {
+            command: "FILES".to_string(),
+            target_kind: "custom_workspace".to_string(),
+        });
+        let mut s = ScrmViewerState::default();
+        s.set_collection(Some(c));
+        let text = s.current_screen_text();
+        assert!(
+            text.contains("caused by: FILES"),
+            "expected caused-by line; got: {text}"
+        );
+    }
+
+    // Validates: Req 10.10 -- a capture with no triggering command omits the
+    // cause line rather than showing an empty one.
+    #[test]
+    fn caused_by_line_omitted_when_absent() {
+        let mut s = ScrmViewerState::default();
+        s.set_collection(Some(collection_with(1)));
+        let text = s.current_screen_text();
+        assert!(
+            !text.contains("caused by:"),
+            "cause line must be omitted when absent; got: {text}"
+        );
     }
 }

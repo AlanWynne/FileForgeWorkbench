@@ -162,6 +162,48 @@ pub(crate) struct SnapshotState {
     pub screenshot_requested: bool,
 }
 
+// === ScrmUiState =====================================================
+// SCRM shell-side UI/bookkeeping state that is NOT part of the GUI-free
+// ff-scrm engine (which the `scrm: ScrmSession` field owns). Grouped per
+// wiring-standard.md rather than added as a loose WorkbenchShell field.
+
+/// SCRM shell-side bookkeeping (CR-NR-098 Wave 2R). A plain data container.
+///
+/// `last_dispatched` records the most recently dispatched command at the SINGLE
+/// command-dispatch seam (`shell/dispatch.rs`) as `(canonical command string,
+/// resolved CommandTarget kind label)`. The Context-transition auto-capture hook
+/// reads-and-clears it so a command-caused transition records its triggering
+/// command (Req 9.10/9.11), while a timed-interval / rule capture finds it
+/// already `None` and records an absent triggering command (Req 9.12). The
+/// `CommandTarget` is mapped to a label `String` in the shell so `ff-scrm` keeps
+/// no `ff-command` dependency.
+///
+/// Validates: screen-snapshot-scrm Requirement 9.10, 9.11, 9.12.
+#[derive(Debug, Default)]
+pub(crate) struct ScrmUiState {
+    /// `(canonical command string, resolved CommandTarget kind label)` of the
+    /// last command dispatched at the single seam, consumed by the next
+    /// Context-transition auto-capture. `None` when the last transition cause
+    /// was not a command (interval/rule) or has already been consumed.
+    pub last_dispatched: Option<(String, String)>,
+    /// The capture-STOP Save-As modal state (Stream SCRM Phase 2C FEAT-002).
+    /// `Some` means the modal is open: `CAPTURE STOP` with a non-empty active
+    /// Collection sets it; SAVE/CANCEL clears it. On SAVE the shell dispatches
+    /// the EXISTING `CAPTURE SAVE` / `CAPTURE EXPORT` verbs through the single
+    /// front door (no new persistence path); on CANCEL nothing is written.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 24.1, 24.4, 24.5.
+    pub save_as: Option<crate::scrm_save_as_dialog::SaveAsState>,
+    /// The saved-session picker modal state (Stream SCRM Phase 2C FEAT-003).
+    /// `Some` means the modal is open: bare `CAPTURE REPLAY` sets it; selecting
+    /// a session dispatches `CAPTURE REPLAY <path>` through the single front door
+    /// and clears it; Cancel/Escape clears it without dispatching. The shell
+    /// enumerates the `*.ffscrm` files in `scrm_dir()` fresh each frame.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 10.12.
+    pub replay_picker: Option<crate::scrm_session_picker::ReplayPickerState>,
+}
+
 // === I18nState =======================================================
 // Localization runtime state owned by the shell (CR-NR-109). Currently holds the
 // locale-overlaid per-environment alias store, shared with the process-global

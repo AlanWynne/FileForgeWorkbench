@@ -197,6 +197,35 @@ mod tests {
         assert_eq!(loaded, original);
     }
 
+    // Validates: Requirement 17.2a -- the optional TriggeringCommand round-trips
+    // through the persisted archive both absent and present, unchanged.
+    #[test]
+    fn archive_round_trips_triggering_command_absent_and_present() {
+        use crate::model::TriggeringCommand;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("tc.ffscrm");
+        let mut original = sample(2);
+        // Capture 0: a command-caused transition records the command + kind.
+        original.screens[0].triggering_command = Some(TriggeringCommand {
+            command: "FILES".to_string(),
+            target_kind: "custom_workspace".to_string(),
+        });
+        // Capture 1: an interval/rule capture leaves it explicitly absent.
+        assert!(original.screens[1].triggering_command.is_none());
+        save_archive(&original, &path).unwrap();
+        let loaded = load_archive(&path).unwrap();
+        assert_eq!(loaded, original);
+        assert_eq!(
+            loaded.screens[0]
+                .triggering_command
+                .as_ref()
+                .unwrap()
+                .command,
+            "FILES"
+        );
+        assert!(loaded.screens[1].triggering_command.is_none());
+    }
+
     // Validates: Requirement 18.4 -- journal recovers the latest snapshot.
     #[test]
     fn journal_recovers_latest_snapshot() {

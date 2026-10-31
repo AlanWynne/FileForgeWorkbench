@@ -107,6 +107,13 @@ impl WorkbenchShell {
             self.menus_dir(),
         );
         if let Ok(target) = ff_command::resolve_target(raw, &resolver) {
+            // CR-NR-098 Wave 2R (Req 9.10/9.11): record the command that is about
+            // to drive this transition, taken from the SINGLE dispatch seam (the
+            // resolve_target result) -- no bespoke intercept. The next
+            // Context-transition auto-capture reads-and-clears it. The target is
+            // mapped to a label String here so ff-scrm keeps no ff-command dep.
+            self.scrm_ui.last_dispatched =
+                Some((raw.trim().to_string(), target.variant_name().to_string()));
             self.dispatch_command_target(&target);
             return;
         }
@@ -132,5 +139,28 @@ mod tests {
             "verb token is matched case-insensitively"
         );
         assert_eq!(arg, "Foo", "argument case is preserved (B062)");
+    }
+
+    /// Validates: screen-snapshot-scrm Requirement 9.10, 17.2a -- each resolved
+    /// CommandTarget maps to a stable kind label for the triggering-command
+    /// record (the label stashed at the single dispatch seam).
+    #[test]
+    fn target_kind_labels_are_stable() {
+        use ff_command::{CommandTarget, TargetParams};
+        assert_eq!(
+            CommandTarget::Menu {
+                name: "pom".to_string()
+            }
+            .variant_name(),
+            "menu"
+        );
+        assert_eq!(
+            CommandTarget::CustomWorkspace {
+                workspace_kind: "files".to_string(),
+                params: TargetParams::default(),
+            }
+            .variant_name(),
+            "custom_workspace"
+        );
     }
 }

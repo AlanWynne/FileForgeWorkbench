@@ -44,6 +44,12 @@ impl WorkbenchShell {
             crate::about_dialog::render(ctx, &mut self.show_about);
         }
 
+        // SCRM overlays (Stream SCRM Phase 2C FEAT-002/003): capture-STOP Save-As
+        // and the bare CAPTURE REPLAY picker. Both dispatch through the single
+        // front door; render bodies live in `update_dialogs_scrm.rs`.
+        self.render_scrm_save_as_overlay(ctx);
+        self.render_scrm_replay_picker_overlay(ctx);
+
         // (The modal Key Configuration Dialog was retired in CR-CH-029; key
         // assignments are now edited in the Keys Workspace, TabKind::KeysEditor.)
 

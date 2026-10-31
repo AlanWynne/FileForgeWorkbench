@@ -891,6 +891,17 @@ EXPORT ...` commands (command parity), not a new persistence path.
      THE Context SHALL satisfy the master screen design directive
      (`docs/specs/master-screen-directive/`): the focus latch, and a
      `ScreenProvider` or documented opt-out. `[master-directive]`
+24.7 THE Save-As dialog SHALL DEFAULT its save location to a DISCOVERABLE
+     captures directory within the ffwb domain (so saved captures are easy to
+     find), and THE user SHALL be able to NAVIGATE AWAY to any other directory.
+     (Owner directive.) THIS default directory IS the `screen-collections`
+     location owned by the portable-installation spec
+     (`docs/specs/portable-installation/` Req 1.4, 3.4): once that portability
+     reorg lands, the default SHALL resolve through the `ff-paths` authority to
+     the `data/screen-collections/` root (preserve-on-upgrade); until then it
+     resolves against the current ffwb domain convention. The saved-session
+     picker (Req 10.12) SHALL list sessions from this SAME directory.
+     `[forward-plan]`
 
 ---
 

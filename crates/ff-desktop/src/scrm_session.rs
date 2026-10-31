@@ -12,7 +12,7 @@
 
 use chrono::Utc;
 use ff_screen_model::ScreenModel;
-use ff_scrm::ScreenCollection;
+use ff_scrm::{ScreenCollection, TriggeringCommand};
 
 /// Owns the active Collection and the automatic-capture flag for the shell.
 #[derive(Debug, Default)]
@@ -102,6 +102,22 @@ impl ScrmSession {
     ///
     /// Validates: Requirement 8.1, 8.2, 8.3, 8.4.
     pub fn capture(&mut self, model: ScreenModel, screen_name: Option<String>) -> u32 {
+        self.capture_with_command(model, screen_name, None)
+    }
+
+    /// Capture `model` with an optional triggering command attached to the
+    /// resulting capture (CR-NR-098 Wave 2R, Req 9.10/9.12). A command-caused
+    /// transition passes `Some(TriggeringCommand)`; an interval/rule capture
+    /// passes `None` (explicitly absent, never an empty sentinel). Otherwise
+    /// identical to [`Self::capture`], including the Req 8.4 auto-start.
+    ///
+    /// Validates: Requirement 8.1, 8.2, 8.3, 8.4, 9.10, 9.12.
+    pub fn capture_with_command(
+        &mut self,
+        model: ScreenModel,
+        screen_name: Option<String>,
+        triggering_command: Option<TriggeringCommand>,
+    ) -> u32 {
         if self.active.is_none() {
             // Req 8.4: auto-start a timestamp-named default Collection.
             self.start("", "user");
@@ -109,10 +125,11 @@ impl ScrmSession {
         let id = self.mint_id();
         let collection = self.active.as_mut().expect("active after auto-start");
         let seq = collection.append_capture(id, Utc::now(), model);
-        if let Some(name) = screen_name {
-            if let Some(cap) = collection.screens.last_mut() {
+        if let Some(cap) = collection.screens.last_mut() {
+            if let Some(name) = screen_name {
                 cap.screen_name = Some(name);
             }
+            cap.triggering_command = triggering_command;
         }
         seq
     }
@@ -229,6 +246,34 @@ mod tests {
         s.start("C", "alan");
         s.stop();
         assert!(!s.auto_capture_enabled());
+    }
+
+    // Validates: Requirement 9.10 -- a command-caused capture records the
+    // triggering command (canonical string + resolved target kind).
+    #[test]
+    fn capture_with_command_records_triggering_command() {
+        let mut s = ScrmSession::default();
+        s.start("C", "alan");
+        let tc = ff_scrm::TriggeringCommand {
+            command: "FILES".to_string(),
+            target_kind: "custom_workspace".to_string(),
+        };
+        s.capture_with_command(ScreenModel::new("S"), None, Some(tc));
+        let cap = &s.active_collection().unwrap().screens[0];
+        let rec = cap.triggering_command.as_ref().expect("command recorded");
+        assert_eq!(rec.command, "FILES");
+        assert_eq!(rec.target_kind, "custom_workspace");
+    }
+
+    // Validates: Requirement 9.12 -- an interval/rule capture (None) leaves the
+    // triggering command explicitly absent.
+    #[test]
+    fn capture_without_command_leaves_triggering_absent() {
+        let mut s = ScrmSession::default();
+        s.start("C", "alan");
+        s.capture_with_command(ScreenModel::new("S"), None, None);
+        let cap = &s.active_collection().unwrap().screens[0];
+        assert!(cap.triggering_command.is_none());
     }
 
     // Validates: Requirement 7 -- purge discards the active collection.

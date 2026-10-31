@@ -8,6 +8,25 @@ use chrono::{DateTime, Utc};
 use ff_screen_model::ScreenModel;
 use serde::{Deserialize, Serialize};
 
+/// The command that caused a screen transition, recorded on the Capture it
+/// produced. Obtained from the single command-dispatch seam
+/// (`ff_command::resolve_target` / `shell/target_dispatch.rs`), never a bespoke
+/// intercept. `command` is the canonical command string and `target_kind` is a
+/// label for the resolved `CommandTarget` kind (mapped to a `String` in the
+/// shell so this crate keeps no `ff-command` dependency).
+///
+/// An interval/rule capture records NO `TriggeringCommand` (an explicitly
+/// absent `Option`, not an empty-string sentinel) -- see `ScreenCapture`.
+///
+/// Validates: Requirement 9.10, 9.11, 17.2a.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TriggeringCommand {
+    /// The canonical command string as dispatched (Req 17.2a).
+    pub command: String,
+    /// A label for the resolved `CommandTarget` kind (Req 17.2a).
+    pub target_kind: String,
+}
+
 /// A single captured screen within a collection.
 ///
 /// The logical `ScreenModel` is the authoritative, copy/paste-able text content
@@ -36,6 +55,14 @@ pub struct ScreenCapture {
     pub image: Option<Vec<u8>>,
     /// Free-form notes attached to this capture.
     pub notes: String,
+    /// The command that triggered the transition INTO this capture, when the
+    /// capture was caused by a command (Req 9.10). `None` when the capture was
+    /// caused by a non-command source (a timed interval or a rule, Req 9.12) --
+    /// absence is an explicitly representable state, not an empty sentinel.
+    ///
+    /// Validates: Requirement 9.10, 9.12, 17.2a.
+    #[serde(default)]
+    pub triggering_command: Option<TriggeringCommand>,
     /// Arbitrary metadata key/value pairs.
     pub metadata: BTreeMap<String, String>,
 }
@@ -58,6 +85,7 @@ impl ScreenCapture {
             screen,
             image: None,
             notes: String::new(),
+            triggering_command: None,
             metadata: BTreeMap::new(),
         }
     }
@@ -160,5 +188,27 @@ mod tests {
         assert_eq!(cap.dialog_state.as_deref(), Some("PANEL.EDIT"));
         // image is optional and defaults to None (Requirement 1.3).
         assert!(cap.image.is_none());
+    }
+
+    // Validates: Requirement 9.12 -- a new capture's triggering command is
+    // explicitly absent (None), never an empty-string sentinel.
+    #[test]
+    fn new_capture_has_absent_triggering_command() {
+        let cap = ScreenCapture::new("a", 1, ts(), ScreenModel::new("S"));
+        assert!(cap.triggering_command.is_none());
+    }
+
+    // Validates: Requirement 9.10, 17.2a -- a capture can carry a triggering
+    // command with the canonical command string and the resolved target kind.
+    #[test]
+    fn capture_carries_triggering_command() {
+        let mut cap = ScreenCapture::new("a", 1, ts(), ScreenModel::new("S"));
+        cap.triggering_command = Some(TriggeringCommand {
+            command: "FILES".to_string(),
+            target_kind: "custom_workspace".to_string(),
+        });
+        let tc = cap.triggering_command.as_ref().expect("present");
+        assert_eq!(tc.command, "FILES");
+        assert_eq!(tc.target_kind, "custom_workspace");
     }
 }

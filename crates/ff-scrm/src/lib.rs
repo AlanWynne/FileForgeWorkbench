@@ -20,7 +20,7 @@ mod rules;
 pub use error::{Result, ScrmError};
 pub use evidence::{content_hash, EvidencePackage, EvidenceStatus};
 pub use export::{export_html, export_markdown, export_text, Masking};
-pub use model::{ScreenCapture, ScreenCollection};
+pub use model::{ScreenCapture, ScreenCollection, TriggeringCommand};
 pub use pdf::{export_pdf, export_screen_pdf};
 pub use pdf_protected::{export_pdf_protected, ProtectionOptions};
 pub use persist::{journal_append, journal_recover_latest, load_archive, save_archive};
