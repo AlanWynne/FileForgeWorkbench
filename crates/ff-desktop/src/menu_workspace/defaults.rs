@@ -26,14 +26,24 @@ use std::path::Path;
 /// options -- `0` Settings, `3` Help, `X` terminate. The former `1` Catalogs and
 /// `2` Files options are REMOVED (reserved for a future extension,
 /// wf_21b74c6aa15ba293). The underlying `CATALOGS` / `FILES` commands and their
-/// Contexts REMAIN reachable when typed (owner-approved Option B); only the
-/// default MENU options are removed. Survivor keys `0`/`3`/`X` are unchanged.
+/// Contexts REMAIN reachable when typed (owner-approved Option B).
+///
+/// CR-NR-114 / screen-snapshot-scrm Req 22.3 (OWNER-CONFIRMED FRAMEWORK CHANGE
+/// (b)): the bare-core POM now ALSO carries an `SCRM` option
+/// ("SCRM : Screen Capture and Recording"), in ADDITION to `0` Settings /
+/// `3` Help / `X` terminate. This DELIBERATELY changes the former CR-CH-073
+/// invariant (bare POM was EXACTLY `0`/`3`/`X`): because the menu bar is now a
+/// RUNTIME ECHO of the POM (Req 22.1), SCRM-in-the-POM is what surfaces SCRM on
+/// the bar -- there is no separate hardwired bar entry. The `SCRM` command
+/// resolves to the code-only SCRM menu screen ([`DEFAULT_SCRM_MENU_TOML`],
+/// Req 25), which becomes the SCRM bar item's dropdown.
 ///
 /// Selecting an option dispatches its `command` string (config-driven, no
 /// behaviour keyed to the key character). A single group means no stray
 /// separator is drawn.
 ///
-/// Validates: Requirement 12.1, 12.2, 12.7, 2.1h (menu-workspace)
+/// Validates: menu-workspace Requirement 12.1, 12.2, 12.7, 2.1h;
+/// screen-snapshot-scrm Requirement 22.3 (CR-NR-114)
 pub const DEFAULT_POM_TOML: &str = r#"title = "FileForge Workbench -- Primary Option Menu"
 
 [[options]]
@@ -46,6 +56,12 @@ group = "Core"
 key = "3"
 command = "Help"
 description = "Help -- workbench help and topics"
+group = "Core"
+
+[[options]]
+key = "S"
+command = "SCRM"
+description = "SCRM : Screen Capture and Recording"
 group = "Core"
 
 [[options]]
@@ -139,88 +155,72 @@ pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
         .expect("compiled Recovery_Baseline Settings menu must parse")
 }
 
-/// Compiled Recovery_Baseline content for the default Menu_Bar (menu-workspace
-/// Req 17, CR-NR-080; screen-snapshot-scrm Req 21, CR-NR-098).
+/// Compiled Recovery_Baseline content for the SCRM menu screen (screen-snapshot
+/// -scrm Req 25, CR-NR-114).
 ///
-/// CODE-ONLY, never written to disk. The bar mirrors the barebones POM's
-/// bar-visible core (`Settings` / `Help`, with the terminate `X` option retained
-/// but hidden via `show_in_menu_bar = false`) and ADDS one SCRM entry so the
-/// already-built snapshot/capture family is discoverable from the menu bar
-/// (FORWARD-PLAN resolved decision 1).
+/// CODE-ONLY, never written to disk (CR-CH-021): it is the fallback dropdown /
+/// submenu the `SCRM` POM option opens, and the source RESET BARE regenerates
+/// (Req 22.8, 25.5). A user `menus/scrm.toml` OVERRIDES it (the standard
+/// user-override-of-default rule).
 ///
-/// CR-CH-073 invariant: this is a SEPARATE constant from [`DEFAULT_POM_TOML`], so
-/// the bare-core POM stays EXACTLY `0` Settings / `3` Help / `X` and is NOT
-/// re-expanded by the SCRM surfacing. The SCRM entry lives ONLY on the bar.
+/// Every option's `command` is an EXISTING SCRM verb resolved through the single
+/// front door (Req 22.6, 25.4): Snapshot -> `SNAPSHOT` (bare composite clipboard,
+/// Req 4.1); Capture start -> `CAPTURE START`; Capture stop -> `CAPTURE STOP`
+/// (the 2C Save-As dialog); Capture replay -> `CAPTURE REPLAY` (the 2C saved
+/// -session picker); SCRM Help -> `HELP SCRM` (the SCRM help topic); Exit -> `X`
+/// (the uniform FFCMD close/END verb). NO new verb is introduced.
 ///
-/// The `SNAPSHOT` entry is a DYNAMIC source (see
-/// `shell::render_menu_bar::dynamic_menu_options`): its dropdown children are the
-/// existing `SNAPSHOT <format>` / `CAPTURE ...` verbs, each dispatched through the
-/// single front door (command parity, Req 21.3/21.4). No new verb, intercept,
-/// dispatcher, or navigation stack is introduced (framework-conformance).
+/// Mnemonic keys are the owner-confirmed (settled-but-tunable) set from Req 25.3:
+/// Snapshot `S`, Capture start `CS`, Capture stop `CT`, Capture replay `CR`,
+/// SCRM Help `H`, Exit `X`.
 ///
-/// Validates: menu-workspace Requirement 17.1, 17.2; screen-snapshot-scrm
-/// Requirement 21.1, 21.2, 21.3 (CR-NR-098)
-pub const DEFAULT_MENU_BAR_TOML: &str = r#"title = "FileForge Workbench -- Menu Bar"
-
-[[options]]
-key = "0"
-command = "Settings"
-description = "FFWB Settings and Client Parameters"
-group = "Core"
-
-[[options]]
-key = "3"
-command = "Help"
-description = "Help -- workbench help and topics"
-group = "Core"
+/// Validates: screen-snapshot-scrm Requirement 25.1, 25.2, 25.3, 25.4 (CR-NR-114)
+pub const DEFAULT_SCRM_MENU_TOML: &str = r#"title = "FileForge Workbench -- Screen Capture and Recording"
 
 [[options]]
 key = "S"
 command = "SNAPSHOT"
-description = "Screen snapshot / capture (SCRM)"
+description = "Snapshot -- copy the current screen to the clipboard"
+group = "Core"
+
+[[options]]
+key = "CS"
+command = "CAPTURE START"
+description = "Capture start -- begin recording a capture session"
+group = "Core"
+
+[[options]]
+key = "CT"
+command = "CAPTURE STOP"
+description = "Capture stop -- stop and save the capture session"
+group = "Core"
+
+[[options]]
+key = "CR"
+command = "CAPTURE REPLAY"
+description = "Capture replay -- open a saved capture session"
+group = "Core"
+
+[[options]]
+key = "H"
+command = "HELP SCRM"
+description = "SCRM Help -- screen capture and recording help"
 group = "Core"
 
 [[options]]
 key = "X"
 command = "X"
-description = "Collapse to the visual root / close workspace (exit when last)"
+description = "Exit -- close this menu (collapse to the visual root)"
 group = "Core"
-show_in_menu_bar = false
 "#;
 
-/// The default Menu_Bar NAME (menu-workspace Req 17.8, CR-NR-080). A user file
-/// at `menus/<slug>.toml` (slug = `mb-pom`) OVERRIDES the compiled default bar;
-/// the `MB-` prefix is a naming CONVENTION, not an enforced rule. Slice C will
-/// let a workspace kind select a different bar name; until then this is the
-/// single default the shell resolves.
-pub const DEFAULT_MENU_BAR_NAME: &str = "MB-POM";
-
-/// Build the compiled default Menu_Bar `MenuFile` (menu-workspace Req 17,
-/// CR-NR-080; screen-snapshot-scrm Req 21, CR-NR-098).
+/// Build the compiled Recovery_Baseline SCRM `MenuFile` (screen-snapshot-scrm
+/// Req 25). Parses [`DEFAULT_SCRM_MENU_TOML`] (single content source).
 ///
-/// A Menu_Bar is a `MenuFile` rendered HORIZONTALLY (each top-level option is a
-/// dropdown button). It parses [`DEFAULT_MENU_BAR_TOML`] so there is a SINGLE
-/// source for the compiled bar content (Req 12.7 analogue). The horizontal
-/// render skips options whose `show_in_menu_bar` is `false` (Req 17.2), so the
-/// terminate option (key `X`, marked `show_in_menu_bar = false`) does NOT appear
-/// on the bar, leaving Settings / Help (CR-CH-073 trimmed core; Catalogs/Files
-/// removed) plus the SCRM `SNAPSHOT` entry (FORWARD-PLAN decision 1).
-///
-/// The bar is INTENTIONALLY distinct from the barebones POM
-/// ([`recovery_pom_menu`]): the POM stays exactly `0` Settings / `3` Help / `X`
-/// (CR-CH-073, do NOT re-expand), while the bar additionally surfaces SCRM. The
-/// two therefore no longer share a source constant.
-///
-/// A top-level option's `command`, when it names a resolvable menu (e.g.
-/// `SETTINGS`), is PEEKED as a dropdown (Req 17.3); when it names a DYNAMIC
-/// source (`SNAPSHOT`, `THEME LIST`) its children are generated at runtime
-/// (Req 17.10); otherwise the button dispatches the command directly (Req 17.4).
-///
-/// Validates: menu-workspace Requirement 17.1, 17.2; screen-snapshot-scrm
-/// Requirement 21.1, 21.2 (CR-NR-098)
-pub fn default_menubar_menu() -> crate::menu_workspace::MenuFile {
-    crate::menu_workspace::loader::parse_menu_str(DEFAULT_MENU_BAR_TOML)
-        .expect("compiled default Menu_Bar must parse")
+/// Validates: screen-snapshot-scrm Requirement 25.1, 25.3, 25.4 (CR-NR-114)
+pub fn recovery_scrm_menu() -> crate::menu_workspace::MenuFile {
+    crate::menu_workspace::loader::parse_menu_str(DEFAULT_SCRM_MENU_TOML)
+        .expect("compiled Recovery_Baseline SCRM menu must parse")
 }
 
 // === ensure_default_menu_files ==============================================
@@ -274,6 +274,13 @@ mod tests {
             !menus_dir.join("settings.toml").exists(),
             "settings.toml must NOT be materialised (menus are code-only, CR-CH-021)"
         );
+        // screen-snapshot-scrm Req 22.8 / 25.5 (CR-NR-114): the SCRM menu screen
+        // is ALSO code-only and must never be materialised to disk by RESET BARE
+        // / startup scaffolding.
+        assert!(
+            !menus_dir.join("scrm.toml").exists(),
+            "scrm.toml must NOT be materialised (SCRM menu is code-only, Req 22.8/25.5)"
+        );
     }
 
     // Validates: Requirement 4.2 (revised) -- a pre-existing user file is left
@@ -299,12 +306,13 @@ mod tests {
     fn recovery_pom_menu_has_barebones_options() {
         let menu = recovery_pom_menu();
         let keys: Vec<&str> = menu.options.iter().map(|o| o.key.as_str()).collect();
-        // CR-CH-073: trimmed core = Settings (0) / Help (3) / terminate (X).
-        assert_eq!(keys, vec!["0", "3", "X"]);
+        // CR-NR-114 (Req 22.3, UPDATED from the retired CR-CH-073 0/3/X invariant):
+        // the bare core is now Settings (0) / Help (3) / SCRM (S) / terminate (X).
+        assert_eq!(keys, vec!["0", "3", "S", "X"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
         // CR-CH-052: the terminate option's command is the uniform `X` close
         // verb (collapse-to-visual-root / close-workspace), not `Return`.
-        assert_eq!(commands, vec!["Settings", "Help", "X"]);
+        assert_eq!(commands, vec!["Settings", "Help", "SCRM", "X"]);
         // Single group -> no stray separator boundary.
         let groups: std::collections::BTreeSet<&str> = menu
             .options
@@ -341,121 +349,96 @@ mod tests {
         );
     }
 
-    // Validates: menu-workspace Req 17.1, 17.2 (CR-NR-080); screen-snapshot-scrm
-    // Req 21.1, 21.2 (CR-NR-098) -- the default Menu_Bar is NOW a DISTINCT source
-    // from the barebones POM: it adds the SCRM `SNAPSHOT` entry the POM must not
-    // carry (CR-CH-073). So default_menubar_menu() must NOT equal
-    // recovery_pom_menu().
+    // Validates: screen-snapshot-scrm Req 22.3, 22.4 (CR-NR-114, UPDATED from the
+    // retired CR-CH-073 0/3/X invariant) -- the menu bar is now a RUNTIME ECHO of
+    // the POM (built in the shell, not a separate DEFAULT_MENU_BAR_TOML), so there
+    // is no longer a distinct hardwired bar constant. The bare-core POM instead
+    // CONTAINS the SCRM option, which is what surfaces SCRM on the bar.
     #[test]
-    fn default_menubar_differs_from_barebones_pom_by_scrm_entry() {
-        let bar = default_menubar_menu();
+    fn bare_pom_contains_scrm_and_stays_minimal() {
         let pom = recovery_pom_menu();
-        assert_ne!(
-            bar, pom,
-            "the default Menu_Bar must differ from the POM (it adds SCRM; POM stays 0/3/X)"
-        );
-        // The POM itself is unchanged: still exactly Settings / Help / terminate.
-        let pom_cmds: Vec<&str> = pom.options.iter().map(|o| o.command.as_str()).collect();
+        let cmds: Vec<&str> = pom.options.iter().map(|o| o.command.as_str()).collect();
+        // Req 22.3: bare POM is now Settings / Help / SCRM / terminate (the former
+        // EXACTLY-0/3/X invariant is DELIBERATELY changed, owner-confirmed (b)).
         assert_eq!(
-            pom_cmds,
-            vec!["Settings", "Help", "X"],
-            "the bare-core POM must stay EXACTLY 0 Settings / 3 Help / X (CR-CH-073)"
+            cmds,
+            vec!["Settings", "Help", "SCRM", "X"],
+            "the bare-core POM must be Settings / Help / SCRM / terminate (Req 22.3)"
         );
     }
 
-    // Validates: menu-workspace Req 17.2a (CR-CH-073); screen-snapshot-scrm
-    // Req 21.1 (CR-NR-098) -- the bar-visible options are Settings / Help / the
-    // SCRM SNAPSHOT entry (terminate X excluded; Catalogs/Files removed).
+    // Validates: screen-snapshot-scrm Req 22.3, 22.4 (CR-NR-114) -- the SCRM POM
+    // option is bar-visible (so it echoes onto the bar) and its command is the
+    // `SCRM` verb that opens the SCRM menu screen (Req 25), while the terminate
+    // X option stays hidden from the bar.
     #[test]
-    fn default_menubar_bar_visible_options_are_settings_help_snapshot() {
-        let menu = default_menubar_menu();
-        let bar_cmds: Vec<&str> = menu
+    fn bare_pom_scrm_option_is_bar_visible_and_commands_scrm_menu() {
+        let pom = recovery_pom_menu();
+        let scrm = pom
             .options
             .iter()
-            .filter(|o| o.show_in_menu_bar)
-            .map(|o| o.command.as_str())
-            .collect();
-        assert_eq!(
-            bar_cmds,
-            vec!["Settings", "Help", "SNAPSHOT"],
-            "bar-visible options must be Settings / Help / SNAPSHOT \
-             (terminate X hidden; Catalogs/Files removed; SCRM surfaced per \
-             FORWARD-PLAN decision 1)"
+            .find(|o| o.command == "SCRM")
+            .expect("bare POM must carry the SCRM option (Req 22.3)");
+        assert!(
+            scrm.show_in_menu_bar,
+            "the SCRM option must be bar-visible so it echoes onto the menu bar"
         );
-        // The terminate option (key X, command X after CR-CH-052) is present in
-        // the bar menu but hidden from the bar.
-        let ret = menu
+        assert_eq!(
+            scrm.description, "SCRM : Screen Capture and Recording",
+            "the SCRM option label/description must match Req 25.2"
+        );
+        // The terminate option (key X) stays hidden from the bar.
+        let x = pom
             .options
             .iter()
             .find(|o| o.key == "X")
-            .expect("terminate (X) option present in the bar menu");
+            .expect("terminate (X) option present");
         assert!(
-            !ret.show_in_menu_bar,
-            "the terminate (X) option must be hidden from the menu bar (show_in_menu_bar = false)"
+            !x.show_in_menu_bar,
+            "the terminate (X) option must stay hidden from the menu bar"
         );
     }
 
-    // Validates: screen-snapshot-scrm Req 21.1, 21.2 (CR-NR-098, CR-CH-073) --
-    // adding the SCRM entry to the BAR must NOT re-expand the bare-core POM: the
-    // DEFAULT_POM_TOML still has exactly three options and no SNAPSHOT entry.
+    // Validates: screen-snapshot-scrm Req 25.1, 25.3, 25.4 (CR-NR-114) -- the
+    // code-only SCRM menu screen has the Req 25.1 title and the Req 25.3 options
+    // (Snapshot=S / Capture start=CS / Capture stop=CT / Capture replay=CR /
+    // SCRM Help=H / Exit=X), each dispatching an EXISTING SCRM verb (Req 25.4).
     #[test]
-    fn scrm_surfacing_does_not_expand_the_pom() {
-        let pom = recovery_pom_menu();
+    fn recovery_scrm_menu_has_owner_confirmed_keys_and_verbs() {
+        let menu = recovery_scrm_menu();
         assert_eq!(
-            pom.options.len(),
-            3,
-            "POM must stay at 3 options (CR-CH-073)"
+            menu.title, "FileForge Workbench -- Screen Capture and Recording",
+            "SCRM menu title must match Req 25.1"
         );
-        assert!(
-            !pom.options.iter().any(|o| o.command == "SNAPSHOT"),
-            "the POM must NOT carry the SCRM SNAPSHOT entry (it lives only on the bar)"
-        );
-        assert!(
-            !DEFAULT_POM_TOML.contains("SNAPSHOT"),
-            "DEFAULT_POM_TOML must not mention SNAPSHOT"
-        );
-    }
-
-    // Validates: screen-snapshot-scrm Req 21.1, 21.3 (CR-NR-098) -- the compiled
-    // default Menu_Bar carries a top-level SCRM entry whose command is the
-    // existing SNAPSHOT verb (so it routes through the single front door).
-    #[test]
-    fn default_menubar_has_scrm_snapshot_entry() {
-        let menu = default_menubar_menu();
-        let scrm = menu
+        let pairs: Vec<(&str, &str)> = menu
             .options
             .iter()
-            .find(|o| o.command == "SNAPSHOT")
-            .expect("default Menu_Bar must carry a SNAPSHOT entry");
-        assert!(
-            scrm.show_in_menu_bar,
-            "the SCRM SNAPSHOT entry must be visible on the bar"
+            .map(|o| (o.key.as_str(), o.command.as_str()))
+            .collect();
+        assert_eq!(
+            pairs,
+            vec![
+                ("S", "SNAPSHOT"),
+                ("CS", "CAPTURE START"),
+                ("CT", "CAPTURE STOP"),
+                ("CR", "CAPTURE REPLAY"),
+                ("H", "HELP SCRM"),
+                ("X", "X"),
+            ],
+            "SCRM menu keys/commands must match Req 25.3/25.4"
         );
     }
 
-    // Validates: screen-snapshot-scrm Req 21.2 (CR-NR-098) -- DEFAULT_MENU_BAR_TOML
+    // Validates: screen-snapshot-scrm Req 25 (CR-NR-114) -- DEFAULT_SCRM_MENU_TOML
     // is valid ASCII TOML.
     #[test]
-    fn default_menu_bar_toml_is_valid_ascii_toml() {
+    fn default_scrm_menu_toml_is_valid_ascii_toml() {
         assert!(
-            DEFAULT_MENU_BAR_TOML.is_ascii(),
-            "DEFAULT_MENU_BAR_TOML must use only ASCII characters"
+            DEFAULT_SCRM_MENU_TOML.is_ascii(),
+            "DEFAULT_SCRM_MENU_TOML must use only ASCII characters"
         );
-        let result: Result<toml::Value, _> = toml::from_str(DEFAULT_MENU_BAR_TOML);
-        assert!(result.is_ok(), "DEFAULT_MENU_BAR_TOML must be valid TOML");
-    }
-
-    // Validates: menu-workspace Req 17.3 -- the Settings top-level option's
-    // command names the Settings menu, so opening it can PEEK that menu.
-    #[test]
-    fn default_menubar_settings_option_commands_settings_menu() {
-        let menu = default_menubar_menu();
-        let settings = menu
-            .options
-            .iter()
-            .find(|o| o.command == "Settings")
-            .expect("Settings entry present");
-        assert_eq!(settings.command, "Settings");
+        let result: Result<toml::Value, _> = toml::from_str(DEFAULT_SCRM_MENU_TOML);
+        assert!(result.is_ok(), "DEFAULT_SCRM_MENU_TOML must be valid TOML");
     }
 
     // Validates: Requirement 7.4 (cv-requirements.md) -- DEFAULT_POM_TOML is valid TOML
@@ -465,10 +448,11 @@ mod tests {
         assert!(result.is_ok(), "DEFAULT_POM_TOML must be valid TOML");
     }
 
-    // Validates: Requirement 12.2, 2.1h (menu-workspace, CR-CH-073) -- the
-    // compiled Recovery_Baseline POM ships EXACTLY the reconsidered trimmed core
-    // option set (Settings / Help / terminate) whose commands the shell resolves
-    // by name. Catalogs/Files removed from the barebones core.
+    // Validates: menu-workspace Requirement 12.2, 2.1h; screen-snapshot-scrm
+    // Requirement 22.3 (CR-NR-114, UPDATED from CR-CH-073) -- the compiled
+    // Recovery_Baseline POM ships Settings / Help / SCRM / terminate (Catalogs/
+    // Files remain removed; SCRM added by Req 22.3), whose commands the shell
+    // resolves by name.
     #[test]
     fn default_pom_toml_has_recovery_baseline_options() {
         let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
@@ -478,16 +462,16 @@ mod tests {
             .expect("options array");
         assert_eq!(
             options.len(),
-            3,
-            "Recovery_Baseline POM must contain exactly 3 options (CR-CH-073 trim)"
+            4,
+            "bare-core POM now has 4 options: Settings / Help / SCRM / terminate (Req 22.3)"
         );
-        // CR-CH-073: trimmed core = Settings / Help / terminate.
+        // CR-NR-114 (Req 22.3): bare core = Settings / Help / SCRM / terminate.
         let commands: Vec<&str> = options
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
         // CR-CH-052: terminate option command is `X`, not `Return`.
-        assert_eq!(commands, vec!["Settings", "Help", "X"],);
+        assert_eq!(commands, vec!["Settings", "Help", "SCRM", "X"],);
     }
 
     // Validates: Requirement 2.1g (menu-workspace, revised CR-CH-052) -- the POM

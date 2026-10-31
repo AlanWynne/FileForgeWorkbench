@@ -123,6 +123,13 @@ impl eframe::App for WorkbenchShell {
             self.open_or_focus_search_panel();
         }
 
+        // Alt+<letter> -- mnemonic-letter menu-bar accelerators (screen-snapshot
+        // -scrm Req 26, CR-NR-114). Each bar-visible POM option gets an Alt+letter
+        // that opens that bar item's menu through the SAME dispatch seam as a
+        // click. Resolved from the active POM-echo bar; no new accelerator
+        // mechanism. Suppressed while a modal dialog is open.
+        self.handle_menu_bar_accelerators(ctx);
+
         // Process deferred tab-bar context menu actions (set previous frame).
         if self.pending_tab_actions.new_pom {
             self.pending_tab_actions.new_pom = false;

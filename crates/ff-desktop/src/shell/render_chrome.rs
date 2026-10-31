@@ -32,14 +32,18 @@ fn menu_bar_slug(name: &str) -> String {
 impl WorkbenchShell {
     // ── Menu bar ─────────────────────────────────────────────────────────
 
-    /// Render the Workbench menu bar (menu-workspace Requirement 17, CR-NR-080).
+    /// Render the Workbench menu bar (menu-workspace Requirement 17, CR-NR-080;
+    /// screen-snapshot-scrm Requirement 22, CR-NR-114).
     ///
-    /// The bar is now DATA-DRIVEN: it renders from the compiled default Menu_Bar
-    /// (`default_menubar_menu`), a `MenuFile` drawn HORIZONTALLY. Later slices
-    /// (B/C) add named user files and per-workspace-kind selection; Slice A
-    /// always uses the default, which reproduces the previous hardcoded bar.
+    /// The bar is a RUNTIME ECHO of the active POM TOML (owner-confirmed
+    /// framework change (a), Req 22.1): its top-level items ARE the POM options
+    /// (`resolve_menu_bar_menu_for` returns the active POM menu when the Kind has
+    /// no `menu_bar` override), and each item's dropdown is built at runtime from
+    /// that option's submenu (Req 22.2, via `menu_bar_dropdown_items`). A Kind
+    /// with a configured `menu_bar` still resolves that named file (Slice C).
     ///
-    /// Validates: menu-workspace Requirement 17.1, 17.7
+    /// Validates: menu-workspace Requirement 17.1, 17.7;
+    /// screen-snapshot-scrm Requirement 22.1 (CR-NR-114)
     pub(super) fn render_menu_bar(&mut self, ctx: &egui::Context) {
         let menu = self.resolve_menu_bar_menu();
         self.render_menu_bar_from_menu(ctx, egui::Id::new("menu_bar"), &menu);
@@ -63,27 +67,29 @@ impl WorkbenchShell {
     }
 
     /// Resolve the active Menu_Bar `MenuFile` (menu-workspace Req 17.8,
-    /// CR-NR-080 Slice B).
+    /// CR-NR-080 Slice B; screen-snapshot-scrm Req 22.1, CR-NR-114).
     ///
-    /// The bar is a NAMED menu: it resolves the active menu-bar name to
-    /// `menus/<slug>.toml` via the loader, so a user file OVERRIDES the compiled
-    /// default. WHEN the file is absent or invalid, it falls back to the
-    /// compiled default (`default_menubar_menu`, the barebones POM). For Slice B
-    /// the name is the single default `DEFAULT_MENU_BAR_NAME` (`MB-POM`, slug
-    /// `mb-pom`); Slice C will select the name per workspace kind. The `MB-`
-    /// prefix is a naming convention, not enforced.
+    /// Delegates to [`resolve_menu_bar_menu_for`] for the active tab's Kind.
     ///
-    /// Validates: menu-workspace Requirement 17.8
+    /// Validates: menu-workspace Requirement 17.8;
+    /// screen-snapshot-scrm Requirement 22.1 (CR-NR-114)
     pub(super) fn resolve_menu_bar_menu(&self) -> crate::menu_workspace::MenuFile {
         self.resolve_menu_bar_menu_for(self.tabs.active_tab())
     }
 
     /// Resolve the Menu_Bar `MenuFile` for a specific tab's Workspace Kind
-    /// (CR-NR-090 B.2, workspace-kinds Req 4.1/4.2). The bar name is the Kind's
-    /// effective `menu_bar` (from the registry) when set, else the compiled
-    /// `DEFAULT_MENU_BAR_NAME`; it is then loaded via the existing named-menu
-    /// resolver (`menus/<slug>.toml` with the compiled fallback). Behaviour-
-    /// preserving for built-in Kinds (their default `menu_bar` is `None`).
+    /// (CR-NR-090 B.2; screen-snapshot-scrm Req 22, CR-NR-114).
+    ///
+    /// The DEFAULT bar (Kind has NO `menu_bar` override) is now a RUNTIME ECHO of
+    /// the active POM TOML (`active_pom_menu`): its top-level items ARE the POM
+    /// options and each dropdown is built from that option's submenu (Req 22.1,
+    /// 22.2). This REPLACES the former hardwired bar + dynamic `SNAPSHOT` entry
+    /// (Req 22.4). A Kind that DOES set `menu_bar` still resolves that named file
+    /// (`menus/<slug>.toml`, POM-echo fallback), preserving the per-Kind override
+    /// (Slice C, workspace-kinds Req 4.1/4.5).
+    ///
+    /// Validates: menu-workspace Requirement 17.8;
+    /// screen-snapshot-scrm Requirement 22.1, 22.2, 22.4 (CR-NR-114)
     pub(super) fn resolve_menu_bar_menu_for(
         &self,
         tab: &crate::tab_state::TabState,
@@ -91,16 +97,18 @@ impl WorkbenchShell {
         let kind_name =
             crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
                 .stable_name();
-        let bar_name = self
-            .kind_registry
-            .effective(kind_name)
-            .menu_bar
-            .clone()
-            .unwrap_or_else(|| crate::menu_workspace::defaults::DEFAULT_MENU_BAR_NAME.to_string());
-        let slug = menu_bar_slug(&bar_name);
-        let path = self.menus_dir().join(format!("{slug}.toml"));
-        crate::menu_workspace::loader::load_menu_file(&path)
-            .unwrap_or_else(|_| crate::menu_workspace::defaults::default_menubar_menu())
+        match self.kind_registry.effective(kind_name).menu_bar.clone() {
+            // Slice C: a Kind with an explicit bar name resolves that named file,
+            // falling back to the POM-echo if the file is absent/invalid.
+            Some(bar_name) => {
+                let slug = menu_bar_slug(&bar_name);
+                let path = self.menus_dir().join(format!("{slug}.toml"));
+                crate::menu_workspace::loader::load_menu_file(&path)
+                    .unwrap_or_else(|_| self.active_pom_menu())
+            }
+            // Default (no override): the bar is the active POM TOML (Req 22.1).
+            None => self.active_pom_menu(),
+        }
     }
 
     /// Render a `MenuFile` as a horizontal menu bar of dropdown buttons.

@@ -22,12 +22,13 @@
 //   constructed in `new_with_history_store` (construct.rs).
 //
 // Menu bar (data-driven) -- Validates: menu-workspace Req 17.1. CR-NR-080: the
-// menu bar is DATA-DRIVEN, rendered from the compiled default Menu_Bar
-// (`menu_workspace::defaults::default_menubar_menu`) rather than a hardcoded
-// label list. The former `MENU_BAR_TOP_LEVEL_LABELS` const (and its
-// `debug_assert_eq!` in `render_menu_bar`) were removed; the bar's top-level
-// entries are the default Menu_Bar's option `description`s, and tests assert
-// against `default_menubar_menu()` instead.
+// menu bar is DATA-DRIVEN. CR-NR-114 (screen-snapshot-scrm Req 22.1): the
+// default bar is now a RUNTIME ECHO of the active POM TOML (`active_pom_menu`),
+// so its top-level entries ARE the POM options and each dropdown is built from
+// that option's submenu -- the former hardwired `default_menubar_menu` /
+// `DEFAULT_MENU_BAR_TOML` was removed. A Kind with a `menu_bar` override still
+// resolves that named file. The former `MENU_BAR_TOP_LEVEL_LABELS` const was
+// already removed; the bar's top-level entries are the POM option `command`s.
 
 mod actions;
 mod alias_editor;
@@ -72,6 +73,7 @@ pub(crate) mod i18n_bootstrap;
 mod keys_editor;
 mod kinds_editor;
 mod locale_resolver;
+mod menu_bar_accel;
 mod menus_editor;
 mod mod_helpers;
 mod nav_reconstruct;
@@ -156,6 +158,8 @@ mod tests_kinds_save_convention;
 mod tests_locale_menu;
 #[cfg(test)]
 mod tests_locale_menu_full;
+#[cfg(test)]
+mod tests_menu_bar_accel;
 #[cfg(test)]
 mod tests_menu_bar_keynav;
 #[cfg(test)]

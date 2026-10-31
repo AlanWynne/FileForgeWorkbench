@@ -90,6 +90,20 @@ impl WorkbenchShell {
         let limits = crate::menu_workspace::loader::option_limits_from_config(&self.config_handle);
         self.tabs
             .open_menu_workspace_tab(&lower, &menus_dir, limits, &self.runtime);
+        // screen-snapshot-scrm Req 22.5 / 25.5 (CR-NR-114): SCRM is a code-only
+        // built-in menu (like POM / Settings). When no user `menus/scrm.toml`
+        // exists the tab opens in its load-error state; seed the compiled
+        // Recovery_Baseline SCRM menu so the SCRM screen always has its options
+        // (never materialising a built-in default to disk, CR-CH-021). Mirrors
+        // the `ensure_pom_menu_loaded` code-only fallback.
+        if lower == "scrm" {
+            if let Some(mw) = self.tabs.active_tab_mut().kind.menu_workspace_mut() {
+                if mw.menu.is_none() {
+                    mw.menu = Some(crate::menu_workspace::defaults::recovery_scrm_menu());
+                    mw.load_error = None;
+                }
+            }
+        }
         // Surface the load-error message when the backing file is missing (11.4).
         if let Some(mw) = self.tabs.active_tab().kind.menu_workspace() {
             self.open_error = mw.load_error.clone();

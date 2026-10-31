@@ -129,7 +129,10 @@ pub struct ShellTargetResolver<'a> {
 
 /// Compiled built-in menu names that always resolve (no file required).
 /// Mirrors the code-only Recovery_Baseline menus (menu-workspace Req 12).
-const BUILTIN_MENU_NAMES: &[&str] = &["pom", "settings"];
+/// `scrm` was added by CR-NR-114 (screen-snapshot-scrm Req 22/25): the SCRM menu
+/// screen is a code-only default ([`crate::menu_workspace::defaults::DEFAULT_SCRM_MENU_TOML`]),
+/// so the `SCRM` POM option resolves as a Menu target and opens that screen.
+const BUILTIN_MENU_NAMES: &[&str] = &["pom", "settings", "scrm"];
 
 /// Classify a built-in CustomWorkspace / navigation verb (B080, Step 2) to its
 /// `CommandTarget::CustomWorkspace`, or `None` when `input` is NOT one of the
@@ -706,6 +709,15 @@ command_id = "file.save"
             resolve_target("POM", &resolver).unwrap(),
             CommandTarget::Menu {
                 name: "pom".to_string()
+            }
+        );
+        // screen-snapshot-scrm Req 22.6 (CR-NR-114): SCRM is a compiled built-in
+        // menu name, so the `SCRM` POM option resolves to a Menu target (opening
+        // the code-only SCRM menu screen) without any file on disk.
+        assert_eq!(
+            resolve_target("SCRM", &resolver).unwrap(),
+            CommandTarget::Menu {
+                name: "scrm".to_string()
             }
         );
     }

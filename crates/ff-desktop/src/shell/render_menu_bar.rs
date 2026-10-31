@@ -57,11 +57,37 @@ pub(super) struct MenuDropdownNav {
 }
 
 impl WorkbenchShell {
+    /// The active POM `MenuFile`, the single source the POM-echo menu bar mirrors
+    /// (screen-snapshot-scrm Req 22.1, CR-NR-114).
+    ///
+    /// Resolves the SAME way the POM Option_Key fastpath does
+    /// (`resolve_pom_option_key`): a loaded POM tab's menu (respecting user edits
+    /// / hot-reload) when present, else the on-disk `menus/pom.toml`, else the
+    /// code-only `recovery_pom_menu()`. So the bar always echoes whatever the POM
+    /// currently shows, and changing the POM options changes the bar.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 22.1 (CR-NR-114)
+    pub(super) fn active_pom_menu(&self) -> crate::menu_workspace::MenuFile {
+        self.tabs
+            .tabs()
+            .iter()
+            .find(|t| t.is_home)
+            .and_then(|t| t.kind.menu_workspace())
+            .and_then(|mw| mw.menu.clone())
+            .or_else(|| {
+                let pom_path = self.menus_dir().join("pom.toml");
+                crate::menu_workspace::loader::load_menu_file(&pom_path).ok()
+            })
+            .unwrap_or_else(crate::menu_workspace::defaults::recovery_pom_menu)
+    }
+
     /// Compute the ordered dropdown items for a top-level menu-bar button whose
     /// option command is `command` (Req 17.3/17.4/17.10).
     ///
-    /// A DYNAMIC source (`THEME LIST`, `SNAPSHOT`) generates its children at
-    /// runtime; otherwise the referenced menu is PEEKED; an empty peek means the
+    /// A DYNAMIC source (`THEME LIST`) generates its children at runtime;
+    /// otherwise the referenced menu is PEEKED (so a POM option that opens a
+    /// submenu, e.g. `SCRM` or `SETTINGS`, shows that submenu's options as its
+    /// dropdown -- screen-snapshot-scrm Req 22.2); an empty peek means the
     /// command is a plain direct command and the dropdown holds a single item
     /// that dispatches it.
     pub(super) fn menu_bar_dropdown_items(&self, command: &str) -> Vec<MenuBarItem> {
@@ -231,6 +257,10 @@ impl WorkbenchShell {
             .ok()
             .unwrap_or_else(|| match name.as_str() {
                 "settings" => crate::menu_workspace::defaults::recovery_settings_menu(),
+                // screen-snapshot-scrm Req 22.5 / 25: the SCRM bar item's dropdown
+                // is built from the code-only SCRM menu screen when no user
+                // `menus/scrm.toml` overrides it.
+                "scrm" => crate::menu_workspace::defaults::recovery_scrm_menu(),
                 _ => crate::menu_workspace::defaults::recovery_pom_menu(),
             });
         menu.options
@@ -240,26 +270,23 @@ impl WorkbenchShell {
     /// names one (menu-workspace Requirement 17.10, CR-NR-080 Slice D).
     ///
     /// A dynamic source produces its child options at RUNTIME rather than from a
-    /// file. Two sources exist:
+    /// file. One source exists:
     ///
     /// - `THEME LIST`: yields one child per available theme
     ///   (`ff_theme::list_all_themes`, in list order), each labelled by the theme
     ///   name and dispatching `THEME <name>` (command parity,
     ///   theme-and-appearance Requirement 17.2, via the shared `set_active_theme`
     ///   path). Delivers the CR-NR-077 theme picker.
-    /// - `SNAPSHOT`: the SCRM surfacing dropdown (FORWARD-PLAN decision 1,
-    ///   screen-snapshot-scrm Requirement 21). Yields one child per EXISTING
-    ///   SCRM verb (the `SNAPSHOT <format>` family and the `CAPTURE ...`
-    ///   lifecycle verbs); each child dispatches its existing verb through the
-    ///   single front door, so a click is observably identical to typing it. This
-    ///   is the menu-bar analogue of the theme picker -- code-only, additive, with
-    ///   NO new verb, intercept, dispatcher, or navigation stack.
+    ///
+    /// (The former `SNAPSHOT` dynamic bar source was RETIRED by CR-NR-114: the
+    /// menu bar is now a runtime echo of the POM, and SCRM is surfaced as a POM
+    /// option whose dropdown is the code-only SCRM menu screen -- not a dynamic
+    /// bar entry. See screen-snapshot-scrm Req 22.4.)
     ///
     /// Returns `None` for any command that is not a dynamic source, so the caller
     /// falls back to `peek_menu_options` / direct dispatch.
     ///
-    /// Validates: menu-workspace Requirement 17.10, 17.11;
-    /// screen-snapshot-scrm Requirement 21.1, 21.3, 21.4 (CR-NR-098)
+    /// Validates: menu-workspace Requirement 17.10, 17.11
     pub(super) fn dynamic_menu_options(
         &self,
         command: &str,
@@ -280,52 +307,59 @@ impl WorkbenchShell {
                 .collect();
             return Some(options);
         }
-        if trimmed.eq_ignore_ascii_case("SNAPSHOT") {
-            return Some(scrm_menu_bar_options());
-        }
         None
     }
 }
 
-/// The SCRM menu-bar dropdown children (screen-snapshot-scrm Requirement 21,
-/// FORWARD-PLAN decision 1). Each item's `command` is an EXISTING SCRM verb; the
-/// bar renderer dispatches it through `dispatch_command_string` (the single front
-/// door), so activating an item is observably identical to typing the verb.
+/// Compute the mnemonic-letter accelerator (Alt+<letter>) for each bar-visible
+/// POM option, in bar order (screen-snapshot-scrm Requirement 26, CR-NR-114).
 ///
-/// The list is a dedicated function (not inline) so the unit test can assert the
-/// exact verb set without rendering. No bare `SNAPSHOT` child is included: the
-/// top-level bar button itself is labelled `SNAPSHOT` and heads this group, so a
-/// duplicate label is avoided; the default one-shot is reachable as
-/// `SNAPSHOT TEXT`.
+/// Returns `(letter, command)` pairs: pressing Alt+`letter` opens the bar item
+/// whose top-level `command` is `command` (through the same dispatch seam a
+/// click uses, Req 26.5).
 ///
-/// Validates: screen-snapshot-scrm Requirement 21.1, 21.3, 21.4 (CR-NR-098)
-pub(super) fn scrm_menu_bar_options() -> Vec<crate::menu_workspace::MenuOption> {
-    // EXISTING verbs only (handled by shell/commands_ladder_b.rs via the single
-    // front door). Order: one-shot snapshot formats, then the capture lifecycle.
-    const SCRM_VERBS: &[&str] = &[
-        "SNAPSHOT TEXT",
-        "SNAPSHOT ANSI",
-        "SNAPSHOT MARKDOWN",
-        "SNAPSHOT HTML",
-        "SNAPSHOT YAML",
-        "CAPTURE START",
-        "CAPTURE STOP",
-        "CAPTURE SCREEN",
-        "CAPTURE STATUS",
-        "CAPTURE LIST",
-        "CAPTURE PURGE",
-        "CAPTURE REPLAY",
-    ];
-    SCRM_VERBS
-        .iter()
-        .map(|verb| crate::menu_workspace::MenuOption {
-            key: String::new(),
-            command: (*verb).to_string(),
-            description: (*verb).to_string(),
-            enabled: true,
-            group: None,
-            show_in_menu_bar: true,
-            target: None,
-        })
-        .collect()
+/// Mnemonic selection (Req 26.1, 26.3, 26.4):
+/// - The candidate is the option's `key` when it is an ASCII LETTER; when the
+///   `key` is a DIGIT (a POM numeric option key, which must NOT be overloaded,
+///   Req 26.4) the candidate is the first ASCII letter of the option's `command`.
+/// - On a COLLISION with an already-assigned mnemonic, the next unused ASCII
+///   letter is chosen -- first from the remaining letters of the command, then
+///   from `A..=Z` -- so each mnemonic is distinct (Req 26.3). An option with no
+///   assignable letter is skipped (no accelerator).
+///
+/// Only bar-visible options participate (a `show_in_menu_bar = false` option like
+/// the terminate `X` is off the bar, so it gets no accelerator).
+///
+/// Validates: screen-snapshot-scrm Requirement 26.1, 26.3, 26.4 (CR-NR-114)
+pub(super) fn menu_bar_mnemonics(
+    options: &[crate::menu_workspace::MenuOption],
+) -> Vec<(char, String)> {
+    let mut used: std::collections::BTreeSet<char> = std::collections::BTreeSet::new();
+    let mut out: Vec<(char, String)> = Vec::new();
+    for option in options.iter().filter(|o| o.show_in_menu_bar) {
+        // Candidate letters, in preference order: the option key when it is a
+        // letter, then the command's letters, then the full alphabet.
+        let key_letter = option
+            .key
+            .chars()
+            .next()
+            .filter(|c| c.is_ascii_alphabetic())
+            .map(|c| c.to_ascii_uppercase());
+        let command_letters = option
+            .command
+            .chars()
+            .filter(|c| c.is_ascii_alphabetic())
+            .map(|c| c.to_ascii_uppercase());
+        let alphabet = ('A'..='Z').collect::<Vec<_>>().into_iter();
+        let candidate = key_letter
+            .into_iter()
+            .chain(command_letters)
+            .chain(alphabet)
+            .find(|c| !used.contains(c));
+        if let Some(letter) = candidate {
+            used.insert(letter);
+            out.push((letter, option.command.clone()));
+        }
+    }
+    out
 }

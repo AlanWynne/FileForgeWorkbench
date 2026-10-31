@@ -46,35 +46,44 @@ fn command_equals_0_routes_to_settings() {
     assert!(is_shell_command("=0"));
 }
 
-/// Validates: menu-workspace Req 17.2a (CR-CH-073) -- the trimmed data-driven
-/// menu bar (the barebones POM) NO LONGER includes a Catalogs or Files entry;
-/// they were removed from the barebones core (reserved for the future extension
-/// wf_21b74c6aa15ba293). The underlying commands remain reachable when typed.
+/// Validates: screen-snapshot-scrm Req 22.1, 22.4 (CR-NR-114, UPDATED from
+/// CR-CH-073) -- the menu bar is a RUNTIME ECHO of the active POM. The default
+/// bar (no Kind override) resolves to the barebones POM, whose bar-visible
+/// options are Settings / Help / SCRM; Catalogs/Files remain absent and the
+/// terminate X stays hidden.
 #[test]
-fn menu_bar_omits_catalogs_and_files() {
-    // The bar is the barebones POM; its bar-visible options are keyed by command.
-    let cmds: Vec<String> = crate::menu_workspace::defaults::default_menubar_menu()
+fn menu_bar_echoes_pom_and_omits_catalogs_and_files() {
+    let shell = make_shell();
+    // The POM-echo bar for the active tab (default Kind, no menu_bar override).
+    let bar = shell.resolve_menu_bar_menu();
+    let cmds: Vec<String> = bar
         .options
         .iter()
         .filter(|o| o.show_in_menu_bar)
         .map(|o| o.command.clone())
         .collect();
-    assert!(
-        !cmds.iter().any(|c| c == "Catalogs"),
-        "trimmed default Menu_Bar must NOT contain a Catalogs entry (CR-CH-073)"
+    assert_eq!(
+        cmds,
+        vec![
+            "Settings".to_string(),
+            "Help".to_string(),
+            "SCRM".to_string()
+        ],
+        "the POM-echo bar's bar-visible options must be Settings / Help / SCRM (Req 22.1/22.4)"
     );
     assert!(
-        !cmds.iter().any(|c| c == "Files"),
-        "trimmed default Menu_Bar must NOT contain a Files entry (CR-CH-073)"
+        !cmds.iter().any(|c| c == "Catalogs" || c == "Files"),
+        "the POM-echo bar must NOT contain Catalogs or Files"
     );
 }
 
-/// Validates: menu-workspace Req 17.2 (CR-NR-080, revised CR-CH-052) -- the
-/// barebones menu bar includes a Help entry and EXCLUDES the terminal option
-/// (key X, command X after CR-CH-052; show_in_menu_bar = false).
+/// Validates: screen-snapshot-scrm Req 22.1 (CR-NR-114) -- the POM-echo bar
+/// includes a Help entry and EXCLUDES the terminate option (key X,
+/// show_in_menu_bar = false), inherited straight from the POM.
 #[test]
 fn menu_bar_has_help_and_excludes_terminate_option() {
-    let menu = crate::menu_workspace::defaults::default_menubar_menu();
+    let shell = make_shell();
+    let menu = shell.resolve_menu_bar_menu();
     let bar_cmds: Vec<String> = menu
         .options
         .iter()
@@ -83,10 +92,8 @@ fn menu_bar_has_help_and_excludes_terminate_option() {
         .collect();
     assert!(
         bar_cmds.iter().any(|c| c == "Help"),
-        "the barebones menu bar must include a Help entry"
+        "the POM-echo menu bar must include a Help entry"
     );
-    // The terminate option (key X) is hidden from the bar; its command is `X`
-    // after CR-CH-052 (was `Return`). Assert the hidden X option is not on the bar.
     let bar_keys: Vec<String> = menu
         .options
         .iter()
@@ -96,6 +103,35 @@ fn menu_bar_has_help_and_excludes_terminate_option() {
     assert!(
         !bar_keys.iter().any(|k| k == "X"),
         "the terminate (X) option must be excluded from the menu bar (show_in_menu_bar = false)"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 22.1 (CR-NR-114) -- the bar is a RUNTIME
+/// ECHO of the POM: changing the active POM's options changes the bar. A user
+/// `menus/pom.toml` with a custom option set drives the bar.
+#[test]
+fn menu_bar_echo_reflects_changed_pom_options() {
+    let mut shell = make_shell();
+    let menus = tempfile::tempdir().expect("menus");
+    std::fs::write(
+        menus.path().join("pom.toml"),
+        "title = \"Custom POM\"\n\
+         [[options]]\nkey=\"1\"\ncommand=\"Settings\"\ndescription=\"Settings\"\n\
+         [[options]]\nkey=\"2\"\ncommand=\"Help\"\ndescription=\"Help\"\n",
+    )
+    .unwrap();
+    shell.dir_overrides.menus = Some(menus.path().to_path_buf());
+    let bar = shell.resolve_menu_bar_menu();
+    let cmds: Vec<String> = bar
+        .options
+        .iter()
+        .filter(|o| o.show_in_menu_bar)
+        .map(|o| o.command.clone())
+        .collect();
+    assert_eq!(
+        cmds,
+        vec!["Settings".to_string(), "Help".to_string()],
+        "the bar must echo the user pom.toml options (no SCRM here), proving it mirrors the POM"
     );
 }
 
@@ -161,51 +197,36 @@ fn menu_bar_dynamic_theme_list_generates_one_item_per_theme() {
     );
 }
 
-/// Validates: screen-snapshot-scrm Req 21.1, 21.3 (CR-NR-098) -- the SCRM
-/// `SNAPSHOT` menu-bar entry is a DYNAMIC source: its dropdown lists the existing
-/// SNAPSHOT-format and CAPTURE-lifecycle verbs, each dispatching an EXISTING SCRM
-/// verb (no bare `SNAPSHOT` duplicate; no new verb introduced).
+/// Validates: screen-snapshot-scrm Req 22.2, 22.5, 25.3, 25.4 (CR-NR-114) -- the
+/// SCRM bar item's dropdown is built at RUNTIME from the SCRM submenu TOML (the
+/// code-only SCRM menu screen). Peeking the `SCRM` top-level option returns the
+/// SCRM menu's options (Snapshot / Capture start / Capture stop / Capture replay
+/// / SCRM Help / Exit), each carrying its EXISTING SCRM verb.
 #[test]
-fn menu_bar_dynamic_scrm_source_lists_existing_verbs() {
+fn scrm_bar_dropdown_is_built_from_the_scrm_submenu() {
     let shell = make_shell();
-    let dynamic = shell
-        .dynamic_menu_options("SNAPSHOT")
-        .expect("SNAPSHOT is a dynamic SCRM source");
-    let cmds: Vec<&str> = dynamic.iter().map(|o| o.command.as_str()).collect();
-    // The one-shot snapshot formats are present.
-    assert!(
-        cmds.contains(&"SNAPSHOT TEXT") && cmds.contains(&"SNAPSHOT MARKDOWN"),
-        "SCRM dropdown must list the SNAPSHOT format verbs, got: {cmds:?}"
+    // The bar item dropdown items for the SCRM top-level option.
+    let items = shell.menu_bar_dropdown_items("SCRM");
+    let cmds: Vec<&str> = items.iter().map(|i| i.command.as_str()).collect();
+    assert_eq!(
+        cmds,
+        vec![
+            "SNAPSHOT",
+            "CAPTURE START",
+            "CAPTURE STOP",
+            "CAPTURE REPLAY",
+            "HELP SCRM",
+            "X",
+        ],
+        "the SCRM bar dropdown must list the SCRM submenu's existing verbs (Req 22.5/25.4)"
     );
-    // The CAPTURE lifecycle verbs are present.
-    for expected in [
-        "CAPTURE START",
-        "CAPTURE STOP",
-        "CAPTURE SCREEN",
-        "CAPTURE STATUS",
-        "CAPTURE LIST",
-        "CAPTURE PURGE",
-        "CAPTURE REPLAY",
-    ] {
-        assert!(
-            cmds.contains(&expected),
-            "SCRM dropdown must list {expected}, got: {cmds:?}"
-        );
-    }
-    // No bare `SNAPSHOT` child (the top-level button already heads the group;
-    // a duplicate label would be ambiguous).
-    assert!(
-        !cmds.contains(&"SNAPSHOT"),
-        "SCRM dropdown must not duplicate the bare SNAPSHOT label"
+    // Peeking SCRM resolves the code-only SCRM menu screen without a user file.
+    let peeked = shell.peek_menu_options("SCRM");
+    assert_eq!(
+        peeked.len(),
+        6,
+        "peeking SCRM must return the 6 SCRM menu options from the code-only default"
     );
-    // Every child dispatches an EXISTING SCRM verb (SNAPSHOT* or CAPTURE*).
-    for opt in &dynamic {
-        assert!(
-            opt.command.starts_with("SNAPSHOT ") || opt.command.starts_with("CAPTURE "),
-            "each SCRM item must dispatch an existing SNAPSHOT/CAPTURE verb, got: {}",
-            opt.command
-        );
-    }
 }
 
 /// Validates: menu-workspace Req 17.10 -- a non-dynamic command yields no
@@ -219,16 +240,16 @@ fn menu_bar_dynamic_options_none_for_ordinary_command() {
     );
 }
 
-/// Validates: screen-snapshot-scrm Req 21.4 (CR-NR-098) -- activating an SCRM
-/// menu-bar item dispatches its EXISTING verb through the single front door,
+/// Validates: screen-snapshot-scrm Req 22.6, 22.7 (CR-NR-114) -- activating an
+/// SCRM menu-bar item dispatches its EXISTING verb through the single front door,
 /// observably identical to typing the verb. This asserts command parity directly
 /// at the dispatch seam the bar uses (`dispatch_command_string`), the same seam
 /// the render arm invokes on click.
 #[test]
 fn scrm_menu_bar_item_dispatch_is_command_parity() {
-    // The bar entry for SCRM is a dynamic dropdown; its children carry existing
-    // verbs. Activating `CAPTURE START` must start a collection exactly as typing
-    // it would.
+    // The SCRM bar dropdown's children carry existing verbs (built from the SCRM
+    // submenu). Activating `CAPTURE START` must start a collection exactly as
+    // typing it would.
     let mut via_bar = make_shell();
     assert!(
         !via_bar.scrm.is_active(),
@@ -252,30 +273,30 @@ fn scrm_menu_bar_item_dispatch_is_command_parity() {
     );
 }
 
-/// Validates: screen-snapshot-scrm Req 21.1, 21.4 (CR-NR-098),
-/// workspace-conformance -- a FULL-SHELL render: the SCRM `SNAPSHOT` entry is a
-/// live, rendered menu-bar button, AND clicking it dispatches through the front
-/// door with the same effect as typing.
+/// Validates: screen-snapshot-scrm Req 22.1, 22.4, 22.7 (CR-NR-114),
+/// workspace-conformance -- a FULL-SHELL render: the `SCRM` POM option echoes
+/// onto the menu bar as a live, rendered bar button, AND activating the SCRM
+/// family dispatches through the front door with the same effect as typing.
 ///
 /// Two parts:
-/// 1. The rendered accessibility tree carries a live `SNAPSHOT` bar BUTTON (the
-///    entry is actually on the bar, not just in the data model). This is the
-///    rendered-menu-bar behaviour assertion required by testing.md /
+/// 1. The rendered accessibility tree carries a live `SCRM` bar BUTTON (the
+///    POM-echo surfaced the SCRM option onto the bar -- not just the data model).
+///    This is the rendered-menu-bar behaviour assertion required by testing.md /
 ///    workspace-conformance.md.
 /// 2. Driving the exact dispatch seam the bar's click handler uses
 ///    (`dispatch_command_string`) on the rendered shell starts a collection,
 ///    identical to the typed command. (egui nested-menu popups are not reliably
 ///    walkable in `egui_kittest` across a single click frame, so the activation
 ///    is asserted at the dispatch seam the render arm invokes -- the closest
-///    harness-expressible proof of click parity, per the task note.)
+///    harness-expressible proof of click parity.)
 #[test]
 fn full_shell_scrm_menu_bar_entry_is_live_and_dispatches() {
     use egui_kittest::kittest::Queryable;
     let mut harness = harness_shell();
-    // Part 1: the SNAPSHOT bar button is actually rendered on the menu bar.
+    // Part 1: the SCRM bar button is actually rendered on the menu bar.
     // `get_by_label` panics if absent, so a successful lookup is the assertion
-    // that the SCRM entry is a live, rendered bar button (not just data-model).
-    let _snapshot_btn = harness.get_by_label("SNAPSHOT");
+    // that the SCRM option echoed onto the bar as a live button (not just data).
+    let _scrm_btn = harness.get_by_label("SCRM");
     // Part 2: the seam the bar click invokes starts a collection, as typing would.
     assert!(
         !harness.state().scrm.is_active(),
@@ -287,6 +308,45 @@ fn full_shell_scrm_menu_bar_entry_is_live_and_dispatches() {
         harness.state().scrm.is_active(),
         "activating the SCRM menu-bar family via the front-door seam the bar uses \
          must start a collection (Req 21.4, command parity)"
+    );
+}
+
+/// Validates: screen-snapshot-scrm Req 22.6, 22.7, 25.4, 25.5 (CR-NR-114) --
+/// dispatching the `SCRM` POM-option command through the single front door opens
+/// the SCRM menu screen, seeded from the code-only default (no user file), with
+/// its Req 25.1 title and Req 25.3 options.
+#[test]
+fn dispatch_scrm_opens_code_only_scrm_menu() {
+    let mut shell = make_shell();
+    shell.dispatch_command_string("SCRM");
+    let mw = shell
+        .tabs
+        .active_tab()
+        .kind
+        .menu_workspace()
+        .expect("SCRM must open a Menu Workspace");
+    assert!(
+        mw.load_error.is_none(),
+        "the code-only SCRM default must seed the menu (no load error), got: {:?}",
+        mw.load_error
+    );
+    let menu = mw.menu.as_ref().expect("SCRM menu must be seeded");
+    assert_eq!(
+        menu.title,
+        "FileForge Workbench -- Screen Capture and Recording"
+    );
+    let cmds: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
+    assert_eq!(
+        cmds,
+        vec![
+            "SNAPSHOT",
+            "CAPTURE START",
+            "CAPTURE STOP",
+            "CAPTURE REPLAY",
+            "HELP SCRM",
+            "X"
+        ],
+        "the code-only SCRM menu must list the Req 25.3/25.4 options"
     );
 }
 
@@ -1672,9 +1732,10 @@ fn menus_editor_loads_recovery_baseline_when_no_file() {
     let (shell, _dir) = make_shell_with_menus_editor();
     let working = shell.menus_editor_panel.working.as_ref().expect("working");
     let keys: Vec<&str> = working.options.iter().map(|o| o.key.as_str()).collect();
-    // CR-CH-073: the trimmed barebones POM is Settings (0) / Help (3) /
-    // terminate (X); Catalogs (1) and Files (2) were removed from the core.
-    assert_eq!(keys, vec!["0", "3", "X"]);
+    // CR-NR-114 (Req 22.3, UPDATED from CR-CH-073): the barebones POM is now
+    // Settings (0) / Help (3) / SCRM (S) / terminate (X); Catalogs (1) and
+    // Files (2) remain removed from the core.
+    assert_eq!(keys, vec!["0", "3", "S", "X"]);
 }
 
 // Validates: menu-workspace Requirement 13.5 -- add / delete / move mutate the
