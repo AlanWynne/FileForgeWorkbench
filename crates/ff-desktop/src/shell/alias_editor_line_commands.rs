@@ -4,57 +4,33 @@
 
 use super::user_aliases::AliasEnvironment;
 use super::WorkbenchShell;
-use crate::alias_editor_panel::AliasRowEdit;
 
 impl WorkbenchShell {
-    /// Apply the pending Act line commands (I / R / D) as a single deterministic
-    /// batch (Req 5.16, design 9.10.4).
+    /// Apply the pending Act line commands (I / D / C + A/B) as a single
+    /// deterministic batch (Req 5.16, 7.4), now DELEGATED to the shared
+    /// egui-free apply pass ([`crate::shell::ispf_table_editor::apply_line_commands`])
+    /// over the Alias host. This retires the former bespoke I/R/D snapshot loop
+    /// in favour of the one shared, fully unit-tested structural pass (CR-CH-075).
     ///
-    /// The letters are snapshotted with their BACKING `rows` index, then processed
-    /// by DESCENDING index so inserts / repeats / deletes never corrupt one
-    /// another's indices:
-    ///   D -> remove row i
-    ///   I -> insert a blank `AliasRowEdit` AFTER row i
-    ///   R -> insert a field-copy clone of row i AFTER it (its Act cleared)
-    /// An unrecognised Act letter is ignored; every consumed Act field is cleared.
+    /// The shared pass sources classification from `ff-line-commands`: I inserts a
+    /// blank after, D removes, C + A/B copies to the target; Move is NOT in the
+    /// alias set and is cleared/ignored. This remains a thin shell-side adapter so
+    /// existing callers resolve unchanged; it borrows the rows out of the panel so
+    /// the host (`&self.alias_editor_panel`) and the rows do not alias.
     ///
-    /// Validates: command-configurator Requirement 5.16, 5.22
+    /// Validates: command-configurator Requirement 5.16, 5.22, 7.4
     pub(super) fn apply_pending_line_commands(&mut self) {
-        let rows = &mut self.alias_editor_panel.rows;
-        // 1. Snapshot (backing index, letter) for any non-empty Act field.
-        let mut pending: Vec<(usize, char)> = Vec::new();
-        for (i, row) in rows.iter().enumerate() {
-            if let Some(letter) = row.act.trim().chars().next() {
-                pending.push((i, letter.to_ascii_uppercase()));
-            }
-        }
-        // Clear EVERY Act field (consumed, recognised or not -- ISPF tolerates and
-        // clears stray line commands).
-        for row in rows.iter_mut() {
-            row.act.clear();
-        }
-        // 2. Process by DESCENDING index so earlier rows' indices stay valid.
-        pending.sort_by_key(|a| std::cmp::Reverse(a.0));
-        for (i, letter) in pending {
-            if i >= rows.len() {
-                continue;
-            }
-            match letter {
-                'D' => {
-                    rows.remove(i);
-                }
-                'I' => {
-                    rows.insert(i + 1, AliasRowEdit::default());
-                }
-                'R' => {
-                    let mut clone = rows[i].clone();
-                    clone.act.clear();
-                    rows.insert(i + 1, clone);
-                }
-                _ => {
-                    // Unrecognised letter: already cleared above; ignore.
-                }
-            }
+        let mut rows = std::mem::take(&mut self.alias_editor_panel.rows);
+        let result = crate::shell::ispf_table_editor::apply_line_commands(
+            &self.alias_editor_panel,
+            &mut rows,
+        );
+        self.alias_editor_panel.rows = rows;
+        // Non-blocking notices (an unresolved copy source, an ignored letter) are
+        // surfaced inline so the user sees why a command did not take effect,
+        // without aborting the batch (Req 4.4, 4.5).
+        if !result.notices.is_empty() {
+            self.alias_editor_panel.error = Some(result.notices.join("; "));
         }
     }
 
@@ -63,6 +39,7 @@ impl WorkbenchShell {
     /// verb (case-insensitive) is dispatched:
     ///   FILTER <ce> <root> -> set the FILTER row (CE and/or Root)
     ///   RESET         -> clear the FILTER row
+    ///   SORT [col] [ASC|DESC] -> reorder the WORKING rows (Req 7.5)
     ///   (empty)       -> no-op beyond applying line commands
     ///   (any OTHER verb) -> handed to the SINGLE FFCMD front door
     ///                       (`dispatch_command_string`) so SAVE / CANCEL / END /
@@ -99,6 +76,7 @@ impl WorkbenchShell {
                 self.alias_editor_panel.filter_ce = None;
                 self.alias_editor_panel.filter_root.clear();
             }
+            "SORT" => self.apply_alias_sort_command(text),
             _ => {
                 // CR-CH-071 (Req 20a.10): SAVE / CANCEL / END / RETURN / REFRESH
                 // (and any other FFCMD command) route through the SINGLE front
@@ -107,6 +85,40 @@ impl WorkbenchShell {
                 // and case are preserved for the front door.
                 self.dispatch_command_string(text.trim());
             }
+        }
+    }
+
+    /// Apply a manual `SORT <column> [ASC|DESC]` over the WORKING rows (Req 7.5),
+    /// delegating to the shared stable sort ([`crate::shell::ispf_table_editor::apply_sort`]).
+    /// With no column named it sorts by the host's first sortable column (Alias),
+    /// so a bare `SORT` orders by uppercased surface ascending -- the SAME
+    /// `alias_sort_key` ordering the auto-sort-on-save uses (Req 7.5a). A
+    /// non-blocking notice (no sortable column / unknown column) is surfaced
+    /// inline. Sorting reorders only; it never changes a field value.
+    ///
+    /// Validates: command-configurator Requirement 7.5
+    fn apply_alias_sort_command(&mut self, text: &str) {
+        let Some(mut request) = crate::shell::ispf_table_editor::parse_sort_command(text) else {
+            return;
+        };
+        // A bare `SORT` (no column) defaults to the ALIAS (surface) column so the
+        // manual order matches the auto-sort-on-save order (both key on surface,
+        // Req 7.5a); without this the generic "first sortable column" fallback
+        // would pick Command, which is declared before Alias for the Req 7.2
+        // header order.
+        if request.column.is_none() {
+            request.column =
+                Some(super::super::alias_editor_panel::alias_surface_column().to_string());
+        }
+        let mut rows = std::mem::take(&mut self.alias_editor_panel.rows);
+        let result = crate::shell::ispf_table_editor::apply_sort(
+            &self.alias_editor_panel,
+            &mut rows,
+            &request,
+        );
+        self.alias_editor_panel.rows = rows;
+        if let Some(notice) = result.notice {
+            self.alias_editor_panel.error = Some(notice);
         }
     }
 
@@ -134,7 +146,7 @@ fn parse_filter_ce(token: &str) -> Option<AliasEnvironment> {
 mod tests {
     use super::super::tests_common::make_shell;
     use super::*;
-    use crate::alias_editor_panel::AliasEditorAction;
+    use crate::alias_editor_panel::{AliasEditorAction, AliasRowEdit};
 
     fn data_row(surface: &str, canonical: &str, env: AliasEnvironment) -> AliasRowEdit {
         AliasRowEdit {
@@ -160,23 +172,31 @@ mod tests {
         assert!(shell.alias_editor_panel.rows[0].act.is_empty());
     }
 
-    // Validates: command-configurator Requirement 5.16 -- R inserts a FIELD-COPY
-    // of the source row after it (its Act cleared).
+    // Validates: command-configurator Requirement 7.4 -- C + A copies a
+    // FIELD-COPY of the source row AFTER the A target (its Act cleared). This
+    // supersedes the former `R` single-row repeat: the alias set is I / D / C +
+    // SORT (CR-CH-075), and Copy is the primary duplicate command.
     #[test]
-    fn repeat_duplicates_row_values_into_new_row() {
+    fn copy_after_duplicates_row_values_into_new_row() {
         let mut shell = make_shell();
-        let mut r = data_row("ECOB", "EDIT", AliasEnvironment::Ffcmd);
-        r.command_template = "FFWB.COBOL.MASTER(&1)".to_string();
-        r.act = "R".to_string();
-        shell.alias_editor_panel.rows = vec![r];
+        let mut src = data_row("ECOB", "EDIT", AliasEnvironment::Ffcmd);
+        src.command_template = "FFWB.COBOL.MASTER(&1)".to_string();
+        src.act = "C".to_string();
+        let mut target = data_row("TGT", "VIEW", AliasEnvironment::Ffcmd);
+        target.act = "A".to_string();
+        shell.alias_editor_panel.rows = vec![src, target];
         shell.apply_pending_line_commands();
-        assert_eq!(shell.alias_editor_panel.rows.len(), 2);
-        assert_eq!(shell.alias_editor_panel.rows[1].surface, "ECOB");
-        assert_eq!(shell.alias_editor_panel.rows[1].canonical, "EDIT");
+        // [ECOB(C), TGT(A)] -> copy ECOB after TGT: [ECOB, TGT, ECOB-copy].
+        assert_eq!(shell.alias_editor_panel.rows.len(), 3);
+        assert_eq!(shell.alias_editor_panel.rows[2].surface, "ECOB");
+        assert_eq!(shell.alias_editor_panel.rows[2].canonical, "EDIT");
         assert_eq!(
-            shell.alias_editor_panel.rows[1].command_template,
+            shell.alias_editor_panel.rows[2].command_template,
             "FFWB.COBOL.MASTER(&1)"
         );
+        assert!(shell.alias_editor_panel.rows[2].act.is_empty());
+        // The source and target Act cells are consumed/cleared.
+        assert!(shell.alias_editor_panel.rows[0].act.is_empty());
         assert!(shell.alias_editor_panel.rows[1].act.is_empty());
     }
 

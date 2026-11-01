@@ -7,8 +7,10 @@
 //! filesystem.
 
 mod filter;
+mod host;
 mod render;
 mod rows;
 mod state;
 
+pub use host::alias_surface_column;
 pub use state::{AliasEditorAction, AliasEditorState, AliasRowEdit};

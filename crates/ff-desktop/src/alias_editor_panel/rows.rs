@@ -74,11 +74,12 @@ pub(super) fn revalidate_root_for_env(row: &mut AliasRowEdit) {
     }
 }
 
-/// Render one DATA row (Act / CE / Root / ALIAS / Parameters) at backing index
-/// `backing`. CR-CH-072 (Req 6.2): the L18N column is removed. All edits bind
-/// directly to the mutable row (B054 pattern).
+/// Render one DATA row (Act / CE / Root / ALIAS / Parameters / Description) at
+/// backing index `backing`. CR-CH-072 (Req 6.2): the L18N column is removed.
+/// CR-CH-075 (Req 7.3) adds the Description cell. All edits bind directly to the
+/// mutable row (B054 pattern).
 ///
-/// Validates: command-configurator Requirement 5.13, 5.18, 5.21, 6.2
+/// Validates: command-configurator Requirement 5.13, 5.18, 5.21, 6.2, 7.3
 pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) {
     ui.horizontal(|ui| {
         // Act: the ISPF line-command field (I / R / D). One focusable control.
@@ -121,6 +122,13 @@ pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut Alias
                 .id(row_control_id("alias_template", backing))
                 .desired_width(260.0)
                 .hint_text("(&1)"),
+        );
+        // CR-CH-075 (Req 7.3): Description -- an optional human-readable note.
+        ui.add(
+            egui::TextEdit::singleline(&mut row.description)
+                .id(row_control_id("alias_description", backing))
+                .desired_width(180.0)
+                .hint_text("note"),
         );
     });
 }

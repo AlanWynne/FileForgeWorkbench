@@ -26,6 +26,9 @@ pub struct AliasRowEdit {
     pub environment: AliasEnvironment,
     /// CR-NR-112 parameter template (`""` = pure verb alias). Column: Parameters.
     pub command_template: String,
+    /// CR-CH-075 (command-configurator Req 7.3) human-readable description
+    /// (`""` = none). Column: Description. Persists through the user override row.
+    pub description: String,
 }
 
 /// A structural action produced by the Alias Editor render, applied by the

@@ -72,6 +72,7 @@ pub(crate) mod help;
 /// Convert a `ff_config::ConfigValue` to a `toml::Value` for key-map parsing.
 mod helpers;
 pub(crate) mod i18n_bootstrap;
+pub(crate) mod ispf_table_editor;
 mod keys_editor;
 mod kinds_editor;
 mod locale_resolver;

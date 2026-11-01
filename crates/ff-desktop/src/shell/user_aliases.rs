@@ -98,6 +98,11 @@ pub struct UserAliasRowToml {
     /// Empty -> a pure verb alias (omitted on serialise).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub command_template: String,
+    /// CR-CH-075 (command-configurator Req 7.3) optional human-readable
+    /// description. Empty -> omitted on serialise, so a file written before this
+    /// field existed round-trips unchanged.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
 }
 
 /// The top-level `[[alias]]` array wrapper for one override file.
@@ -155,11 +160,41 @@ pub fn serialise_user_aliases(rows: &[UserAliasRowToml]) -> Result<String, Strin
     toml::to_string_pretty(&file).map_err(|e| e.to_string())
 }
 
+/// The CANONICAL alias sort key (command-configurator Req 7.5, 7.5a): the
+/// uppercased `surface` as the primary key, with the uppercased `canonical` as a
+/// stable tie-break. This is the SINGLE key function the manual `SORT` command
+/// and the automatic sort-on-save MUST share so their ordering is identical, and
+/// it mirrors the resolver's case-insensitive surface match key (so a future
+/// binary-search resolver can key on the same ordering without coupling now).
+///
+/// Validates: command-configurator Requirement 7.5, 7.5a
+pub fn alias_sort_key(surface: &str, canonical: &str) -> (String, String) {
+    (surface.to_uppercase(), canonical.to_uppercase())
+}
+
 // === Tests ==================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Validates: command-configurator Requirement 7.5 -- the alias sort key is
+    // the uppercased surface (primary) with the uppercased canonical (tie-break),
+    // so ordering is case-insensitive on surface and stable on canonical.
+    #[test]
+    fn alias_sort_key_orders_by_uppercased_surface_then_canonical() {
+        assert_eq!(
+            alias_sort_key("ecob", "edit"),
+            ("ECOB".to_string(), "EDIT".to_string())
+        );
+        // Case-insensitive on surface: `abc` and `ABC` key equally on surface.
+        assert_eq!(alias_sort_key("abc", "X").0, alias_sort_key("ABC", "Y").0);
+        // A tie on surface breaks on the uppercased canonical.
+        let a = alias_sort_key("DUP", "edit");
+        let b = alias_sort_key("DUP", "view");
+        assert_eq!(a.0, b.0, "equal surfaces tie on the primary key");
+        assert!(a < b, "the canonical tie-break orders EDIT before VIEW");
+    }
 
     // Validates: command-configurator Requirement 6.1 -- an absent/empty file
     // parses to an empty row set (the caller treats an absent file as empty).
@@ -215,6 +250,7 @@ command_template = "FFWB.COBOL.MASTER(&1)"
             canonical: "GSEARCH".to_string(),
             environment: AliasEnvironment::Ffcmd,
             command_template: String::new(),
+            description: String::new(),
         }];
         let text = serialise_user_aliases(&rows).expect("serialises");
         assert!(text.contains("surface = \"GG\""), "surface emitted: {text}");
@@ -246,12 +282,14 @@ command_template = "FFWB.COBOL.MASTER(&1)"
                 canonical: "EDIT".to_string(),
                 environment: AliasEnvironment::Ffcmd,
                 command_template: "FFWB.COBOL.MASTER(&1)".to_string(),
+                description: String::new(),
             },
             UserAliasRowToml {
                 surface: "GG".to_string(),
                 canonical: "GSEARCH".to_string(),
                 environment: AliasEnvironment::Ffcmd,
                 command_template: String::new(),
+                description: String::new(),
             },
         ];
         let text = serialise_user_aliases(&rows).expect("serialises");
@@ -259,6 +297,48 @@ command_template = "FFWB.COBOL.MASTER(&1)"
         assert_eq!(
             back, rows,
             "rows round-trip through the override serialiser/parser"
+        );
+    }
+
+    // Validates: command-configurator Requirement 7.3 -- a row WITH a non-empty
+    // description round-trips through serialise/parse.
+    #[test]
+    fn row_with_description_round_trips() {
+        let rows = vec![UserAliasRowToml {
+            surface: "ECOB".to_string(),
+            canonical: "EDIT".to_string(),
+            environment: AliasEnvironment::Ffcmd,
+            command_template: String::new(),
+            description: "Edit a COBOL member".to_string(),
+        }];
+        let text = serialise_user_aliases(&rows).expect("serialises");
+        assert!(
+            text.contains("description = \"Edit a COBOL member\""),
+            "description emitted: {text}"
+        );
+        let back = parse_user_alias_toml(&text).expect("parses back");
+        assert_eq!(back, rows, "a description round-trips");
+    }
+
+    // Validates: command-configurator Requirement 7.3 -- an older file with NO
+    // description key loads with description == "" and re-serialises WITHOUT
+    // emitting an empty description key (no on-disk-shape break).
+    #[test]
+    fn old_file_without_description_loads_empty_and_omits_on_serialise() {
+        let rows = parse_user_alias_toml(
+            r#"
+[[alias]]
+surface = "ECOB"
+canonical = "EDIT"
+"#,
+        )
+        .expect("parses");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].description, "", "an absent description loads empty");
+        let text = serialise_user_aliases(&rows).expect("serialises");
+        assert!(
+            !text.contains("description"),
+            "an empty description is omitted on serialise: {text}"
         );
     }
 
@@ -271,6 +351,7 @@ command_template = "FFWB.COBOL.MASTER(&1)"
             canonical: "EDIT".to_string(),
             environment: AliasEnvironment::Ffcmd,
             command_template: "caf\u{00e9}.txt".to_string(),
+            description: String::new(),
         }];
         let text = serialise_user_aliases(&rows).expect("serialises");
         let back = parse_user_alias_toml(&text).expect("parses back");

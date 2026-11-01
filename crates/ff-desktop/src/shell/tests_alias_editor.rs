@@ -48,6 +48,7 @@ fn override_row(surface: &str, canonical: &str, env: AliasEnvironment) -> UserAl
         canonical: canonical.to_string(),
         environment: env,
         command_template: String::new(),
+        description: String::new(),
     }
 }
 
@@ -177,6 +178,44 @@ fn save_writes_file_and_live_resolver_resolves_new_alias() {
         shell.resolve_locale_verb("GG", "FFCMD"),
         LocaleResolveOutcome::Root("GSEARCH".to_string()),
         "the saved alias resolves in FFCMD without a restart"
+    );
+}
+
+// Validates: command-configurator Requirement 7.3 -- a non-empty description
+// saved on an alias row persists to the override file and reloads through the
+// effective-row load path (a round-trip).
+#[test]
+fn description_persists_and_reloads_through_effective_rows() {
+    let mut shell = make_shell();
+    let dir = point_user_aliases_at_temp(&mut shell);
+    shell.dispatch_command_string("ALIASES");
+    let mut r = row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "");
+    r.description = "Global search shorthand".to_string();
+    shell.alias_editor_panel.rows = vec![r];
+    save(&mut shell);
+    assert!(
+        shell.alias_editor_panel.error.is_none(),
+        "a valid save has no error: {:?}",
+        shell.alias_editor_panel.error
+    );
+    // The override file carries the description.
+    let path = override_file(&dir, "en", "FFCMD");
+    let text = std::fs::read_to_string(&path).expect("file written");
+    assert!(
+        text.contains("description = \"Global search shorthand\""),
+        "the saved override carries the description: {text}"
+    );
+    // Reloading the effective rows (seed + override) restores the description.
+    shell.alias_editor_reload();
+    let reloaded = shell
+        .alias_editor_panel
+        .rows
+        .iter()
+        .find(|row| row.surface.eq_ignore_ascii_case("GG"))
+        .expect("the GG row reloads");
+    assert_eq!(
+        reloaded.description, "Global search shorthand",
+        "the description round-trips through the effective-row reload"
     );
 }
 
@@ -364,6 +403,97 @@ fn save_writes_only_user_override_not_shipped_seed() {
             "the shipped seed root must not live under the user override base"
         );
     }
+}
+
+// Validates: command-configurator Requirement 7.5a -- every SAVE writes the
+// per-locale override file in the canonical sorted order (uppercased surface
+// ascending, canonical tie-break), regardless of the working-copy row order.
+#[test]
+fn save_writes_rows_in_sorted_surface_order() {
+    let mut shell = make_shell();
+    let dir = point_user_aliases_at_temp(&mut shell);
+    shell.dispatch_command_string("ALIASES");
+    // Intentionally UNSORTED working rows (all valid FFCMD roots).
+    shell.alias_editor_panel.rows = vec![
+        row("ZED", "VIEW", AliasEnvironment::Ffcmd, ""),
+        row("abc", "EDIT", AliasEnvironment::Ffcmd, ""),
+        row("MID", "BROWSE", AliasEnvironment::Ffcmd, ""),
+    ];
+    save(&mut shell);
+    assert!(
+        shell.alias_editor_panel.error.is_none(),
+        "a valid save has no error: {:?}",
+        shell.alias_editor_panel.error
+    );
+    // Read the file back and confirm the surfaces appear in uppercased order.
+    let path = override_file(&dir, "en", "FFCMD");
+    let text = std::fs::read_to_string(&path).expect("file written");
+    let rows = user_aliases::parse_user_alias_toml(&text).expect("parses");
+    let surfaces: Vec<String> = rows.iter().map(|r| r.surface.clone()).collect();
+    assert_eq!(
+        surfaces,
+        vec!["ABC".to_string(), "MID".to_string(), "ZED".to_string()],
+        "the save writes rows in uppercased-surface ascending order (Req 7.5a)"
+    );
+}
+
+// Validates: command-configurator Requirement 7.5 / 7.5a -- a manual `SORT`
+// command reorders the WORKING rows into the SAME canonical order the
+// auto-sort-on-save produces (both via alias_sort_key), so the two orderings are
+// identical.
+#[test]
+fn manual_sort_matches_auto_sort_on_save_order() {
+    let mut shell = make_shell();
+    let _dir = point_user_aliases_at_temp(&mut shell);
+    shell.dispatch_command_string("ALIASES");
+    shell.alias_editor_panel.rows = vec![
+        row("ZED", "VIEW", AliasEnvironment::Ffcmd, ""),
+        row("abc", "EDIT", AliasEnvironment::Ffcmd, ""),
+        row("MID", "BROWSE", AliasEnvironment::Ffcmd, ""),
+    ];
+    // A bare SORT orders by the first sortable column (Alias = surface).
+    shell.apply_alias_editor_action(AliasEditorAction::CommandLine("SORT".to_string()));
+    let surfaces: Vec<String> = shell
+        .alias_editor_panel
+        .rows
+        .iter()
+        .map(|r| r.surface.clone())
+        .collect();
+    // The working rows are reordered by uppercased surface ascending -- the same
+    // key the save uses. (Surfaces are not uppercased in-place by a sort; the
+    // KEY is uppercased, so "abc" sorts as "ABC" but keeps its stored form.)
+    assert_eq!(
+        surfaces,
+        vec!["abc".to_string(), "MID".to_string(), "ZED".to_string()],
+        "manual SORT reorders working rows by the canonical key (Req 7.5)"
+    );
+    // No field value changed -- only the order.
+    assert_eq!(shell.alias_editor_panel.rows.len(), 3);
+}
+
+// Validates: command-configurator Requirement 7.4 -- a C + A copy applied
+// end-to-end through apply_alias_editor_action duplicates the source row after
+// the target (the shared line-command pass), with the copy's Act cleared.
+#[test]
+fn copy_after_applies_end_to_end_through_action() {
+    let mut shell = make_shell();
+    let _dir = point_user_aliases_at_temp(&mut shell);
+    shell.dispatch_command_string("ALIASES");
+    let mut src = row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "");
+    src.act = "C".to_string();
+    let mut tgt = row("TT", "EDIT", AliasEnvironment::Ffcmd, "");
+    tgt.act = "A".to_string();
+    shell.alias_editor_panel.rows = vec![src, tgt];
+    // A bare Enter on the command line applies the pending line commands.
+    shell.apply_alias_editor_action(AliasEditorAction::ApplyLineCommands);
+    // [GG(C), TT(A)] -> copy GG after TT: [GG, TT, GG-copy].
+    assert_eq!(shell.alias_editor_panel.rows.len(), 3);
+    assert_eq!(shell.alias_editor_panel.rows[2].surface, "GG");
+    assert_eq!(shell.alias_editor_panel.rows[2].canonical, "GSEARCH");
+    assert!(
+        shell.alias_editor_panel.rows[2].act.is_empty(),
+        "the copied row's Act cell is cleared"
+    );
 }
 
 // Validates: command-configurator Requirement 6.7 -- a parameterised alias

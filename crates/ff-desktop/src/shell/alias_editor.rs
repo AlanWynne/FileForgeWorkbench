@@ -71,20 +71,62 @@ impl WorkbenchShell {
     ///
     /// Validates: command-configurator Requirement 6.1
     fn load_effective_alias_rows(&self) -> Vec<AliasRowEdit> {
+        // The resolver AliasTable carries no description (it is a user-override
+        // field, not a resolution concern), so the description is sourced from
+        // the User_Locale_Override_Store files for the active locale, keyed by
+        // (environment, UPPERCASED surface) -- the same key validation emits.
+        let descriptions = self.user_alias_descriptions();
         let Ok(store) = self.i18n.alias_store.lock() else {
             return Vec::new();
         };
         store
             .effective_display_rows()
             .into_iter()
-            .map(|(env, surface, canonical, template)| AliasRowEdit {
-                act: String::new(),
-                surface,
-                canonical,
-                environment: env,
-                command_template: template.unwrap_or_default(),
+            .map(|(env, surface, canonical, template)| {
+                let description = descriptions
+                    .iter()
+                    .find(|(e, s, _)| *e == env && s.eq_ignore_ascii_case(&surface))
+                    .map(|(_, _, d)| d.clone())
+                    .unwrap_or_default();
+                AliasRowEdit {
+                    act: String::new(),
+                    surface,
+                    canonical,
+                    environment: env,
+                    command_template: template.unwrap_or_default(),
+                    description,
+                }
             })
             .collect()
+    }
+
+    /// Read the User_Locale_Override_Store descriptions for the active locale as
+    /// `(environment, UPPERCASED surface, description)` triples (Req 7.3). The
+    /// resolver does not carry the description, so the Alias Editor reloads it
+    /// from the override files directly. An absent/malformed file contributes no
+    /// descriptions. Only non-empty descriptions are returned.
+    fn user_alias_descriptions(&self) -> Vec<(AliasEnvironment, String, String)> {
+        let Some(base) = self.user_alias_override_base() else {
+            return Vec::new();
+        };
+        let locale = self.active_locale();
+        let mut out = Vec::new();
+        for env in AliasEnvironment::ALL {
+            let path = user_aliases::user_alias_override_file(&base, &locale, env.env_name());
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(rows) = user_aliases::parse_user_alias_toml(&text) else {
+                continue;
+            };
+            for r in rows {
+                let desc = r.description.trim();
+                if !desc.is_empty() {
+                    out.push((env, r.surface.trim().to_uppercase(), desc.to_string()));
+                }
+            }
+        }
+        out
     }
 
     /// Apply an [`AliasEditorAction`] produced by the Alias Editor render.
@@ -207,23 +249,35 @@ impl WorkbenchShell {
 
 /// Write the validated override rows to the per-locale override files, grouped by
 /// environment: one `<base>/<locale>/<ENV>.toml` per environment, each holding
-/// that environment's rows. An environment with NO rows has its override file
+/// that environment's rows SORTED by `alias_sort_key` (Req 7.5a -- uppercased
+/// surface asc, canonical tie-break) so every save writes sorted order. An
+/// environment with NO rows has its override file
 /// REMOVED (so deleting every override row clears the override), leaving only the
 /// shipped seed. The shipped seed is never touched. On any write failure the
 /// error is returned and the caller leaves state unchanged.
 ///
-/// Validates: command-configurator Requirement 6.3
+/// Validates: command-configurator Requirement 6.3, 7.5a
 fn write_override_rows(
     base: &std::path::Path,
     locale: &str,
     rows: &[UserAliasRowToml],
 ) -> Result<(), String> {
     for env in AliasEnvironment::ALL {
-        let env_rows: Vec<UserAliasRowToml> = rows
+        let mut env_rows: Vec<UserAliasRowToml> = rows
             .iter()
             .filter(|r| r.environment == env)
             .cloned()
             .collect();
+        // Req 7.5a: auto-sort EVERY save into the canonical alias order
+        // (uppercased surface asc, canonical tie-break) using the SAME
+        // `alias_sort_key` the manual SORT command uses, so the on-disk file is
+        // always written in sorted order and the two orderings are identical.
+        // `sort_by_key` is stable, so already-sorted input is a no-op and no
+        // field value is changed -- only the row order.
+        env_rows.sort_by(|a, b| {
+            user_aliases::alias_sort_key(&a.surface, &a.canonical)
+                .cmp(&user_aliases::alias_sort_key(&b.surface, &b.canonical))
+        });
         let path = user_aliases::user_alias_override_file(base, locale, env.env_name());
         if env_rows.is_empty() {
             // No override rows for this ENV -> remove any stale override file so
@@ -315,6 +369,7 @@ fn validate_user_alias_rows(rows: &[AliasRowEdit]) -> Result<Vec<UserAliasRowTom
             canonical,
             environment: row.environment,
             command_template: row.command_template.trim().to_string(),
+            description: row.description.trim().to_string(),
         });
     }
     Ok(out)

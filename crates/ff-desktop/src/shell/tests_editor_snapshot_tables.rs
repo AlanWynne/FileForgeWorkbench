@@ -106,6 +106,7 @@ fn alias_screen_model_populates_table_with_real_saved_row() {
             "Command".to_string(),
             "Alias".to_string(),
             "Parameters".to_string(),
+            "Description".to_string(),
         ]
     );
     // The saved row's real Alias + Command text is present.
@@ -297,5 +298,6 @@ fn alias_row(
         canonical: canonical.to_string(),
         environment,
         command_template: template.to_string(),
+        description: String::new(),
     }
 }

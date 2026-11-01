@@ -51,10 +51,10 @@ impl WorkbenchShell {
     }
 
     /// Alias table: the alias editor's REAL columns
-    /// `[Act, CE, Command, Alias, Parameters]` with the current working rows'
-    /// real values (A2). `Command` is the root canonical verb, `Alias` the
-    /// surface name; there is no Description column in the alias model today
-    /// (removed CR-CH-072), so it is deliberately absent.
+    /// `[Act, CE, Command, Alias, Parameters, Description]` with the current
+    /// working rows' real values (A2, command-configurator Req 7.2). `Command` is
+    /// the root canonical verb, `Alias` the surface name, `Description` the
+    /// CR-CH-075 optional human-readable note.
     pub(super) fn alias_table(&self) -> Table {
         let rows = self
             .alias_editor_panel
@@ -67,6 +67,7 @@ impl WorkbenchShell {
                     r.canonical.clone(),
                     r.surface.clone(),
                     r.command_template.clone(),
+                    r.description.clone(),
                 ]
             })
             .collect();
@@ -78,6 +79,7 @@ impl WorkbenchShell {
                 "Command".to_string(),
                 "Alias".to_string(),
                 "Parameters".to_string(),
+                "Description".to_string(),
             ],
             rows,
         }

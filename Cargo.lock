@@ -1781,6 +1781,7 @@ dependencies = [
  "ff-i18n",
  "ff-keys",
  "ff-layout",
+ "ff-line-commands",
  "ff-logging",
  "ff-plugin",
  "ff-rust-toolchain",

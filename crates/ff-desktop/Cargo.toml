@@ -29,6 +29,9 @@ ff-command = { path = "../ff-command" }
 ff-command-semantics = { path = "../ff-command-semantics" }
 ff-edit-operations = { path = "../ff-edit-operations" }
 ff-find-and-replace = { path = "../ff-find-and-replace" }
+# CR-CH-075 shared ISPF Table Editor: the GUI-free line-command engine is reused
+# as-is for Act-letter parsing + classification (no new parser).
+ff-line-commands = { path = "../ff-line-commands" }
 ff-keys = { path = "../ff-keys" }
 ff-help = { path = "../ff-help" }
 ff-i18n = { path = "../ff-i18n" }
