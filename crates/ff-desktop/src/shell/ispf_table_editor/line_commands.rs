@@ -141,67 +141,79 @@ pub fn apply_line_commands<H: IspfTableHost>(host: &H, rows: &mut Vec<H::Row>) -
         }
     }
 
-    // --- 3a. Apply Copy/Move ------------------------------------------------
-    // Build the new-row payloads BEFORE any structural change so indices are
-    // valid, then insert (and, for Move, mark the source for removal).
-    //
-    // Apply inserts by DESCENDING insertion point so earlier insertions do not
-    // shift later target indices.
-    let mut inserts: Vec<(usize, H::Row)> = Vec::new();
-    let mut move_removals: Vec<usize> = Vec::new();
+    // --- 3. Reconcile every structural op against STABLE original indices ---
+    // Every structural edit is expressed relative to an ORIGINAL row index as a
+    // per-row plan: rows to insert BEFORE it, rows to insert AFTER it, and whether
+    // the row itself is removed. The output list is then rebuilt by walking the
+    // original rows IN ORDER and emitting [before] + [row?] + [after] for each.
+    // This rebuild-by-walk model is immune to index shifting, so a C/A batched
+    // with an I, D, or R lands on the right rows regardless of their relative
+    // position (ispf-table-editor Requirement 4.3; command-configurator Req 7.6).
+    // Insert payloads (copy clones, repeat clones, blank rows) are snapshotted
+    // NOW, while the original indices are still valid.
+    let len = rows.len();
+    let mut before: Vec<Vec<H::Row>> = (0..len).map(|_| Vec::new()).collect();
+    let mut after: Vec<Vec<H::Row>> = (0..len).map(|_| Vec::new()).collect();
+    let mut removed: Vec<bool> = vec![false; len];
+
     for op in &copy_ops {
         let mut new_row = host.clone_row(&rows[op.source]);
         host.clear_act(&mut new_row);
-        let at = if op.before { op.target } else { op.target + 1 };
-        inserts.push((at, new_row));
+        if op.before {
+            before[op.target].push(new_row);
+        } else {
+            after[op.target].push(new_row);
+        }
         host.clear_act(&mut rows[op.source]);
         host.clear_act(&mut rows[op.target]);
         if op.is_move {
-            move_removals.push(op.source);
-        }
-    }
-    inserts.sort_by_key(|a| std::cmp::Reverse(a.0));
-    for (at, new_row) in inserts {
-        let at = at.min(rows.len());
-        rows.insert(at, new_row);
-        // A move-removal index past the insertion point shifts by one.
-        for r in move_removals.iter_mut() {
-            if *r >= at {
-                *r += 1;
-            }
-        }
-    }
-    move_removals.sort_unstable();
-    move_removals.dedup();
-    for &r in move_removals.iter().rev() {
-        if r < rows.len() {
-            rows.remove(r);
+            removed[op.source] = true;
         }
     }
 
-    // --- 3b. Apply Immediate I/D by DESCENDING index ------------------------
-    let mut immediates: Vec<&Entry> = entries
+    for entry in entries
         .iter()
         .filter(|e| classify(&e.kind) == LineCommandCategory::Immediate)
-        .collect();
-    immediates.sort_by_key(|a| std::cmp::Reverse(a.index));
-    for entry in immediates {
-        // The index is still valid: immediates were collected against the
-        // ORIGINAL list and copy/move already cleared their own cells; a C/M
-        // never overlaps an I/D cell (one Act letter per row).
-        if entry.index >= rows.len() {
-            continue;
-        }
+    {
         match &entry.kind {
             LineCommandKind::Insert => {
                 host.clear_act(&mut rows[entry.index]);
-                let blank = host.blank_row();
-                rows.insert(entry.index + 1, blank);
+                after[entry.index].push(host.blank_row());
             }
             LineCommandKind::Delete => {
-                rows.remove(entry.index);
+                host.clear_act(&mut rows[entry.index]);
+                removed[entry.index] = true;
+            }
+            // `R` / `Rn` repeat: clone the row `count` times immediately after it
+            // (a single-row Copy alias, Req 7.6). The clone carries the field
+            // values with the Act cell cleared, like a copy.
+            LineCommandKind::Repeat | LineCommandKind::RepeatCount(_) => {
+                let count = match &entry.kind {
+                    LineCommandKind::RepeatCount(n) => (*n).max(1) as usize,
+                    _ => 1,
+                };
+                let mut clone = host.clone_row(&rows[entry.index]);
+                host.clear_act(&mut clone);
+                host.clear_act(&mut rows[entry.index]);
+                for _ in 0..count {
+                    after[entry.index].push(host.clone_row(&clone));
+                }
             }
             _ => {}
+        }
+    }
+
+    // Rebuild the row list by walking the originals in order.
+    let originals = std::mem::take(rows);
+    for (index, row) in originals.into_iter().enumerate() {
+        for b in std::mem::take(&mut before[index]) {
+            rows.push(b);
+        }
+        if !removed[index] {
+            rows.push(row);
+        }
+        for a in std::mem::take(&mut after[index]) {
+            rows.push(a);
         }
     }
 
@@ -223,6 +235,9 @@ fn command_enabled(kind: &LineCommandKind, set: &LineCommandSet) -> bool {
     match kind {
         LineCommandKind::Insert => set.insert,
         LineCommandKind::Delete => set.delete,
+        // `R` / `Rn` repeat: a clone-after Copy alias (command-configurator
+        // Req 7.6), enabled by the host's `repeat` flag.
+        LineCommandKind::Repeat | LineCommandKind::RepeatCount(_) => set.repeat,
         LineCommandKind::Copy => set.copy,
         LineCommandKind::Move => set.move_,
         // Targets are enabled whenever a source command that needs them is.
@@ -407,6 +422,124 @@ mod tests {
             res.notices.iter().any(|n| n.contains("unrecognised")),
             "a notice is surfaced: {:?}",
             res.notices
+        );
+    }
+
+    // Validates: command-configurator Requirement 7.4, 7.6 -- a single `R`
+    // clones the marked row and places the clone AFTER it (a single-row Copy
+    // alias), clearing both Act cells. Before the fix, R was not in the enabled
+    // set so it was cleared with a "not enabled" notice and NOTHING was cloned.
+    #[test]
+    fn repeat_clones_row_after_on_non_empty_store() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "R"), r("B", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert!(res.notices.is_empty(), "clean repeat: {:?}", res.notices);
+        assert_eq!(
+            rows.iter().map(|x| x.value.clone()).collect::<Vec<_>>(),
+            vec!["A".to_string(), "A".to_string(), "B".to_string()],
+            "the clone lands immediately after the source row"
+        );
+        assert_eq!(rows[0].act, "", "the R cell is cleared");
+        assert_eq!(rows[1].act, "", "the clone's Act cell is clear");
+    }
+
+    // Validates: command-configurator Requirement 7.4, 7.6 -- a single `R` on a
+    // one-row (empty-store scratch row) store clones that row after itself.
+    #[test]
+    fn repeat_clones_row_after_on_single_row_store() {
+        let host = StubHost::new();
+        let mut rows = vec![r("ONLY", "R")];
+        apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            rows.iter().map(|x| x.value.clone()).collect::<Vec<_>>(),
+            vec!["ONLY".to_string(), "ONLY".to_string()]
+        );
+    }
+
+    // Validates: command-configurator Requirement 7.6 -- `Rn` clones the row n
+    // times after it.
+    #[test]
+    fn repeat_count_clones_row_n_times() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "R3"), r("B", "")];
+        apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            rows.iter().map(|x| x.value.clone()).collect::<Vec<_>>(),
+            vec![
+                "A".to_string(),
+                "A".to_string(),
+                "A".to_string(),
+                "A".to_string(),
+                "B".to_string()
+            ]
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 4.3 -- a batch mixing a copy
+    // (C/A) with an immediate `I` resolves indices against STABLE original rows:
+    // the I inserts after its own row, not after a row shifted by the copy insert.
+    // Before the fix, the copy insert grew the list first and the I was applied
+    // against the pre-insert index, landing on the wrong row.
+    #[test]
+    fn batch_copy_after_plus_insert_resolves_indices() {
+        let host = StubHost::new();
+        // Row 0 copies after row 1; row 2 inserts a blank after itself.
+        let mut rows = vec![r("SRC", "C"), r("T", "A"), r("INS", "I"), r("Z", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert!(res.notices.is_empty(), "clean batch: {:?}", res.notices);
+        assert_eq!(
+            rows.iter().map(|x| x.value.clone()).collect::<Vec<_>>(),
+            vec![
+                "SRC".to_string(),
+                "T".to_string(),
+                "SRC".to_string(), // copy of SRC after T
+                "INS".to_string(),
+                "".to_string(), // blank inserted after INS
+                "Z".to_string(),
+            ],
+            "the I lands after INS and the copy after T, both on stable indices"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 4.3 -- a batch mixing a copy
+    // (C/A) with an immediate `D` deletes the intended row, not a shifted one.
+    #[test]
+    fn batch_copy_after_plus_delete_resolves_indices() {
+        let host = StubHost::new();
+        // Copy row 0 after row 1; delete row 2.
+        let mut rows = vec![r("SRC", "C"), r("T", "A"), r("DEL", "D"), r("Z", "")];
+        apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            rows.iter().map(|x| x.value.clone()).collect::<Vec<_>>(),
+            vec![
+                "SRC".to_string(),
+                "T".to_string(),
+                "SRC".to_string(),
+                "Z".to_string(),
+            ],
+            "DEL is removed and the copy lands after T; Z is untouched"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 4.3, command-configurator Req 7.6
+    // -- a batch mixing a copy (C/B) with an `R` resolves correctly: the repeat
+    // clones its own row after itself while the copy lands before its target.
+    #[test]
+    fn batch_copy_before_plus_repeat_resolves_indices() {
+        let host = StubHost::new();
+        // Row 0 repeats; row 2 copies before row 1 (its target).
+        let mut rows = vec![r("REP", "R"), r("T", "B"), r("SRC", "C")];
+        apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            rows.iter().map(|x| x.value.clone()).collect::<Vec<_>>(),
+            vec![
+                "REP".to_string(),
+                "REP".to_string(), // clone after REP
+                "SRC".to_string(), // copy before T
+                "T".to_string(),
+                "SRC".to_string(),
+            ]
         );
     }
 

@@ -119,6 +119,9 @@ pub struct LineCommandSet {
     pub insert: bool,
     /// `D` -- delete the row.
     pub delete: bool,
+    /// `R` -- repeat (clone the row after it); a single-row Copy alias
+    /// (command-configurator Req 7.6).
+    pub repeat: bool,
     /// `C` (+ `A`/`B`) -- copy the row to a target.
     pub copy: bool,
     /// `M` (+ `A`/`B`) -- move the row to a target.
@@ -128,12 +131,14 @@ pub struct LineCommandSet {
 }
 
 impl LineCommandSet {
-    /// The Alias Editor set: I / D / C / SORT; Move is NOT enabled because an
+    /// The Alias Editor set: I / D / R / C / SORT; Move is NOT enabled because an
     /// alias set is not an inherently ordered list (command-configurator Req 7.4).
+    /// `R` is retained as a clone-after alias of a single-row Copy (Req 7.6).
     pub const fn alias() -> Self {
         Self {
             insert: true,
             delete: true,
+            repeat: true,
             copy: true,
             move_: false,
             sort: true,
@@ -141,7 +146,8 @@ impl LineCommandSet {
     }
 
     /// The enabled single-letter Act commands, for a header hint or a notice.
-    /// Returns the uppercase letters in a stable order (I, D, C, M).
+    /// Returns the uppercase letters in a stable order (I, D, R, C, M, then S for
+    /// SORT when any surface advertises it).
     pub fn enabled_letters(&self) -> Vec<char> {
         let mut out = Vec::new();
         if self.insert {
@@ -150,11 +156,17 @@ impl LineCommandSet {
         if self.delete {
             out.push('D');
         }
+        if self.repeat {
+            out.push('R');
+        }
         if self.copy {
             out.push('C');
         }
         if self.move_ {
             out.push('M');
+        }
+        if self.sort {
+            out.push('S');
         }
         out
     }
@@ -282,12 +294,14 @@ mod tests {
         assert!(surface.sortable, "with_sortable marks the column sortable");
     }
 
-    // Validates: command-configurator Requirement 7.4 -- the Alias line-command
-    // set reports I / D / C enabled and Move disabled, with Sort enabled.
+    // Validates: command-configurator Requirement 7.4, 7.6 -- the Alias
+    // line-command set reports I / D / R / C enabled (R is the clone-after Copy
+    // alias) and Move disabled, with Sort enabled and advertised as `S`.
     #[test]
     fn alias_line_command_set_reports_enabled_letters() {
         let set = LineCommandSet::alias();
-        assert_eq!(set.enabled_letters(), vec!['I', 'D', 'C']);
+        assert_eq!(set.enabled_letters(), vec!['I', 'D', 'R', 'C', 'S']);
+        assert!(set.repeat, "Repeat (R) is enabled for aliases");
         assert!(!set.move_, "Move is not enabled for aliases");
         assert!(set.sort, "Sort is enabled for aliases");
     }

@@ -6,15 +6,16 @@ use super::user_aliases::AliasEnvironment;
 use super::WorkbenchShell;
 
 impl WorkbenchShell {
-    /// Apply the pending Act line commands (I / D / C + A/B) as a single
-    /// deterministic batch (Req 5.16, 7.4), now DELEGATED to the shared
+    /// Apply the pending Act line commands (I / D / R / C + A/B) as a single
+    /// deterministic batch (Req 5.16, 7.4, 7.6), now DELEGATED to the shared
     /// egui-free apply pass ([`crate::shell::ispf_table_editor::apply_line_commands`])
-    /// over the Alias host. This retires the former bespoke I/R/D snapshot loop
-    /// in favour of the one shared, fully unit-tested structural pass (CR-CH-075).
+    /// over the Alias host. This replaces the former bespoke I/R/D snapshot loop
+    /// with the one shared, fully unit-tested structural pass (CR-CH-075).
     ///
     /// The shared pass sources classification from `ff-line-commands`: I inserts a
-    /// blank after, D removes, C + A/B copies to the target; Move is NOT in the
-    /// alias set and is cleared/ignored. This remains a thin shell-side adapter so
+    /// blank after, D removes, R clones the row after it (a single-row Copy alias,
+    /// Req 7.6), C + A/B copies to the target; Move is NOT in the alias set and is
+    /// cleared/ignored. This remains a thin shell-side adapter so
     /// existing callers resolve unchanged; it borrows the rows out of the panel so
     /// the host (`&self.alias_editor_panel`) and the rows do not alias.
     ///
@@ -173,9 +174,9 @@ mod tests {
     }
 
     // Validates: command-configurator Requirement 7.4 -- C + A copies a
-    // FIELD-COPY of the source row AFTER the A target (its Act cleared). This
-    // supersedes the former `R` single-row repeat: the alias set is I / D / C +
-    // SORT (CR-CH-075), and Copy is the primary duplicate command.
+    // FIELD-COPY of the source row AFTER the A target (its Act cleared). C is the
+    // primary duplicate command; R (reinstated per Req 7.6) is the single-row
+    // clone-after alias of a Copy. The alias set is I / D / R / C + SORT.
     #[test]
     fn copy_after_duplicates_row_values_into_new_row() {
         let mut shell = make_shell();
@@ -198,6 +199,87 @@ mod tests {
         // The source and target Act cells are consumed/cleared.
         assert!(shell.alias_editor_panel.rows[0].act.is_empty());
         assert!(shell.alias_editor_panel.rows[1].act.is_empty());
+    }
+
+    // Validates: command-configurator Requirement 7.4 -- a single `R` clones the
+    // marked alias row (field values) and places the clone AFTER it, on a
+    // NON-EMPTY store, with both Act cells cleared. Before the fix, R was not in
+    // the Alias enabled set so it was cleared and nothing was cloned.
+    #[test]
+    fn repeat_clones_row_after_on_non_empty_store() {
+        let mut shell = make_shell();
+        let mut src = data_row("ECOB", "EDIT", AliasEnvironment::Ffcmd);
+        src.command_template = "FFWB.COBOL.MASTER(&1)".to_string();
+        src.act = "R".to_string();
+        let keep = data_row("KEEP", "VIEW", AliasEnvironment::Ffcmd);
+        shell.alias_editor_panel.rows = vec![src, keep];
+        shell.apply_pending_line_commands();
+        assert_eq!(shell.alias_editor_panel.rows.len(), 3);
+        // [ECOB(R), KEEP] -> clone ECOB after itself: [ECOB, ECOB-copy, KEEP].
+        assert_eq!(shell.alias_editor_panel.rows[0].surface, "ECOB");
+        assert_eq!(shell.alias_editor_panel.rows[1].surface, "ECOB");
+        assert_eq!(shell.alias_editor_panel.rows[1].canonical, "EDIT");
+        assert_eq!(
+            shell.alias_editor_panel.rows[1].command_template,
+            "FFWB.COBOL.MASTER(&1)"
+        );
+        assert_eq!(shell.alias_editor_panel.rows[2].surface, "KEEP");
+        assert!(shell.alias_editor_panel.rows[0].act.is_empty());
+        assert!(shell.alias_editor_panel.rows[1].act.is_empty());
+    }
+
+    // Validates: command-configurator Requirement 7.4 -- a single `R` on a
+    // single-row (empty-store scratch row) store clones that row after itself.
+    #[test]
+    fn repeat_clones_row_after_on_single_row_store() {
+        let mut shell = make_shell();
+        let mut only = data_row("ONLY", "EDIT", AliasEnvironment::Ffcmd);
+        only.act = "R".to_string();
+        shell.alias_editor_panel.rows = vec![only];
+        shell.apply_pending_line_commands();
+        assert_eq!(shell.alias_editor_panel.rows.len(), 2);
+        assert_eq!(shell.alias_editor_panel.rows[0].surface, "ONLY");
+        assert_eq!(shell.alias_editor_panel.rows[1].surface, "ONLY");
+        assert!(shell.alias_editor_panel.rows[1].act.is_empty());
+    }
+
+    // Validates: command-configurator Requirement 5.16 -- a single `I` on a
+    // single-row (empty-store scratch row) store inserts a blank row after it.
+    #[test]
+    fn insert_adds_blank_row_after_on_single_row_store() {
+        let mut shell = make_shell();
+        let mut only = data_row("ONLY", "EDIT", AliasEnvironment::Ffcmd);
+        only.act = "I".to_string();
+        shell.alias_editor_panel.rows = vec![only];
+        shell.apply_pending_line_commands();
+        assert_eq!(shell.alias_editor_panel.rows.len(), 2);
+        assert_eq!(shell.alias_editor_panel.rows[0].surface, "ONLY");
+        assert_eq!(shell.alias_editor_panel.rows[1], AliasRowEdit::default());
+        assert!(shell.alias_editor_panel.rows[0].act.is_empty());
+    }
+
+    // Validates: ispf-table-editor Requirement 4.3 -- a batch mixing an
+    // immediate `I` with a copy (C/A) resolves indices against STABLE original
+    // rows, so the I lands after its own row and the copy after its target.
+    #[test]
+    fn batch_insert_plus_copy_after_resolves_indices() {
+        let mut shell = make_shell();
+        let mut src = data_row("SRC", "EDIT", AliasEnvironment::Ffcmd);
+        src.act = "C".to_string();
+        let mut target = data_row("TGT", "VIEW", AliasEnvironment::Ffcmd);
+        target.act = "A".to_string();
+        let mut ins = data_row("INS", "BROWSE", AliasEnvironment::Ffcmd);
+        ins.act = "I".to_string();
+        shell.alias_editor_panel.rows = vec![src, target, ins];
+        shell.apply_pending_line_commands();
+        // [SRC(C), TGT(A), INS(I)] -> copy SRC after TGT, blank after INS:
+        // [SRC, TGT, SRC-copy, INS, <blank>].
+        assert_eq!(shell.alias_editor_panel.rows.len(), 5);
+        assert_eq!(shell.alias_editor_panel.rows[0].surface, "SRC");
+        assert_eq!(shell.alias_editor_panel.rows[1].surface, "TGT");
+        assert_eq!(shell.alias_editor_panel.rows[2].surface, "SRC");
+        assert_eq!(shell.alias_editor_panel.rows[3].surface, "INS");
+        assert_eq!(shell.alias_editor_panel.rows[4], AliasRowEdit::default());
     }
 
     // Validates: command-configurator Requirement 5.16 -- D removes the row.
