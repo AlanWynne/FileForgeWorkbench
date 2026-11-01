@@ -354,3 +354,117 @@ new dispatcher, and NO new WorkspaceKind.
    expand unchanged when the aliased command is invoked (localization
    Requirement 13.8); removing the localisation-key column SHALL NOT affect the
    template feature.
+
+---
+
+### Requirement 7: Alias Editor on the shared ISPF Table Editor -- Description column + Sort (CR-CH-075)
+
+**User Story:** As an ISPF user, I want the Alias Editor to be a true ISPF table
+editor built on the shared table-editor component, with a Description column and
+a Sort line command, so it looks and behaves like the Menu and Kinds editors and
+I can describe and order my aliases.
+
+**Source:** [CR-CH-075]. Builds ON Requirement 5 (the CR-NR-113 / CR-CH-068 Alias
+Editor and its CR-CH-071 save semantics), Requirement 6 (CR-CH-072 store/row
+shape), and the shared ISPF Table Editor component
+(`docs/specs/ispf-table-editor/`). It REPLACES the Alias Editor's bespoke I/R/D
+mini line-command flow (`alias_editor_line_commands.rs`) with the shared
+component's engine-backed line commands. It adds NO new dispatcher, NO new
+navigation stack, NO new session-persistence format, NO new line-command engine,
+and NO new save path.
+
+**OWNER-CONFIRM FLAG (schema).** The owner's new mock replaces the L18N column
+(retired by CR-CH-072, Requirement 6.2) with a DESCRIPTION column. The current
+alias row shape (CR-CH-072) is `surface` + `canonical` + optional
+`command_template` + optional `environment` and carries NO description field.
+Presenting a Description that PERSISTS therefore requires ADDING an optional
+`description` field to the alias row (the user-store row and the per-locale
+override row). Per `.kiro/steering/framework-conformance.md` this is an
+ADDITIVE on-disk SCHEMA change (an optional, `#[serde(default)]` field, no
+reshape of a core framework type), so it is NOT a framework change, but it IS a
+data-model change to a persisted shape and is flagged here for explicit owner
+confirmation at the CONFIRM step. Two options are recorded; criteria 7.x assume
+option (a) pending that confirmation:
+- **(a) Persisted Description (RECOMMENDED):** add an optional `description`
+  string to the alias row (defaulting empty, omitted on serialise when empty so
+  existing files round-trip unchanged). The column is editable and persists.
+- **(b) Display-only Description:** render a Description column sourced from an
+  existing display string (e.g. the menu option description that references the
+  alias) with no new field. This keeps the schema frozen but the column is NOT
+  independently editable on the alias row. If the owner prefers (b), criteria 7.3
+  and its persistence clause are struck and the column is read-only.
+
+#### Acceptance Criteria
+
+7.1. WHEN the Alias_Editor is rendered, THE Context SHALL draw its surface via the
+   shared ISPF Table Editor component (`docs/specs/ispf-table-editor/`
+   Requirement 1), presenting the `Command ===>` line, the filter row, the Act
+   column, and the scrolling data rows through that one component rather than a
+   bespoke per-editor surface. THE focus contract, command-line semantics, filter
+   behaviour, and save-seam routing SHALL be those the shared component defines
+   (ispf-table-editor Requirements 2, 3, 6, 7).
+
+7.2. THE Alias_Editor column order SHALL be: Act, CE (Command Environment), Command
+   (root / canonical), Alias (surface), Parameters (parameter template),
+   Description. THE column-to-model mapping SHALL be: Act = the shared component's
+   transient line-command cell (NOT persisted); CE = `environment`; Command =
+   `canonical`; Alias = `surface`; Parameters = `command_template`; Description =
+   the row's `description` field (per the OWNER-CONFIRM FLAG option (a)). The L18N
+   column is NOT present (retired by CR-CH-072, Requirement 6.2).
+
+7.3. (Assumes OWNER-CONFIRM option (a).) THE Description column SHALL be an
+   editable field that PERSISTS: WHEN a non-empty description is entered and the
+   working copy is saved, THE saved alias row SHALL carry that value (trimmed) in
+   an optional `description` field, and re-loading the store SHALL render the same
+   description (a round-trip). THE new field SHALL be optional and
+   `#[serde(default)]` so an alias file written before this field existed loads
+   unchanged (no on-disk-shape break), consistent with the stable-schema rule.
+
+7.4. THE Alias_Editor's enabled Line_Command_Set SHALL be `I` (Insert), `D`
+   (Delete), `C` (Copy), and SORT. Move (`M`) SHALL NOT be enabled, because an
+   alias set is not an inherently ordered list (the resolver keys by surface, not
+   position), so moving a row has no observable effect; SORT (by a chosen column)
+   is the useful ordering operation for a long alias list. (RATIONALE recorded per
+   the brief: move is nonsensical for aliases; sort is useful.)
+
+7.5. WHEN the user enters `SORT <column> [ASC|DESC]` on the `Command ===>` line,
+   THE Alias_Editor SHALL reorder its working-copy rows by that column (stable,
+   ascending default) via the shared component's Sort (ispf-table-editor
+   Requirement 5), and the reordering SHALL persist on Save. At least the Alias
+   and Command (root) columns SHALL be declared sortable.
+
+7.6. THE `I` / `D` / `C` line commands SHALL behave per the shared component
+   (ispf-table-editor Requirement 4): `I` inserts a blank alias row after the
+   row; `D` deletes the row; `C` copies the row's field values to a target
+   designated by an `A` (after) / `B` (before) marker, using the shared
+   component's `ff-line-commands`-backed pairing. THE previous CR-CH-068 `R`
+   (repeat) MAY be retained as an alias of a single-row Copy, but the primary
+   duplication path is `C`; this REPLACES the bespoke I/R/D flow of criterion 5.16.
+
+7.7. THE filter row SHALL match on CE and Command (root) only, exactly as
+   criterion 5.15 / Requirement 6, now realised through the shared component's
+   filter (ispf-table-editor Requirement 3); the CE -> Root cascading dropdowns of
+   criterion 5.18 SHALL be preserved as the per-row and filter-row widgets the
+   host declares to the component.
+
+7.8. THE Alias_Editor SHALL report its interior focus through the single
+   `WorkspaceContext::render -> InteriorFocus` path with the first interior
+   control being the filter row's filter CE dropdown (criterion 5.23 unchanged),
+   proven by the existing MANDATORY full-shell egui_kittest first-Tab test
+   (workspace-conformance.md). Moving to the shared component SHALL NOT weaken or
+   remove this test.
+
+7.9. THE Alias_Editor's displayed columns (7.2 order) SHALL be the authoritative
+   column set its `ScreenProvider` populates into a `ff-screen-model::Table` for
+   snapshot/capture (Group A), so a captured snapshot shows Act / CE / Command /
+   Alias / Parameters / Description in that order
+   (ispf-table-editor Requirement 7.3).
+
+7.10. THE CR-CH-075 redesign SHALL NOT change the dispatch front door / `ALIASES`
+   registration (criterion 5.2), the `WorkspaceKind::CommandConfigurator` +
+   `editor = "aliases"` descriptor, the per-tab Navigation_Stack return behaviour
+   (criterion 5.9), the `pending_action` / owned-panel-swap effect pattern, or the
+   CR-CH-072 store the editor reads/writes (Requirement 6). The ONLY persisted
+   shape change is the OPTIONAL `description` field of 7.3, flagged above for owner
+   confirmation; everything else is presentation + line-command behaviour moved
+   onto the shared component.

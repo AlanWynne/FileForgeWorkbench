@@ -517,3 +517,97 @@ option-content localisation of CR-NR-111 adds NO new Kinds-registry field.
    displayed chrome SHALL fall back to the Identity_Base/root value (localization
    Requirement 3.2), consistent with the per-part menu-option fallback
    (localization Requirement 12.8), so a Kind always renders complete chrome.
+
+<!-- ===================== CR-CH-075 (ISPF table redesign of the Kinds Editor) ===================== -->
+
+### Requirement 10: Kinds Editor as an ISPF table on the shared component (CR-CH-075)
+
+**User Story:** As an ISPF user, I want the Workspace Kinds editor to be a TABLE
+(one row per Kind, with an Act prefix and line commands) instead of a vertical
+form, so it looks and behaves like the Alias and Menu editors and I can insert,
+delete, copy, move, and sort Kinds.
+
+**Source:** [CR-CH-075]. Builds ON Requirement 6 (the Kinds Editor Context and its
+pure `render -> Action` + CR-CH-071 save flow) and the shared ISPF Table Editor
+component (`docs/specs/ispf-table-editor/`). This is a PRESENTATION +
+line-command redesign: ALL underlying fields already exist on `Kind_Config` /
+`Kind_Profile` (investigation findings 5b). It adds NO new dispatcher, NO new
+navigation stack, NO new session-persistence format, NO new line-command engine,
+NO new save path, and NO new `Kind_Config` field.
+
+#### Acceptance Criteria
+
+1. WHEN the Kinds Editor is rendered, THE Context SHALL draw its surface via the
+   shared ISPF Table Editor component (`docs/specs/ispf-table-editor/`
+   Requirement 1): a `Command ===>` line, a filter row, an Act prefix column, and
+   one scrolling DATA ROW per configurable Workspace Kind (built-in + user),
+   REPLACING the vertical selector-plus-form layout of Requirement 6.1. The
+   per-row profile flags are presented as columns on the same row (criterion 3).
+
+2. THE Kinds Editor column order SHALL be: Act, Workspace (the Kind `name` /
+   stable id), Modelled-on (`modelled_on` base), Title (`title`), Menu Bar
+   (`menu_bar`), Keylist (`key_list`), followed by the per-row profile flags CAPS,
+   NULLS, STATS, LOCK, HILITE (the `Kind_Profile.edit_profile` fields). THE Act
+   column SHALL be the shared component's transient line-command cell (NOT
+   persisted); every other column SHALL map to the EXISTING `Kind_Config` /
+   `Kind_Profile` field named in parentheses (no new field).
+
+3. THE profile flags CAPS / NULLS / STATS / LOCK / HILITE SHALL be rendered as
+   per-row toggle columns bound to the row's `Kind_Profile.edit_profile`
+   (`EditProfile { caps, nulls, stats, lock, hilite }`), which already exists
+   (`crates/ff-edit-operations/src/profile.rs`). THE additional `Kind_Profile`
+   fields NOT shown as table columns (tab_size, line_end_mode,
+   command_line_position, Requirement 8) SHALL remain editable through a per-row
+   detail affordance or an adjacent field area, so the redesign does NOT drop any
+   field the Requirement 6.1 form exposed.
+
+4. THE Kinds Editor's enabled Line_Command_Set SHALL be `I` (Insert), `D`
+   (Delete), `C` (Copy), and `M` (Move). `I` creates a NEW user Kind row (the
+   "New Kind modelled on <base>" action of Requirement 6.2, now via the `I` line
+   command: an inserted row prompts for / defaults a unique `name` and a built-in
+   base); `D` deletes a user Kind (a built-in Kind SHALL NOT be deletable -- a `D`
+   on a built-in row SHALL be rejected with a non-blocking notice and the row
+   retained); `C` copies a Kind's config to a new user Kind (a convenient "model
+   on this one" copy, still resolving `modelled_on` to a built-in base per
+   Requirement 1.3); `M` reorders rows. Sort is OPTIONAL (Move is the primary
+   ordering operation). (RATIONALE per the brief: move is useful for Kind
+   ordering.)
+
+5. THE line commands SHALL apply as a deterministic batch on Enter on the
+   `Command ===>` line via the shared component's `ff-line-commands`-backed engine
+   (ispf-table-editor Requirement 4), with `C` / `M` resolving against an `A`
+   (after) / `B` (before) target marker. Creating a new Kind via `I` / `C` SHALL
+   still enforce the Requirement 1.3 rule (a user Kind's base is a BUILT-IN; no
+   user-on-user inheritance).
+
+6. THE Kinds Editor command line SHALL route `SAVE` / `END` / `CANCEL` /
+   `RETURN` / `REFRESH` to the existing CR-CH-071 editable-Context save seam
+   (ispf-table-editor Requirement 6): SAVE writes each changed Kind's
+   `Kind_Config` to `<User_Data_Dir>/workspace-kinds/<name>.toml` and reloads the
+   Kind_Registry live (Requirement 6.3), a `SAVE` applying pending line commands
+   first. THE write-file + reload-registry action path of Requirement 6.3 / 6.5 is
+   UNCHANGED; only the UI that triggers it is the table surface.
+
+7. THE filter row SHALL match on at least Workspace (`name`) and Modelled-on
+   (`modelled_on`) via the shared component's filter (ispf-table-editor
+   Requirement 3), display-only (never mutating the Kind set or order).
+
+8. THE Kinds Editor SHALL report its interior focus through the single
+   `WorkspaceContext::render -> InteriorFocus` path with the first interior
+   control being the filter row's first field, proven by a MANDATORY full-shell
+   egui_kittest first-Tab test (workspace-conformance.md): the first Tab from the
+   `Command ===>` line lands EXACTLY on that control with no phantom stop.
+
+9. THE Kinds Editor's displayed columns (criterion 2 order) SHALL be the
+   authoritative column set its `ScreenProvider` populates into a
+   `ff-screen-model::Table` for snapshot/capture (Group A), so a captured snapshot
+   shows Act / Workspace / Modelled-on / Title / Menu Bar / Keylist / CAPS / NULLS
+   / STATS / LOCK / HILITE in that order (ispf-table-editor Requirement 7.3).
+
+10. THE CR-CH-075 redesign SHALL NOT change the `Kind_Config` / `Kind_Profile`
+    schema or the Kind TOML format (Requirement 1.6 round-trip preserved), the
+    `KINDS` dispatch front door (Requirement 6.4), the WorkspaceKind, the per-tab
+    Navigation_Stack return, or the write-file + reload-registry action pattern
+    (Requirement 6.3). It is presentation + line-command behaviour moved onto the
+    shared component; the vertical form of Requirement 6.1 is SUPERSEDED by the
+    table surface, with every field it exposed still reachable (criterion 3).

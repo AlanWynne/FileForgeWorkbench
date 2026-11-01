@@ -739,6 +739,84 @@ open a Workspace to create, change and save Menus"); reserved by Requirement 12.
     reject; the editor's validation and the loader's validation SHALL share one
     rule set so the editor cannot produce an unloadable file.
 
+#### Acceptance Criteria -- ISPF table redesign on the shared component (CR-CH-075)
+
+The following criteria REDESIGN the Menus Editor into an ISPF TABLE editor built
+on the shared ISPF Table Editor component (`docs/specs/ispf-table-editor/`),
+replacing the Up / Down / Delete BUTTONS of criterion 13.5 with ISPF line
+commands. They build ON the CR-CH-071 save semantics and the `WorkspaceContext`
+focus contract. They change NO `MenuOption` schema (the owner-confirmed point
+below), NO dispatch front door, NO WorkspaceKind, NO navigation stack, and NO
+save path.
+
+**OWNER-CONFIRMED (NO schema change).** The owner confirmed the menu
+"Command/Alias" column is the EXISTING `MenuOption.command` field RELABELLED: a
+menu command may be a root command OR an alias, and the `command` string already
+carries either. There is NO new `MenuOption` field and NO menu-TOML schema change
+for this redesign. (This supersedes the earlier open question in the
+investigation findings about an "Alias" column needing a backing field.)
+
+14. WHEN the Menus Editor is rendered, THE Context SHALL draw its surface via the
+    shared ISPF Table Editor component (`docs/specs/ispf-table-editor/`
+    Requirement 1): a `Command ===>` line, a filter row, an Act prefix column, and
+    the scrolling option rows, with the menu-level fields (Menu name / Title,
+    Show Calendar, Group Headers, Group Separator) presented alongside the table
+    (consistent with criterion 13.6, which is retained).
+
+15. THE Menus Editor column order SHALL be: Act, Option (the `key`), Command/Alias
+    (the `command` field -- a root command OR an alias, RELABELLED, NO schema
+    change), Description (`description`), Group (`group`), On (`enabled`), Bar
+    (`show_in_menu_bar`). THE Act column SHALL be the shared component's transient
+    line-command cell (NOT persisted). Every other column SHALL map to the
+    existing `MenuOption` field named in parentheses.
+
+16. THE Menus Editor's enabled Line_Command_Set SHALL be `I` (Insert), `D`
+    (Delete), `C` (Copy), and `M` (Move). Move IS enabled because a menu's option
+    ORDER is observable (options render top-to-bottom in order) so reordering via
+    `M` (and `A`/`B` targets) is meaningful; this REPLACES the Up / Down buttons
+    of criterion 13.5. `I` inserts a blank option row after the row; `D` deletes
+    the option (replacing the Delete button); `C` copies an option's field values
+    to a target; `M` moves an option to a target. Sort is OPTIONAL for menus (Move
+    is the primary ordering operation). (RATIONALE per the brief: move is useful
+    for menu ordering.)
+
+17. THE line commands SHALL apply as a deterministic batch on Enter on the
+    `Command ===>` line, using the shared component's `ff-line-commands`-backed
+    engine (ispf-table-editor Requirement 4), with `C` / `M` resolving against an
+    `A` (after) / `B` (before) target marker. THE `MOVING an option up or down`
+    capability of criterion 13.5 is now realised by `M`; the OBSERVABLE
+    reordering capability is unchanged, only the mechanism changes.
+
+18. THE Menus Editor command line SHALL route `SAVE` / `END` / `CANCEL` /
+    `RETURN` / `REFRESH` to the existing CR-CH-071 editable-Context save seam
+    (ispf-table-editor Requirement 6), preserving criteria 13.7 / 13.8 validation
+    and write behaviour; a `SAVE` SHALL apply pending line commands first
+    (ispf-table-editor Requirement 2.2). THE shared validation rule set of
+    criterion 13.13 (editor = loader) SHALL be unchanged.
+
+19. THE filter row SHALL match on at least Option (`key`) and Command/Alias
+    (`command`) via the shared component's filter (ispf-table-editor
+    Requirement 3), display-only (never mutating the option order or set).
+
+20. THE Menus Editor SHALL report its interior focus through the single
+    `WorkspaceContext::render -> InteriorFocus` path with the first interior
+    control being the filter row's first field, proven by a MANDATORY full-shell
+    egui_kittest first-Tab test (workspace-conformance.md): the first Tab from the
+    `Command ===>` line lands EXACTLY on that control with no phantom stop.
+
+21. THE Menus Editor's displayed columns (criterion 15 order) SHALL be the
+    authoritative column set its `ScreenProvider` populates into a
+    `ff-screen-model::Table` for snapshot/capture (Group A), so a captured
+    snapshot shows Act / Option / Command-Alias / Description / Group / On / Bar in
+    that order (ispf-table-editor Requirement 7.3).
+
+22. THE CR-CH-075 redesign SHALL NOT change the `MenuOption` schema or the menu
+    TOML format (criterion 13.10 round-trip preserved), the dispatch front door,
+    the WorkspaceKind, the per-tab Navigation_Stack return, or the
+    `pending_action` effect pattern. It is presentation + line-command behaviour
+    moved onto the shared component; the Up / Down / Delete BUTTONS of criterion
+    13.5 are SUPERSEDED by the `I` / `D` / `C` / `M` line commands.
+
 ---
 
 ### Requirement 14: Per-Tab Navigation Stack

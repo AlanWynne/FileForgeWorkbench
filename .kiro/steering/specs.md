@@ -65,6 +65,7 @@ The following specs exist under `docs/specs/`:
 - hex-display
 - idcams-emulator
 - idle-processing
+- ispf-table-editor (CR-CH-075: shared ISPF table-editor + line-command component for the Alias / Menu / Kinds editors -- `Command ===>` line, filter row, Act prefix column, batch line commands I/D/C/M + Sort; reuses the ff-line-commands engine, built on WorkspaceContext + CR-CH-071; requirements/design/tasks drafted, gate pending)
 - language-service
 - large-file-performance
 - layout-and-docking
