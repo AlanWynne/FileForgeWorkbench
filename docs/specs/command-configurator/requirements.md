@@ -433,6 +433,32 @@ option (a) pending that confirmation:
    Requirement 5), and the reordering SHALL persist on Save. At least the Alias
    and Command (root) columns SHALL be declared sortable.
 
+7.5a. AUTOMATIC SORT-ON-SAVE (owner-confirmed CR-CH-075). WHEN the Alias_Editor
+   persists the working copy (any SAVE or END), THE system SHALL first reorder the
+   rows into the canonical sort order and write the Command_Store in that SORTED
+   order, so the on-disk alias file is always deterministically ordered
+   regardless of the order rows were inserted/edited. THE canonical sort key SHALL
+   be the RESOLVER'S MATCH KEY: the `Alias` (surface) string, compared
+   case-INSENSITIVELY (uppercased, matching `AliasTable::canonical_verb`'s
+   `eq_ignore_ascii_case` on the uppercased surface), scoped PER Command
+   Environment. Because the store is already one file per environment
+   (`<locale>/<ENV>.toml`), this means each environment's rows SHALL be sorted by
+   uppercased surface ascending; `Command` (root) is a stable tie-breaker only if
+   two identical surfaces ever coexist (validation normally forbids this). THE
+   automatic sort-on-save SHALL use the SAME ordering the manual `SORT` command
+   (7.5) produces, so manual and automatic sorting are consistent, stable for
+   already-sorted input (a no-op reorder), and SHALL NOT alter any field value,
+   only row order.
+   THIS is an EDITOR-ONLY change (ordering rows the editor owns before
+   serialising). It SHALL NOT change the alias RESOLVER: `AliasTable` remains a
+   linearly-scanned `Vec` and `canonical_verb` is unchanged. Per the
+   alias-resolver investigation the set stays small at runtime (only the ACTIVE
+   locale's per-CE table is loaded and scanned, not all locales), so the O(n)
+   scan is negligible and reshaping `AliasTable` to a map/binary-search is an
+   unwarranted core/framework change that is NOT undertaken. Sorting by the
+   resolver's match key keeps the on-disk order aligned with lookup and leaves a
+   FUTURE binary-search switch cheap, without coupling to it now.
+
 7.6. THE `I` / `D` / `C` line commands SHALL behave per the shared component
    (ispf-table-editor Requirement 4): `I` inserts a blank alias row after the
    row; `D` deletes the row; `C` copies the row's field values to a target
