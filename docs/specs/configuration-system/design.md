@@ -1590,6 +1590,39 @@ persistence (Req 15.9), and validation (Req 15.4/15.5) are untouched.
 
 ## Design Delta: Config View Tree Rendering (Requirement 22, Visual Re-skin)
 
+> **CHANGE OF APPROACH (config-tree-collapsing branch -- supersedes D1-D9 below).**
+> The original box-drawing-STRING renderer (decisions D1 through D9 in this
+> section) is **SUPERSEDED** by an **egui-native `CollapsingHeader`** design
+> recorded in **D10/D11** at the end of this section. The box-drawing-string
+> approach rendered each group as a `selectable_label` with a `v`/`>` arrow and
+> painted U+2500-U+257F connector glyphs in a monospace string, with a single
+> GLOBAL Value_Column.
+>
+> **Why it was superseded:** the connector-glyph approach proved
+> font-metric-fragile and visually wrong -- alignment depended on the monospace
+> face's exact cell metrics, and the hand-painted connectors did not track egui's
+> real indentation. It looked broken in practice.
+>
+> **What is now OBSOLETE (removed, do not reintroduce):**
+> - the box-drawing connector glyphs (`Connector`, `connector_prefix`,
+>   `TEE_PREFIX`/`LAST_PREFIX`, `key_label`, the `+-- `/`\-- ` prefixes) -- egui's
+>   native triangle expander owns the hierarchy indication now;
+> - the single GLOBAL `value_column_width` across all groups -- alignment is now
+>   PER GROUP;
+> - the `v`/`>` arrow text prefix on the group header -- egui draws the expander;
+> - decisions D4 (box-drawing connectors), D6's connector-string composition, and
+>   D9's "whole row is one connector+key monospace string" are all void.
+>
+> **What is UNCHANGED:** everything the delta already called preserved -- the pure
+> `tree::visible_rows` model, the per-namespace `collapsed` state and its
+> mouse/keyboard triggers (Requirement 21), the per-key value widgets + working-copy
+> edit semantics, the SELECTABLE key name and SELECTABLE always-visible description
+> (Req 14.2), the `WorkspaceContext` focus contract (AC 22.10), and the ISPF
+> explicit-commit save model. The grouping mechanism and the 8 groups are unchanged
+> (AC 22.7).
+>
+> Read **D10/D11 first**; D1-D9 are retained below for history only.
+
 This delta re-skins the Config View (`config_panel/`, `TabKind::ConfigPanel`) into
 a clearly demarcated, two-level tree with bracketed group headers, box-drawing
 child connectors, and a single vertically-aligned Value_Column. It is a
@@ -2013,3 +2046,88 @@ quick. The owner runs the authoritative full gate.
 No schema, persistence, command, grouping, expand/collapse, keyboard-navigation
 (Req 21), or save-convention changes. This delta is purely the visual re-skin of
 `config_panel/render.rs` plus the new pure `config_panel/layout.rs`.
+
+---
+
+### D10 -- egui-native CollapsingHeader render (SUPERSEDES D1-D9)
+
+The box-drawing-string renderer above (D1-D9) is replaced by letting **egui own
+the hierarchy and the expand/collapse expander**. Each namespace group is drawn
+as an `egui::CollapsingHeader` so egui provides the triangle expander, the body
+indentation, and the body clip -- none of which the hand-painted connector
+glyphs tracked reliably.
+
+Render flow in `config_panel/render.rs`:
+
+1. **Header area (unchanged intent, AC 22.1/22.2).** `render_header_area` draws
+   the Filter row (the `egui::TextEdit` carrying `filter_field_id()` -- still the
+   FIRST interior control, allocated before any group so it remains the first Tab
+   stop, AC 22.10), the right-to-left Save affordance + unsaved dot, the
+   non-interactive `Unsaved edits : <yes|no>` row (equals `is_dirty()`), any
+   persist-error line, and the Source-File row. Then exactly ONE `ui.separator()`
+   demarcates the header from the tree body.
+
+2. **Grouping (unchanged mechanism, AC 22.7).** `grouped_visible_keys` groups the
+   filter-matching schema keys by `namespace_of`, sorted by namespace and by key
+   within each group -- the SAME ordering `tree::visible_rows` produces. Unlike
+   `visible_rows`, it holds EVERY matching key per group (not gated by collapse),
+   because the `CollapsingHeader` itself hides a collapsed group's body. The
+   keyboard reducer still consumes `visible_rows` (collapse-gated) for cursor
+   movement, so navigation and render stay consistent.
+
+3. **One `CollapsingHeader` per group (AC 22.3/22.8).** `render_group` draws
+   `egui::CollapsingHeader::new(RichText::new("[DisplayName] (count)").strong())`
+   with a stable `.id_salt(("config_group", ns))`. The open-state is FORCED each
+   frame from the authoritative per-namespace `collapsed` model via
+   `.open(Some(expanded))`, so the keyboard reducer (Req 21 Right/Left/Enter) and
+   the mouse toggle stay in sync. Because `.open(Some(..))` makes the model
+   authoritative, the header's own `header_response.clicked()` is read back to
+   toggle `collapsed[ns]` (and set the Tree_Cursor to the group) -- a single
+   mutation path. egui draws the native triangle expander; there is NO `v`/`>`
+   text arrow and NO box-drawing glyph.
+
+4. **Per-group aligned Value_Column (AC 22.5/22.6, D11).** Inside each header
+   body, the keys are rendered via the preserved `render_key_row`, which uses
+   `layout::aligned_left_segment(key, column)` where `column =
+   layout::value_column_width(keys_in_this_group)`. Alignment is PER GROUP.
+
+5. **Key rows re-homed unchanged (AC 22.9).** `render_key_row` keeps line 1
+   (frameless selectable monospace key segment, then the value widget via
+   `render_widget` with its id recorded into `widget_ids` for Enter-to-focus) and
+   line 2 (selectable description + right-to-left provenance/LOCKED badge, staged
+   `*`, Reset). The ONLY change from the superseded version is that the
+   `Connector` argument is gone -- the key segment is now just the padded key +
+   `" : "`, no connector prefix. The Tree_Cursor highlight
+   (`paint_cursor_highlight`) is retained on both group headers and key rows.
+
+### D11 -- Per-group value alignment (SUPERSEDES the global column of D5/D9)
+
+Value alignment is now computed PER GROUP, not globally. Within each
+`CollapsingHeader` body, `layout::value_column_width(keys_in_group)` is the max
+key char-count over THAT group's currently-visible keys (+1 pad), and
+`aligned_left_segment` right-pads each key to that column before `" : "`, so the
+`:` and value widget line up within the group. The single global column of the
+superseded D5/D9 is DROPPED: egui's per-header indentation means each group's
+body has its own left origin, so a global pixel column would not line up across
+groups anyway. Per-group alignment is the approved, robust choice; strict global
+pixel alignment across groups is deliberately NOT attempted (it fights egui's
+per-header indentation).
+
+`layout.rs` is accordingly slimmed to the two pure helpers `value_column_width`
+and `aligned_left_segment` (connector helpers removed), still `#[cfg(test)]`
+unit-tested for the empty group, single key, widest-key, and filtered-subset
+cases (AC 22.12).
+
+### D12 -- Files changed (this branch)
+
+- `config_panel/layout.rs` -- connector glyphs removed; `value_column_width` is
+  now per-group; `aligned_left_segment` drops the connector arg.
+- `config_panel/render.rs` -- row loop replaced with the CollapsingHeader group
+  render (`render_header_area`, `render_group`, `grouped_visible_keys`); the
+  `Connector`/`key_label` imports and the `connector_for_row` look-ahead helper
+  are removed. Under 400 non-test lines.
+- `shell/tests_focus.rs` -- the bracketed-header/collapse test is adapted to the
+  CollapsingHeader label (no arrow prefix) and asserts collapse HIDES a child row
+  while the bracketed header stays; the first-Tab focus test is kept green.
+- `docs/specs/configuration-system/{requirements,design,tasks}.md` -- Req 22
+  criteria adjusted (D10/D11 here; see requirements.md change notes).

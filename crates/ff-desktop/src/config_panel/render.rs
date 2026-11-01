@@ -1,8 +1,17 @@
 //! Rendering + per-frame keyboard driver for the Config View
-//! (configuration-system Requirement 15 + Requirement 21). Split out of
-//! `config_panel/mod.rs` for the 400-line rule; behaviour unchanged.
+//! (configuration-system Requirement 15 + Requirement 21 + Requirement 22).
+//! Split out of `config_panel/mod.rs` for the 400-line rule.
+//!
+//! Requirement 22 render model (SUPERSEDES the box-drawing-string renderer of
+//! commit a3059de): each namespace group is an egui-native
+//! `CollapsingHeader`/`CollapsingState` labelled `[<DisplayName>]`, so egui owns
+//! the hierarchy, indentation, and the triangle expander. The former
+//! box-drawing connector glyphs and the single GLOBAL value column are gone;
+//! value alignment is now PER GROUP (see `layout::value_column_width`). The
+//! existing per-key value widgets, provenance/LOCKED badge, staged marker, and
+//! Reset control are RE-HOMED unchanged inside each header body.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use eframe::egui;
 use ff_config::layer::ConfigLayer;
@@ -10,34 +19,102 @@ use ff_config::schema::SchemaEntry;
 use ff_config::ConfigHandle;
 
 use super::keyboard::{config_keyboard_effects, tree_has_keyboard};
-use super::layout::{aligned_left_segment, key_label, value_column_width, Connector};
+use super::layout::{aligned_left_segment, value_column_width};
 use super::widgets::render_widget;
 use super::{
     filter_field_id, reconcile_cursor, visible_rows, ConfigNodeId, ConfigPanelState, TreeEntry,
 };
 use crate::shell::workspace_context::ShellRequest;
 
-/// Validates: Requirement 15.1-15.8; project-master Requirement 11.8
+/// Validates: Requirement 15.1-15.8; Requirement 22.1-22.11; project-master Requirement 11.8
 pub fn render(
     ui: &mut egui::Ui,
     state: &mut ConfigPanelState,
     config: &ConfigHandle,
     requests: &mut Vec<ShellRequest>,
 ) {
+    render_header_area(ui, state, requests);
+
+    // Exactly ONE horizontal rule demarcates the header area from the tree
+    // body (AC 22.1).
+    ui.separator();
+
+    // == Collect schema entries + build the Config_Tree rows ===
+    let schema_entries = config.list_schema_entries();
+    let entry_by_key: HashMap<String, SchemaEntry> = schema_entries
+        .iter()
+        .map(|e| (e.key.clone(), e.clone()))
+        .collect();
+    // Reduced entries for the pure tree model (key + description only).
+    let tree_entries: Vec<TreeEntry> = schema_entries
+        .iter()
+        .map(|e| TreeEntry {
+            key: e.key.clone(),
+            description: e.description.clone(),
+        })
+        .collect();
+
+    // Visible_Rows drives the KEYBOARD cursor/navigation (respects collapsed);
+    // the grouped map below drives the CollapsingHeader RENDER (holds every
+    // matching key per group, egui hides a collapsed group's body).
+    let rows = visible_rows(&tree_entries, &state.filter, &state.collapsed);
+
+    // Rebuild the per-frame key -> widget-id map fresh each frame.
+    state.widget_ids.clear();
+
+    // == Keyboard tree navigation (CR-CH-039) ===
+    reconcile_cursor(&rows, &rows, &mut state.cursor);
+    if tree_has_keyboard(ui, &rows) {
+        config_keyboard_effects(ui, state, &rows);
+    }
+
+    // == Render the tree -- egui-native CollapsingHeader per group (Req 22) ===
+    let groups = grouped_visible_keys(&tree_entries, &state.filter);
+    let gctx = GroupCtx {
+        entry_by_key: &entry_by_key,
+        cursor: state.cursor.clone(),
+        selection_stroke: ui.visuals().selection.stroke,
+    };
+    egui::ScrollArea::vertical().show(ui, |ui| {
+        for (ns, keys) in &groups {
+            render_group(ui, state, config, &gctx, ns, keys);
+        }
+    });
+}
+
+/// The per-frame render context shared by every group: the schema-entry lookup,
+/// the current Tree_Cursor, and the selection stroke used for the cursor
+/// highlight. Bundled into one borrow so `render_group` stays within the
+/// argument-count limit.
+struct GroupCtx<'a> {
+    entry_by_key: &'a HashMap<String, SchemaEntry>,
+    cursor: Option<ConfigNodeId>,
+    selection_stroke: egui::Stroke,
+}
+
+/// Render the demarcated header area above the tree (AC 22.1, 22.2): the Filter
+/// field (the FIRST interior control, `filter_field_id()`), the Save
+/// affordance, the non-interactive `Unsaved edits : yes|no` row, any persist
+/// error, and the Source File indicator. The `Command ===>` line is owned by
+/// the shell above this panel.
+fn render_header_area(
+    ui: &mut egui::Ui,
+    state: &mut ConfigPanelState,
+    requests: &mut Vec<ShellRequest>,
+) {
     // == Filter + Save bar -- Req 15.7; save-convention Req 11.8 ===
     ui.horizontal(|ui| {
         ui.label(ff_i18n::t("ff-desktop-config-panel-filter"));
         // Stable id so Tab focus round-trips and the shell can anchor the
-        // command-field -> first-interior boundary here (B058).
+        // command-field -> first-interior boundary here (B058, AC 22.10).
         ui.add(egui::TextEdit::singleline(&mut state.filter).id(filter_field_id()));
         if ui.small_button("X").clicked() {
             state.filter.clear();
         }
 
-        // SAVE affordance (project-master Req 11.8): the Save button enqueues the
-        // SAVE command, so it gates persistence through the EXACT same single
-        // dispatch seam as the typed SAVE verb (framework-conformance: no bespoke
-        // intercept). Enabled only when there are unsaved buffered edits.
+        // SAVE affordance (project-master Req 11.8): enqueues the SAVE command so
+        // persistence gates through the EXACT same single dispatch seam as the
+        // typed SAVE verb. Enabled only when there are unsaved buffered edits.
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let dirty = state.is_dirty();
             ui.add_enabled_ui(dirty, |ui| {
@@ -73,117 +150,88 @@ pub fn render(
             ui.monospace(user_path.to_string_lossy().as_ref());
         });
     }
+}
 
-    // Exactly ONE horizontal rule demarcates the header area from the tree
-    // body (AC 22.1).
-    ui.separator();
+/// Render one namespace group as an egui-native collapsible section
+/// (AC 22.3, 22.4, 22.8). The header shows the bracketed `[<DisplayName>]` label
+/// with egui's native triangle expander; its open-state is DRIVEN from the
+/// existing per-namespace `collapsed` model (keeping the keyboard reducer and
+/// the mouse toggle in sync), and a click on the header toggles that same model.
+/// Inside the body, keys are rendered with a PER-GROUP aligned Value_Column.
+fn render_group(
+    ui: &mut egui::Ui,
+    state: &mut ConfigPanelState,
+    config: &ConfigHandle,
+    gctx: &GroupCtx<'_>,
+    ns: &str,
+    keys: &[String],
+) {
+    let expanded = !state.collapsed.get(ns).copied().unwrap_or(false);
+    let header = format!("[{}] ({})", ns_display_name(ns), keys.len());
+    let is_group_cursor = gctx.cursor.as_ref() == Some(&ConfigNodeId::Namespace(ns.to_string()));
+    // Per-group Value_Column over THIS group's visible keys (AC 22.5, 22.6).
+    let column = value_column_width(keys);
 
-    // == Collect schema entries + build the Config_Tree rows ===
-    let schema_entries = config.list_schema_entries();
-    // Full entries keyed for lookup while rendering a row.
-    let entry_by_key: HashMap<String, SchemaEntry> = schema_entries
-        .iter()
-        .map(|e| (e.key.clone(), e.clone()))
-        .collect();
-    // Reduced entries for the pure tree model (key + description only).
-    let tree_entries: Vec<TreeEntry> = schema_entries
-        .iter()
-        .map(|e| TreeEntry {
-            key: e.key.clone(),
-            description: e.description.clone(),
-        })
-        .collect();
-
-    let rows = visible_rows(&tree_entries, &state.filter, &state.collapsed);
-
-    // Rebuild the per-frame key -> widget-id map fresh each frame.
-    state.widget_ids.clear();
-
-    // == Keyboard tree navigation (CR-CH-039) ===
-    // Reconcile the cursor against the freshly built rows, then run the
-    // keyboard driver ONLY when the tree owns the keyboard (not the Filter field
-    // or a key widget) so typing is never hijacked (Requirement 21.9, 21.10).
-    reconcile_cursor(&rows, &rows, &mut state.cursor);
-    if tree_has_keyboard(ui, &rows) {
-        config_keyboard_effects(ui, state, &rows);
-    }
-
-    // == Compute the Value_Column once per frame (AC 22.5, 22.6) =============
-    // The column is the max key-label width over the CURRENTLY VISIBLE key rows
-    // (the freshly built `rows`), so expand/collapse and filter changes
-    // recompute it automatically. Connectors are equal width, so the connector
-    // chosen here does not affect the width; we use the real last-child
-    // connector for each row for consistency.
-    let visible_key_labels: Vec<String> = rows
-        .iter()
-        .enumerate()
-        .filter_map(|(i, row)| match &row.id {
-            ConfigNodeId::Key(key) => Some(key_label(connector_for_row(&rows, i), key)),
-            ConfigNodeId::Namespace(_) => None,
-        })
-        .collect();
-    let column = value_column_width(&visible_key_labels);
-
-    // == Render each row -- bracketed group headers + key entries -- Req 22 ===
-    let cursor = state.cursor.clone();
-    let selection_stroke = ui.visuals().selection.stroke;
-    egui::ScrollArea::vertical().show(ui, |ui| {
-        for (i, row) in rows.iter().enumerate() {
-            let is_cursor = cursor.as_ref() == Some(&row.id);
-            match &row.id {
-                ConfigNodeId::Namespace(ns) => {
-                    // Count the keys under this namespace (matching the filter).
-                    let count = tree_entries
-                        .iter()
-                        .filter(|e| namespace_of(&e.key) == *ns && entry_matches(e, &state.filter))
-                        .count();
-                    // Bracketed group header `[<DisplayName>]` with the existing
-                    // expand/collapse arrow and count (AC 22.3), still a
-                    // clickable selectable_label toggling collapsed[ns].
-                    let arrow = if row.expanded { "v" } else { ">" };
-                    let header = format!("{} [{}] ({})", arrow, ns_display_name(ns), count);
-                    let resp = ui.selectable_label(is_cursor, egui::RichText::new(header).strong());
-                    if resp.clicked() {
-                        // Mouse toggles the SAME collapsed state the keyboard writes.
-                        let now = state.collapsed.get(ns).copied().unwrap_or(false);
-                        state.collapsed.insert(ns.clone(), !now);
-                        state.cursor = Some(ConfigNodeId::Namespace(ns.clone()));
-                    }
-                    paint_cursor_highlight(ui, &resp, is_cursor, selection_stroke);
-                }
-                ConfigNodeId::Key(key) => {
-                    if let Some(entry) = entry_by_key.get(key) {
-                        let connector = connector_for_row(&rows, i);
-                        // No ui.indent wrapper: the connector prefix conveys
-                        // depth (design D6).
-                        let resp =
-                            render_key_row(ui, state, config, entry, connector, column, is_cursor);
-                        paint_cursor_highlight(ui, &resp, is_cursor, selection_stroke);
-                    }
+    // egui-native CollapsingHeader with its default triangle expander. `.open`
+    // is forced from the authoritative per-namespace `collapsed` model each
+    // frame, so the keyboard reducer and the mouse toggle stay in sync (AC
+    // 22.8); the header's own click response is read back to toggle that same
+    // model. egui owns the hierarchy, indentation, and expander -- the former
+    // box-drawing connector glyphs are gone (Req 22 superseding delta).
+    let coll = egui::CollapsingHeader::new(egui::RichText::new(&header).strong())
+        .id_salt(("config_group", ns))
+        .open(Some(expanded))
+        .show(ui, |ui| {
+            for key in keys {
+                if let Some(entry) = gctx.entry_by_key.get(key) {
+                    let is_cursor = gctx.cursor.as_ref() == Some(&ConfigNodeId::Key(key.clone()));
+                    let resp = render_key_row(ui, state, config, entry, column, is_cursor);
+                    paint_cursor_highlight(ui, &resp, is_cursor, gctx.selection_stroke);
                 }
             }
-        }
-    });
-}
+        });
 
-/// Pick the box-drawing connector for the key row at index `i`: `Last` when the
-/// NEXT row is not a `Key` (end of the group or end of the list), else `Tee`
-/// (design D4 O(1) look-ahead over the single pass; no change to `visible_rows`).
-fn connector_for_row(rows: &[super::ConfigRow], i: usize) -> Connector {
-    let is_last_child = match rows.get(i + 1) {
-        Some(next) => !matches!(next.id, ConfigNodeId::Key(_)),
-        None => true,
-    };
-    if is_last_child {
-        Connector::Last
-    } else {
-        Connector::Tee
+    // A click anywhere on the header toggles the SAME `collapsed` state the
+    // keyboard writes (AC 22.8). `.open(Some(..))` forces state from the model,
+    // so this click is the single authoritative mutation.
+    if coll.header_response.clicked() {
+        let now = state.collapsed.get(ns).copied().unwrap_or(false);
+        state.collapsed.insert(ns.to_string(), !now);
+        state.cursor = Some(ConfigNodeId::Namespace(ns.to_string()));
     }
+    paint_cursor_highlight(
+        ui,
+        &coll.header_response,
+        is_group_cursor,
+        gctx.selection_stroke,
+    );
 }
 
-/// Whether an entry matches the (already-lowercased-inside) filter -- key OR
-/// description substring; empty filter matches everything. Kept here for the
-/// namespace key-count display; the tree module has its own copy for its rows.
+/// Group the filter-matching schema keys by namespace, sorted by namespace and
+/// by key within each group -- the SAME grouping + ordering `visible_rows`
+/// produces, but holding EVERY matching key per group (not gated by collapse)
+/// because egui's `CollapsingHeader` hides a collapsed group's body (AC 22.7).
+fn grouped_visible_keys(tree_entries: &[TreeEntry], filter: &str) -> Vec<(String, Vec<String>)> {
+    let mut groups: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for e in tree_entries {
+        if entry_matches(e, filter) {
+            groups
+                .entry(namespace_of(&e.key))
+                .or_default()
+                .push(e.key.clone());
+        }
+    }
+    groups
+        .into_iter()
+        .map(|(ns, mut keys)| {
+            keys.sort();
+            (ns, keys)
+        })
+        .collect()
+}
+
+/// Whether an entry matches the filter -- key OR description substring; empty
+/// filter matches everything.
 fn entry_matches(entry: &TreeEntry, filter: &str) -> bool {
     if filter.is_empty() {
         return true;
@@ -206,12 +254,12 @@ fn paint_cursor_highlight(
     }
 }
 
-/// Render a single schema entry key row as the LOCKED two-line tree block
-/// (design D6): line 1 is the aligned connector+key+":"+value row (the key a
-/// frameless selectable monospace control, the value widget starting at the
-/// Value_Column); line 2 is the selectable description plus the right-to-left
-/// provenance/LOCKED badge, staged `*`, and Reset block. Returns the response of
-/// the vertical block so the caller can paint the cursor highlight.
+/// Render a single schema entry key row inside a group body: line 1 is the
+/// per-group-aligned key + ":" + value widget (the key a frameless selectable
+/// monospace control), line 2 is the selectable description plus the
+/// right-to-left provenance/LOCKED badge, staged `*` marker, and Reset block.
+/// Re-homed unchanged from the pre-CollapsingHeader renderer (AC 22.9); only the
+/// box-drawing connector argument is removed.
 ///
 /// Validates: Requirement 22.4, 22.5, 22.9; Requirement 14.2, 15.3-15.6, 18.6
 fn render_key_row(
@@ -219,7 +267,6 @@ fn render_key_row(
     state: &mut ConfigPanelState,
     config: &ConfigHandle,
     entry: &SchemaEntry,
-    connector: Connector,
     column: usize,
     is_cursor: bool,
 ) -> egui::Response {
@@ -243,16 +290,12 @@ fn render_key_row(
     };
 
     ui.vertical(|ui| {
-        // -- Line 1: aligned key -> `:` -> value (NO right-to-left block) ----
+        // -- Line 1: per-group-aligned key -> `:` -> value -------------------
         ui.horizontal(|ui| {
             // The key stays a SELECTABLE control (Req 14.2 / AC 22.9). Frameless
-            // + monospace so char-count padding maps directly to pixels and the
-            // `:` lands at the Value_Column on every row (design D6, the
-            // calendar_header idiom).
-            let segment = aligned_left_segment(connector, key, column);
-            // The key stays a selectable control for Req 14.2; its own click
-            // response is not needed (the row's cursor highlight is painted by
-            // the caller against the vertical block's rect).
+            // + monospace so char-count padding maps to pixels and the `:` lands
+            // at the per-group Value_Column on every row of the group.
+            let segment = aligned_left_segment(key, column);
             let _ = ui.selectable_label(is_cursor, egui::RichText::new(segment).monospace());
 
             // Value widget starts at the Value_Column -- disabled for locked
@@ -363,23 +406,64 @@ mod tests {
         assert_eq!(namespace_of("no_dot"), "no_dot");
     }
 
+    // Validates: Requirement 22.3 -- display name capitalises the namespace.
+    #[test]
+    fn ns_display_name_capitalises() {
+        assert_eq!(ns_display_name("editor"), "Editor");
+        assert_eq!(ns_display_name("vfs"), "Vfs");
+        assert_eq!(ns_display_name("accessibility"), "Accessibility");
+    }
+
+    // Validates: Requirement 22.7 -- grouping holds EVERY matching key per group
+    // (not gated by collapse), namespaces and keys both sorted, filter applied.
+    #[test]
+    fn grouped_visible_keys_groups_sorts_and_filters() {
+        let entries = vec![
+            TreeEntry {
+                key: "editor.tab_size".into(),
+                description: "Tab size".into(),
+            },
+            TreeEntry {
+                key: "editor.indent_style".into(),
+                description: "Indent".into(),
+            },
+            TreeEntry {
+                key: "logging.level".into(),
+                description: "Log level".into(),
+            },
+        ];
+        let groups = grouped_visible_keys(&entries, "");
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].0, "editor");
+        // keys sorted within the group (indent_style before tab_size).
+        assert_eq!(
+            groups[0].1,
+            vec![
+                "editor.indent_style".to_string(),
+                "editor.tab_size".to_string()
+            ]
+        );
+        assert_eq!(groups[1].0, "logging");
+
+        // Filter by description narrows which groups/keys appear.
+        let filtered = grouped_visible_keys(&entries, "log level");
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].0, "logging");
+    }
+
     // Validates: Requirement 15.7 -- filter_hides_non_matching_keys (logic test)
     #[test]
     fn filter_hides_non_matching_keys() {
-        let filter = "tab";
-        let key1 = "editor.tab_size";
-        let key2 = "logging.level";
-        let desc1 = "Tab size in spaces";
-        let desc2 = "Log level";
-
-        let filter_lower = filter.to_lowercase();
-        let matches1 = key1.to_lowercase().contains(&filter_lower)
-            || desc1.to_lowercase().contains(&filter_lower);
-        let matches2 = key2.to_lowercase().contains(&filter_lower)
-            || desc2.to_lowercase().contains(&filter_lower);
-
-        assert!(matches1, "editor.tab_size should match filter 'tab'");
-        assert!(!matches2, "logging.level should not match filter 'tab'");
+        let e1 = TreeEntry {
+            key: "editor.tab_size".into(),
+            description: "Tab size in spaces".into(),
+        };
+        let e2 = TreeEntry {
+            key: "logging.level".into(),
+            description: "Log level".into(),
+        };
+        assert!(entry_matches(&e1, "tab"));
+        assert!(!entry_matches(&e2, "tab"));
     }
 
     // Validates: Requirement 15.3 -- provenance badge shows correct layer label
@@ -391,14 +475,6 @@ mod tests {
         assert_eq!(layer_label(ConfigLayer::System), "System");
         assert_eq!(layer_label(ConfigLayer::Profile), "Profile");
         assert_eq!(layer_label(ConfigLayer::Workspace), "Workspace");
-    }
-
-    // Validates: Requirement 15.3 -- widget type selected for bool
-    #[test]
-    fn widget_type_selected_for_bool() {
-        use ff_config::error::ValueType;
-        // Boolean type maps to checkbox -- verified by the match arm in render_widget
-        assert_eq!(ValueType::Boolean, ValueType::Boolean);
     }
 
     // Validates: Requirement 15.3 -- widget type selected for enum string
@@ -415,7 +491,6 @@ mod tests {
             ]),
             pattern: None,
         };
-        // Has allowed_values -> should use ComboBox
         assert!(constraints.allowed_values.is_some());
     }
 
@@ -429,27 +504,19 @@ mod tests {
             allowed_values: None,
             pattern: None,
         };
-        // Has min and max -> should use Slider
         assert!(constraints.min.is_some() && constraints.max.is_some());
     }
 
     // Validates: Requirement 15.6 -- reset button hidden when at default (provenance check)
     #[test]
     fn reset_button_hidden_when_at_default() {
-        // The reset button is only enabled when provenance != "Default".
         let at_default = layer_label(ConfigLayer::Defaults) == "Default";
         assert!(at_default, "Default layer should produce 'Default' label");
-        // Button is disabled (add_enabled_ui(!is_at_default, ...)) when at_default is true.
-        assert!(at_default, "reset button is disabled at the Default layer");
     }
 
     // Validates: Requirement 15.10 -- F3/END returns to POM (routing test)
     #[test]
     fn f3_returns_to_pom_via_end_command() {
-        // F3 is mapped to "END" in the default key map.
-        // "END" is not currently a shell-level intercept for ConfigPanel,
-        // but the F3 key binding routes through handle_command("END").
-        // This test verifies the key map binding exists.
         use ff_keys::{FunctionKey, KeyBinding, KeyMap};
         let mut map = KeyMap::empty("test");
         map.set(

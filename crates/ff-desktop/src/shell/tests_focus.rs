@@ -1564,13 +1564,11 @@ fn full_shell_config_first_tab_focuses_filter_field() {
 // === Requirement 22: Config tree re-skin -- bracketed headers + collapse ====
 
 /// Compute the exact rendered label of the `[Editor]` group header for the
-/// current config schema, matching `render.rs`'s
-/// `format!("{arrow} [{name}] ({count})")`. Pure helper so the assertion below
-/// does not hardcode the editor-key count (it is schema-driven).
-fn editor_group_header_label(
-    harness: &egui_kittest::Harness<'_, super::WorkbenchShell>,
-    expanded: bool,
-) -> String {
+/// current config schema, matching `render.rs`'s `format!("[{name}] ({count})")`
+/// (the egui-native CollapsingHeader label; no box-drawing arrow -- egui draws
+/// the triangle expander). Pure helper so the assertion below does not hardcode
+/// the editor-key count (it is schema-driven).
+fn editor_group_header_label(harness: &egui_kittest::Harness<'_, super::WorkbenchShell>) -> String {
     let count = harness
         .state()
         .config_handle
@@ -1578,14 +1576,44 @@ fn editor_group_header_label(
         .iter()
         .filter(|e| e.key.split('.').next() == Some("editor"))
         .count();
-    let arrow = if expanded { "v" } else { ">" };
-    format!("{} [Editor] ({})", arrow, count)
+    format!("[Editor] ({})", count)
+}
+
+/// The description text of the FIRST editor key (sorted by key), which renders
+/// verbatim as a selectable child-row control only while the Editor group is
+/// EXPANDED. Used to prove collapse hides the group's children (the egui-native
+/// CollapsingHeader hides its body).
+fn first_editor_key_description(
+    harness: &egui_kittest::Harness<'_, super::WorkbenchShell>,
+) -> String {
+    let mut editor: Vec<(String, String)> = harness
+        .state()
+        .config_handle
+        .list_schema_entries()
+        .iter()
+        .filter(|e| e.key.split('.').next() == Some("editor"))
+        .map(|e| (e.key.clone(), e.description.clone()))
+        .collect();
+    editor.sort_by(|a, b| a.0.cmp(&b.0));
+    editor
+        .first()
+        .map(|(_, desc)| desc.clone())
+        .expect("the editor namespace has at least one key")
 }
 
 // Validates: Requirement 22.3 -- the Config tree renders each namespace group as
-// a bracketed `[<DisplayName>]` header. Requirement 22.8 -- collapsing a group
-// (the existing collapsed-state model) hides its child key rows; the header
-// arrow flips and the expanded-form header label is no longer present.
+// an egui-native collapsible `[<DisplayName>]` header (the triangle expander is
+// egui-owned). Requirement 22.8 -- collapsing a group via the existing
+// collapsed-state model hides its child key rows while the bracketed header
+// itself stays rendered.
+//
+// NOTE (justified manual exception for the owner's visual gate): this test
+// drives the underlying `collapsed` open-state directly rather than clicking the
+// native triangle through the kittest harness, because the CollapsingHeader
+// triangle is an egui-internal hit target that is awkward to click headlessly.
+// The collapse BEHAVIOUR (children hidden, header kept) is asserted here; the
+// click-to-toggle wiring and pixel-exact triangle appearance are covered by the
+// owner's manual visual check.
 #[test]
 fn full_shell_config_tree_renders_bracketed_group_headers_and_collapse_hides_children() {
     use crate::tab_state::KindTag;
@@ -1601,11 +1629,18 @@ fn full_shell_config_tree_renders_bracketed_group_headers_and_collapse_hides_chi
         "CONFIG opens the flat Config panel"
     );
 
-    // AC 22.3: the bracketed, expanded `[Editor]` group header is rendered.
-    let expanded_label = editor_group_header_label(&harness, true);
+    // AC 22.3: the bracketed `[Editor]` group header is rendered.
+    let header_label = editor_group_header_label(&harness);
     assert!(
-        harness.query_by_label(&expanded_label).is_some(),
-        "the Config tree must render the bracketed group header '{expanded_label}'"
+        harness.query_by_label(&header_label).is_some(),
+        "the Config tree must render the bracketed group header '{header_label}'"
+    );
+    // AC 22.4/22.9: while expanded, the group's first child row (its selectable
+    // description) is rendered.
+    let child_desc = first_editor_key_description(&harness);
+    assert!(
+        harness.query_by_label(&child_desc).is_some(),
+        "while expanded the Editor group must render its child row '{child_desc}'"
     );
 
     // AC 22.8: collapse the Editor group via the existing collapsed-state model
@@ -1619,17 +1654,16 @@ fn full_shell_config_tree_renders_bracketed_group_headers_and_collapse_hides_chi
         harness.run();
     }
 
-    // The expanded-form header is gone; the collapsed-form header (arrow `>`)
-    // is now rendered -- proving the header re-skin tracks collapse state and
-    // the children are hidden (the expanded label row no longer exists).
+    // The bracketed header is still rendered (egui keeps the header, hides the
+    // body); the child row is gone -- proving collapse tracks the model and the
+    // children are hidden.
     assert!(
-        harness.query_by_label(&expanded_label).is_none(),
-        "after collapse the expanded-form group header must no longer render"
+        harness.query_by_label(&header_label).is_some(),
+        "after collapse the bracketed group header must still render"
     );
-    let collapsed_label = editor_group_header_label(&harness, false);
     assert!(
-        harness.query_by_label(&collapsed_label).is_some(),
-        "after collapse the collapsed-form header '{collapsed_label}' must render"
+        harness.query_by_label(&child_desc).is_none(),
+        "after collapse the Editor group's child row '{child_desc}' must be hidden"
     );
 }
 

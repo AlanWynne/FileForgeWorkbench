@@ -624,18 +624,30 @@ the standard desktop tree-control convention.
 
 ### Requirement 22: Config View -- Demarcated Tree-View Re-skin
 
+> **REVISED (config-tree-collapsing branch).** The original wording mandated
+> literal box-drawing child connectors (U+2500-U+257F) and a SINGLE GLOBAL
+> aligned value column. That approach was font-metric-fragile and did not track
+> egui's indentation. Requirement 22 now mandates **egui-native collapsible
+> `[<Group>]` headers** (egui draws the triangle expander and owns indentation)
+> with **PER-GROUP aligned value columns**. Each changed criterion is annotated
+> "(REVISED ...)" below; AC 22.10 (first-Tab focus) and all preservation criteria
+> (22.2, 22.3, 22.7, 22.8, 22.9, 22.11) are retained unchanged in intent.
+
 **User Story:** As a workbench user, I want the Configuration Context to be
-clearly demarcated into a header area and a tree body, with bracketed group
-headers, box-drawing child connectors, and the values lined up in one vertical
-column, so that the configuration browser reads like a standard, well-structured
-tree control instead of an undifferentiated list.
+clearly demarcated into a header area and a tree body, with egui-native
+collapsible bracketed group headers, and the values within each group lined up in
+a vertical column, so that the configuration browser reads like a standard,
+well-structured tree control instead of an undifferentiated list.
 
 **Source:** owner request ("The configuration editor is not clear and well
 demarcated between areas ... create a tree view ... where branches can be
 expanded and collapsed very much like they can currently but clearly represented
 ... the values for each node should be aligned vertically"). The grouping
 mechanism is explicitly to be preserved ("that mechanism should just continue,
-it is just the representation that I want changed").
+it is just the representation that I want changed"). The follow-up owner request
+on this branch adopts egui's CollapsingHeader best practice in place of the
+hand-drawn box-drawing connectors ("Surely egui has some existing framework to
+support this kind of thing ... Let egui handle indentation and expansion state").
 
 > **Scope note.** This is a VISUAL/representation change ONLY. It REFINES how the
 > Config View from Requirements 15, 20, and 21 is drawn; it does NOT replace
@@ -647,24 +659,31 @@ it is just the representation that I want changed").
 
 **Glossary (reuses Requirement 21 terms):** Config_Tree, Tree_Cursor,
 Visible_Rows as defined in Requirement 21. Additional term:
-- **Value_Column** -- the single vertical column at which the `:` separator and
-  the value widget of every currently-visible key row are aligned, positioned
-  just past the widest visible key label (connector prefix + key text).
+- **Value_Column** -- (REVISED: now PER GROUP) the vertical column WITHIN A GROUP
+  at which the `:` separator and the value widget of that group's currently-visible
+  key rows are aligned, positioned just past the group's widest visible key text.
+  There is no longer a single global column across groups (egui's per-header
+  indentation makes a cross-group pixel column meaningless).
 
 #### Functional intent
 
 - **Demarcated header area.** A header area (the `Command ===>` line owned by the
   shell, a `Filter` row, and an `Unsaved edits : <yes|no>` row) separated from
   the tree body by a horizontal rule.
-- **Bracketed group headers.** Each of the existing namespace groups renders as a
-  bracketed header `[<DisplayName>]` (the 8 confirmed groups: `[Accessibility]`,
-  `[Catalogs]`, `[Editor]`, `[Logging]`, `[Menu]`, `[Theme]`, `[Ui]`, `[Vfs]`),
-  in the existing sorted order, each still clickable to expand/collapse.
-- **Box-drawing child connectors.** Under an expanded group, each child key
-  renders with box-drawing tree connectors (U+2500-U+257F), in a monospace
-  context so they align.
-- **Vertically aligned Value_Column.** The `:` and value of all visible key rows
-  line up in one column, recomputed from the currently-visible rows.
+- **egui-native collapsible group headers.** Each of the existing namespace
+  groups renders as an egui `CollapsingHeader` labelled `[<DisplayName>]` (the 8
+  confirmed groups: `[Accessibility]`, `[Catalogs]`, `[Editor]`, `[Logging]`,
+  `[Menu]`, `[Theme]`, `[Ui]`, `[Vfs]`), in the existing sorted order, with egui's
+  NATIVE triangle expander and egui-owned indentation; each still clickable to
+  expand/collapse. (REVISED: replaces the hand-drawn `v`/`>` arrow + box-drawing
+  connectors.)
+- **egui-owned hierarchy, no box-drawing glyphs.** egui's `CollapsingHeader`
+  provides the expander and the indentation of the group's child rows. The former
+  box-drawing connector glyphs (U+2500-U+257F) are REMOVED. (REVISED.)
+- **Per-group vertically aligned value column.** Within each group's body, the `:`
+  and value of that group's visible key rows line up in one column, recomputed
+  from that group's currently-visible keys. (REVISED: per-group, not a single
+  global column.)
 - **Preserve everything else.** Grouping mechanism, expand/collapse, per-key edit
   controls, the SELECTABLE key name, the VISIBLE + SELECTABLE key description
   (Requirement 14.2), the focus contract, and the save convention are unchanged.
@@ -679,22 +698,28 @@ a horizontal rule, that shows the `Command ===>` line, a `Filter` row, and an
 show `yes`; WHEN it is empty, it SHALL show `no` -- i.e. the indicator SHALL
 equal `ConfigPanelState.is_dirty()`.
 
-22.3. THE Config View SHALL render each top-level namespace group as a bracketed
-header `[<DisplayName>]` using the existing display-name capitalisation, in the
-existing sorted group order from `visible_rows`.
+22.3. (REVISED) THE Config View SHALL render each top-level namespace group as an
+egui-native `CollapsingHeader` labelled `[<DisplayName>]` (using the existing
+display-name capitalisation), in the existing sorted group order from
+`visible_rows`, with egui's NATIVE triangle expander. (The former `v`/`>` text
+arrow is removed; egui draws the expander.)
 
-22.4. WHEN a group is EXPANDED, THE Config View SHALL render each of its child
-key nodes with box-drawing tree connectors (U+2500-U+257F): a branch-tee
-connector for every child except the last, and an L-connector for the LAST child
-of the group.
+22.4. (REVISED) WHEN a group is EXPANDED, THE Config View SHALL render its child
+key nodes inside the `CollapsingHeader` body, with egui providing the hierarchy
+indication (the triangle expander) and the body indentation. The Config View
+SHALL NOT paint box-drawing connector glyphs (U+2500-U+257F); the former
+branch-tee / L-connector rendering is OBSOLETE and removed.
 
-22.5. THE Config View SHALL align the `:` separator and the value text of ALL
-currently visible key rows into a single vertical Value_Column, positioned just
-past the widest visible key label (connector prefix + key).
+22.5. (REVISED) THE Config View SHALL align the `:` separator and the value text
+of each group's currently-visible key rows into a PER-GROUP vertical
+Value_Column, positioned just past that group's widest visible key text. (No
+single global column across groups -- egui's per-header indentation makes a
+cross-group pixel column meaningless.)
 
-22.6. WHEN the set of visible rows changes (a group is expanded or collapsed, or
-the filter changes), THE Config View SHALL recompute the Value_Column position
-from the new set of currently visible rows.
+22.6. (REVISED) WHEN the set of a group's visible rows changes (that group is
+expanded or collapsed, or the filter changes which of its keys match), THE Config
+View SHALL recompute THAT group's Value_Column position from its
+currently-visible keys.
 
 22.7. THE grouping mechanism (namespace derivation and group membership via
 `namespace_of` + `visible_rows`) and the 8 confirmed groups (Accessibility,
@@ -721,9 +746,10 @@ egui_kittest test, extended/kept green).
 22.11. THE SAVE / END / RETURN semantics SHALL be unchanged (SAVE commits+stays,
 END commits+exits, RETURN discards+exits); no autosave SHALL be introduced.
 
-22.12. THE Value_Column position SHALL be produced by a pure, egui-independent
-function over the visible-row key labels (max-width -> column), unit-tested for:
-single group, multiple groups, filtered subset, and the empty set.
+22.12. (REVISED) THE PER-GROUP Value_Column position SHALL be produced by a pure,
+egui-independent function over a group's visible key labels (max-width ->
+column), unit-tested for: an empty group, a single key, the widest-key case, and
+a filtered subset.
 
 #### Out of scope (Requirement 22)
 

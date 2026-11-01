@@ -650,6 +650,17 @@ Reset block on line 2 so the width-greedy block never competes with the value
 widget. NO `.rs` is edited in the spec step; these tasks are for the
 implementation step.
 
+> **SUPERSEDED (config-tree-collapsing branch).** Tasks 37-40 below delivered the
+> box-drawing-STRING renderer (commit a3059de). That approach is now SUPERSEDED by
+> the egui-native `CollapsingHeader` rebuild in **Phase (config-tree-collapsing)**
+> at the end of this section (design delta D10/D11; requirements 22.3-22.6, 22.12
+> REVISED). The box-drawing-connector specifics in tasks 37.1/37.3, 39.1-39.4 (the
+> `Connector` enum, `connector_prefix`, the `v`/`>` arrow, the global
+> `value_column_width`, the last-child look-ahead) are OBSOLETE and were removed.
+> Tasks 37-40 are left checked because they were genuinely completed at the time;
+> they are NOT un-checked, only annotated as superseded here. The preservation
+> tasks (38.1/38.2 header, 40.1 focus test, 40.3 compile-verify) carry forward.
+
 - [x] 37. Pure alignment module `config_panel/layout.rs` + unit tests (Req 22.4, 22.5, 22.6, 22.12)
   - [x] 37.1 Create `crates/ff-desktop/src/config_panel/layout.rs` with the pure, GUI-free API: `enum Connector { Tee, Last }`; `connector_prefix(Connector) -> &'static str` returning the four-cell `├── ` / `└── ` prefixes; `key_label(Connector, &str) -> String`; `value_column_width(&[String]) -> usize` (max char-count of the visible key labels + 1, 0 for empty); `aligned_left_segment(Connector, &str, usize) -> String` (key_label right-padded to the column then `" : "`)
     - Covers: Requirement 22.4, 22.5
@@ -680,4 +691,38 @@ implementation step.
   - [x] 40.2 Run the 400-line non-test check on `render.rs`; if the re-skin pushes it toward the budget, extract the per-row draw into a `render_key_row(...)` helper (and, if still over, a `config_panel/render_rows.rs`) before landing
     - Covers: NFR2 (rust-standards 400-line rule)
   - [x] 40.3 Scoped compile-verify (agent COMPILE-ONLY per the testing.md execution split), logs written under `_ignore/logs/` and read back: `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, and the new scoped `layout.rs` tests where quick (`cargo test -p ff-desktop layout`); the owner runs the authoritative full gate
+    - Covers: Requirement 22 (verification)
+
+## Phase (config-tree-collapsing) -- egui-native CollapsingHeader rebuild (Requirement 22, SUPERSEDES tasks 37-40)
+
+Rebuild the Config View tree with egui's native `CollapsingHeader` so egui owns
+the hierarchy, indentation, and the triangle expander. This SUPERSEDES the
+box-drawing-string renderer (design delta D10/D11; requirements 22.3-22.6, 22.12
+REVISED). STRICT visual re-skin: grouping mechanism, the 8 groups, expand/collapse
+behaviour, persistence, SAVE/END/RETURN semantics, the focus contract, the Req 21
+keyboard navigation, and every per-key value widget are preserved and only
+re-homed inside the CollapsingHeader body.
+
+- [x] 41. Slim `config_panel/layout.rs` to per-group pure helpers + unit tests (Req 22.5, 22.6, 22.12)
+  - [x] 41.1 Remove the obsolete connector API (`Connector`, `connector_prefix`, `TEE_PREFIX`/`LAST_PREFIX`, `key_label`). Keep `value_column_width(&[String]) -> usize` (now computed PER GROUP over that group's visible keys) and `aligned_left_segment(&str, usize) -> String` (key right-padded to the column then `" : "`, no connector)
+    - Covers: Requirement 22.5, 22.6
+  - [x] 41.2 Unit tests (`#[cfg(test)]`), each annotated `// Validates: Requirement 22.x`: `value_column_width` over an empty group (0), a single key, the widest-key case, and a filtered subset; `aligned_left_segment` lands the `:` at the same cell for keys of differing length within the group
+    - Covers: Requirement 22.5, 22.12
+
+- [x] 42. Rebuild the `config_panel/render.rs` tree body on egui `CollapsingHeader` (Req 22.3, 22.4, 22.5, 22.6, 22.7, 22.8, 22.9)
+  - [x] 42.1 Add `grouped_visible_keys(tree_entries, filter)` grouping filter-matching keys by namespace, sorted by namespace and by key, holding EVERY matching key per group (egui hides a collapsed body); keep `visible_rows` as the keyboard cursor model
+    - Covers: Requirement 22.7
+  - [x] 42.2 Render each group as `egui::CollapsingHeader::new("[DisplayName] (count)").id_salt(("config_group", ns)).open(Some(expanded))`; force open-state from the per-namespace `collapsed` model, read `header_response.clicked()` back to toggle that same model + set the Tree_Cursor; egui draws the native triangle expander (no `v`/`>` arrow, no box-drawing glyph)
+    - Covers: Requirement 22.3, 22.4, 22.8
+  - [x] 42.3 Inside each CollapsingHeader body, compute `column = value_column_width(keys_in_group)` and render each key via the preserved `render_key_row(ui, state, config, entry, column, is_cursor)` (connector arg removed); keep `paint_cursor_highlight` on group headers and key rows
+    - Covers: Requirement 22.4, 22.5, 22.6, 22.9
+  - [x] 42.4 Keep the header area (`render_header_area`: Filter field first, Save, `Unsaved edits : <yes|no>`, persist-error, Source-File) + ONE separator; make NO change to `tree.rs`, `widgets.rs`, `keyboard.rs`, `commit.rs`, shell dispatch, `ff-config`, `menus/settings.toml`, or persistence; keep `render.rs` under 400 non-test lines
+    - Covers: Requirement 22.1, 22.2, 22.7, 22.10, 22.11
+
+- [x] 43. Adapt the egui_kittest tests + scoped compile-verify (Req 22.3, 22.8, 22.10)
+  - [x] 43.1 Adapt `full_shell_config_tree_renders_bracketed_group_headers_and_collapse_hides_children` to the CollapsingHeader label `[Editor] (count)` (no arrow prefix); assert the bracketed header renders and collapsing via the `collapsed` model HIDES a child row while the header stays; note the drive-open-state manual exception for the native-triangle click
+    - Covers: Requirement 22.3, 22.8
+  - [x] 43.2 Keep `full_shell_config_first_tab_focuses_filter_field` GREEN (first Tab -> `filter_field_id()`, no phantom stop before the CollapsingHeader expanders)
+    - Covers: Requirement 22.10
+  - [x] 43.3 Scoped compile-verify (agent COMPILE-ONLY): `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, `cargo test -p ff-desktop layout`; logs under `_ignore/logs/` read back; owner runs the authoritative full gate + visual check (pixel-exact appearance + the native-triangle click are the justified manual exceptions)
     - Covers: Requirement 22 (verification)
