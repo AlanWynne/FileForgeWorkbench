@@ -119,8 +119,18 @@ impl WorkbenchShell {
                     crate::automation::ids::COMMAND_FIELD,
                     crate::automation::ControlState::with_value(&self.command_text),
                 );
+                // Bug 1 (config-snapshot-bugs.md) / master-screen-directive
+                // Req 4.4a: CONSUME the Enter event on submit so a background
+                // central-panel keyboard driver cannot ALSO act on it. Without
+                // this, the Config_Tree's per-frame keyboard driver (which owns
+                // the keyboard whenever a non-tree widget like THIS command field
+                // holds focus) would read the same Enter and collapse/activate
+                // the focused tree node -- so `SNAPSHOT`+Enter mutated the screen
+                // it was capturing. `consume_key` removes the event so only the
+                // command line acts on it (the same class of fix as the menu-bar
+                // arrow double-consume). Mirrors the shared-body path below.
                 if field_has_focus
-                    && ctx.input(|i| i.key_pressed(egui::Key::Enter))
+                    && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
                     && !self.command_text.is_empty()
                 {
                     let cmd = self.command_text.trim().to_string();
@@ -259,8 +269,12 @@ impl WorkbenchShell {
                 ctx.memory_mut(|m| m.request_focus(cmd_id));
             }
             let field_has_focus = response.has_focus() || response.lost_focus();
+            // Bug 1 / master-screen-directive Req 4.4a: CONSUME the Enter on
+            // submit so a background central-panel keyboard driver (e.g. the
+            // Config_Tree) cannot also act on the same Enter. See the primary
+            // `render_command_field` for the full rationale.
             if field_has_focus
-                && ctx.input(|i| i.key_pressed(egui::Key::Enter))
+                && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
                 && !command_text.is_empty()
             {
                 signal.submitted = Some(command_text.trim().to_string());

@@ -11,65 +11,150 @@
 //!
 //! Validates: screen-snapshot-scrm Requirement 2.1, 2.2, 3.1, 3.8, 4.1-4.6.
 
-use ff_screen_model::{Field, RenderOptions, ScreenModel, SnapshotFormat};
+use ff_screen_model::{RenderOptions, ScreenModel, SnapshotFormat};
 
 use crate::menu_workspace::MenuWorkspaceState;
 
 /// The full-screen chrome surrounding a Menu_Workspace's option list, built by
 /// the shell from its live logical state (NOT from egui) and folded into the
-/// snapshot so a POM/menu capture is the FULL screen a user sees, not a trimmed
-/// option list (screen-snapshot-scrm Requirement 3.9-3.13).
+/// snapshot so a POM/menu capture matches the LIVE ISPF screen (screen-snapshot
+/// -scrm Requirement 3.8-3.13).
 ///
-/// Every field is plain, already-rendered selectable text. The PF-key footer is
+/// The menu snapshot is a TWO-COLUMN ISPF body: the option rows on the LEFT and
+/// the right-hand block (calendar + Time + Day of Year) on the RIGHT of the same
+/// lines, the `Command ===>` line at the top, and the PF-key footer at the
+/// bottom.
+///
+/// The former window-title / menu-bar / tab-header / title-line "header chrome"
+/// fields were REMOVED: the owner's authoritative ISPF mock has NONE of that
+/// block -- just the title in the frame border, the command line, then the
+/// options. The title is already carried in `ScreenModel::title` (rendered in
+/// the top border), so it is never repeated in the body (Bug 2, owner
+/// correction 2026-11-01; supersedes the Phase 2A Req 3.9 header-chrome model
+/// FOR MENUS).
+///
+/// Every entry is plain, already-rendered selectable text. The PF-key footer is
 /// carried in `key_bar_lines`, which the shell leaves EMPTY when the
 /// Key_Label_Bar is hidden (pfshow off), so the capture reflects the live pfshow
 /// state (Requirement 3.10).
 #[derive(Debug, Default, Clone)]
 pub struct MenuScreenChrome {
-    /// The window chrome / OS title-bar text (Requirement 3.9).
-    pub window_title: String,
-    /// The menu-bar entries, in display order (Requirement 3.9).
-    pub menu_bar: Vec<String>,
-    /// The tab header tag, e.g. `[POM]` (Requirement 3.9).
-    pub tab_header: String,
-    /// The title line as the user sees it -- the descriptive display title
-    /// (Requirement 3.9). May duplicate the model title; kept explicit so the
-    /// capture records the on-screen title line.
-    pub title_line: String,
-    /// The calendar lines, when the menu shows a calendar (Requirement 3.9).
-    /// Empty when the menu hides the calendar (`show_calendar = false`).
-    pub calendar_lines: Vec<String>,
+    /// The RIGHT-column block, top-to-bottom: the calendar lines (month/year
+    /// header, weekday header, week rows) then the `Time` and `Day of Year`
+    /// lines. Built by the shell from the SAME calendar/time/day-of-year logic
+    /// the live POM uses (screen-snapshot-scrm Req 3.9). Empty when the menu
+    /// hides the calendar (`show_calendar = false`), in which case the body is
+    /// a single left column.
+    pub right_column: Vec<String>,
     /// The PF-key footer line(s), present ONLY when the Key_Label_Bar is shown
     /// (pfshow on). Empty when pfshow is off (Requirement 3.10).
     pub key_bar_lines: Vec<String>,
 }
 
-/// Build a logical [`ScreenModel`] from a Menu_Workspace's loaded state (the POM
-/// and every other menu Context share this shape). Each menu option becomes a
-/// [`Field`] whose label is the option key and whose value is
-/// "description (command)". A load error is surfaced as a message so the capture
-/// still reflects what the user sees.
+/// The gap, in spaces, between the padded left option column and the right-hand
+/// calendar column in the two-column menu body.
+const MENU_COLUMN_GAP: usize = 3;
+
+/// The total character width of the `Command ===>` input field (the underscore
+/// run after any typed text), matching the on-screen POM command field.
+const COMMAND_INPUT_WIDTH: usize = 119;
+
+/// Format one menu option row as the LIVE ISPF screen shows it:
+/// `{key} {shortname} : {description} ({command})`, e.g.
+/// `0 Settings : FFWB Settings and Client Parameters (Settings)`.
 ///
-/// `command_line` is the current `Command ===>` field content, threaded through
-/// so the snapshot matches the live screen (Requirement 3.8).
+/// The short name is the option's `command` label (there is no separate
+/// short-name field on `MenuOption`; the command IS the on-screen mnemonic, as
+/// the owner's mock shows -- `0 Settings`, `S SCRM`, `X X`). When an option has
+/// no command the description stands alone with no `(..)` suffix.
 ///
-/// Validates: Requirement 2.1, 3.1, 3.8.
-pub fn menu_workspace_screen_model(state: &MenuWorkspaceState, command_line: &str) -> ScreenModel {
+/// Validates: screen-snapshot-scrm Req 3.11, 3.12.
+fn option_row_text(key: &str, command: &str, description: &str) -> String {
+    let command = command.trim();
+    if command.is_empty() {
+        format!("{key} {description}")
+    } else {
+        format!("{key} {command} : {description} ({command})")
+    }
+}
+
+/// Compose the TWO-COLUMN menu body as exact verbatim lines: the option rows on
+/// the LEFT (each padded to a shared column width) and the right-hand block
+/// (calendar + Time + Day of Year) on the RIGHT of the same lines. Rows beyond
+/// the shorter column are padded so both columns stay aligned and never overlap.
+///
+/// `left` is the already-formatted option rows; `right` is the right-column
+/// block. The returned lines carry no command line and no footer -- the caller
+/// frames them with the command line on top and the PF footer at the bottom.
+///
+/// Validates: screen-snapshot-scrm Req 3.11, 3.13.
+fn compose_two_column_body(left: &[String], right: &[String]) -> Vec<String> {
+    if right.is_empty() {
+        // Calendar-less menu (e.g. Settings): a single left column.
+        return left.to_vec();
+    }
+    let left_width = left.iter().map(|l| l.chars().count()).max().unwrap_or(0);
+    let rows = left.len().max(right.len());
+    let mut out = Vec::with_capacity(rows);
+    for i in 0..rows {
+        let l = left.get(i).map(String::as_str).unwrap_or("");
+        let pad = left_width.saturating_sub(l.chars().count()) + MENU_COLUMN_GAP;
+        match right.get(i) {
+            Some(r) if !r.is_empty() => {
+                out.push(format!("{l}{}{r}", " ".repeat(pad)));
+            }
+            // No right-column content on this row: keep only the left text
+            // (trailing spaces trimmed by not padding a bare-left row).
+            _ => out.push(l.to_string()),
+        }
+    }
+    out
+}
+
+/// Build the FULL-screen logical model for a Menu_Workspace, matching the LIVE
+/// ISPF screen (screen-snapshot-scrm Req 3.8-3.13): the title in the frame
+/// border (from [`ScreenModel::title`]), then as verbatim body lines -- the
+/// `Command ===>` line, the TWO-COLUMN body (option rows on the LEFT, the
+/// calendar + Time + Day of Year on the RIGHT), blank spacer rows, and the
+/// PF-key footer at the bottom (present only when pfshow is on).
+///
+/// There is NO superfluous header block (window title / menu-bar echo / `[POM]`
+/// tag / duplicated title) -- the owner's authoritative mock has none, and the
+/// title already appears in the border (Bug 2, owner correction 2026-11-01).
+///
+/// The body is composed here as exact lines rather than through the generic
+/// label/value `fields` path, because the two-column ISPF layout is this
+/// Context's own concern (wiring-standard: logical-model-first, not egui).
+///
+/// Validates: screen-snapshot-scrm Req 3.8, 3.9, 3.10, 3.11, 3.12, 3.13.
+pub fn menu_workspace_screen_model_full(
+    state: &MenuWorkspaceState,
+    command_line: &str,
+    chrome: &MenuScreenChrome,
+) -> ScreenModel {
     let title = state.menu_title().unwrap_or_else(|| "Menu".to_string());
     let mut model = ScreenModel::new(title);
-    model.command_line = command_line.to_string();
+    // The command line is now rendered INSIDE the frame as the first body row;
+    // keep ScreenModel::command_line empty so the generic renderer does not ALSO
+    // echo it outside the frame.
+    model.command_line = String::new();
+
+    // Command ===> row (Bug 1): the first body row, mirroring the live POM's
+    // command field. The typed value is followed by an underscore input area so
+    // the row shows the on-screen `Command ===> ____...` field.
+    let typed = command_line.trim_end();
+    let underscores = COMMAND_INPUT_WIDTH.saturating_sub(typed.chars().count());
+    model = model.with_body_line(format!("Command ===> {typed}{}", "_".repeat(underscores)));
 
     match &state.menu {
         Some(menu) => {
-            for opt in &menu.options {
-                // label = key; value = "description (command)". Both are visible,
-                // copy/paste-able text on the screen.
-                let value = if opt.command.trim().is_empty() {
-                    opt.description.clone()
-                } else {
-                    format!("{} ({})", opt.description, opt.command)
-                };
-                model = model.with_field(Field::new(opt.key.clone(), value));
+            let left: Vec<String> = menu
+                .options
+                .iter()
+                .map(|o| option_row_text(&o.key, &o.command, &o.description))
+                .collect();
+            for line in compose_two_column_body(&left, &chrome.right_column) {
+                model = model.with_body_line(line);
             }
         }
         None => {
@@ -80,46 +165,15 @@ pub fn menu_workspace_screen_model(state: &MenuWorkspaceState, command_line: &st
             model.messages.push(msg);
         }
     }
-    model
-}
 
-/// Build the FULL-screen logical model for a Menu_Workspace: the option list
-/// (from [`menu_workspace_screen_model`]) plus the surrounding chrome the user
-/// sees -- window title bar, menu bar, tab header, title line (as header chrome),
-/// and the calendar and PF-key footer (as footer chrome). The chrome is supplied
-/// by the shell from its logical state (NOT read from egui), so the capture is a
-/// faithful full screen (screen-snapshot-scrm Requirement 3.9-3.13).
-///
-/// Validates: Requirement 3.9, 3.10, 3.11, 3.12, 3.13.
-pub fn menu_workspace_screen_model_full(
-    state: &MenuWorkspaceState,
-    command_line: &str,
-    chrome: &MenuScreenChrome,
-) -> ScreenModel {
-    let mut model = menu_workspace_screen_model(state, command_line);
-
-    // Header chrome, top-to-bottom: window title bar, menu bar, tab header,
-    // title line (Requirement 3.9).
-    if !chrome.window_title.is_empty() {
-        model = model.with_header_line(chrome.window_title.clone());
-    }
-    if !chrome.menu_bar.is_empty() {
-        model = model.with_header_line(chrome.menu_bar.join("   "));
-    }
-    if !chrome.tab_header.is_empty() {
-        model = model.with_header_line(chrome.tab_header.clone());
-    }
-    if !chrome.title_line.is_empty() {
-        model = model.with_header_line(chrome.title_line.clone());
-    }
-
-    // Footer chrome: the calendar (Requirement 3.9), then the PF-key footer
-    // which is present only when pfshow is on (Requirement 3.10).
-    for line in &chrome.calendar_lines {
-        model = model.with_footer_line(line.clone());
-    }
-    for line in &chrome.key_bar_lines {
-        model = model.with_footer_line(line.clone());
+    // Two blank spacer rows then the PF-key footer at the bottom of the frame
+    // (present only when pfshow is on, Req 3.10).
+    if !chrome.key_bar_lines.is_empty() {
+        model = model.with_body_line(String::new());
+        model = model.with_body_line(String::new());
+        for line in &chrome.key_bar_lines {
+            model = model.with_body_line(line.clone());
+        }
     }
     model
 }
@@ -159,6 +213,32 @@ pub fn calendar_lines(year: i32, month: u32, today: u32) -> Vec<String> {
     for week in cells.chunks(7) {
         lines.push(week.join(" "));
     }
+    lines
+}
+
+/// Build the RIGHT-column block for the POM/menu snapshot: the calendar (from
+/// [`calendar_lines`]) followed by the `Time` and `Day of Year` lines, exactly
+/// as the LIVE POM shows them. The caller computes `year`/`month`/`today`,
+/// `hour`/`minute` and `day_of_year` from the SAME clock/date source the live
+/// screen uses (`chrono::Local::now()`), so the snapshot equals the live screen
+/// (screen-snapshot-scrm Req 3.9, 3.13). Passing the components keeps this
+/// deterministic and stubbable in tests.
+///
+/// The `Time` / `Day of Year` labels are padded to a fixed width so the colons
+/// align, matching the live POM block.
+///
+/// Validates: screen-snapshot-scrm Req 3.9, 3.13.
+pub fn calendar_right_column(
+    year: i32,
+    month: u32,
+    today: u32,
+    hour: u32,
+    minute: u32,
+    day_of_year: u32,
+) -> Vec<String> {
+    let mut lines = calendar_lines(year, month, today);
+    lines.push(format!("{:<17} : {:02}:{:02}", "Time", hour, minute));
+    lines.push(format!("{:<17} : {:>3}", "Day of Year", day_of_year));
     lines
 }
 
@@ -222,54 +302,25 @@ description = "Settings"
         MenuWorkspaceState::load(f.path())
     }
 
-    // Validates: Requirement 2.1, 3.1 -- model carries the menu title + one
-    // field per option with visible key/description/command text.
-    #[test]
-    fn menu_model_has_title_and_option_fields() {
-        let state = pom_like();
-        let model = menu_workspace_screen_model(&state, "");
-        assert_eq!(model.title, "Primary Option Menu");
-        assert_eq!(model.fields.len(), 2);
-        assert_eq!(model.fields[0].label, "1");
-        assert!(model.fields[0].value.contains("File Explorer"));
-        assert!(model.fields[0].value.contains("FILES"));
-    }
-
-    // Validates: Requirement 3.8 -- the command line is threaded into the model.
-    #[test]
-    fn command_line_is_captured() {
-        let state = pom_like();
-        let model = menu_workspace_screen_model(&state, "SNAPSHOT");
-        assert_eq!(model.command_line, "SNAPSHOT");
-    }
-
-    // Validates: Requirement 2.1 -- a load error surfaces as a message.
+    // Validates: Requirement 2.1 -- a load error surfaces as a message in the
+    // full model so the capture reflects what the user sees.
     #[test]
     fn load_error_surfaces_as_message() {
         let state = MenuWorkspaceState::load("/nonexistent/menu.toml");
-        let model = menu_workspace_screen_model(&state, "");
+        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
         assert!(!model.messages.is_empty());
     }
 
-    // Validates: Requirement 1.1, 4.2 -- rendered snapshot is selectable text
-    // containing the option descriptions.
-    #[test]
-    fn render_snapshot_contains_option_text() {
-        let state = pom_like();
-        let model = menu_workspace_screen_model(&state, "");
-        let text = render_snapshot(&model, SnapshotFormat::PlainText);
-        assert!(text.contains("Primary Option Menu"));
-        assert!(text.contains("File Explorer"));
-        assert!(text.contains("Settings"));
+    // A fixed, deterministic right-column block (calendar + Time + Day of Year)
+    // so Time / Day-of-Year / today never depend on the real clock in tests.
+    fn sample_right_column() -> Vec<String> {
+        // October 2026, today = the 25th, 12:58, day-of-year 298.
+        calendar_right_column(2026, 10, 25, 12, 58, 298)
     }
 
     fn sample_chrome(with_keys: bool) -> MenuScreenChrome {
         MenuScreenChrome {
-            window_title: "FileForge Workbench".to_string(),
-            menu_bar: vec!["Settings".to_string(), "Help".to_string()],
-            tab_header: "[POM]".to_string(),
-            title_line: "Primary Option Menu".to_string(),
-            calendar_lines: vec!["October 2026".to_string(), "Su Mo Tu We".to_string()],
+            right_column: sample_right_column(),
             key_bar_lines: if with_keys {
                 vec!["Base | F1 Help | F3 Exit".to_string()]
             } else {
@@ -278,33 +329,173 @@ description = "Settings"
         }
     }
 
-    // Validates: Requirement 3.9, 3.12, 3.13 -- the full model carries the
-    // window title bar, menu bar, tab header, title line as header chrome, and
-    // keeps the option rows with their command values.
+    // Validates: screen-snapshot-scrm Req 3.8, 3.11, 3.12 -- OWNER CORRECTION
+    // 2026-11-01 (Bug 1/2/3): the full model's body is the TWO-COLUMN ISPF
+    // layout. The FIRST body row is the `Command ===>` line; there is NO
+    // superfluous header block (no standalone window-title / menu-bar echo /
+    // `[POM]` tag / duplicated title line); option rows are
+    // `{key} {shortname} : {desc} ({cmd})`. (Supersedes the removed Phase 2A
+    // `full_model_includes_chrome_and_option_rows` header-chrome assertion.)
     #[test]
-    fn full_model_includes_chrome_and_option_rows() {
+    fn full_model_is_two_column_body_without_header_chrome() {
         let state = pom_like();
         let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
-        // Option rows (with command values) are preserved.
-        assert_eq!(model.fields.len(), 2);
-        assert!(model.fields[0].value.contains("FILES"));
-        // Header chrome: title bar, menu bar, tab header, title line.
-        let header = model.header_lines.join("\n");
-        assert!(header.contains("FileForge Workbench"));
-        assert!(header.contains("Settings"));
-        assert!(header.contains("Help"));
-        assert!(header.contains("[POM]"));
-        assert!(header.contains("Primary Option Menu"));
+
+        // Title lives in the border (model.title), never repeated in the body.
+        assert_eq!(model.title, "Primary Option Menu");
+        // No generic header chrome, no generic field path for the menu now.
+        assert!(model.header_lines.is_empty(), "no header-chrome block");
+        assert!(model.footer_lines.is_empty(), "no footer-chrome block");
+        assert!(
+            model.fields.is_empty(),
+            "menu body is body_lines, not fields"
+        );
+        // command_line is folded into the body, not echoed outside the frame.
+        assert!(model.command_line.is_empty());
+
+        // First body row is the command line.
+        assert!(
+            model.body_lines[0].starts_with("Command ===> "),
+            "first body row must be the command line: {:?}",
+            model.body_lines[0]
+        );
+        // Option rows use `{key} {shortname} : {desc} ({cmd})`.
+        let body = model.body_lines.join("\n");
+        assert!(
+            body.contains("1 FILES : File Explorer (FILES)"),
+            "option row format must be key shortname : desc (cmd):\n{body}"
+        );
+        // No superfluous header block leaked into the body.
+        assert!(!body.contains("[POM]"), "no tab tag in body:\n{body}");
+        let title_line_count = model
+            .body_lines
+            .iter()
+            .filter(|l| l.trim() == "Primary Option Menu")
+            .count();
+        assert_eq!(title_line_count, 0, "title must not be duplicated in body");
     }
 
-    // Validates: Requirement 3.9 -- the calendar appears in the rendered
-    // snapshot when the menu shows it.
+    // Validates: screen-snapshot-scrm Req 3.13 -- the calendar + Time + Day of
+    // Year appear to the RIGHT on the SAME lines as the option rows (two-column
+    // body), and the Time / Day-of-Year block follows below the calendar.
     #[test]
-    fn full_snapshot_text_contains_calendar() {
+    fn full_snapshot_is_two_column_options_left_calendar_right() {
         let state = pom_like();
         let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
         let text = render_snapshot(&model, SnapshotFormat::PlainText);
         assert!(text.contains("October 2026"), "calendar month must appear");
+        assert!(text.contains("Time"), "Time line must appear");
+        assert!(text.contains("Day of Year"), "Day of Year line must appear");
+        // A SINGLE line carries BOTH an option (left) and calendar (right).
+        let combined = model
+            .body_lines
+            .iter()
+            .any(|l| l.contains("File Explorer (FILES)") && l.contains("October 2026"));
+        assert!(
+            combined,
+            "an option row and the calendar must share a line (two columns):\n{text}"
+        );
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.13 -- the two columns do not
+    // overlap and the RIGHT column has a single, consistent origin on every
+    // line that carries calendar content. (The calendar's own weekday header
+    // carries a leading space inside that column, matching the live POM, so the
+    // test compares the right-column ORIGIN, not the first glyph.)
+    #[test]
+    fn two_column_calendar_right_edge_is_aligned() {
+        let state = pom_like();
+        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
+
+        // The longest option row drives the shared left-column width; the right
+        // column therefore begins at left_width + MENU_COLUMN_GAP on every row.
+        let left: Vec<String> = state
+            .menu
+            .as_ref()
+            .unwrap()
+            .options
+            .iter()
+            .map(|o| option_row_text(&o.key, &o.command, &o.description))
+            .collect();
+        let left_width = left.iter().map(|l| l.chars().count()).max().unwrap();
+        let right_origin = left_width + MENU_COLUMN_GAP;
+
+        // Row 1 of the body is the first option row carrying calendar line 0
+        // ("October 2026", no leading space) -- it must begin exactly at the
+        // right-column origin.
+        let month_line = model
+            .body_lines
+            .iter()
+            .find(|l| l.contains("October 2026"))
+            .expect("a line with the month header");
+        assert_eq!(
+            month_line.find("October 2026").unwrap(),
+            right_origin,
+            "calendar month header must begin at the right-column origin; no overlap"
+        );
+        // And the option text on that line stays within the left column (ends
+        // before the right-column origin), so the two columns never collide.
+        let opt_end = month_line.find("(FILES)").map(|i| i + "(FILES)".len());
+        if let Some(end) = opt_end {
+            assert!(
+                end <= right_origin,
+                "left option text must not run into the right column"
+            );
+        }
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.12 -- option row short name and the
+    // (command) suffix for the authoritative POM options (owner mock).
+    #[test]
+    fn option_row_matches_owner_mock_format() {
+        assert_eq!(
+            option_row_text("0", "Settings", "FFWB Settings and Client Parameters"),
+            "0 Settings : FFWB Settings and Client Parameters (Settings)"
+        );
+        assert_eq!(
+            option_row_text("S", "SCRM", "SCRM : Screen Capture and Recording"),
+            "S SCRM : SCRM : Screen Capture and Recording (SCRM)"
+        );
+        assert_eq!(
+            option_row_text("X", "X", "Collapse to the visual root"),
+            "X X : Collapse to the visual root (X)"
+        );
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.9, 3.13 -- the right column carries
+    // the Time (HH:MM) and 1-based Day of Year, deterministically, below the
+    // calendar.
+    #[test]
+    fn right_column_has_time_and_day_of_year() {
+        let col = calendar_right_column(2026, 11, 1, 12, 58, 305);
+        let text = col.join("\n");
+        assert!(text.contains("November 2026"));
+        assert!(
+            col.iter()
+                .any(|l| l.contains("Time") && l.contains("12:58")),
+            "Time line must be HH:MM:\n{text}"
+        );
+        assert!(
+            col.iter()
+                .any(|l| l.contains("Day of Year") && l.contains("305")),
+            "Day of Year must be the 1-based ordinal:\n{text}"
+        );
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.13 -- a calendar-LESS menu (right
+    // column empty, e.g. Settings) renders a single left column with no
+    // overlap artefacts.
+    #[test]
+    fn calendar_less_menu_renders_single_column() {
+        let state = pom_like();
+        let chrome = MenuScreenChrome {
+            right_column: Vec::new(),
+            key_bar_lines: Vec::new(),
+        };
+        let model = menu_workspace_screen_model_full(&state, "", &chrome);
+        let body = model.body_lines.join("\n");
+        assert!(body.contains("1 FILES : File Explorer (FILES)"));
+        assert!(!body.contains("October 2026"));
     }
 
     // Validates: screen-snapshot-scrm Req 3.9-3.13 -- a DOUBLE-DIGIT today
@@ -378,5 +569,30 @@ description = "Settings"
             !off_text.contains("F1 Help"),
             "pfshow OFF must omit the PF-key footer"
         );
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.8 (Bug 1) -- the rendered menu
+    // snapshot contains a `Command ===>` row as the FIRST body row (directly
+    // under the title border), with an underscore input area, and the typed
+    // value when present.
+    #[test]
+    fn rendered_menu_has_command_line_as_first_body_row() {
+        let state = pom_like();
+
+        // Empty command line: the row is still present with the input area.
+        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
+        let text = render_snapshot(&model, SnapshotFormat::PlainText);
+        let rows: Vec<&str> = text.lines().collect();
+        // rows: [top border, title, separator, FIRST body row, ...]
+        assert!(
+            rows[3].contains("Command ===> "),
+            "first body row must be `Command ===>`:\n{text}"
+        );
+        assert!(rows[3].contains('_'), "command field shows an input area");
+
+        // A typed value is shown before the underscores.
+        let typed = menu_workspace_screen_model_full(&state, "SNAPSHOT", &sample_chrome(true));
+        let typed_text = render_snapshot(&typed, SnapshotFormat::PlainText);
+        assert!(typed_text.contains("Command ===> SNAPSHOT"));
     }
 }

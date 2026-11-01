@@ -53,6 +53,8 @@ ff-desktop-shell-msg-scrm-snapshot-both-copied = Instantan{ "\u00e9" } copi{ "\u
 ff-desktop-shell-msg-scrm-snapshot-written = Instantan{ "\u00e9" } { $format } { "\u00e9" }crit dans { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-written = PDF d'instantan{ "\u00e9" } { "\u00e9" }crit dans { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-failed = { "\u00c9" }chec de SNAPSHOT PDF : { $error }.
+ff-desktop-shell-msg-copy-copied = Copi{ "\u00e9" } dans le presse-papiers.
+ff-desktop-shell-msg-copy-no-clipboard = Copie impossible : le presse-papiers { "\u00e9" }tait indisponible.
 
 # === verb-embedding command-ladder messages ===
 ff-desktop-shell-msg-detach-max-reached = Nombre maximum d'espaces de travail d{ "\u00e9" }tach{ "\u00e9" }s (16) atteint.

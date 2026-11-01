@@ -74,6 +74,15 @@ impl WorkbenchShell {
             return true;
         }
 
+        if upper == "COPY" {
+            // Validates: screen-snapshot-scrm Requirement 27.3, 27.4. The direct
+            // COPY affordance places the FRONTMOST surface's redacted text on the
+            // clipboard WITHOUT the SNAPSHOT screenshot machinery. Routed through
+            // the single handle_command path like every other built-in verb.
+            self.copy_frontmost_surface();
+            return true;
+        }
+
         if upper == "CAPTURE" || upper.starts_with("CAPTURE ") {
             // Validates: screen-snapshot-scrm Requirement 7, 8, 9.1, 11.1
             // (CR-NR-098, Wave 2). CAPTURE START/STOP/SCREEN/STATUS/LIST/PURGE/

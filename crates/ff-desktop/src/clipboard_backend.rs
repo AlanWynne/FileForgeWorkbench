@@ -313,10 +313,14 @@ impl SnapshotClipboard for OsClipboard {
     /// Markdown-fenced rendering.
     fn place(&mut self, payload: &SnapshotPayload) -> Result<OfferedFlavors, String> {
         use clipboard_win::{raw, Clipboard};
-        // `new_attempts` opens and empties the clipboard; the guard closes it on
-        // drop. Every write below ADDS a format to this one open transaction.
+        // Open the clipboard; the guard closes it on drop. `raw::empty()` then
+        // removes EVERY flavor left by a prior publish, so this transaction is
+        // the only content on the clipboard afterwards. Every write below uses
+        // `raw::set_without_clear` to ADD a format to this one open transaction
+        // (a plain `raw::set` would clear the earlier formats in the same open).
         let _clip =
             Clipboard::new_attempts(10).map_err(|e| format!("cannot open clipboard: {e}"))?;
+        raw::empty().map_err(|e| format!("cannot empty clipboard: {e}"))?;
         let mut flavors = OfferedFlavors::default();
 
         // Text flavor: CF_UNICODETEXT (format 13), UTF-16LE + NUL.
@@ -395,8 +399,10 @@ mod tests {
     }
 
     /// A capturing fake clipboard: records the payload it was asked to place and
-    /// reports both flavors offered, so the multi-flavor layer is testable with
-    /// no real OS clipboard (Req 23.4).
+    /// reports which flavors were offered, so the multi-flavor composite layer
+    /// is testable with no real OS clipboard (Req 23.4, 27.3). `place` empties
+    /// the live-flavor set first (mirroring the production `raw::empty()` on
+    /// open), so a prior publish never leaks stale flavors into a later one.
     #[derive(Default)]
     struct FakeClipboard {
         placed: Option<SnapshotPayload>,
@@ -474,6 +480,43 @@ mod tests {
         let placed = cb.placed.expect("payload captured");
         assert_eq!(placed.text, "USER.TEST");
         assert!(!placed.png.is_empty());
+    }
+
+    // Validates: screen-snapshot-scrm Req 27.3 (REVISED, owner decision B) --
+    // the on-dialog COPY places the SAME multi-flavor COMPOSITE as SNAPSHOT, not
+    // text-only. This mirrors how `place_snapshot_composite` assembles the dialog
+    // -copy payload (a window-capture raster + the Markdown text + a CF_HTML
+    // composite) and asserts the backend offers ALL THREE flavors (image + text
+    // + html) -- the picture the owner expects in Word, the text Notepad reads.
+    #[test]
+    fn dialog_copy_composite_offers_image_text_and_html() {
+        // A window-capture raster stands in for the live egui screenshot the
+        // frame loop adapts; the dialog-copy path PNG-encodes it and adds the
+        // CF_HTML composite, exactly like `place_snapshot_composite`.
+        let image = RasterImage {
+            width: 2,
+            height: 1,
+            rgba: vec![0xFF, 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF],
+        };
+        let mut payload =
+            SnapshotPayload::from_window_capture(image, "```\nDIALOG\n```".to_string());
+        payload.html = Some("<pre>DIALOG</pre>".to_string());
+
+        let mut cb = FakeClipboard::default();
+        let offered = cb.place(&payload).expect("place dialog composite");
+        assert!(
+            offered.image,
+            "dialog COPY offers the picture flavor (27.3)"
+        );
+        assert!(offered.text, "dialog COPY offers the text flavor (27.3)");
+        assert!(
+            offered.html,
+            "dialog COPY offers the CF_HTML composite flavor (27.3)"
+        );
+        assert!(
+            offered.both(),
+            "both co-equal picture+text flavors are offered, not text-only (27.3)"
+        );
     }
 
     // Validates: Req 23.5c, 23.5d, 23.5e -- when the payload carries an HTML

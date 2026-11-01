@@ -42,6 +42,69 @@ pub struct RasterImage {
     pub rgba: Vec<u8>,
 }
 
+/// An integer pixel rectangle used to crop a [`RasterImage`] to a sub-region
+/// (screen-snapshot-scrm Requirement 23.2a). `x`/`y` are the top-left origin and
+/// `width`/`height` the extent, all in physical pixels from the top-left of the
+/// source image. Kept egui-free so the crop stays in this GUI-independent crate
+/// (Req 2.4); the caller converts an on-screen points rect to physical pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PixelRect {
+    /// Left edge, pixels from the image's left.
+    pub x: u32,
+    /// Top edge, pixels from the image's top.
+    pub y: u32,
+    /// Width in pixels.
+    pub width: u32,
+    /// Height in pixels.
+    pub height: u32,
+}
+
+/// Crop `image` to the sub-rectangle `rect`, returning a new [`RasterImage`]
+/// whose pixels are the copied sub-region (screen-snapshot-scrm Requirement
+/// 23.2a). The rectangle is CLAMPED to the source bounds so an off-image or
+/// oversized rect can never panic: the returned image is the intersection of
+/// `rect` and the source. A rect with zero area after clamping (e.g. an origin
+/// at or beyond the image edge) yields a 1x1 image so the PNG encoder and the
+/// DIB layer always receive a non-empty raster.
+///
+/// This is implemented as a direct row/column copy on the RGBA buffer (no egui,
+/// no image crate), so it is deterministic and unit-testable without a GUI.
+///
+/// Validates: screen-snapshot-scrm Requirement 23.2a, 2.4.
+pub fn crop(image: &RasterImage, rect: PixelRect) -> RasterImage {
+    // Clamp the origin to the image, then the extent to what remains, so the
+    // crop is always a valid sub-rectangle of the source.
+    let x0 = rect.x.min(image.width);
+    let y0 = rect.y.min(image.height);
+    let w = rect.width.min(image.width - x0);
+    let h = rect.height.min(image.height - y0);
+
+    // A degenerate (zero-area) crop would produce an empty buffer the PNG/DIB
+    // layers cannot use; fall back to a single opaque-black pixel instead.
+    if w == 0 || h == 0 {
+        return RasterImage {
+            width: 1,
+            height: 1,
+            rgba: vec![0, 0, 0, 0xFF],
+        };
+    }
+
+    let src_w = image.width as usize;
+    let (x0, y0, w, h) = (x0 as usize, y0 as usize, w as usize, h as usize);
+    let mut rgba = Vec::with_capacity(w * h * 4);
+    for row in 0..h {
+        let src_row = y0 + row;
+        let start = (src_row * src_w + x0) * 4;
+        let end = start + w * 4;
+        rgba.extend_from_slice(&image.rgba[start..end]);
+    }
+    RasterImage {
+        width: w as u32,
+        height: h as u32,
+        rgba,
+    }
+}
+
 /// Rasterise `model`'s plain-text render into an [`RasterImage`] using the
 /// fixed-width bitmap font. The ASCII fallback render is used (no Unicode box
 /// glyphs) so every character maps to a font glyph; the logical content is
@@ -181,5 +244,89 @@ mod tests {
         let img = rasterise_screen(&sample());
         let has_ink = img.rgba.windows(4).any(|px| px == FG);
         assert!(has_ink, "rendered text must leave ink pixels");
+    }
+
+    /// Build a 4x3 image where each pixel's R channel encodes its column and G
+    /// its row, so a crop can be checked pixel-exactly against known values.
+    fn coded_image() -> RasterImage {
+        let (w, h) = (4u32, 3u32);
+        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                rgba.extend_from_slice(&[x as u8, y as u8, 0x00, 0xFF]);
+            }
+        }
+        RasterImage {
+            width: w,
+            height: h,
+            rgba,
+        }
+    }
+
+    // Validates: Req 23.2a -- cropping a known image to an interior sub-rect
+    // yields the sub-rect dimensions and the exact pixels of that region.
+    #[test]
+    fn crop_to_subrect_has_subrect_dimensions_and_pixels() {
+        let img = coded_image();
+        // Crop the 2x2 block whose top-left is column 1, row 1.
+        let cropped = crop(
+            &img,
+            PixelRect {
+                x: 1,
+                y: 1,
+                width: 2,
+                height: 2,
+            },
+        );
+        assert_eq!(cropped.width, 2, "cropped width is the sub-rect width");
+        assert_eq!(cropped.height, 2, "cropped height is the sub-rect height");
+        // Pixel (0,0) of the crop is source (1,1): R=1, G=1.
+        assert_eq!(&cropped.rgba[0..4], &[1, 1, 0x00, 0xFF]);
+        // Pixel (1,0) of the crop is source (2,1): R=2, G=1.
+        assert_eq!(&cropped.rgba[4..8], &[2, 1, 0x00, 0xFF]);
+        // Pixel (0,1) of the crop is source (1,2): R=1, G=2.
+        assert_eq!(&cropped.rgba[8..12], &[1, 2, 0x00, 0xFF]);
+        // Pixel (1,1) of the crop is source (2,2): R=2, G=2.
+        assert_eq!(&cropped.rgba[12..16], &[2, 2, 0x00, 0xFF]);
+    }
+
+    // Validates: Req 23.2a -- a rect that overruns the source is clamped to the
+    // image bounds rather than panicking, and the crop never exceeds the source.
+    #[test]
+    fn crop_rect_is_clamped_to_source_bounds() {
+        let img = coded_image(); // 4x3
+        let cropped = crop(
+            &img,
+            PixelRect {
+                x: 2,
+                y: 1,
+                width: 100,
+                height: 100,
+            },
+        );
+        // Only columns 2..4 (2 wide) and rows 1..3 (2 tall) exist.
+        assert_eq!(cropped.width, 2);
+        assert_eq!(cropped.height, 2);
+        // First crop pixel is source (2,1): R=2, G=1.
+        assert_eq!(&cropped.rgba[0..4], &[2, 1, 0x00, 0xFF]);
+    }
+
+    // Validates: Req 23.2a -- a degenerate (zero-area / off-image) rect yields a
+    // 1x1 fallback image, never an empty buffer the PNG/DIB layer cannot use.
+    #[test]
+    fn crop_zero_area_rect_yields_one_by_one() {
+        let img = coded_image();
+        let cropped = crop(
+            &img,
+            PixelRect {
+                x: 10,
+                y: 10,
+                width: 5,
+                height: 5,
+            },
+        );
+        assert_eq!(cropped.width, 1);
+        assert_eq!(cropped.height, 1);
+        assert_eq!(cropped.rgba.len(), 4, "a single RGBA pixel");
     }
 }

@@ -162,6 +162,22 @@ pub struct ScreenModel {
     /// Validates: screen-snapshot-scrm Requirement 3.9.
     #[serde(default)]
     pub header_lines: Vec<String>,
+    /// Pre-composed verbatim body lines rendered INSIDE the frame, directly
+    /// under the title border, with NO decoration and NO leading blank line.
+    /// This is the layout-owning path for a Context (such as the Menu/POM) that
+    /// composes its own two-column body -- the `Command ===>` line, the
+    /// option/calendar rows, blank spacer rows, and the PF-key footer -- as
+    /// exact text lines, rather than the generic label/value `fields` path.
+    ///
+    /// A Context that uses the generic `fields`/`header_lines`/`footer_lines`
+    /// path leaves this EMPTY, so its rendering is unchanged. When `body_lines`
+    /// is non-empty the renderer emits it verbatim and the Context is expected
+    /// to have already folded its command line / chrome / footer into these
+    /// lines.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 3.8-3.13.
+    #[serde(default)]
+    pub body_lines: Vec<String>,
     /// Labelled fields, in visual order.
     pub fields: Vec<Field>,
     /// Tabular elements, in visual order.
@@ -215,6 +231,15 @@ impl ScreenModel {
     /// Validates: screen-snapshot-scrm Requirement 3.9.
     pub fn with_header_line(mut self, line: impl Into<String>) -> Self {
         self.header_lines.push(line.into());
+        self
+    }
+
+    /// Add a verbatim body line rendered inside the frame under the title
+    /// border (builder-style). See [`ScreenModel::body_lines`].
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 3.8-3.13.
+    pub fn with_body_line(mut self, line: impl Into<String>) -> Self {
+        self.body_lines.push(line.into());
         self
     }
 
@@ -282,5 +307,20 @@ mod tests {
         assert_eq!(m.header_lines[2], "[POM]");
         assert_eq!(m.footer_lines.len(), 2);
         assert!(m.footer_lines[1].contains("F1 Help"));
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.8-3.13 -- the model carries
+    // pre-composed verbatim body lines (the layout-owning menu/POM path) as an
+    // ordered list, distinct from the generic label/value fields.
+    #[test]
+    fn screen_model_carries_verbatim_body_lines() {
+        let m = ScreenModel::new("Primary Option Menu")
+            .with_body_line("Command ===> ____")
+            .with_body_line("0 Settings : FFWB Settings (Settings)   October 2026");
+        assert_eq!(m.body_lines.len(), 2);
+        assert_eq!(m.body_lines[0], "Command ===> ____");
+        assert!(m.body_lines[1].contains("October 2026"));
+        // The generic field path is untouched.
+        assert!(m.fields.is_empty());
     }
 }

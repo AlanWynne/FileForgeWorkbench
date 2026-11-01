@@ -53,6 +53,8 @@ ff-desktop-shell-msg-scrm-snapshot-both-copied = Kiekie na knipbord gekopieer: p
 ff-desktop-shell-msg-scrm-snapshot-written = Kiekie { $format } geskryf na { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-written = Kiekie-PDF geskryf na { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-failed = SNAPSHOT PDF het misluk: { $error }.
+ff-desktop-shell-msg-copy-copied = Na knipbord gekopieer.
+ff-desktop-shell-msg-copy-no-clipboard = Kon nie kopieer nie: die knipbord was onbeskikbaar.
 
 # --- detach / split / swap ---
 ff-desktop-shell-msg-detach-max-reached = Maksimum aantal losgemaakte werkspasies (16) bereik.

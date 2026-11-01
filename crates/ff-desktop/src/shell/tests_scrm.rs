@@ -647,3 +647,80 @@ fn save_as_cancel_writes_nothing_but_stays_stopped() {
         "the collection remains available after cancel"
     );
 }
+
+// === screen-snapshot-scrm Req 27: transient dialog capture + direct COPY =====
+
+// Validates: screen-snapshot-scrm Req 27.3 (REVISED, owner decision B), 27.4 --
+// opening a dialog through the REAL command path then issuing COPY copies the
+// dialog as the SAME multi-flavor COMPOSITE as SNAPSHOT. Asserted through the
+// capture seam (active_dialog_capture is what COPY renders) so the text content
+// is deterministic without reading the OS clipboard; COPY routes through the
+// single handle_command front door and ARMS the async composite screenshot
+// (picture + text + html), exactly like SNAPSHOT.
+#[test]
+fn full_shell_copy_command_copies_dialog_text() {
+    let mut harness = harness_shell();
+    // Open the RESET BARE confirmation dialog through the real command path.
+    harness.state_mut().handle_command("RESET BARE");
+    harness.run();
+    assert!(
+        harness.state().reset_bare_confirm.is_some(),
+        "RESET BARE opens the confirmation dialog"
+    );
+    // The capture seam now yields the DIALOG surface (what COPY copies), not the
+    // Context behind it.
+    let captured = harness
+        .state()
+        .active_dialog_capture()
+        .expect("a dialog is open, so the frontmost surface is captured");
+    let copied = crate::screen_snapshot::render_snapshot(
+        &captured,
+        ff_screen_model::SnapshotFormat::PlainText,
+    );
+    assert!(
+        copied.contains(&ff_i18n::t("ff-desktop-shell-dialogs-reset-heading")),
+        "the copied text is the dialog's text, not the Context's"
+    );
+    // COPY routes through the single front door and ARMS the composite window
+    // screenshot path (Req 27.3 REVISED, owner decision B): the picture is
+    // placed alongside the text + html on the Event::Screenshot frame, exactly
+    // like bare SNAPSHOT. The pending composite flavors are stashed now.
+    harness.state_mut().handle_command("COPY");
+    assert!(
+        harness.state().snapshot.screenshot_requested,
+        "COPY arms the composite screenshot path, like SNAPSHOT (27.3, owner B)"
+    );
+    let pending = harness
+        .state()
+        .snapshot
+        .pending
+        .clone()
+        .expect("COPY stashes the pending composite flavors (27.3)");
+    assert!(
+        pending
+            .text
+            .contains(&ff_i18n::t("ff-desktop-shell-dialogs-reset-heading")),
+        "the composite text flavor is the dialog's text, not the Context's"
+    );
+}
+
+// Validates: screen-snapshot-scrm Req 27.6 -- binding the transient overlays
+// must NOT change the Context focus/ScreenProvider contract: with NO overlay
+// open, the capture seam still returns the active Context model.
+#[test]
+fn no_overlay_capture_is_still_the_context_model() {
+    let mut shell = make_shell();
+    shell.tabs.insert_pom_tab(&shell.runtime);
+    shell.ensure_pom_menu_loaded();
+    assert!(
+        shell.active_dialog_capture().is_none(),
+        "no overlay -> the Context model flows unchanged"
+    );
+    let (text, _fmt) = shell
+        .snapshot_text_for_active("")
+        .expect("POM Context is capturable");
+    assert!(
+        text.contains("Primary Option Menu"),
+        "with no overlay, SNAPSHOT still captures the POM Context (27.6)"
+    );
+}

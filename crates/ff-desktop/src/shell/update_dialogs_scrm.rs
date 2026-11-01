@@ -23,10 +23,24 @@ impl WorkbenchShell {
             return;
         }
         self.modal_open = true;
-        let outcome = {
+        let (outcome, rect) = {
             let state = self.scrm_ui.save_as.as_mut().expect("save_as is Some");
             crate::scrm_save_as_dialog::render(ctx, state)
         };
+        // Req 23.2a: Save-As modal is priority 6.
+        self.snapshot.note_dialog_rect(6, rect);
+        self.apply_scrm_save_as_outcome(outcome);
+    }
+
+    /// Act on the Save-As modal's [`crate::scrm_save_as_dialog::Outcome`], split
+    /// out so the outcome wiring (including the on-dialog Copy affordance that
+    /// must LEAVE the modal open) is unit-testable without an egui frame.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 24.1, 24.4, 24.5, 27.3.
+    pub(super) fn apply_scrm_save_as_outcome(
+        &mut self,
+        outcome: crate::scrm_save_as_dialog::Outcome,
+    ) {
         match outcome {
             crate::scrm_save_as_dialog::Outcome::Save => {
                 let command = self
@@ -42,6 +56,12 @@ impl WorkbenchShell {
                 // Req 24.5: cancelling writes nothing; the capture stays stopped.
                 self.scrm_ui.save_as = None;
                 self.modal_open = false;
+            }
+            crate::scrm_save_as_dialog::Outcome::Copy => {
+                // Req 27.3: the on-dialog Copy affordance copies THIS dialog's
+                // redacted text through the single copy path and leaves the
+                // modal open (the dialog is still the frontmost surface).
+                self.copy_frontmost_surface();
             }
             crate::scrm_save_as_dialog::Outcome::Open => {}
         }
@@ -63,7 +83,7 @@ impl WorkbenchShell {
         }
         self.modal_open = true;
         let entries = self.enumerate_saved_scrm_sessions();
-        let outcome = {
+        let (outcome, rect) = {
             let state = self
                 .scrm_ui
                 .replay_picker
@@ -71,6 +91,20 @@ impl WorkbenchShell {
                 .expect("replay_picker is Some");
             crate::scrm_session_picker::render(ctx, state, &entries)
         };
+        // Req 23.2a: replay picker is priority 7.
+        self.snapshot.note_dialog_rect(7, rect);
+        self.apply_scrm_replay_outcome(outcome);
+    }
+
+    /// Act on the replay picker's [`crate::scrm_session_picker::Outcome`], split
+    /// out so the outcome wiring (including the on-dialog Copy affordance that
+    /// must LEAVE the modal open) is unit-testable without an egui frame.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 10.12, 24.6, 27.3.
+    pub(super) fn apply_scrm_replay_outcome(
+        &mut self,
+        outcome: crate::scrm_session_picker::Outcome,
+    ) {
         match outcome {
             crate::scrm_session_picker::Outcome::Selected(path) => {
                 self.scrm_ui.replay_picker = None;
@@ -81,6 +115,12 @@ impl WorkbenchShell {
             crate::scrm_session_picker::Outcome::Cancel => {
                 self.scrm_ui.replay_picker = None;
                 self.modal_open = false;
+            }
+            crate::scrm_session_picker::Outcome::Copy => {
+                // Req 27.3: the on-dialog Copy affordance copies THIS dialog's
+                // redacted text through the single copy path and leaves the
+                // modal open (the dialog is still the frontmost surface).
+                self.copy_frontmost_surface();
             }
             crate::scrm_session_picker::Outcome::Open => {}
         }

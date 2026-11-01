@@ -275,6 +275,23 @@ door; no second dispatcher, no new navigation stack.
   - [ ] 21.4 Tests: an accelerator resolves to the bar item's menu via the active
         key map; no collision with an existing Alt-binding. (Req 26.1, 26.3)
 
+## Phase 2E -- dialog capture fixes (Req 23.2a, 23.5f)
+
+- [x] 22. Crop the dialog picture to the dialog rectangle (Req 23.2a)
+  - [x] 22.1 Capture the frontmost dialog's on-screen rect at render time and
+        convert points -> physical pixels via pixels-per-point. (Req 23.2a)
+  - [x] 22.2 Crop the full-framebuffer egui screenshot RGBA buffer to that rect
+        (manual crop in ff-screen-model, not a silent whole-window fallback)
+        before PNG encode and CF_HTML image embed; whole-window no-dialog capture
+        unchanged. Validated by crop_* / points_rect_* /
+        no_dialog_open_leaves_capture_uncropped. (Req 23.2a)
+
+- [x] 23. Force monospace in the CF_HTML composite (Req 23.5f)
+  - [x] 23.1 Wrap the box-drawn text in a `<pre>` with an explicit monospace font
+        style; recompute CF_HTML offsets; keep the `<img>` in the fragment; secret
+        stays redacted. Validated by cf_html_pre_forces_monospace_font /
+        cf_html_offsets_round_trip_after_monospace_style. (Req 23.5f)
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

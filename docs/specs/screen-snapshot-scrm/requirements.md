@@ -804,6 +804,21 @@ ODT/ODP deferred.
      text-rasterised image. The screenshot captures the WINDOW, not the whole
      desktop. (Reverses the former text-raster approach for the picture flavor.)
      `[forward-plan]`
+23.2a WHEN the captured FRONTMOST surface is a DIALOG / message box (Req 27.2),
+     THE picture flavor SHALL be CROPPED to the dialog's on-screen RECTANGLE --
+     just the dialog, NOT the whole window behind it. The system captures the full
+     framebuffer egui screenshot and SHALL crop it to the dialog rect BEFORE
+     encoding the PNG and BEFORE embedding the image in the CF_HTML composite. THE
+     dialog rect SHALL be captured at RENDER time from the actual rendered bounds
+     (the modal/Area response rect in points) and converted to physical pixels
+     using the frame's pixels-per-point. WHERE egui's screenshot API cannot crop
+     to a sub-rect THE system SHALL crop the RGBA buffer MANUALLY (copying the
+     sub-rectangle into a new raster) and SHALL NOT silently fall back to the whole
+     window. A full-window SNAPSHOT with NO dialog open SHALL remain UNCHANGED
+     (the whole window is captured); the crop applies ONLY when a dialog is the
+     frontmost captured surface. THE TEXT and CF_HTML text SHALL remain the
+     dialog's logical model -- only the PICTURE (PNG + the image embedded in the
+     CF_HTML) is cropped. (Owner finding CR-NR-114.) `[forward-plan]`
 23.3 WHEN the user issues `SNAPSHOT PDF` THE system SHALL produce a single-screen
      PDF by REUSING the existing `ff-scrm/pdf.rs` path, keeping the screen content
      as selectable text (Req 12.6), not a rasterised page image. `[forward-plan]`
@@ -839,6 +854,25 @@ ODT/ODP deferred.
      terminal / ANSI-aware viewer or a file; ANSI SHALL NOT be a clipboard flavor
      (raw escape codes paste as garbage in ordinary editors). Colour fidelity on
      the clipboard is carried by the PNG picture, not by ANSI. `[forward-plan]`
+23.5f THE box-drawn TEXT inside the `CF_HTML` composite SHALL be rendered so that
+     a rich target (Word / PowerPoint) shows the box-drawing in a FIXED-WIDTH
+     font with its column alignment preserved, instead of adopting the target's
+     default proportional (Normal) style. The fixed-width font SHALL be applied to
+     the actual TEXT RUNS, not only to a block element: the box text SHALL be
+     wrapped -- inside a `<pre>` that supplies `white-space:pre` for line breaks
+     and alignment -- in BOTH a legacy `<font face="Consolas,'Courier New',monospace">`
+     element AND a `<span style="font-family:'Consolas','Courier New',monospace">`,
+     so the monospace family lands on the characters regardless of the paragraph
+     style the target assigns to the `<pre>`. (Word remaps a bare `<pre>` to its
+     "HTML Preformatted" style and OVERRIDES an inline font set on the `<pre>`
+     itself, so a font on the `<pre>` alone was dropped on paste; a font on the
+     text runs is honoured.) THE CF_HTML byte offsets
+     (StartHTML/EndHTML/StartFragment/EndFragment) SHALL be recomputed correctly
+     after the markup change, and the `<img>` (window screenshot) SHALL remain in
+     the fragment alongside the `<pre>`. The decisive confirmation is a REAL paste
+     into Word (the text renders monospaced and aligned). (Owner finding
+     CR-NR-114: pasted text was adopting Word's normal non-monospace style; the
+     first `<pre>`-only font fix did not survive Word paste.) `[forward-plan]`
 23.4a WHERE a FILE/document output format (as opposed to the clipboard) supports
      carrying BOTH a picture and the ANSI/TEXT rendering, THE SNAPSHOT SHALL embed
      BOTH; WHERE it supports only text, the text SHALL be written. (Owner-confirmed

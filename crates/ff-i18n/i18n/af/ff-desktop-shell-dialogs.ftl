@@ -3,6 +3,7 @@
 # TEXT placeables. config-archive/ path token kept as-is.
 
 ff-desktop-shell-dialogs-cancel = Kanselleer
+ff-desktop-shell-dialogs-copy = Kopieer
 ff-desktop-shell-dialogs-history-title = Opdraggeskiedenis
 ff-desktop-shell-dialogs-history-empty = Geen opdraggeskiedenis nie.
 ff-desktop-shell-dialogs-swap-title = Ruil na Oortjie

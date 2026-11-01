@@ -16,6 +16,7 @@
 # leading spaces of the per-profile bullet are preserved with a quoted placeable.
 
 ff-desktop-shell-dialogs-cancel = Cancel
+ff-desktop-shell-dialogs-copy = Copy
 ff-desktop-shell-dialogs-history-title = Command History
 ff-desktop-shell-dialogs-history-empty = No command history.
 ff-desktop-shell-dialogs-swap-title = Swap to Tab

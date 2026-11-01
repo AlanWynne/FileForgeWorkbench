@@ -39,11 +39,19 @@ pub const DESCRIPTION: &str = "A cross-platform enterprise file editor and mainf
 /// `open` is set to `false` when the user clicks Close or Escape (Req 13.8).
 /// The caller is responsible for only calling this when `open` is `true`.
 ///
-/// Validates: Requirement 13.1–13.8
-pub fn render(ctx: &egui::Context, open: &mut bool) {
+/// Returns `(copy_clicked, dialog_rect)`: `copy_clicked` is `true` when the user
+/// clicked the on-dialog Copy affordance (screen-snapshot-scrm Req 27.3); the
+/// caller copies the dialog's redacted text through the single copy path and
+/// leaves the dialog open. `dialog_rect` is the window's on-screen rectangle in
+/// POINTS (Req 23.2a) so the caller can crop a dialog-frontmost SNAPSHOT picture
+/// to just the dialog; it is `None` only if egui did not render the window.
+///
+/// Validates: Requirement 13.1-13.8; screen-snapshot-scrm Requirement 27.3, 23.2a.
+pub fn render(ctx: &egui::Context, open: &mut bool) -> (bool, Option<egui::Rect>) {
     let mut close = false;
+    let mut copy_clicked = false;
 
-    egui::Window::new(ff_i18n::t("ff-desktop-about-window-title"))
+    let inner = egui::Window::new(ff_i18n::t("ff-desktop-about-window-title"))
         .collapsible(false)
         .resizable(false)
         .min_width(480.0)
@@ -79,11 +87,21 @@ pub fn render(ctx: &egui::Context, open: &mut bool) {
 
             ui.separator();
 
-            // ── Close button — Req 13.8 ──────────────────────────────────
+            // Close + Copy buttons -- Req 13.8; Copy: screen-snapshot-scrm Req 27.3
             ui.vertical_centered(|ui| {
-                if ui.button(ff_i18n::t("ff-desktop-about-close")).clicked() {
-                    close = true;
-                }
+                ui.horizontal(|ui| {
+                    if ui.button(ff_i18n::t("ff-desktop-about-close")).clicked() {
+                        close = true;
+                    }
+                    // Direct COPY affordance (Req 27.3): copy this dialog's
+                    // redacted text without typing a command. Leaves it open.
+                    if ui
+                        .button(ff_i18n::t("ff-desktop-shell-dialogs-copy"))
+                        .clicked()
+                    {
+                        copy_clicked = true;
+                    }
+                });
             });
         });
 
@@ -91,6 +109,9 @@ pub fn render(ctx: &egui::Context, open: &mut bool) {
     if close || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         *open = false;
     }
+
+    let rect = inner.map(|r| r.response.rect);
+    (copy_clicked, rect)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

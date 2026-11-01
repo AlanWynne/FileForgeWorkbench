@@ -21,12 +21,16 @@
 
 mod model;
 mod raster;
+mod redact;
 mod render;
 
 pub use model::{
     Colour, Cursor, Dimensions, Field, FieldAttributes, ScreenModel, StatusBar, Table,
 };
-pub use raster::{encode_png, rasterise_screen, rasterise_text, screen_png, RasterImage};
+pub use raster::{
+    crop, encode_png, rasterise_screen, rasterise_text, screen_png, PixelRect, RasterImage,
+};
+pub use redact::REDACTED_PLACEHOLDER;
 pub use render::{render, RenderOptions};
 
 /// The set of snapshot output formats.

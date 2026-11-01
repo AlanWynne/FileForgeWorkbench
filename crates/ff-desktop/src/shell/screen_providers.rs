@@ -23,7 +23,7 @@ use crate::tab_state::KindTag;
 /// The descriptive display title for the active Context's Kind, used as the
 /// screen-model title (the on-screen Title_Line). Falls back to the cached tab
 /// title when the Kind is not a built-in panel Kind.
-fn active_display_title(shell: &WorkbenchShell) -> String {
+pub(super) fn active_display_title(shell: &WorkbenchShell) -> String {
     let tab = shell.tabs.active_tab();
     crate::workspace_kind::BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)
         .display_title()
@@ -31,31 +31,6 @@ fn active_display_title(shell: &WorkbenchShell) -> String {
 }
 
 impl WorkbenchShell {
-    /// Config Panel (Settings / CONFIG) -- the flat config-key browser. The
-    /// model carries the active filter and namespace scope plus each staged
-    /// working edit, so a capture reflects what the user is editing. ANSI
-    /// colour for changed/error keys is a later enhancement (Req note).
-    pub(super) fn config_panel_screen_model(&self) -> ScreenModel {
-        let p = &self.config_panel;
-        let mut model = ScreenModel::new(active_display_title(self));
-        model.command_line = self.command_text.clone();
-        if let Some(ns) = &p.namespace_filter {
-            model = model.with_field(Field::new("Namespace", ns.clone()));
-        }
-        model = model.with_field(Field::new("Filter", p.filter.clone()));
-        model = model.with_field(Field::new(
-            "Unsaved edits",
-            if p.is_dirty() { "yes" } else { "no" }.to_string(),
-        ));
-        for key in p.working.keys() {
-            model = model.with_field(Field::new(key.clone(), "(staged)"));
-        }
-        if let Some(err) = &p.persist_error {
-            model.messages.push(err.clone());
-        }
-        model
-    }
-
     /// Theme Editor -- lists the editable colour tokens as label/value pairs.
     pub(super) fn theme_editor_screen_model(&self) -> ScreenModel {
         use crate::theme_editor_panel::EditableToken;

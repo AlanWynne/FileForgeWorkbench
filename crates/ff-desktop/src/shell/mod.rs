@@ -59,6 +59,8 @@ mod commands_theme_save;
 mod configurator;
 mod construct;
 mod construct_commands;
+mod dialog_capture;
+mod dialog_screen;
 mod dispatch;
 mod editable_context;
 mod environment;
@@ -92,6 +94,7 @@ mod render_theme;
 mod reset_bare;
 mod screen_provider;
 mod screen_providers;
+mod screen_providers_config;
 mod state;
 mod state_groups;
 mod target_dispatch;
@@ -99,6 +102,7 @@ mod titles;
 mod types;
 mod update;
 mod update_dialogs;
+mod update_dialogs_confirm;
 mod update_dialogs_scrm;
 mod update_floating;
 mod update_input;
@@ -144,10 +148,14 @@ mod tests_common;
 #[cfg(test)]
 mod tests_config_save_convention;
 #[cfg(test)]
+mod tests_config_snapshot_fidelity;
+#[cfg(test)]
 mod tests_configurator_save_convention;
 // core-001 strip: tests_crch061 (mainframe catalog-backed SAVE routing) and
 // tests_crch071 (FFEDIT/FFCMD editor verb seam) validated now-parked domains
 // (catalog, mainframe CE, FFEDIT) and were removed with those features.
+#[cfg(test)]
+mod tests_dialog_copy;
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]

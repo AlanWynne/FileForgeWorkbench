@@ -5,6 +5,7 @@
 # with a quoted placeable.
 
 ff-desktop-shell-dialogs-cancel = Annuler
+ff-desktop-shell-dialogs-copy = Copier
 ff-desktop-shell-dialogs-history-title = Historique des commandes
 ff-desktop-shell-dialogs-history-empty = Aucun historique de commandes.
 ff-desktop-shell-dialogs-swap-title = Basculer vers l'onglet

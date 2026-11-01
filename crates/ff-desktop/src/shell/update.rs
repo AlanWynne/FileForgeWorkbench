@@ -159,13 +159,10 @@ impl eframe::App for WorkbenchShell {
             self.activate_menu_option(option.target.as_ref(), &option.command);
         }
 
-        // Bare SNAPSHOT two-phase async flow (CR-NR-114, FEAT-002). (a) Issue the
-        // live window-screenshot request egui fulfils ASYNCHRONOUSLY (the image
-        // arrives a later frame as Event::Screenshot). The pending payload stays
-        // in place until the image arrives. (b) When the screenshot event is
-        // seen AND a pending bare SNAPSHOT is waiting, assemble the composite
-        // picture (real window RGBA) + Markdown-fenced text + CF_HTML and place
-        // all three flavors on the clipboard in one transaction.
+        // Bare SNAPSHOT two-phase async flow (CR-NR-114, FEAT-002): (a) request
+        // the live window screenshot egui fulfils ASYNCHRONOUSLY (arrives a later
+        // frame as Event::Screenshot; pending payload waits); (b) on that event,
+        // assemble composite picture + Markdown text + CF_HTML onto the clipboard.
         // Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d.
         if self.snapshot.screenshot_requested {
             self.snapshot.screenshot_requested = false;
@@ -180,7 +177,9 @@ impl eframe::App for WorkbenchShell {
             });
             if let Some(image) = shot {
                 if let Some(pending) = self.snapshot.pending.take() {
-                    self.place_snapshot_composite(&image, pending);
+                    // Req 23.2a: pixels-per-point lets a dialog-frontmost capture
+                    // be cropped to the dialog rect (points -> physical pixels).
+                    self.place_snapshot_composite(&image, pending, ctx.pixels_per_point());
                 }
             }
         }
@@ -355,6 +354,12 @@ impl eframe::App for WorkbenchShell {
         // `update_dialogs.rs` as part of the file-size split; it is the LAST
         // statement of `update`, so the early `return`s inside its AllocateDataset
         // arm end the frame exactly as before.
+        // Direct COPY affordance via Ctrl+C while a message/dialog box is open
+        // (screen-snapshot-scrm Req 27.3). Runs before the overlays render so it
+        // reads the current overlay flags; scoped so it does not steal Ctrl+C
+        // from a focused text field inside the dialog or from the rest of the UI.
+        self.handle_dialog_copy_shortcut(ctx);
+
         self.render_overlays(ctx);
     }
 

@@ -86,6 +86,13 @@ impl WorkbenchShell {
     /// Validates: master-screen-directive Requirement 4.1, 4.2, 4.3;
     /// screen-snapshot-scrm Requirement 2.1, 2.2, 2.3.
     pub(super) fn active_screen_capture(&self) -> ScreenCapture {
+        // screen-snapshot-scrm Req 27.2: a transient message/dialog box is the
+        // FRONTMOST surface. When one is open, capture ITS logical model (already
+        // redacted) instead of the Context behind it. The per-Context KindTag
+        // dispatch below is byte-for-byte unchanged for the no-overlay case.
+        if let Some(model) = self.active_dialog_capture() {
+            return ScreenCapture::Model(Box::new(model));
+        }
         let tab = self.tabs.active_tab();
         match tab.kind.tag() {
             // The Menu_Workspace provider (POM, Settings, every named menu).
@@ -156,41 +163,42 @@ impl WorkbenchShell {
         }
     }
 
-    /// Build the full-screen chrome for a Menu_Workspace snapshot from the
-    /// shell's LOGICAL state (never egui): window title bar, menu bar, tab
-    /// header, title line, the calendar (when the menu shows one), and the
-    /// PF-key footer (only when the Key_Label_Bar is shown, pfshow on).
+    /// Build the menu snapshot chrome for a Menu_Workspace from the shell's
+    /// LOGICAL state (never egui): the RIGHT-column block (calendar + Time +
+    /// Day of Year, only when the menu shows the calendar) and the PF-key
+    /// footer (only when the Key_Label_Bar is shown, pfshow on).
+    ///
+    /// The window title / menu-bar echo / `[POM]` tag / duplicated title line
+    /// are deliberately NOT built here any more: the owner's authoritative ISPF
+    /// mock has no such header block, and the title is already shown in the
+    /// frame border (Bug 2, owner correction 2026-11-01).
+    ///
+    /// The calendar / Time / Day of Year come from the SAME `chrono::Local::now()`
+    /// source and the SAME `primary_option_menu` helpers the live POM uses, so
+    /// the snapshot equals the live screen (screen-snapshot-scrm Req 3.9, 3.13).
     ///
     /// Validates: screen-snapshot-scrm Req 3.9, 3.10, 3.13.
     fn menu_screen_chrome(
         &self,
         mw: &crate::menu_workspace::MenuWorkspaceState,
     ) -> MenuScreenChrome {
-        let tab = self.tabs.active_tab();
-
-        // Menu bar: the bar-visible option descriptions, in order.
-        let menu_bar: Vec<String> = self
-            .resolve_menu_bar_menu()
-            .options
-            .iter()
-            .filter(|o| o.show_in_menu_bar)
-            .map(|o| o.description.clone())
-            .collect();
-
-        // Tab header tag (e.g. "[POM]") -- the command-derived Menu_Name, same
-        // as the on-screen tab label -- and the descriptive title line.
-        let tab_header = mw
-            .menu_name_label()
-            .map(|n| format!("[{n}]"))
-            .unwrap_or_else(|| mw.tab_title());
-        let title_line = super::title_line_text(tab);
-
-        // Calendar: only when the loaded menu shows it (POM yes, Settings no).
-        let calendar_lines = match &mw.menu {
+        // Right column: calendar + Time + Day of Year, only when the loaded menu
+        // shows the calendar (POM yes, Settings no).
+        let right_column = match &mw.menu {
             Some(menu) if menu.show_calendar => {
-                use chrono::Datelike;
-                let today = chrono::Local::now().date_naive();
-                crate::screen_snapshot::calendar_lines(today.year(), today.month(), today.day())
+                use chrono::{Datelike, Timelike};
+                let now = chrono::Local::now();
+                let date = now.date_naive();
+                let doy =
+                    crate::primary_option_menu::day_of_year(date.year(), date.month(), date.day());
+                crate::screen_snapshot::calendar_right_column(
+                    date.year(),
+                    date.month(),
+                    date.day(),
+                    now.hour(),
+                    now.minute(),
+                    doy,
+                )
             }
             _ => Vec::new(),
         };
@@ -207,11 +215,7 @@ impl WorkbenchShell {
         };
 
         MenuScreenChrome {
-            window_title: "FileForge Workbench".to_string(),
-            menu_bar,
-            tab_header,
-            title_line,
-            calendar_lines,
+            right_column,
             key_bar_lines,
         }
     }
@@ -237,8 +241,13 @@ mod tests {
         let shell = seeded_pom_shell();
         match shell.active_screen_capture() {
             ScreenCapture::Model(model) => {
+                // The menu/POM model now composes a TWO-COLUMN body as verbatim
+                // `body_lines` (the `Command ===>` row, option/calendar rows,
+                // PF footer), not the generic label/value `fields` path (owner
+                // correction 2026-11-01). A populated capture is a non-empty
+                // body (or a load-error message).
                 assert!(
-                    !model.fields.is_empty() || !model.messages.is_empty(),
+                    !model.body_lines.is_empty() || !model.messages.is_empty(),
                     "POM provider must yield a populated screen model"
                 );
             }

@@ -52,6 +52,14 @@ pub fn render_plain(model: &ScreenModel, options: RenderOptions) -> String {
     let mut lines: Vec<String> = Vec::new();
     lines.push(model.title.clone());
 
+    // Pre-composed verbatim body lines (the layout-owning menu/POM path) sit
+    // DIRECTLY under the title border with NO leading blank and NO decoration:
+    // the Context has already folded its command line / two-column body / PF
+    // footer into these exact lines (screen-snapshot-scrm Req 3.8-3.13).
+    for b in &model.body_lines {
+        lines.push(b.clone());
+    }
+
     // Header chrome (window title bar, menu bar, tab header) directly under the
     // title row (Requirement 3.9).
     if !model.header_lines.is_empty() {
@@ -188,5 +196,25 @@ mod tests {
         let out = render_plain(&m, RenderOptions::default());
         assert!(out.contains("Command ===> SNAPSHOT"));
         assert!(out.contains('b'));
+    }
+
+    // Validates: screen-snapshot-scrm Req 3.8-3.13 -- body_lines render
+    // VERBATIM inside the frame, the FIRST body row sits directly under the
+    // title separator (no leading blank), and no generic chrome is injected.
+    #[test]
+    fn body_lines_render_verbatim_as_first_body_rows() {
+        let m = ScreenModel::new("Primary Option Menu")
+            .with_body_line("Command ===> ____")
+            .with_body_line("0 Settings : FFWB Settings (Settings)   October 2026");
+        let out = render_plain(&m, RenderOptions::default());
+        let rows: Vec<&str> = out.lines().collect();
+        // rows: [top border, title, separator, first body row, ...]
+        assert!(
+            rows[3].contains("Command ===> ____"),
+            "first body row must be the command line (no leading blank):\n{out}"
+        );
+        assert!(rows[4].contains("0 Settings : FFWB Settings (Settings)   October 2026"));
+        // No command-line echo OUTSIDE the frame when command_line is empty.
+        assert!(!out.contains("\nCommand ===> \n"));
     }
 }

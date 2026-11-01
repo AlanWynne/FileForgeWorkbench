@@ -25,6 +25,15 @@ pub fn render_yaml(model: &ScreenModel) -> String {
         }
     }
 
+    // Pre-composed verbatim body lines (the layout-owning menu/POM path) --
+    // screen-snapshot-scrm Req 3.8-3.13.
+    if !model.body_lines.is_empty() {
+        out.push_str("  body:\n");
+        for b in &model.body_lines {
+            out.push_str(&format!("    - {}\n", q(b)));
+        }
+    }
+
     out.push_str("  fields:\n");
     if model.fields.is_empty() {
         out.push_str("    []\n");

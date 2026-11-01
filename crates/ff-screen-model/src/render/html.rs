@@ -54,6 +54,18 @@ pub fn render_html(model: &ScreenModel) -> String {
     }
     out.push_str(&format!("  <h2>{}</h2>\n", escape(&model.title)));
 
+    // Pre-composed verbatim body lines (the layout-owning menu/POM path) --
+    // emitted as a monospaced block so the two-column layout is preserved
+    // (screen-snapshot-scrm Req 3.8-3.13).
+    if !model.body_lines.is_empty() {
+        out.push_str("  <pre class=\"ffwb-body\">");
+        for b in &model.body_lines {
+            out.push_str(&escape(b));
+            out.push('\n');
+        }
+        out.push_str("</pre>\n");
+    }
+
     if !model.fields.is_empty() {
         out.push_str("  <table class=\"ffwb-fields\">\n");
         for f in &model.fields {

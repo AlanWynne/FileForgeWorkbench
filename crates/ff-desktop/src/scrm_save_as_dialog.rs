@@ -149,16 +149,23 @@ pub enum Outcome {
     /// The user cancelled (Cancel button, Escape, or dimmed-background click):
     /// write nothing and close (Req 24.5).
     Cancel,
+    /// The user clicked Copy: copy this dialog's redacted text to the clipboard
+    /// and LEAVE the dialog open (Req 27.3). The copy itself is performed by the
+    /// shell through the single `copy_frontmost_surface` path.
+    Copy,
 }
 
-/// Render the Save-As modal for one frame against `state`. Returns an
-/// [`Outcome`] the shell acts on. The caller only calls this when the modal is
-/// open (its `scrm_ui.save_as` is `Some`).
+/// Render the Save-As modal for one frame against `state`. Returns the
+/// [`Outcome`] the shell acts on plus the modal's on-screen rectangle in POINTS
+/// (screen-snapshot-scrm Req 23.2a) so a dialog-frontmost SNAPSHOT picture can be
+/// cropped to just the dialog. The caller only calls this when the modal is open
+/// (its `scrm_ui.save_as` is `Some`).
 ///
-/// Validates: screen-snapshot-scrm Requirement 24.1, 24.2, 24.5, 24.6.
-pub fn render(ctx: &egui::Context, state: &mut SaveAsState) -> Outcome {
+/// Validates: screen-snapshot-scrm Requirement 24.1, 24.2, 24.5, 24.6, 23.2a.
+pub fn render(ctx: &egui::Context, state: &mut SaveAsState) -> (Outcome, egui::Rect) {
     let mut save_clicked = false;
     let mut cancel_clicked = false;
+    let mut copy_clicked = false;
 
     let modal = egui::Modal::new(egui::Id::new("scrm_save_as_modal")).show(ctx, |ui| {
         ui.set_max_width(520.0);
@@ -213,6 +220,17 @@ pub fn render(ctx: &egui::Context, state: &mut SaveAsState) -> Outcome {
             {
                 cancel_clicked = true;
             }
+            // Direct COPY affordance (Req 27.3): copy this dialog's redacted
+            // text without typing a command. Leaves the dialog open.
+            if ui
+                .add(
+                    egui::Button::new(ff_i18n::t("ff-desktop-shell-dialogs-copy"))
+                        .min_size(egui::vec2(96.0, 0.0)),
+                )
+                .clicked()
+            {
+                copy_clicked = true;
+            }
         });
     });
 
@@ -222,13 +240,17 @@ pub fn render(ctx: &egui::Context, state: &mut SaveAsState) -> Outcome {
         cancel_clicked = true;
     }
 
-    if save_clicked {
+    let rect = modal.response.rect;
+    let outcome = if save_clicked {
         Outcome::Save
     } else if cancel_clicked {
         Outcome::Cancel
+    } else if copy_clicked {
+        Outcome::Copy
     } else {
         Outcome::Open
-    }
+    };
+    (outcome, rect)
 }
 
 /// Stable id of the name field (first interior control of the modal).

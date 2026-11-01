@@ -67,21 +67,28 @@ pub enum Outcome {
     /// The user cancelled (Cancel button, Escape, or dimmed-background click):
     /// do nothing and close.
     Cancel,
+    /// The user clicked Copy: copy this dialog's redacted text to the clipboard
+    /// and LEAVE the dialog open (Req 27.3). The copy itself is performed by the
+    /// shell through the single `copy_frontmost_surface` path.
+    Copy,
 }
 
 /// Render the saved-session picker for one frame against `state`, listing
-/// `entries` (the `*.ffscrm` files the shell found in `scrm_dir()`). Returns an
-/// [`Outcome`] the shell acts on. The caller only calls this when the modal is
-/// open (its `scrm_ui.replay_picker` is `Some`).
+/// `entries` (the `*.ffscrm` files the shell found in `scrm_dir()`). Returns the
+/// [`Outcome`] the shell acts on plus the modal's on-screen rectangle in POINTS
+/// (screen-snapshot-scrm Req 23.2a) so a dialog-frontmost SNAPSHOT picture can be
+/// cropped to just the dialog. The caller only calls this when the modal is open
+/// (its `scrm_ui.replay_picker` is `Some`).
 ///
-/// Validates: screen-snapshot-scrm Requirement 10.12, 24.6.
+/// Validates: screen-snapshot-scrm Requirement 10.12, 24.6, 23.2a.
 pub fn render(
     ctx: &egui::Context,
     _state: &mut ReplayPickerState,
     entries: &[SessionEntry],
-) -> Outcome {
+) -> (Outcome, egui::Rect) {
     let mut selected: Option<PathBuf> = None;
     let mut cancel_clicked = false;
+    let mut copy_clicked = false;
 
     let modal = egui::Modal::new(egui::Id::new("scrm_replay_picker_modal")).show(ctx, |ui| {
         ui.set_max_width(520.0);
@@ -108,12 +115,25 @@ pub fn render(
 
         ui.add_space(8.0);
         ui.separator();
-        if ui
-            .add(egui::Button::new("Cancel").min_size(egui::vec2(96.0, 0.0)))
-            .clicked()
-        {
-            cancel_clicked = true;
-        }
+        ui.horizontal(|ui| {
+            if ui
+                .add(egui::Button::new("Cancel").min_size(egui::vec2(96.0, 0.0)))
+                .clicked()
+            {
+                cancel_clicked = true;
+            }
+            // Direct COPY affordance (Req 27.3): copy this dialog's redacted
+            // text without typing a command. Leaves the dialog open.
+            if ui
+                .add(
+                    egui::Button::new(ff_i18n::t("ff-desktop-shell-dialogs-copy"))
+                        .min_size(egui::vec2(96.0, 0.0)),
+                )
+                .clicked()
+            {
+                copy_clicked = true;
+            }
+        });
     });
 
     // Escape or a click on the dimmed background cancels -- the safe default.
@@ -121,13 +141,17 @@ pub fn render(
         cancel_clicked = true;
     }
 
-    if let Some(path) = selected {
+    let rect = modal.response.rect;
+    let outcome = if let Some(path) = selected {
         Outcome::Selected(path)
     } else if cancel_clicked {
         Outcome::Cancel
+    } else if copy_clicked {
+        Outcome::Copy
     } else {
         Outcome::Open
-    }
+    };
+    (outcome, rect)
 }
 
 #[cfg(test)]

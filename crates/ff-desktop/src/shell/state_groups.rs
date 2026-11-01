@@ -160,6 +160,45 @@ pub(crate) struct SnapshotState {
     /// `ViewportCommand::Screenshot` next frame. Cleared once the request is
     /// issued (the `pending` payload stays in place until the image arrives).
     pub screenshot_requested: bool,
+    /// The on-screen rectangle (in POINTS) of the FRONTMOST open dialog/modal,
+    /// captured at render time each frame the dialog is shown (screen-snapshot
+    /// -scrm Req 23.2a). When a dialog is the frontmost captured surface, the
+    /// SNAPSHOT/Copy picture is CROPPED to this rect (converted to physical
+    /// pixels via the frame's pixels-per-point) so just the dialog -- not the
+    /// whole window behind it -- is in the picture. `None` when no dialog is
+    /// open (a full-window SNAPSHOT is then uncropped).
+    pub dialog_rect: Option<egui::Rect>,
+    /// Priority of the dialog whose rect is currently in `dialog_rect` this
+    /// frame, mirroring the frontmost precedence in `frontmost_dialog_model`
+    /// (LOWER = more frontmost). Lets several simultaneously-open overlays
+    /// record their rects while the most-frontmost one wins. Reset before each
+    /// overlay render pass.
+    pub dialog_rect_priority: Option<u8>,
+}
+
+impl SnapshotState {
+    /// Reset the per-frame frontmost-dialog rect bookkeeping. Called once at the
+    /// start of the overlay render pass so a dialog closed since last frame does
+    /// not leave a stale rect behind (screen-snapshot-scrm Req 23.2a).
+    pub fn reset_dialog_rect(&mut self) {
+        self.dialog_rect = None;
+        self.dialog_rect_priority = None;
+    }
+
+    /// Record a rendered overlay's on-screen rect with its frontmost `priority`
+    /// (LOWER = more frontmost, matching the `frontmost_dialog_model` chain). The
+    /// most-frontmost recorded rect this frame wins, so the crop uses the rect of
+    /// the dialog actually on top (screen-snapshot-scrm Req 23.2a).
+    pub fn note_dialog_rect(&mut self, priority: u8, rect: egui::Rect) {
+        if self
+            .dialog_rect_priority
+            .map(|p| priority < p)
+            .unwrap_or(true)
+        {
+            self.dialog_rect = Some(rect);
+            self.dialog_rect_priority = Some(priority);
+        }
+    }
 }
 
 // === ScrmUiState =====================================================

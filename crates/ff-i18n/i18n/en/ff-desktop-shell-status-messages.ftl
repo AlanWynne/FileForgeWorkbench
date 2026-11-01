@@ -81,6 +81,8 @@ ff-desktop-shell-msg-scrm-snapshot-both-copied = Snapshot copied to clipboard: p
 ff-desktop-shell-msg-scrm-snapshot-written = Snapshot { $format } written to { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-written = Snapshot PDF written to { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-failed = SNAPSHOT PDF failed: { $error }.
+ff-desktop-shell-msg-copy-copied = Copied to clipboard.
+ff-desktop-shell-msg-copy-no-clipboard = Could not copy: the clipboard was unavailable.
 
 # === TASK 9.3 -- verb-embedding command-ladder messages ===
 # Verb + keyword tokens (DETACH/UNSPLIT/FOCUS/SWAP/SUBMIT/STATUS/CREATE/REPLACE/

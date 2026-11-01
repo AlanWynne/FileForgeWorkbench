@@ -20,6 +20,12 @@ impl WorkbenchShell {
     /// so the `return` early-exits inside the AllocateDataset arm behave exactly
     /// as before (they simply end the frame's update).
     pub(super) fn render_overlays(&mut self, ctx: &egui::Context) {
+        // Req 23.2a: clear last frame's frontmost-dialog rect before the overlay
+        // pass, so a dialog closed since then leaves no stale crop rect behind.
+        // Each overlay below records its rect with its frontmost priority (lower
+        // = more frontmost, matching `frontmost_dialog_model`).
+        self.snapshot.reset_dialog_rect();
+
         // Command Palette overlay -- Validates: command-palette Requirement 1.1-1.5, 4.1-4.5
         if self.palette_state.open {
             let all_entries = build_palette_entries(&self.cmd_registry);
@@ -39,9 +45,18 @@ impl WorkbenchShell {
             }
         }
 
-        // About dialog - Req 13.1, 13.8
+        // About dialog - Req 13.1, 13.8. The on-dialog Copy affordance
+        // (screen-snapshot-scrm Req 27.3) copies the dialog's redacted text
+        // through the single copy path and leaves the dialog open.
         if self.show_about {
-            crate::about_dialog::render(ctx, &mut self.show_about);
+            let (copy_clicked, rect) = crate::about_dialog::render(ctx, &mut self.show_about);
+            // Req 23.2a: About is priority 0 (most frontmost in the chain).
+            if let Some(rect) = rect {
+                self.snapshot.note_dialog_rect(0, rect);
+            }
+            if copy_clicked {
+                self.copy_frontmost_surface();
+            }
         }
 
         // SCRM overlays (Stream SCRM Phase 2C FEAT-002/003): capture-STOP Save-As
@@ -57,7 +72,8 @@ impl WorkbenchShell {
         if let Some(entries) = self.show_history_list.clone() {
             let mut keep_open = true;
             let mut selected: Option<String> = None;
-            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-history-title"))
+            let mut copy_clicked = false;
+            let hist_resp = egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-history-title"))
                 .collapsible(false)
                 .resizable(true)
                 .show(ctx, |ui| {
@@ -81,19 +97,35 @@ impl WorkbenchShell {
                             });
                     }
                     ui.separator();
-                    if ui
-                        .button(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
-                        .clicked()
-                    {
-                        keep_open = false;
-                    }
+                    ui.horizontal(|ui| {
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
+                            .clicked()
+                        {
+                            keep_open = false;
+                        }
+                        // Direct COPY affordance (Req 27.3): copies this
+                        // dialog's redacted text and leaves it open.
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-copy"))
+                            .clicked()
+                        {
+                            copy_clicked = true;
+                        }
+                    });
                 });
+            // Req 23.2a: history picker is priority 1.
+            if let Some(resp) = hist_resp {
+                self.snapshot.note_dialog_rect(1, resp.response.rect);
+            }
             if let Some(cmd) = selected {
                 self.command_text = cmd;
                 self.show_history_list = None;
             } else if !keep_open || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                 self.command_text.clear();
                 self.show_history_list = None;
+            } else if copy_clicked {
+                self.copy_frontmost_surface();
             }
         }
 
@@ -115,8 +147,9 @@ impl WorkbenchShell {
 
             let mut chosen: Option<usize> = None; // 1-based selection
             let mut cancel = false;
+            let mut copy_clicked = false;
             let num_id = egui::Id::new("swap_list_number_input");
-            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-swap-title"))
+            let swap_resp = egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-swap-title"))
                 .collapsible(false)
                 .resizable(true)
                 .show(ctx, |ui| {
@@ -161,8 +194,20 @@ impl WorkbenchShell {
                         {
                             cancel = true;
                         }
+                        // Direct COPY affordance (Req 27.3): copies this
+                        // dialog's redacted text and leaves it open.
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-copy"))
+                            .clicked()
+                        {
+                            copy_clicked = true;
+                        }
                     });
                 });
+            // Req 23.2a: SWAP picker is priority 2.
+            if let Some(resp) = swap_resp {
+                self.snapshot.note_dialog_rect(2, resp.response.rect);
+            }
 
             if let Some(n) = chosen {
                 self.tabs.set_active(n - 1);
@@ -172,6 +217,8 @@ impl WorkbenchShell {
             } else if cancel || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                 self.show_swap_list = None;
                 ctx.data_mut(|d| d.remove::<String>(num_id));
+            } else if copy_clicked {
+                self.copy_frontmost_surface();
             }
         }
 
@@ -181,12 +228,13 @@ impl WorkbenchShell {
             self.modal_open = true;
             let mut run_clicked = false;
             let mut cancel_clicked = false;
+            let mut copy_clicked = false;
             let cmd_display = if pending.args.is_empty() {
                 pending.program.clone()
             } else {
                 format!("{} {}", pending.program, pending.args.join(" "))
             };
-            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-exec-title"))
+            let exec_resp = egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-exec-title"))
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
@@ -205,8 +253,20 @@ impl WorkbenchShell {
                         {
                             cancel_clicked = true;
                         }
+                        // Direct COPY affordance (Req 27.3): copies this
+                        // dialog's redacted text and leaves it open.
+                        if ui
+                            .button(ff_i18n::t("ff-desktop-shell-dialogs-copy"))
+                            .clicked()
+                        {
+                            copy_clicked = true;
+                        }
                     });
                 });
+            // Req 23.2a: external-exec confirmation is priority 5.
+            if let Some(resp) = exec_resp {
+                self.snapshot.note_dialog_rect(5, resp.response.rect);
+            }
             if run_clicked {
                 self.pending_external = None;
                 self.modal_open = false;
@@ -216,155 +276,17 @@ impl WorkbenchShell {
                 self.pending_external = None;
                 self.modal_open = false;
                 self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-external-cancelled"));
+            } else if copy_clicked {
+                self.copy_frontmost_surface();
             }
         }
 
-        // RESET BARE confirmation dialog (CR-CH-021, CR-NR-083). The SAME single
-        // dialog is reused for every target list; the only difference is that it
-        // now names the profile(s) that will be reset -- one name, or the
-        // enumerated list for a subset / ALL.
-        // Validates: configuration-system Requirement 19.2, 19.3, 19.6, 19.15
-        if self.reset_bare_confirm.is_some() {
-            self.modal_open = true;
-            let mut confirm_clicked = false;
-            let mut cancel_clicked = false;
-            // Snapshot the display names for the body without holding a borrow
-            // across the closure.
-            let profile_names: Vec<String> = self
-                .reset_bare_confirm
-                .as_ref()
-                .map(|t| t.profiles.iter().map(|(name, _)| name.clone()).collect())
-                .unwrap_or_default();
-            // B077: render as an `egui::Modal` so the background is dimmed and
-            // input is captured by the dialog (accessibility Req 2.3 -- modal
-            // focus trap). Focus lands on Cancel on the first frame; Tab cycles
-            // between Cancel and Confirm; Escape cancels.
-            let focus_cancel = self.reset_bare_focus_requested;
-            self.reset_bare_focus_requested = false;
-            let modal = egui::Modal::new(egui::Id::new("reset_bare_modal")).show(ctx, |ui| {
-                ui.set_max_width(460.0);
-                ui.heading(ff_i18n::t("ff-desktop-shell-dialogs-reset-heading"));
-                ui.label(ff_i18n::t("ff-desktop-shell-dialogs-reset-intro"));
-                if profile_names.len() == 1 {
-                    ui.label(ff_i18n::t_args(
-                        "ff-desktop-shell-dialogs-reset-one",
-                        &ff_i18n::MessageArgs::new().set("name", profile_names[0].clone()),
-                    ));
-                } else {
-                    // Count passed as TEXT (pre-formatted) to keep byte-identical
-                    // rendering (no Fluent NUMBER() grouping).
-                    ui.label(ff_i18n::t_args(
-                        "ff-desktop-shell-dialogs-reset-many",
-                        &ff_i18n::MessageArgs::new().set("count", profile_names.len().to_string()),
-                    ));
-                    for name in &profile_names {
-                        ui.label(ff_i18n::t_args(
-                            "ff-desktop-shell-dialogs-reset-bullet",
-                            &ff_i18n::MessageArgs::new().set("name", name.clone()),
-                        ));
-                    }
-                }
-                ui.label(ff_i18n::t("ff-desktop-shell-dialogs-reset-archive-note"));
-                ui.horizontal(|ui| {
-                    // Cancel is first and the safe default -- it receives initial
-                    // focus (B077). Its stable id anchors the modal focus trap.
-                    let cancel = ui
-                        .add(
-                            egui::Button::new(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
-                                .min_size(egui::vec2(96.0, 0.0)),
-                        )
-                        .on_hover_text(ff_i18n::t("ff-desktop-shell-dialogs-reset-cancel-hover"));
-                    let confirm = ui.add(
-                        egui::Button::new(ff_i18n::t("ff-desktop-shell-dialogs-reset-confirm"))
-                            .min_size(egui::vec2(120.0, 0.0)),
-                    );
-                    if focus_cancel {
-                        cancel.request_focus();
-                    }
-                    if cancel.clicked() {
-                        cancel_clicked = true;
-                    }
-                    if confirm.clicked() {
-                        confirm_clicked = true;
-                    }
-                });
-            });
-            // Escape (or clicking the dimmed background) cancels -- the safe
-            // default that leaves configuration untouched (Req 19.3).
-            if modal.should_close() {
-                cancel_clicked = true;
-            }
-            if confirm_clicked {
-                self.modal_open = false;
-                if let Some(target) = self.reset_bare_confirm.take() {
-                    self.execute_reset_bare(&target);
-                }
-            } else if cancel_clicked {
-                // Req 19.3: cancelling leaves all configuration untouched.
-                self.reset_bare_confirm = None;
-                self.modal_open = false;
-                self.open_error = None;
-            }
-        }
-
-        // Unsaved workspace changes dialog -- Validates: workspace-model Requirement 2.5
-        if self.show_unsaved_workspace_dialog {
-            let mut save_clicked = false;
-            let mut discard_clicked = false;
-            let mut cancel_clicked = false;
-            let ws_name = self
-                .active_workspace
-                .as_ref()
-                .map(|ws| ws.name.clone())
-                .unwrap_or_default();
-            egui::Window::new(ff_i18n::t("ff-desktop-shell-dialogs-unsaved-title"))
-                .collapsible(false)
-                .resizable(false)
-                .show(ctx, |ui| {
-                    ui.label(ff_i18n::t_args(
-                        "ff-desktop-shell-dialogs-unsaved-body",
-                        &ff_i18n::MessageArgs::new().set("name", ws_name.clone()),
-                    ));
-                    ui.horizontal(|ui| {
-                        if ui
-                            .button(ff_i18n::t("ff-desktop-shell-dialogs-unsaved-save"))
-                            .clicked()
-                        {
-                            save_clicked = true;
-                        }
-                        if ui
-                            .button(ff_i18n::t("ff-desktop-shell-dialogs-unsaved-discard"))
-                            .clicked()
-                        {
-                            discard_clicked = true;
-                        }
-                        if ui
-                            .button(ff_i18n::t("ff-desktop-shell-dialogs-cancel"))
-                            .clicked()
-                        {
-                            cancel_clicked = true;
-                        }
-                    });
-                });
-            if save_clicked {
-                self.save_workspace_to(None);
-                self.show_unsaved_workspace_dialog = false;
-                if let Some(path) = self.pending_workspace_open.take() {
-                    self.open_workspace_force(&path);
-                }
-            } else if discard_clicked {
-                self.show_unsaved_workspace_dialog = false;
-                if let Some(path) = self.pending_workspace_open.take() {
-                    if let Some(ws) = self.active_workspace.as_mut() {
-                        ws.is_modified = false;
-                    }
-                    self.open_workspace_force(&path);
-                }
-            } else if cancel_clicked {
-                self.show_unsaved_workspace_dialog = false;
-                self.pending_workspace_open = None;
-            }
-        }
+        // RESET BARE confirmation dialog (CR-CH-021, CR-NR-083) and the
+        // Unsaved-workspace-changes dialog. Both carry the on-dialog Copy
+        // affordance (Req 27.3); their render bodies live in
+        // `update_dialogs_confirm.rs` (file-size split, rust-standards.md).
+        self.render_reset_bare_overlay(ctx);
+        self.render_unsaved_workspace_overlay(ctx);
 
         // The SNAPSHOT format picker (Req 4.7) was RETIRED under CR-NR-114: bare
         // SNAPSHOT now places the composite clipboard payload directly, so there

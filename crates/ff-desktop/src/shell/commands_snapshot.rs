@@ -131,27 +131,43 @@ impl WorkbenchShell {
                 return;
             }
         };
+        self.stash_composite_request(&model);
+        self.open_error = None;
+    }
+
+    /// Render the two composite TEXT flavors from `model` and stash them as the
+    /// pending async request, arming the live window screenshot. SHARED by bare
+    /// `SNAPSHOT` and the on-dialog Copy affordance (Req 27.3, owner decision B)
+    /// so both place the IDENTICAL composite (picture + Markdown text + CF_HTML)
+    /// through the ONE assembly path in `shell/update.rs` -- there is no second
+    /// clipboard path. The caller supplies the already-resolved (and, for a
+    /// dialog, already-REDACTED) logical model, so redaction stays a single
+    /// point.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d,
+    /// 27.3.
+    pub(super) fn stash_composite_request(&mut self, model: &ff_screen_model::ScreenModel) {
         // Req 23.4: the composite TEXT flavor is the Markdown-fenced rendering
         // (NOT plain text, NOT ANSI) so box-drawing stays monospaced/aligned in
         // a Markdown-aware target and readable in a plain-text target.
         let text = crate::screen_snapshot::render_snapshot(
-            &model,
+            model,
             ff_screen_model::SnapshotFormat::Markdown,
         );
         // Req 23.5c: the CF_HTML `<pre>` body is the plain Unicode box-drawn
         // screen (the default options frame with the U+2500 family), rendered
         // here so the frame loop never touches the model.
         let pre_text = ff_screen_model::render(
-            &model,
+            model,
             ff_screen_model::SnapshotFormat::PlainText,
             ff_screen_model::RenderOptions::default(),
         );
         // Stash the pre-rendered flavors and ask the frame loop for a live window
         // screenshot. The payload + clipboard placement happen on the
-        // Event::Screenshot frame (see `shell/update.rs`).
+        // Event::Screenshot frame (see `shell/update.rs`). The picture naturally
+        // includes any open dialog on top, which is correct for the dialog Copy.
         self.snapshot.pending = Some(super::state_groups::PendingSnapshot { text, pre_text });
         self.snapshot.screenshot_requested = true;
-        self.open_error = None;
     }
 
     /// ASSEMBLY phase of the two-phase async bare `SNAPSHOT` (CR-NR-114,
@@ -176,9 +192,15 @@ impl WorkbenchShell {
         &mut self,
         image: &egui::ColorImage,
         pending: super::state_groups::PendingSnapshot,
+        pixels_per_point: f32,
     ) {
         use crate::clipboard_backend::SnapshotClipboard;
         let raster = crate::screenshot::color_image_to_raster(image);
+        // Req 23.2a: when a dialog is the frontmost captured surface, CROP the
+        // full-window screenshot to the dialog's on-screen rectangle so only the
+        // dialog -- not the window behind it -- is in the picture. A full-window
+        // SNAPSHOT with no dialog open is left uncropped.
+        let raster = self.crop_capture_to_dialog(raster, pixels_per_point);
         let mut payload =
             crate::clipboard_backend::SnapshotPayload::from_window_capture(raster, pending.text);
         payload.html = Some(crate::clipboard_html::build_cf_html(
@@ -203,6 +225,30 @@ impl WorkbenchShell {
                 &ff_i18n::MessageArgs::new().set("format", fmt),
             ),
         });
+    }
+
+    /// Crop `raster` (the full-window screenshot) to the frontmost dialog's
+    /// rectangle when a dialog is the frontmost captured surface (Req 23.2a),
+    /// otherwise return it unchanged. The decision is: a dialog is open
+    /// (`any_dialog_open`) AND its on-screen rect was captured this frame
+    /// (`snapshot.dialog_rect`). The points rect is converted to a physical-pixel
+    /// `PixelRect` via `pixels_per_point` and clamped by `ff_screen_model::crop`.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 23.2a.
+    fn crop_capture_to_dialog(
+        &self,
+        raster: ff_screen_model::RasterImage,
+        pixels_per_point: f32,
+    ) -> ff_screen_model::RasterImage {
+        if !self.any_dialog_open() {
+            return raster;
+        }
+        let rect = match self.snapshot.dialog_rect {
+            Some(r) => r,
+            None => return raster,
+        };
+        let pixel_rect = points_rect_to_pixels(rect, pixels_per_point);
+        ff_screen_model::crop(&raster, pixel_rect)
     }
 
     /// Produce a single EXPLICIT format directly to a file (Req 4.8): a text
@@ -291,5 +337,121 @@ impl WorkbenchShell {
                 &ff_i18n::MessageArgs::new().set("error", e.to_string()),
             ),
         });
+    }
+}
+
+/// Convert an egui on-screen rectangle (in POINTS) to a physical-pixel
+/// [`ff_screen_model::PixelRect`] using `pixels_per_point` (Req 23.2a). The
+/// origin and extent are scaled and rounded to whole pixels; a negative origin
+/// (a dialog partly off the top/left) is clamped to zero so the rect is a valid
+/// image coordinate (the crop itself further clamps to the image bounds).
+fn points_rect_to_pixels(rect: egui::Rect, pixels_per_point: f32) -> ff_screen_model::PixelRect {
+    let ppp = if pixels_per_point > 0.0 {
+        pixels_per_point
+    } else {
+        1.0
+    };
+    let x = (rect.min.x * ppp).round().max(0.0) as u32;
+    let y = (rect.min.y * ppp).round().max(0.0) as u32;
+    let width = (rect.width() * ppp).round().max(0.0) as u32;
+    let height = (rect.height() * ppp).round().max(0.0) as u32;
+    ff_screen_model::PixelRect {
+        x,
+        y,
+        width,
+        height,
+    }
+}
+
+#[cfg(test)]
+mod dialog_crop_tests {
+    use super::*;
+    use crate::shell::tests_common::make_shell;
+    use ff_screen_model::RasterImage;
+
+    /// A solid WxH image whose pixels encode (col, row) in R/G, so a crop can be
+    /// checked against known coordinates.
+    fn coded_image(w: u32, h: u32) -> RasterImage {
+        let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                rgba.extend_from_slice(&[x as u8, y as u8, 0, 0xFF]);
+            }
+        }
+        RasterImage {
+            width: w,
+            height: h,
+            rgba,
+        }
+    }
+
+    // Validates: screen-snapshot-scrm Req 23.2a -- a points rect is scaled to
+    // physical pixels by pixels-per-point and rounded to whole pixels.
+    #[test]
+    fn points_rect_scales_by_pixels_per_point() {
+        let rect = egui::Rect::from_min_size(egui::pos2(10.0, 20.0), egui::vec2(30.0, 40.0));
+        let px = points_rect_to_pixels(rect, 2.0);
+        assert_eq!(px.x, 20);
+        assert_eq!(px.y, 40);
+        assert_eq!(px.width, 60);
+        assert_eq!(px.height, 80);
+    }
+
+    // Validates: screen-snapshot-scrm Req 23.2a -- a negative (partly off-screen)
+    // origin is clamped to zero so the pixel rect is a valid image coordinate.
+    #[test]
+    fn points_rect_clamps_negative_origin() {
+        let rect = egui::Rect::from_min_size(egui::pos2(-5.0, -3.0), egui::vec2(10.0, 10.0));
+        let px = points_rect_to_pixels(rect, 1.0);
+        assert_eq!(px.x, 0);
+        assert_eq!(px.y, 0);
+    }
+
+    // Validates: screen-snapshot-scrm Req 23.2a -- when a dialog is frontmost and
+    // its rect is captured, the full-window capture is CROPPED to the dialog
+    // rect (the result has the dialog-rect pixel dimensions, NOT the full
+    // framebuffer size). Uses `show_about` as the open-dialog seam and a stubbed
+    // rect, so no real screenshot is needed.
+    #[test]
+    fn crop_uses_dialog_rect_when_dialog_frontmost() {
+        let mut shell = make_shell();
+        let full = coded_image(100, 80);
+        // A dialog is frontmost (seam) and its on-screen rect was captured.
+        shell.show_about = true;
+        shell.snapshot.dialog_rect = Some(egui::Rect::from_min_size(
+            egui::pos2(10.0, 20.0),
+            egui::vec2(30.0, 25.0),
+        ));
+        let cropped = shell.crop_capture_to_dialog(full, 1.0);
+        assert_eq!(cropped.width, 30, "cropped to the dialog rect width");
+        assert_eq!(cropped.height, 25, "cropped to the dialog rect height");
+        assert_ne!(
+            (cropped.width, cropped.height),
+            (100, 80),
+            "the capture is NOT the full framebuffer size"
+        );
+        // Top-left pixel of the crop is source (10, 20): R=10, G=20.
+        assert_eq!(&cropped.rgba[0..4], &[10, 20, 0, 0xFF]);
+    }
+
+    // Validates: screen-snapshot-scrm Req 23.2a -- with NO dialog open the
+    // capture is left UNCROPPED (whole window), even if a stale rect lingers.
+    #[test]
+    fn no_dialog_open_leaves_capture_uncropped() {
+        let mut shell = make_shell();
+        let full = coded_image(100, 80);
+        // No dialog open; a stale rect must not trigger a crop.
+        shell.snapshot.dialog_rect = Some(egui::Rect::from_min_size(
+            egui::pos2(5.0, 5.0),
+            egui::vec2(10.0, 10.0),
+        ));
+        assert!(!shell.any_dialog_open(), "precondition: no dialog open");
+        let out = shell.crop_capture_to_dialog(full.clone(), 1.0);
+        assert_eq!(
+            (out.width, out.height),
+            (100, 80),
+            "a full-window SNAPSHOT with no dialog is uncropped"
+        );
+        assert_eq!(out, full, "the capture is returned unchanged");
     }
 }

@@ -187,6 +187,16 @@ Context in the workbench.
 4.4 THE `ScreenProvider` opt-out SHALL be the RARE exception, not the default:
     the default for a Context that renders any logical screen content is to
     provide a `ScreenModel`.
+4.4a FAITHFUL CONTENT (CR-NR-114, owner finding). A Context's `ScreenModel` SHALL
+    faithfully represent the ACTUAL on-screen content, including the CURRENT
+    values of visible fields/rows as displayed (e.g. the Config panel's settings
+    tree categories and their effective values, a text field's current text, a
+    selection), NOT a thin generic summary. A provider that emits only a
+    placeholder or a couple of fields while the screen shows much more is a
+    DEFECT (see the Config-panel instance). This mirrors screen-snapshot-scrm
+    Req 27.8 for dialogs. Capture SHALL also be side-effect-free: issuing
+    SNAPSHOT SHALL NOT mutate the screen it captures (e.g. SNAPSHOT must not
+    collapse a focused tree item).
 4.5 THE snapshot + capture contract SHALL be realised ONLY through the existing
     `ScreenProvider` trait and the existing SNAPSHOT / CAPTURE command dispatch
     (screen-snapshot-scrm Req 11); NO Context SHALL expose snapshot/capture

@@ -71,6 +71,47 @@ impl WorkbenchShell {
         }
     }
 
+    /// Direct COPY via Ctrl+C while a transient message/dialog box is open
+    /// (screen-snapshot-scrm Req 27.3): copy the FRONTMOST dialog's redacted
+    /// text through the single `copy_frontmost_surface` path. Scoped so it fires
+    /// ONLY when an overlay is open AND no widget wants keyboard input (so it
+    /// does not steal Ctrl+C from a focused/selected text field inside the
+    /// dialog, and never interferes with Ctrl+C elsewhere when no dialog is up).
+    /// The Ctrl+C event is consumed so egui does not also act on it.
+    ///
+    /// Validates: screen-snapshot-scrm Requirement 27.3.
+    pub(super) fn handle_dialog_copy_shortcut(&mut self, ctx: &egui::Context) {
+        if !self.any_dialog_open() {
+            return;
+        }
+        // A focused text field (e.g. the Save-As name field) owns Ctrl+C for its
+        // own selection; defer to it rather than overriding the copy.
+        if ctx.wants_keyboard_input() {
+            return;
+        }
+        let copy_pressed = ctx.input_mut(|i| {
+            let hit = i.modifiers.command
+                && i.key_pressed(egui::Key::C)
+                && !i.modifiers.shift
+                && !i.modifiers.alt;
+            if hit {
+                i.events.retain(|e| {
+                    !matches!(
+                        e,
+                        egui::Event::Key {
+                            key: egui::Key::C,
+                            ..
+                        } | egui::Event::Copy
+                    )
+                });
+            }
+            hit
+        });
+        if copy_pressed {
+            self.copy_frontmost_surface();
+        }
+    }
+
     /// The unified Tab-order focus cycle: computes `modal_open`, runs the split
     /// region Tab handler, and otherwise applies the unsplit Boundary_Policy
     /// (command-field entry, menu-bar wrap, interior latches, File Explorer

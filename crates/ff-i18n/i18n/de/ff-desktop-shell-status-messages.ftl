@@ -53,6 +53,8 @@ ff-desktop-shell-msg-scrm-snapshot-both-copied = Schnappschuss in die Zwischenab
 ff-desktop-shell-msg-scrm-snapshot-written = Schnappschuss { $format } geschrieben nach { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-written = Schnappschuss-PDF geschrieben nach { $path }.
 ff-desktop-shell-msg-scrm-snapshot-pdf-failed = SNAPSHOT PDF fehlgeschlagen: { $error }.
+ff-desktop-shell-msg-copy-copied = In die Zwischenablage kopiert.
+ff-desktop-shell-msg-copy-no-clipboard = Kopieren fehlgeschlagen: die Zwischenablage war nicht verf{ "\u00fc" }gbar.
 
 # === verb-embedding command-ladder messages ===
 ff-desktop-shell-msg-detach-max-reached = Maximale Anzahl abgekoppelter Arbeitsbereiche (16) erreicht.
