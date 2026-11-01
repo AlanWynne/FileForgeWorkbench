@@ -31,14 +31,26 @@ pub(super) fn active_display_title(shell: &WorkbenchShell) -> String {
 }
 
 impl WorkbenchShell {
-    /// Theme Editor -- lists the editable colour tokens as label/value pairs.
+    /// Theme Editor -- lists the editable colour tokens with their REAL current
+    /// hex VALUES read from the Theme editor working palette (A1: fixes the
+    /// former blank-value bug, findings 1b) as label/value pairs AND as a
+    /// `[Setting, Value]` table (A2) so the snapshot renders a proper table.
     pub(super) fn theme_editor_screen_model(&self) -> ScreenModel {
         use crate::theme_editor_panel::EditableToken;
+        let palette = self
+            .theme_editor_panel
+            .working
+            .as_ref()
+            .unwrap_or(&self.palette);
         let mut model = ScreenModel::new(active_display_title(self));
         model.command_line = self.command_text.clone();
         for token in EditableToken::all() {
-            model = model.with_field(Field::new(token.label().to_string(), String::new()));
+            model = model.with_field(Field::new(
+                token.label().to_string(),
+                token.get(palette).to_hex(),
+            ));
         }
+        model.tables.push(self.theme_table());
         model
     }
 
@@ -54,6 +66,8 @@ impl WorkbenchShell {
         for name in &p.available {
             model = model.with_field(Field::new("Menu", name.clone()));
         }
+        // A2: the real MenuOption columns of the currently-edited menu as a table.
+        model.tables.push(self.menu_table());
         if let Some(err) = &p.error {
             model.messages.push(err.clone());
         }
@@ -76,6 +90,8 @@ impl WorkbenchShell {
                 row.commands[0].clone(),
             ));
         }
+        // A2: the real per-key assignments (a column per modifier layer) as a table.
+        model.tables.push(self.keys_table());
         if let Some(err) = &p.error {
             model.messages.push(err.clone());
         }
@@ -94,6 +110,8 @@ impl WorkbenchShell {
         for name in &p.kind_names {
             model = model.with_field(Field::new("Kind", name.clone()));
         }
+        // A2: the real kind rows (modelled-on / title / menu bar / key list) as a table.
+        model.tables.push(self.kinds_table());
         if let Some(err) = &p.error {
             model.messages.push(err.clone());
         }
@@ -118,6 +136,9 @@ impl WorkbenchShell {
             };
             model = model.with_field(Field::new(label, value));
         }
+        // A2: the alias editor's real columns (Act/CE/Command/Alias/Parameters)
+        // with the current working rows as a table.
+        model.tables.push(self.alias_table());
         if let Some(err) = &p.error {
             model.messages.push(err.clone());
         }

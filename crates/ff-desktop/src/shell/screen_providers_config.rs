@@ -117,6 +117,10 @@ impl WorkbenchShell {
                 }
             }
         }
+        // A2/A3: the real visible settings rows as a proper table, so the
+        // Markdown/HTML/text snapshot renders aligned columns (the flat fields
+        // above are retained for the summary + property-table view).
+        model.tables.push(self.config_table());
         if let Some(err) = &p.persist_error {
             model.messages.push(err.clone());
         }
@@ -126,8 +130,9 @@ impl WorkbenchShell {
     /// The CURRENT displayed value of a config key as a plain string: the staged
     /// working value when the user has edited it (so the capture shows the
     /// unsaved content), otherwise the persisted effective value, falling back
-    /// to the schema default. Used only by [`Self::config_panel_screen_model`].
-    fn config_key_display_value(&self, key: &str) -> String {
+    /// to the schema default. Used by [`Self::config_panel_screen_model`] and
+    /// the Config settings-table builder (`screen_providers_tables`).
+    pub(super) fn config_key_display_value(&self, key: &str) -> String {
         use crate::config_panel::WorkingEdit;
         // A staged Set shows the edited value; a staged Reset shows the value
         // that would take effect (the persisted/lower-layer value, resolved

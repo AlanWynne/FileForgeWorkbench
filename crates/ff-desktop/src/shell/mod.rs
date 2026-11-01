@@ -95,6 +95,7 @@ mod reset_bare;
 mod screen_provider;
 mod screen_providers;
 mod screen_providers_config;
+mod screen_providers_tables;
 mod state;
 mod state_groups;
 mod target_dispatch;
@@ -156,6 +157,8 @@ mod tests_configurator_save_convention;
 // (catalog, mainframe CE, FFEDIT) and were removed with those features.
 #[cfg(test)]
 mod tests_dialog_copy;
+#[cfg(test)]
+mod tests_editor_snapshot_tables;
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]
