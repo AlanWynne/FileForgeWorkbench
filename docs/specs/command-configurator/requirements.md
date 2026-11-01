@@ -357,42 +357,36 @@ new dispatcher, and NO new WorkspaceKind.
 
 ---
 
-### Requirement 7: Alias Editor on the shared ISPF Table Editor -- Description column + Sort (CR-CH-075)
+### Requirement 7: Alias Editor on the shared ISPF Table Editor -- Description column + Sort (CR-CH-075); block commands, single-chrome, and arrow navigation (CR-CH-076 / 077 / 078)
 
 **User Story:** As an ISPF user, I want the Alias Editor to be a true ISPF table
 editor built on the shared table-editor component, with a Description column and
 a Sort line command, so it looks and behaves like the Menu and Kinds editors and
 I can describe and order my aliases.
 
-**Source:** [CR-CH-075]. Builds ON Requirement 5 (the CR-NR-113 / CR-CH-068 Alias
-Editor and its CR-CH-071 save semantics), Requirement 6 (CR-CH-072 store/row
-shape), and the shared ISPF Table Editor component
-(`docs/specs/ispf-table-editor/`). It REPLACES the Alias Editor's bespoke I/R/D
-mini line-command flow (`alias_editor_line_commands.rs`) with the shared
-component's engine-backed line commands. It adds NO new dispatcher, NO new
+**Source:** [CR-CH-075] (Description column + Sort + shared-component move);
+[CR-CH-076] (block commands, criterion 7.11); [CR-CH-077] (single-chrome,
+criterion 7.12); [CR-CH-078] (arrow navigation, criterion 7.13) -- all three
+owner-confirmed 2026-11-01, `.agents/tasks/alias-editor-concerns/concerns.md`.
+Builds ON Requirement 5 (the CR-NR-113 / CR-CH-068 Alias Editor and its CR-CH-071
+save semantics), Requirement 6 (CR-CH-072 store/row shape), and the shared ISPF
+Table Editor component (`docs/specs/ispf-table-editor/`). It REPLACES the Alias
+Editor's bespoke I/R/D mini line-command flow (`alias_editor_line_commands.rs`)
+with the shared component's engine-backed line commands. It adds NO new dispatcher, NO new
 navigation stack, NO new session-persistence format, NO new line-command engine,
 and NO new save path.
 
-**OWNER-CONFIRM FLAG (schema).** The owner's new mock replaces the L18N column
-(retired by CR-CH-072, Requirement 6.2) with a DESCRIPTION column. The current
-alias row shape (CR-CH-072) is `surface` + `canonical` + optional
-`command_template` + optional `environment` and carries NO description field.
-Presenting a Description that PERSISTS therefore requires ADDING an optional
-`description` field to the alias row (the user-store row and the per-locale
-override row). Per `.kiro/steering/framework-conformance.md` this is an
-ADDITIVE on-disk SCHEMA change (an optional, `#[serde(default)]` field, no
-reshape of a core framework type), so it is NOT a framework change, but it IS a
-data-model change to a persisted shape and is flagged here for explicit owner
-confirmation at the CONFIRM step. Two options are recorded; criteria 7.x assume
-option (a) pending that confirmation:
-- **(a) Persisted Description (RECOMMENDED):** add an optional `description`
-  string to the alias row (defaulting empty, omitted on serialise when empty so
-  existing files round-trip unchanged). The column is editable and persists.
-- **(b) Display-only Description:** render a Description column sourced from an
-  existing display string (e.g. the menu option description that references the
-  alias) with no new field. This keeps the schema frozen but the column is NOT
-  independently editable on the alias row. If the owner prefers (b), criteria 7.3
-  and its persistence clause are struck and the column is read-only.
+**SCHEMA DECISION -- SETTLED (option (a), implemented).** The owner's mock
+replaces the L18N column (retired by CR-CH-072, Requirement 6.2) with a
+DESCRIPTION column. The owner CONFIRMED option (a): an additive optional
+`#[serde(default, skip_serializing_if = "...")] description` field on the alias
+row (user-store row and per-locale override row), editable and persisting, with
+empty values omitted on serialise so existing files round-trip unchanged. Per
+`.kiro/steering/framework-conformance.md` an additive optional field is NOT a
+framework change (no core-type reshape). This is no longer an open decision: the
+Description column SHIPPED in the Group B merge (commit 1532a5f, on main) and is
+live. Criteria 7.2 / 7.3 are therefore SETTLED on option (a); option (b)
+(display-only, no field) was NOT chosen and is not carried forward.
 
 #### Acceptance Criteria
 
@@ -409,10 +403,11 @@ option (a) pending that confirmation:
    Description. THE column-to-model mapping SHALL be: Act = the shared component's
    transient line-command cell (NOT persisted); CE = `environment`; Command =
    `canonical`; Alias = `surface`; Parameters = `command_template`; Description =
-   the row's `description` field (per the OWNER-CONFIRM FLAG option (a)). The L18N
-   column is NOT present (retired by CR-CH-072, Requirement 6.2).
+   the row's `description` field (SETTLED option (a), implemented -- see the
+   SCHEMA DECISION above). The L18N column is NOT present (retired by CR-CH-072,
+   Requirement 6.2).
 
-7.3. (Assumes OWNER-CONFIRM option (a).) THE Description column SHALL be an
+7.3. (SETTLED option (a), implemented -- commit 1532a5f on main.) THE Description column SHALL be an
    editable field that PERSISTS: WHEN a non-empty description is entered and the
    working copy is saved, THE saved alias row SHALL carry that value (trimmed) in
    an optional `description` field, and re-loading the store SHALL render the same
@@ -494,3 +489,44 @@ option (a) pending that confirmation:
    shape change is the OPTIONAL `description` field of 7.3, flagged above for owner
    confirmation; everything else is presentation + line-command behaviour moved
    onto the shared component.
+
+7.11. BLOCK LINE COMMANDS (CR-CH-076). THE Alias_Editor SHALL opt IN to the shared
+   component's block Line_Command_Set (ispf-table-editor Requirement 9): its
+   enabled set becomes `I`, `D`, `C`, SORT (criterion 7.4) PLUS the block variants
+   `DD` (delete block), `CC` (copy block), and -- for completeness of the uniform
+   pattern -- `RR` (repeat block); `MM` (move block) remains DISABLED because Move
+   is not enabled for an alias set (criterion 7.4, the resolver keys by surface,
+   not position). A matched doubled pair marks an INCLUSIVE range and the
+   operation applies to the whole block; an unterminated block yields a
+   non-blocking "block not closed" notice and NO structural change
+   (ispf-table-editor Requirement 9.1, 9.3, 9.4). RATIONALE (owner, 2026-11-01):
+   block commands are rarely useful on an unordered alias list, but the Alias
+   Editor opts in so the PATTERN is supported uniformly and is copyable to the
+   Menu / Kinds / future ISPF editors. A `CC` block still requires an `A`/`B`
+   destination exactly as a single `C` does (criterion 7.6, ispf-table-editor
+   Requirement 9.3).
+
+7.12. SINGLE-CHROME LAYOUT (CR-CH-077). THE Alias Context SHALL show exactly ONE
+   Title line (the Context / Kind descriptive title) and ONE `Command ===>` line
+   -- the shared component's -- and SHALL NOT draw its OWN additional title /
+   heading or `Command ===>` line on top of the component's (ispf-table-editor
+   Requirement 10.1, 10.2). The previously duplicated body heading ("FileForge
+   Workbench Alias Editor") and the duplicated command line SHALL be REMOVED from
+   the Alias Context render arm. THE Alias Context's `ScreenProvider` snapshot
+   SHALL render the SAME single-chrome layout -- INCLUDING the `Command ===>` line
+   and the column header row (today both are missing from the Alias snapshot) --
+   in the 7.2 column order, so the live Alias panel and its captured snapshot
+   AGREE (ispf-table-editor Requirement 10.3). This changes NO dispatch,
+   navigation, descriptor, effect pattern, or save path (ispf-table-editor
+   Requirement 10.4).
+
+7.13. ARROW-KEY FOCUS NAVIGATION (CR-CH-078). THE Alias_Editor SHALL inherit the
+   shared component's full arrow-key focus navigation (ispf-table-editor
+   Requirement 11): Up/Down move focus to the same column in the adjacent row
+   (clamped), Left/Right move focus to the adjacent column in the same row
+   (clamped), owned by the shared component so the Alias Editor needs no bespoke
+   arrow handling. This SHALL NOT weaken the mandatory first-Tab egui_kittest test
+   (criterion 7.8 / 5.23): Tab / Shift+Tab and the stable `egui::Id`s are
+   unchanged; the arrow walk is additive (ispf-table-editor Requirement 11.4). The
+   focused `Command ===>` field keeps its CR-NR-096 Up/Down history gesture
+   (ispf-table-editor Requirement 11.5).

@@ -1,4 +1,12 @@
-# Design -- Shared ISPF Table Editor + Line-Command Component (CR-CH-075)
+# Design -- Shared ISPF Table Editor + Line-Command Component (CR-CH-075, extended by CR-CH-076 / 077 / 078)
+
+> CR-CH-076 (block line commands RR/DD/CC/MM), CR-CH-077 (single-chrome layout:
+> live panel and snapshot agree), and CR-CH-078 (full arrow-key focus
+> navigation) EXTEND this shared component. Their design is in the dedicated
+> sections near the end of this document ("CR-CH-076 -- Block line commands ...",
+> "CR-CH-078 -- The component owns the arrow walk ...", "CR-CH-077 --
+> Single-chrome ...", and the reusability principle). All three build ON the
+> seams below with no framework or `ff-line-commands`-API change.
 
 ## Overview
 
@@ -278,6 +286,196 @@ The GUI surface itself (scrolling, exact pixel layout) is covered by the per-hos
 index-mapping) is fully unit-testable without egui, which is why the apply/sort/
 filter logic is kept pure and separate from the render.
 
+## CR-CH-076 -- Block line commands (RR / DD / CC / MM): the engine investigation
+
+### Investigation verdict (REQUIRED by the brief): BUILD ON, no engine API change
+
+The brief required settling, during the gate, whether `crates/ff-line-commands`
+ALREADY parses the doubled block form and the paired-range semantics, or whether
+CR-CH-076 needs a (framework-adjacent) engine API extension. The crate was read
+end to end (`parser.rs`, `command.rs`, `block_pair.rs`, `pending.rs`,
+`compatibility.rs`). VERDICT: the engine ALREADY models blocks fully; CR-CH-076
+builds ON it with NO public-API change and NO new parser. Evidence:
+
+- **Parser recognises the doubled form.** `LineCommandParser::parse` matches the
+  doubled tokens FIRST, case-insensitively: `"DD" -> DeleteBlock`,
+  `"RR" -> RepeatBlock`, `"CC" -> CopyBlock`, `"MM" -> MoveBlock` (plus XX / TT /
+  UU / >> / << / (( / )) / WW / ]] which the table editors do NOT enable). Tests
+  `parse_dd_delete_block`, `parse_rr_repeat_block`, `parse_cc_copy_block`,
+  `parse_mm_move_block`, and `parse_mixed_case_works` (`"Dd" -> DeleteBlock`)
+  already prove this.
+- **Classification distinguishes blocks.** `command::classify` returns
+  `LineCommandCategory::Block` for the `*Block` kinds; `is_block_marker` and
+  `to_block_kind` map a block kind to its `BlockCommandKind`. The single letters
+  stay `Immediate` (`R` / `D`) or `Source` (`C` / `M`), so `R`/`Rn` vs `RR`
+  (Requirement 9.2) is already a type-level distinction, not a heuristic.
+- **Pairing forms an inclusive, order-normalised range.**
+  `BlockPairValidator::validate_pair` reads the two pending markers of a block
+  kind and returns a `BlockPair { kind, start_line, end_line }` with
+  `normalize(a, b)` so the smaller index is `start_line` regardless of entry
+  order (Requirement 9.1). `check_overlaps` rejects overlapping ranges.
+- **Unterminated block is already a typed signal.** With 0 or 1 marker,
+  `validate_pair` returns `LineCommandError::AwaitingPair { kind }`; with > 2 it
+  returns `TooManyMarkers`. These are EXACTLY the "block not closed" / malformed
+  signal Requirement 9.4 needs -- the adapter maps them to a non-blocking notice
+  and retains the marker, applying no structural change. `PendingCommandStore`
+  with `PendingReason::AwaitingPair` already holds a lone marker across a cycle.
+
+Therefore CR-CH-076 is NOT a framework change and needs no owner confirmation of
+an engine-API change. (The brief asked that an API extension, if needed, be
+flagged for owner confirmation; the investigation shows none is needed, so this
+is recorded as a NON-issue rather than an open decision.)
+
+### Where the change actually lands (the adapter, not the engine)
+
+The gap is entirely in the shared component's apply adapter
+(`crates/ff-desktop/src/shell/ispf_table_editor/line_commands.rs`). Its
+`apply_line_commands` TODAY classifies every `LineCommandCategory::Block` as
+"not enabled" and clears it with a notice (the `LineCommandCategory::Block` arm,
+and `command_enabled` has no block flags). CR-CH-076 EXTENDS this adapter to:
+
+1. Add a `blocks: bool` (or an explicit RR/DD/CC/MM sub-flag set) to
+   `LineCommandSet` (`state.rs`), advertised per-host (Requirement 9.5). This is
+   a new field on the shared component's own type, NOT an engine change.
+2. In the parse/classify pass, when `blocks` is enabled, COLLECT the block
+   markers per `BlockCommandKind` (keyed by backing index) instead of clearing
+   them; feed them to `BlockPairValidator::validate_pair` to form each
+   `BlockPair`.
+3. Translate a resolved `BlockPair` into the SAME "stable-original-index"
+   rebuild the adapter already uses for single commands:
+   - `DeleteBlock`: mark `removed[start..=end]`.
+   - `RepeatBlock`: clone each row in `start..=end` once into its own `after[i]`.
+   - `CopyBlock` + `A`/`B`: snapshot clones of `start..=end` into the target's
+     `before`/`after` list (Requirement 9.3), exactly like a single `C`.
+   - `MoveBlock` + `A`/`B`: same as `CopyBlock` plus `removed[start..=end]`
+     (Requirement 9.3).
+4. On `AwaitingPair` / `TooManyMarkers`, push a "block not closed" notice onto
+   `ApplyResult.notices` and RETAIN the marker (do not clear its Act cell), so
+   the user supplies the partner next cycle (Requirement 9.4). No structural
+   change is made for that block; the rest of the batch proceeds.
+
+The adapter's existing rebuild-by-walk model (per-row `before` / `after` /
+`removed` over STABLE original indices) already makes a mixed batch immune to
+index shifting, so a block op batched with single ops composes without extra
+machinery. The adapter stays PURE and egui-free, so block application is
+unit-testable over the stub `Vec<Row>` exactly as the single commands are.
+
+### Error handling (blocks, concrete)
+
+- **Unterminated block (one XX of a pair, or > 2 markers):** recoverable.
+  Non-blocking "block not closed" notice; the marker(s) are RETAINED; no
+  structural change for that block; other commands in the batch still apply
+  (Requirement 9.4).
+- **Overlapping block ranges:** recoverable. `check_overlaps` rejects; a
+  non-blocking notice is surfaced and neither overlapping block is applied.
+- **`CC` / `MM` block with no A/B target:** recoverable. The block is RETAINED
+  with a "copy/move source pending a target (A/B)" notice (same shape as a single
+  unresolved source, Requirement 9.3 / 4.4).
+- **A doubled marker when the host has NOT enabled blocks:** cleared and ignored
+  with a non-blocking notice, unchanged from today (Requirement 9.5 / 4.5).
+
+## CR-CH-078 -- The component owns the arrow walk without fighting egui
+
+egui provides NO vertical / grid arrow-key focus traversal for a field matrix: by
+default only Tab / Shift+Tab walk focus, in widget-creation order. So full
+arrow navigation (Requirement 11) MUST be owned by the shared component, and it
+must be implemented the SAME way the menu-bar keynav fix was, or it will fight
+egui's own focus handling (the documented B-fix in
+`crates/ff-desktop/src/shell/render_chrome.rs` /
+`render_menu_bar.rs`: the arrows are CONSUMED with
+`ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Arrow*))` BEFORE egui's
+MenuBar renders, because egui's own navigation is unreliable and a late consume
+is too late).
+
+DESIGN: the component maintains, per frame, a FIELD MATRIX descriptor -- the
+ordered list of focusable cells as (row backing-index, column index) -> stable
+`egui::Id`. It already renders every cell with a stable salted id keyed by the
+backing index (the `surface_id(i)` pattern, Requirement 7.2), so the matrix is
+just those ids arranged by (row, column). On each frame, AFTER laying out the
+cells and knowing which id currently holds focus
+(`ui.ctx().memory(|m| m.focused())`), the component:
+
+1. Determines the focused cell's (row, column) from the matrix (if focus is on a
+   matrix cell -- not the `Command ===>` line, Requirement 11.5).
+2. CONSUMES the relevant arrow key with `input_mut(..).consume_key(..)` so egui
+   does not also act on it:
+   - Down -> target (row+1, column), clamped to the last row; Up -> (row-1,
+     column), clamped to the first row (Requirement 11.1).
+   - Right -> next focusable column in the same row; Left -> previous; clamped at
+     the row's first / last column (Requirement 11.2).
+3. Calls `request_focus` (via `ui.ctx().memory_mut(|m| m.request_focus(id))` or
+   the target `Response`) on the target cell's stable id.
+
+Because the keys are consumed BEFORE egui's traversal and the move is expressed
+as a direct `request_focus` on a stable id, the walk does not fight egui (the
+menu-bar lesson). Tab / Shift+Tab are UNTOUCHED: they still flow through the
+single `WorkspaceContext` + `InteriorFocus` latch in visual order (Requirement
+7.1, 7.2), and the per-row salted ids the full-shell first-Tab tests assert are
+UNCHANGED (Requirement 11.4) -- the arrow walk only adds a focus-move on the
+arrow keys, it does not re-order or re-id any control. The `Command ===>` field
+keeps its CR-NR-096 Up/Down history gesture because the arrow walk only fires
+when a MATRIX cell holds focus, never the command line (Requirement 11.5); the
+key is owned by whichever control has focus.
+
+TESTABILITY: the matrix-walk target computation (given a focused (row, column)
+and an arrow direction, compute the clamped target (row, column)) is PURE and
+unit-testable without egui -- the clamp-at-edges rules (Requirement 11.1, 11.2)
+are table-driven tests. The end-to-end focus move (first Down from the Act cell
+lands on the Act cell of the next row) is proven by a full-shell `egui_kittest`
+test per the GUI-behaviour rule (workspace-conformance.md), modelled on the
+existing first-Tab tests.
+
+## CR-CH-077 -- Single-chrome: remove the host's duplicate draw, fill the snapshot
+
+The concern (concerns.md 1-3) is that the Alias Context draws its OWN title line
+and `Command ===>` line ON TOP OF the shared component's, so the live panel shows
+TWO title lines and TWO command lines; and separately the markdown snapshot
+OMITS the header and command line entirely, so the live panel and the snapshot
+disagree.
+
+DESIGN -- the component is the single owner of the chrome:
+
+- The shared `render_ispf_table` already renders ONE `Command ===>` line (the
+  entry control, Requirement 2.1) and ONE header row (Requirement 1.1). The fix
+  is to ensure the HOST Context arm renders NEITHER a second title/heading NOR a
+  second command line. Concretely, the Alias Context's render arm currently emits
+  an extra body heading ("FileForge Workbench Alias Editor") and/or an extra
+  command line in addition to calling the component; the fix REMOVES that
+  duplicate draw from the host arm. The remaining single Title line is the
+  Context / Kind descriptive title drawn by the shell's standard Title_Line
+  (CR-NR-090 / CR-CH-045), which is distinct from the component's `Command ===>`
+  line and from the `[XXX]` Tab_Header tag. No new chrome mechanism is added; a
+  duplicate is removed (Requirement 10.1, 10.2).
+
+- The snapshot side is reconciled by the `ScreenProvider` building the SAME
+  single-chrome layout: the provider's `ff-screen-model` output MUST include the
+  `Command ===>` line and the column header row (today it emits only the title +
+  rows, concern 3). Because the provider already reads the host's `ColumnSpec`
+  order (Requirement 7.3), the header row it emits matches the live header; the
+  fix adds the `Command ===>` line and the header row to the provider's emitted
+  screen so the captured text/markdown shows Title -> `Command ===>` -> header ->
+  rows, AGREEING with the live panel (Requirement 10.3).
+
+This is a render-and-snapshot reconciliation on existing seams only: it changes
+NO dispatch, navigation, descriptor, effect pattern, or save path (Requirement
+10.4). It touches the host Context render arm (remove the duplicate) and the
+host's `ScreenProvider` (add the missing chrome) -- both host-side, using the
+component's already-owned single chrome as the single source of truth.
+
+## Reusability principle (threads through CR-CH-076 / 077 / 078)
+
+All three changes live in the SHARED component (or, for blocks, in the shared
+component's adapter plus the already-shared `ff-line-commands` engine), NOT bolted
+onto the Alias panel. Block commands (Requirement 9), single-chrome ownership
+(Requirement 10), and arrow navigation (Requirement 11) are therefore inherited
+by EVERY host that consumes the component -- Alias, Menu, Kinds, and any future
+ISPF workspace -- with no per-host re-implementation. A host opts into blocks via
+its Line_Command_Set; single-chrome and arrow navigation are automatic once a
+host renders through `render_ispf_table` and reports focus through the one latch
+path. This is the owner's "the pattern must be copyable/reusable into other ISPF
+workspaces" intent, realised by keeping the behaviour in the shared surface and
+engine rather than in any one editor.
+
 ## Framework-conformance statement
 
 Per `.kiro/steering/framework-conformance.md`, this component builds ON the
@@ -292,10 +490,22 @@ framework and changes NOTHING load-bearing:
   used; no per-arm focus ring.
 - Persistence: unchanged. No new on-disk format; each host keeps its own file
   shape.
-- Line-command engine: reused as-is. No change to the `ff-line-commands` public
-  API or vocabulary.
+- Line-command engine: reused as-is, INCLUDING its block model. The CR-CH-076
+  block commands build on `LineCommandParser` / `BlockPairValidator` / `BlockPair`
+  with NO change to the `ff-line-commands` public API or vocabulary (see the
+  investigation verdict above).
+- Focus (CR-CH-078 arrow walk): additive on the existing `WorkspaceContext` +
+  `InteriorFocus` latch; Tab / Shift+Tab and the stable first-Tab ids are
+  unchanged. The arrow-key consume-before-egui pattern is the same one the
+  menu-bar keynav already uses; it is not a new focus mechanism.
+- Chrome (CR-CH-077 single-chrome): removes a duplicated host draw and fills the
+  snapshot's missing chrome; no new chrome mechanism, no dispatch / navigation /
+  save-path change.
 
-Therefore this is NOT a framework change and needs no framework-change
-confirmation. (The one schema QUESTION -- the Alias Editor's new Description
+Therefore CR-CH-075, CR-CH-076, CR-CH-077, and CR-CH-078 are all NOT framework
+changes and need no framework-change confirmation. The ONLY owner-confirm point
+remaining in this spec area is the additive optional `description` field on the
+alias row (flagged in command-configurator Req 7, carried over from CR-CH-075),
+which is a persisted-shape question, not a framework change. (The one schema QUESTION -- the Alias Editor's new Description
 column -- is raised in the command-configurator spec, NOT here, because it is a
 host-editor field concern, not a Table_Editor concern.)

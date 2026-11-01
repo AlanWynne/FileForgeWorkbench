@@ -33,6 +33,12 @@ editable-Context save seam (`.kiro/steering/save-convention.md`), and the
 
 - **[CR-CH-075]** = this change request (owner: the Alias, Menu, and Kinds
   editors become ISPF table editors sharing one line-command component).
+- **[CR-CH-076]** = block line commands (RR / DD / CC / MM range pairs) in the
+  shared component, reusable across ISPF workspaces (Requirement 9).
+- **[CR-CH-077]** = single-chrome layout: one Command line + one header, the
+  live panel and the snapshot agree (Requirement 10).
+- **[CR-CH-078]** = full arrow-key focus navigation across the field matrix
+  (Requirement 11).
 - **[CR-NR-078]** = the `WorkspaceContext` trait + `InteriorFocus` focus contract.
 - **[CR-CH-071]** = the editable-Context save seam (working copy, SAVE / END /
   RETURN / CANCEL / REFRESH).
@@ -322,6 +328,167 @@ one focus contract and to expose its columns so capture stays faithful.
    captured snapshot of the editor renders the SAME columns in the SAME order the
    user sees.
 
+### Requirement 9: Block line commands (RR / DD / CC / MM range pairs) -- CR-CH-076
+
+**User Story:** As an ISPF user, I want to mark an inclusive RANGE of rows with a
+doubled line command (RR / DD / CC / MM) so that an insert-repeat, delete, copy,
+or move applies to the whole block the mainframe way, not one row at a time.
+
+**Source:** [CR-CH-076] (owner, 2026-11-01, `.agents/tasks/alias-editor-concerns/concerns.md`).
+Builds ON Requirement 4 (the Act prefix column + batch apply) and the
+`ff-line-commands` engine's EXISTING block model (`DeleteBlock` / `RepeatBlock`
+/ `CopyBlock` / `MoveBlock`, `BlockPairValidator`, `BlockPair`), so it adds NO new
+line-command engine and -- per the design investigation -- NO change to the
+`ff-line-commands` public API.
+
+#### Acceptance Criteria
+
+1. WHERE a host editor's Line_Command_Set enables blocks, THE Table_Editor SHALL
+   recognise the DOUBLED forms `RR` (repeat block), `DD` (delete block), `CC`
+   (copy block), and `MM` (move block) typed into the Act_Cells of TWO rows, and
+   SHALL treat the two marked rows as the INCLUSIVE endpoints of a range (order
+   independent: the smaller and larger backing index become the range start and
+   end), applying the operation to the whole block. The enabled block set SHALL
+   be exactly RR / DD / CC / MM; THE Table_Editor SHALL NOT enable any other
+   block marker (in particular there is NO `II` block).
+
+2. THE single-letter forms SHALL be UNCHANGED by this requirement: `R` / `Rn`
+   remain single-row repeat / repeat-n-times (Requirement 4, command-configurator
+   Req 7.6), `D` single-row delete, `C` / `M` single-row copy / move. The DOUBLED
+   `RR...RR` is the SEPARATE block-repeat variant and SHALL NOT be conflated with
+   `R` / `Rn`; the distinction SHALL be preserved: a single `R` repeats one row,
+   a matched `RR`/`RR` pair repeats (duplicates) every row in the inclusive range.
+
+3. FOR a `CC` (copy block) and an `MM` (move block), THE Table_Editor SHALL still
+   require a DESTINATION: an `A` (after) or `B` (before) target marker on a target
+   row, exactly as a single `C` / `M` does (Requirement 4.4). The whole marked
+   block is copied / moved to the designated target position; an `MM` block
+   removes the source range and re-inserts it at the target.
+
+4. WHEN a block is UNTERMINATED -- exactly one `XX` marker of a doubled pair is
+   present with no matching partner (or more than two markers of one block kind)
+   -- THE Table_Editor SHALL make NO structural change for that block and SHALL
+   surface a NON-BLOCKING "block not closed" notice (ISPF behaviour), retaining
+   the typed marker so the user can supply its partner on the next cycle. An
+   unterminated block SHALL NOT abort the rest of the batch: other well-formed
+   commands in the same apply pass still apply.
+
+5. THE enabled block set SHALL be advertised PER-HOST via the component's
+   Line_Command_Set (Requirement 1.3): a host opts IN to blocks by enabling the
+   block set, and a host that does not enable blocks SHALL continue to clear and
+   ignore a doubled marker with a non-blocking notice (Requirement 4.5),
+   unchanged. (The Alias Editor opts IN to the block set even though blocks are
+   rarely useful for an unordered alias list; see command-configurator Req 7.11.)
+
+6. THE Table_Editor SHALL reuse the `ff-line-commands` engine's EXISTING
+   block parsing and pairing (`LineCommandParser::parse` already returns the
+   `*Block` kinds for the doubled forms; `BlockPairValidator::validate_pair`
+   forms the inclusive, order-normalised `BlockPair`; its `AwaitingPair` /
+   `TooManyMarkers` results are the "block not closed" signal of criterion 9.4;
+   `check_overlaps` guards overlapping ranges). THE Table_Editor SHALL NOT add a
+   second block parser or a parallel pairing store, and SHALL NOT change the
+   engine's public API (Requirement 8.3).
+
+### Requirement 10: Single-chrome layout -- one Command line + one header, live and snapshot agree -- CR-CH-077
+
+**User Story:** As a user, I want each ISPF table editor to show exactly ONE
+Title line and ONE `Command ===>` line (not duplicated), and I want the markdown
+/ text snapshot to show the SAME header and command line the live panel shows, so
+the live panel and the captured snapshot agree.
+
+**Source:** [CR-CH-077] (owner, 2026-11-01, concerns 1-3 in
+`.agents/tasks/alias-editor-concerns/concerns.md`). Builds ON Requirement 2 (the
+`Command ===>` line), Requirement 1.1 (the header row), and Requirement 7.3 (the
+`ScreenProvider` snapshot-column alignment). Preserves the existing framework
+seams: the single `render_workspace_context` focus latch, the `[XXX]` Tab_Header
+tag vs descriptive Title_Line distinction (CR-NR-090 / CR-CH-045), and the ISPF
+explicit-commit save seam (CR-CH-071). It REMOVES a duplicate; it adds NO new
+chrome mechanism.
+
+#### Acceptance Criteria
+
+1. THE shared Table_Editor SHALL own exactly ONE `Command ===>` line and ONE
+   column HEADER row for the Context. A host editor's Workspace Context SHALL NOT
+   draw its OWN additional title line or `Command ===>` line on top of the
+   component's; the live panel SHALL show a SINGLE Title line (the Context / Kind
+   descriptive title), a SINGLE `Command ===>` line, a single header row, and the
+   data rows, matching the owner's EXPECTATION sketch (concerns.md).
+
+2. THE host Context SHALL NOT render a redundant second heading (e.g. a
+   "FileForge Workbench Alias Editor" body heading) or a second command line
+   below the component's; where such a duplicate is currently drawn by the host
+   arm, the fix SHALL REMOVE that duplicate draw rather than suppress the
+   component's chrome. The one descriptive Title line is the Context / Kind title
+   (CR-NR-090 / CR-CH-045); the `[XXX]` tab-header tag is separate and unchanged.
+
+3. THE Context's `ScreenProvider` that builds the markdown / text snapshot SHALL
+   render the SAME single-chrome layout the live panel shows: the snapshot SHALL
+   INCLUDE the `Command ===>` line and the column HEADER row (today's snapshot
+   omits both, concern 3), in the SAME order and with the SAME columns the live
+   surface renders (Requirement 7.3). After this change the live panel and the
+   captured snapshot SHALL AGREE on the presence and order of the Title line, the
+   `Command ===>` line, the header row, and the data columns.
+
+4. THE single-chrome layout SHALL NOT change the dispatch front door, the
+   Navigation_Stack return, the WorkspaceKind / descriptor, the `pending_action`
+   effect pattern, or the save seam; it is a RENDER-and-SNAPSHOT reconciliation
+   that removes a duplicated draw and fills the snapshot's missing chrome, built
+   on the existing seams only.
+
+### Requirement 11: Full arrow-key focus navigation across the field matrix -- CR-CH-078
+
+**User Story:** As an ISPF user editing a table, I want the arrow keys to move
+keyboard focus between cells -- Up/Down to the same column in the adjacent row,
+Left/Right to the adjacent column in the same row -- so I can move around the
+field matrix the mainframe way instead of only Tab/Shift+Tab.
+
+**Source:** [CR-CH-078] (owner, 2026-11-01, concern 4 in
+`.agents/tasks/alias-editor-concerns/concerns.md`, both axes confirmed). Builds ON
+Requirement 7 (the focus contract and Tab ring). It is owned by the SHARED
+component so every host inherits it.
+
+#### Acceptance Criteria
+
+1. WHEN a data-row or filter-row cell holds keyboard focus and the user presses
+   Down (Up), THE Table_Editor SHALL move keyboard focus to the SAME column in
+   the row BELOW (ABOVE), CLAMPED so that Down on the last row and Up on the first
+   row leave focus unchanged (no wrap). "Same column" means the control at the
+   same column index (Act / the host's column widgets) in the adjacent row.
+
+2. WHEN a cell holds keyboard focus and the user presses Right (Left), THE
+   Table_Editor SHALL move keyboard focus to the ADJACENT column within the SAME
+   row (the next / previous focusable cell left-to-right: Act -> the host's
+   columns in order), CLAMPED so that Right on the last column and Left on the
+   first column of a row leave focus unchanged (no wrap to another row).
+
+3. THE Table_Editor SHALL OWN the arrow walk: it SHALL compute the target cell's
+   stable `egui::Id` and request focus on it, and SHALL CONSUME the arrow key
+   (via `input_mut(..).consume_key(..)`) BEFORE egui's own focus handling runs,
+   so the component's walk does not FIGHT egui's default traversal (the same class
+   of fix the menu-bar keynav required, render_chrome.rs / render_menu_bar.rs).
+   egui provides no vertical / grid arrow traversal for a field matrix by default,
+   so the component owning the walk is REQUIRED, not optional.
+
+4. THE arrow walk SHALL NOT replace or weaken Tab / Shift+Tab: Tab / Shift+Tab
+   SHALL continue to walk controls in visual order through the single
+   `WorkspaceContext` + `InteriorFocus` latch path (Requirement 7.1, 7.2), and the
+   stable per-row salted `egui::Id`s the full-shell first-Tab tests depend on
+   SHALL be UNCHANGED. The arrow navigation is ADDITIVE on top of the existing Tab
+   ring; it SHALL NOT introduce a second focus mechanism or a per-host focus ring.
+
+5. WHEN the command-line arrow-history binding is active (a focused `Command ===>`
+   field steps Command_History on Up/Down, CR-NR-096), THE arrow walk SHALL NOT
+   apply to the `Command ===>` field: the field-matrix arrow navigation of this
+   requirement governs the DATA / FILTER cells, and the command-line history
+   gesture is unchanged. (The arrow keys are owned by whichever control holds
+   focus: the command line keeps its history gesture; a matrix cell gets the
+   grid walk.)
+
+6. THE arrow navigation SHALL be reusable by every host (Alias, Menu, Kinds,
+   future) because it lives in the shared component; a host SHALL NOT need to
+   re-implement it. (Reusability principle, Requirement 8 and the design's
+   reusability note.)
+
 ### Requirement 8: Scope and non-goals
 
 **User Story:** As a reviewer, I want the component's boundaries stated so that
@@ -350,7 +517,13 @@ its blast radius is clear.
 ## Out of Scope
 
 - The Config editor ISPF redesign (a documented follow-up).
-- Any change to the `ff-line-commands` engine's public API or vocabulary.
+- Any change to the `ff-line-commands` engine's public API or vocabulary. (The
+  block commands of Requirement 9 REUSE the engine's existing block model, so no
+  engine change is in scope -- see the design investigation verdict.)
+- Block markers other than RR / DD / CC / MM (e.g. no `II` block, no `XX` / `TT`
+  / shift blocks in the table editors) -- Requirement 9.1.
+- Arrow-key WRAP behaviour (Up on the first row / Left on the first column do NOT
+  wrap) -- Requirement 11 is clamped, not wrapping.
 - Expanded key-assignment model and named reusable keylists (investigation
   Group C) -- unrelated to this component.
 - Theme editor redesign and the colour-name question (investigation items in

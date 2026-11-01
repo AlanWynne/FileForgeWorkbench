@@ -1,4 +1,4 @@
-# Tasks -- Shared ISPF Table Editor + Line-Command Component (CR-CH-075)
+# Tasks -- Shared ISPF Table Editor + Line-Command Component (CR-CH-075, extended by CR-CH-076 / 077 / 078)
 
 These tasks implement the shared component ONLY. The per-editor redesigns
 (Alias / Menu / Kinds) have their own task groups in their own specs and DEPEND
@@ -85,7 +85,74 @@ OWNER runs the full `cargo gate` (`.kiro/steering/gate-policy.md`). No file over
   - [ ] 8.2 Document in each consuming editor's spec that its provider reads the
         shared `ColumnSpec` order. (Req 7.3)
 
-## Acceptance Criteria Coverage (CR-CH-075)
+- [ ] 9. Block line commands (RR / DD / CC / MM) -- CR-CH-076 (Req 9)
+  - [ ] 9.1 Add a block opt-in to `LineCommandSet` in
+        `shell/ispf_table_editor/state.rs` (e.g. a `blocks` flag / RR/DD/CC/MM
+        sub-flags), advertised per-host; no engine change. (Req 9.1, 9.5)
+  - [ ] 9.2 Write FAILING pure unit tests for the block apply adapter over a stub
+        `Vec<Row>`: a matched `DD`/`DD` pair deletes the inclusive range; `RR`/`RR`
+        duplicates every row in the range; `CC`/`CC` + `A`/`B` copies the block to
+        the target; `MM`/`MM` + `A`/`B` moves the block; markers typed in reverse
+        order still form the same inclusive range (order-normalised).
+        (Validates Req 9.1, 9.2, 9.3)
+  - [ ] 9.3 Write FAILING unit tests for the unterminated / malformed block: a
+        lone `DD` yields a non-blocking "block not closed" notice, RETAINS the
+        marker, and makes NO structural change while other batch commands still
+        apply; three `DD` markers yield a malformed notice; overlapping blocks are
+        rejected with a notice. (Validates Req 9.4)
+  - [ ] 9.4 Write a FAILING unit test that the single `R` / `Rn` path is
+        UNCHANGED alongside blocks (a single `R` repeats one row; `RR`/`RR`
+        repeats the range), proving the distinction of Req 9.2.
+        (Validates Req 9.2)
+  - [ ] 9.5 Implement the block path in
+        `shell/ispf_table_editor/line_commands.rs`: when `blocks` is enabled,
+        collect block markers, pair them via
+        `ff_line_commands::BlockPairValidator::validate_pair`, translate each
+        resolved `BlockPair` into the existing stable-original-index rebuild
+        (delete range / repeat range / copy-block+A/B / move-block+A/B), and map
+        `AwaitingPair` / `TooManyMarkers` / overlap to a retained marker + notice.
+        No `ff-line-commands` API change. (Req 9.1-9.6)
+  - [ ] 9.6 Write a FAILING full-shell egui_kittest test (in a consuming editor,
+        e.g. Alias) that a matched `CC`/`CC` + `A` block copy applied on Enter
+        restructures the rows as expected. (Validates Req 9.1, 9.3)
+
+- [ ] 10. Single-chrome layout -- CR-CH-077 (Req 10)
+  - [ ] 10.1 Write a FAILING full-shell egui_kittest / snapshot test asserting the
+        live panel shows exactly ONE Title line and ONE `Command ===>` line (no
+        duplicate host-drawn heading / command line). (Validates Req 10.1, 10.2)
+  - [ ] 10.2 Remove the duplicate title/command-line draw from the host Context
+        render arm (Alias first; same fix pattern for Menu / Kinds) so only the
+        shared component's chrome renders. (Req 10.1, 10.2)
+  - [ ] 10.3 Write a FAILING unit/snapshot test that the `ScreenProvider` output
+        INCLUDES the `Command ===>` line and the column header row in the same
+        order/columns as the live surface (today both are missing).
+        (Validates Req 10.3)
+  - [ ] 10.4 Extend the host `ScreenProvider` to emit the single-chrome layout
+        (Title -> `Command ===>` -> header -> rows), reading the shared
+        `ColumnSpec` order (Req 7.3), so live and snapshot AGREE. (Req 10.3, 10.4)
+
+- [ ] 11. Full arrow-key focus navigation -- CR-CH-078 (Req 11)
+  - [ ] 11.1 Write FAILING pure unit tests for the matrix-walk target computation:
+        Down/Up move to the same column in the adjacent row, clamped at
+        first/last row; Right/Left move to the adjacent column, clamped at
+        first/last column; no wrap. (Validates Req 11.1, 11.2)
+  - [ ] 11.2 Implement the field-matrix descriptor (ordered (row, column) ->
+        stable `egui::Id`) and the clamped target computation in
+        `shell/ispf_table_editor/` (pure, egui-free where possible). (Req 11.1, 11.2)
+  - [ ] 11.3 Implement the arrow walk in the render path: detect the focused
+        matrix cell, CONSUME the arrow key with `input_mut(..).consume_key(..)`
+        BEFORE egui traverses, and `request_focus` the target id -- the
+        menu-bar-keynav pattern so it does not fight egui. Do NOT fire on the
+        `Command ===>` field (preserve the CR-NR-096 history gesture). (Req 11.3, 11.5)
+  - [ ] 11.4 Write a FAILING full-shell egui_kittest test (in a consuming editor):
+        with focus on a data-row Act cell, a Down press moves focus to the Act
+        cell of the next row; a Right press moves to the next column; both clamp at
+        the edges. (Validates Req 11.1, 11.2, 11.3)
+  - [ ] 11.5 Confirm (regression) the existing first-Tab egui_kittest test still
+        passes (Tab/Shift+Tab + stable ids unchanged) with arrow nav added.
+        (Validates Req 11.4)
+
+## Acceptance Criteria Coverage (CR-CH-075 / 076 / 077 / 078)
 
 | Requirement | Criteria | Covered by Task(s) |
 |-------------|----------|--------------------|
@@ -97,10 +164,22 @@ OWNER runs the full `cargo gate` (`.kiro/steering/gate-policy.md`). No file over
 | 6 CR-CH-071 save | 6.1-6.4 | 7.1, 7.2 |
 | 7 Focus + snapshot | 7.1-7.3 | 6.1, 8.1, 8.2 |
 | 8 Scope | 8.1-8.4 | (scoping; no code -- enforced by the per-editor task groups) |
+| 9 Block commands (CR-CH-076) | 9.1-9.6 | 9.1-9.6 |
+| 10 Single-chrome (CR-CH-077) | 10.1-10.4 | 10.1-10.4 |
+| 11 Arrow navigation (CR-CH-078) | 11.1-11.6 | 11.1-11.5 |
 
 ## Notes
 
 - This component MUST land before the Alias / Menu / Kinds redesign task groups
   (those consume it).
 - The Config editor ISPF redesign is OUT OF SCOPE (a follow-up).
-- No `ff-line-commands` public-API change; the engine is reused as-is.
+- No `ff-line-commands` public-API change; the engine is reused as-is. CR-CH-076
+  (task group 9) reuses the engine's EXISTING block model
+  (`LineCommandParser` already parses DD/RR/CC/MM; `BlockPairValidator` already
+  forms the inclusive `BlockPair`); the change lands only in the shared
+  component's apply adapter + `LineCommandSet` opt-in.
+- CR-CH-078 (task group 11) adds arrow navigation ADDITIVELY on the existing
+  focus latch; Tab/Shift+Tab and the stable first-Tab ids are unchanged (task
+  11.5 is the regression guard).
+- CR-CH-077 (task group 10) removes a duplicated host chrome draw and fills the
+  snapshot's missing chrome; no new chrome mechanism.
