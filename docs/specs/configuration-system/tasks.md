@@ -636,3 +636,48 @@ This is a **Wave 2 (Platform Architecture)** sub-project depending on `ff-loggin
     - Covers: Requirement 21.8, 21.11
   - [x] 36.3 verify.ps1 CLEAN (FULL nextest); ffwb.exe rebuilt; TCR rows -> PASS; change-log CR-CH-039 DONE + B069 FIXED; project-master phase entry; test-plan row. NOTE: config_panel.rs split into config_panel/{mod,render,tree}.rs for the 400-line rule; pre-existing non-ASCII in the file replaced with ASCII per documentation.md
     - Covers: Requirement 21
+
+## Phase (config-tree-reskin) -- Config View demarcated tree-view re-skin (Requirement 22)
+
+Visual-only re-skin of the Config View per Requirement 22 and the "Config View
+Tree Rendering" Design Delta. STRICT visual-only: grouping mechanism, expand/
+collapse, persistence, SAVE/END/RETURN semantics, the focus contract, and the
+Req 21 keyboard navigation are preserved. The locked row structure is in the
+design delta (D6): drop `ui.indent`; render `connector + key + pad + " : "` as a
+SINGLE frameless `selectable_label` (line 1) with the value widget right after it
+at the Value_Column; the selectable description then the right-to-left provenance/
+Reset block on line 2 so the width-greedy block never competes with the value
+widget. NO `.rs` is edited in the spec step; these tasks are for the
+implementation step.
+
+- [ ] 37. Pure alignment module `config_panel/layout.rs` + unit tests (Req 22.4, 22.5, 22.6, 22.12)
+  - [ ] 37.1 Create `crates/ff-desktop/src/config_panel/layout.rs` with the pure, GUI-free API: `enum Connector { Tee, Last }`; `connector_prefix(Connector) -> &'static str` returning the four-cell `├── ` / `└── ` prefixes; `key_label(Connector, &str) -> String`; `value_column_width(&[String]) -> usize` (max char-count of the visible key labels + 1, 0 for empty); `aligned_left_segment(Connector, &str, usize) -> String` (key_label right-padded to the column then `" : "`)
+    - Covers: Requirement 22.4, 22.5
+  - [ ] 37.2 Wire the module in `config_panel/mod.rs`: add `mod layout;` and any `pub use layout::{...}` the render needs; add NO state fields (the column is computed per-frame, not stored)
+    - Covers: Requirement 22.6
+  - [ ] 37.3 Unit tests (TDD, `#[cfg(test)]` in `layout.rs`), each annotated `// Validates: Requirement 22.x`: `value_column_width` over a single group, multiple groups, a filtered subset, and the empty set (returns 0); `connector_prefix` Tee and Last are equal char width; `aligned_left_segment` lands the `:` at the same cell for keys of differing length; the last-child connector selection given a `rows`-shaped slice
+    - Covers: Requirement 22.4, 22.5, 22.6, 22.12
+
+- [ ] 38. Re-skin the `config_panel/render.rs` header block (Req 22.1, 22.2, 22.10, 22.11)
+  - [ ] 38.1 Keep the Filter+Save `ui.horizontal` allocation order UNCHANGED (Filter label, Filter `TextEdit` with `filter_field_id()`, `X` clear, then the right-to-left Save block enqueuing `ShellRequest::Command("SAVE")` enabled on `is_dirty()`), so the Filter field stays the first interior Tab stop
+    - Covers: Requirement 22.10, 22.11
+  - [ ] 38.2 Add a new non-interactive `Unsaved edits : <yes|no>` label row below the Filter+Save row, read directly from `state.is_dirty()` (`yes` when dirty, else `no`); keep the optional persist-error and Source-File rows as non-interactive labels; then exactly ONE `ui.separator()` dividing the header block from the tree body
+    - Covers: Requirement 22.1, 22.2
+
+- [ ] 39. Re-skin the `config_panel/render.rs` tree body row loop (Req 22.3, 22.4, 22.5, 22.6, 22.8, 22.9)
+  - [ ] 39.1 Render each `Namespace` row as a bracketed `[<DisplayName>]` header (keep the existing `v`/`>` arrow affordance and optional `(count)` suffix), still a clickable `selectable_label` toggling `collapsed[ns]` and the cursor -- unchanged mouse trigger; keep `paint_cursor_highlight`
+    - Covers: Requirement 22.3, 22.8
+  - [ ] 39.2 Compute the Value_Column once per frame: a first pass over `rows` gathers the visible key labels (via `layout::key_label` with the last-child look-ahead), then `layout::value_column_width(...)` yields `column`
+    - Covers: Requirement 22.5, 22.6
+  - [ ] 39.3 Render each `Key` row with the LOCKED two-line structure (design D6): DROP the `ui.indent` wrapper; line 1 is one `ui.horizontal` holding a frameless `ui.selectable_label(is_cursor, RichText::new(aligned_left_segment(connector, key, column)).monospace())` then IMMEDIATELY the value widget via `render_widget(...)` (record its id into `state.widget_ids` for Enter->FocusKeyWidget) with NO right-to-left block on this line; line 2 holds the selectable description (`Button::selectable(false, RichText::new(desc).small().weak())`) then a right-to-left sub-layout with the provenance/LOCKED badge, staged `*`, and Reset button; the inline validation error line follows
+    - Covers: Requirement 22.4, 22.9
+  - [ ] 39.4 Determine the connector per key by O(1) look-ahead over `rows` (Last when the next row is not a `Key`, else Tee); make NO change to `tree.rs`/`visible_rows`, `widgets.rs`, `keyboard.rs`, `commit.rs`, the shell dispatch, `ff-config`, `menus/settings.toml`, or persistence
+    - Covers: Requirement 22.4, 22.7
+
+- [ ] 40. Focus-contract test + scoped compile-verify + file-size check (Req 22.10)
+  - [ ] 40.1 Keep/extend the full-shell `egui_kittest` test `full_shell_config_first_tab_focuses_filter_field` in `shell/tests_focus.rs` GREEN: open CONFIG, assert `first_interior_id == filter_field_id()`, and the first Tab from the command field focuses the Filter field with no phantom stop after the header re-layout; annotate `// Validates: Requirement 22.10`
+    - Covers: Requirement 22.10
+  - [ ] 40.2 Run the 400-line non-test check on `render.rs`; if the re-skin pushes it toward the budget, extract the per-row draw into a `render_key_row(...)` helper (and, if still over, a `config_panel/render_rows.rs`) before landing
+    - Covers: NFR2 (rust-standards 400-line rule)
+  - [ ] 40.3 Scoped compile-verify (agent COMPILE-ONLY per the testing.md execution split), logs written under `_ignore/logs/` and read back: `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, and the new scoped `layout.rs` tests where quick (`cargo test -p ff-desktop layout`); the owner runs the authoritative full gate
+    - Covers: Requirement 22 (verification)

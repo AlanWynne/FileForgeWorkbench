@@ -1585,3 +1585,431 @@ refactor with no behaviour change to the existing widgets.
 
 No schema, persistence, or command changes: `CONFIG` / `CONFIG <namespace>` (Req 20), session
 persistence (Req 15.9), and validation (Req 15.4/15.5) are untouched.
+
+---
+
+## Design Delta: Config View Tree Rendering (Requirement 22, Visual Re-skin)
+
+This delta re-skins the Config View (`config_panel/`, `TabKind::ConfigPanel`) into
+a clearly demarcated, two-level tree with bracketed group headers, box-drawing
+child connectors, and a single vertically-aligned Value_Column. It is a
+VISUAL/representation change ONLY: the pure `tree::visible_rows` model, the
+per-namespace `collapsed` expand/collapse state and its mouse/keyboard triggers
+(Requirement 21), the per-key value widgets and their working-copy edit semantics,
+the SELECTABLE key name, the SELECTABLE always-visible description (Req 14.2), the
+`WorkspaceContext` focus contract, and the ISPF explicit-commit save model are all
+preserved. Nothing in `ff-config`, `tree.rs`, `widgets.rs`, `commit.rs`,
+`keyboard.rs`, the shell dispatch, or `menus/settings.toml` changes. The change is
+confined to how `config_panel/render.rs` draws each `ConfigRow`, plus one new pure
+helper module (`config_panel/layout.rs`) for the Value_Column computation.
+
+### What exists today (verified against the code)
+
+`config_panel/render.rs::render` draws a Filter+Save `ui.horizontal` (Filter
+label, the `egui::TextEdit` carrying `filter_field_id()`, an `X` clear button,
+then a right-to-left Save block with a coloured "unsaved changes" dot), an optional
+persist-error line, a `ui.separator()`, an optional Source-File row + separator,
+builds `rows = visible_rows(...)`, clears `widget_ids`, reconciles the cursor + runs
+the keyboard driver, then a `ScrollArea` iterating `rows`:
+- `Namespace` rows as a `selectable_label` with a `v`/`>` arrow prefix and `(count)`
+  suffix; clicking toggles `collapsed[ns]`.
+- `Key` rows wrapped in `ui.indent(("config_key_indent", key), ...)` into
+  `render_entry`. `render_entry` draws ONE `ui.horizontal` containing: a
+  `ui.vertical` stack of two `egui::Button::selectable(false, ...)` widgets (the
+  monospace key name and the small/weak description, annotated `// Validates:
+  Requirement 14.2`), then a right-to-left block (provenance/LOCKED badge, staged
+  `*`, Reset button). The value widget via `render_widget(...) -> Option<egui::Id>`
+  is rendered AFTER that `ui.horizontal` closes -- so TODAY the value widget sits on
+  its OWN line below the key row, and the record of its id goes into `widget_ids`.
+  An inline validation error line follows.
+
+Verified widget widths in `config_panel/widgets.rs::render_widget`: path-type string
+fields request `f32::INFINITY` width; NON-path string fields use a FIXED
+`desired_width(400.0)`; bounded ints/floats draw sliders; booleans a checkbox; enum
+strings a combo. (All three string/number cases are covered -- this corrects the
+prior design's enumeration that omitted the fixed-400 string case.)
+
+`render.rs` is 407 lines total; the `#[cfg(test)]` attribute is at line 297, so
+~296 non-test lines (~100 lines of headroom -- NOT near the 400-line budget).
+
+### D1 -- Scope: re-skin the row loop + header block only
+
+The redesign touches ONLY the Filter/dirty header block and the body of
+`render::render` that draws each `ConfigRow`, plus a new pure `layout.rs`. The
+upstream steps (`visible_rows`, cursor reconcile, keyboard driver, `widget_ids`
+rebuild) and the downstream per-key value widgets, badge, staged `*`, Reset,
+selectable key name, and selectable description are reused verbatim; only their
+layout/decoration changes. That is what makes the change provably visual-only.
+
+### D2 -- Demarcated header area; Save + dirty row placement (AC 22.1, 22.2)
+
+The panel renders a HEADER BLOCK then the TREE BODY, separated by a single
+`ui.separator()`. The header block sits below the shell's `Command ===>` line
+(a `TopBottomPanel`, id `command_field_input`, which the shell owns -- confirmed
+in `shell/render_command_line.rs`). The header rows, in EXACTLY this allocation
+order:
+
+1. **Filter + Save row -- allocation order UNCHANGED.** The existing
+   `ui.horizontal` is kept exactly as today: FIRST the Filter label, then the
+   Filter `egui::TextEdit` carrying `filter_field_id()`, then the `X` clear
+   button; THEN, in the right-to-left sub-layout, the Save button (still enqueuing
+   `ShellRequest::Command("SAVE")`, enabled only when `is_dirty()`). The coloured
+   dot MAY stay as an accent but is NOT the authoritative indicator. Because the
+   Filter `TextEdit` is allocated BEFORE the Save button, egui-native Tab order
+   reaches the Filter field first -- the Save button is never a phantom-ahead Tab
+   stop (this preserves AC 22.10; see D7).
+2. **`Unsaved edits : <yes|no>` row (new, non-interactive).** Its OWN row, a
+   single non-interactive `ui.label` built from `state.is_dirty()` (`yes`/`no`),
+   below the Filter+Save row. Being a label, it adds NO Tab stop. This is the
+   authoritative indicator AC 22.2 ties to `is_dirty()`.
+3. **Optional persist-error line** (unchanged, non-interactive coloured label).
+4. **Optional Source-File row** (non-interactive) -- header metadata.
+
+Then exactly ONE `ui.separator()` divides header from tree body (AC 22.1). Rows
+2-4 are all non-interactive labels, so the only interior Tab stop ahead of the
+tree is the Filter field.
+
+### D3 -- Two-level tree, bracketed group headers (AC 22.3)
+
+The tree stays two deep (group -> key), matching `visible_rows` (depth 0
+`Namespace`, depth 1 `Key`). Each `Namespace` row renders as a bracketed header
+`[<DisplayName>]` using the existing `ns_display_name` capitalisation, in the
+existing sorted order, preceded by the existing `v`/`>` arrow affordance and
+optionally followed by the existing `(count)` suffix (e.g. `v [Editor] (5)`). It
+remains a clickable `selectable_label` toggling `collapsed[ns]` and the cursor --
+the EXISTING mouse trigger, unchanged (AC 22.8). The cursor highlight
+(`paint_cursor_highlight`) is retained.
+
+### D4 -- Box-drawing child connectors (AC 22.4)
+
+Under an expanded group, each key row is prefixed with a box-drawing connector in
+a monospace context. Because the tree is two-level and a group's keys are
+contiguous after the group header (guaranteed by `visible_rows`), the connector is
+determined purely by whether the key is the LAST of its group:
+
+```
+[Editor]
+ ├── editor.indent_style             : space
+ ├── editor.insert_final_newline     : true
+ ├── editor.line_endings             : lf
+ ├── editor.tab_size                 : 4
+ └── editor.trim_trailing_whitespace : false
+```
+
+Connector glyphs (ASCII box-drawing range U+2500-U+257F, permitted inside code
+blocks per documentation-charset.md):
+- non-last child: U+251C U+2500 U+2500 + space -> the four-cell prefix `├── `.
+- last child: U+2514 U+2500 U+2500 + space -> the four-cell prefix `└── `.
+
+Both prefixes are the SAME four-cell monospace width, so they do not perturb the
+Value_Column computation in D5. FR3's "vertical continuation bar for intermediate
+levels" does NOT apply: the tree is strictly two-level (`visible_rows` emits only
+depth 0 and depth 1), so there are no intermediate levels -- only branch-tee and
+L-connector are drawn, exactly what AC 22.4 enumerates. The design deliberately
+does NOT draw the user's full outer box frame (illustrative mockup, requirements
+Assumption 1).
+
+"Last child of group" is computed by an O(1) look-ahead during the existing single
+pass over `rows`: a `Key` row is the last child of its group when the NEXT row is
+not a `Key` (it is a `Namespace` row, or the end of the list). No change to
+`visible_rows`.
+
+### D5 -- Value_Column alignment: pure, egui-independent (AC 22.5, 22.6, 22.12)
+
+The `:` and value align in one column across all currently visible key rows,
+computed by a NEW pure function over the visible-row data so it is unit-testable
+independently of egui (AC 22.12):
+
+```rust
+// config_panel/layout.rs  (new, pure, GUI-free)
+
+/// The connector kind for a key row in the two-level tree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Connector { Tee, Last } // ├── vs └──
+
+/// The four-cell connector prefix (glyph + glyph + glyph + trailing space).
+/// Both forms are the same monospace width, so they do not perturb alignment.
+pub fn connector_prefix(c: Connector) -> &'static str {
+    match c {
+        Connector::Tee  => "\u{251c}\u{2500}\u{2500} ", // "├── "
+        Connector::Last => "\u{2514}\u{2500}\u{2500} ", // "└── "
+    }
+}
+
+/// The label text drawn to the LEFT of the ':' column for a key row:
+/// the connector prefix + the full key path. Pure; no egui.
+pub fn key_label(connector: Connector, key: &str) -> String {
+    format!("{}{}", connector_prefix(connector), key)
+}
+
+/// The number of monospace CHARACTER cells the ':' column must sit at: the max
+/// char-count of key_label over the CURRENTLY VISIBLE key rows, plus one padding
+/// space. Group-header rows do not participate. Returns 0 for the empty set.
+pub fn value_column_width(visible_key_labels: &[String]) -> usize {
+    visible_key_labels
+        .iter()
+        .map(|l| l.chars().count())
+        .max()
+        .map(|w| w + 1)
+        .unwrap_or(0)
+}
+
+/// Build the FULL left segment of a key row as ONE monospace string:
+/// key_label padded on the right to `column` cells, then " : ". Appending the
+/// value after this lands the ':' in the same column on every row. Pure.
+pub fn aligned_left_segment(connector: Connector, key: &str, column: usize) -> String {
+    let label = key_label(connector, key);
+    let pad = column.saturating_sub(label.chars().count());
+    format!("{}{} : ", label, " ".repeat(pad))
+}
+```
+
+`column` is computed ONCE per frame from the visible key labels gathered in a
+cheap first pass over `rows`, so expand/collapse or filter changes automatically
+recompute it for the new visible set (AC 22.6) -- the function is called fresh
+each frame against the freshly built `rows`. Width is char-count over a monospace
+font: equal char counts give equal pixel widths (the exact property
+`primary_option_menu/calendar_header.rs::centered_calendar_header` relies on, the
+verified precedent for this idiom). ASCII key paths and the box-drawing connectors
+are all single-cell glyphs in egui's monospace face, so `str::chars().count()` is
+the correct width measure.
+
+Alignment scope (requirements Assumption 4): the column is the max over the WHOLE
+currently-visible key set (one column for the panel), NOT per-group; a collapsed
+group's long keys do not widen it because the function takes only the visible
+labels.
+
+### D6 -- LOCKED row structure (resolves MEDIUM-1 and MEDIUM-2)
+
+This is the single novel piece, and it is now LOCKED (no runtime "if it proves
+non-uniform" fallback). The overriding rule: the key name stays a SELECTABLE
+control and the description stays a VISIBLE, SELECTABLE widget (Req 14.2); neither
+moves to hover and neither becomes inert text. Alignment is achieved by rendering
+the aligned left segment as ONE monospace string so the char-count-to-pixel
+mapping is exact.
+
+**Locked decision for the aligned key line (resolves MEDIUM-2 and the inset/frame
+variability):** DROP the `ui.indent(("config_key_indent", key), ...)` wrapper for
+key rows -- the box-drawing connector prefix already conveys depth, so the indent
+inset (which the pure `layout.rs` char math cannot model) is removed entirely.
+Render the entire aligned left segment -- `connector + key + padding + " : "` --
+as a SINGLE monospace string via `layout::aligned_left_segment`, and provide key
+SELECTABILITY with a FRAMELESS `ui.selectable_label(is_cursor,
+egui::RichText::new(segment).monospace())` rather than a framed
+`egui::Button::selectable` plus a separate spacer. A `selectable_label` is still a
+selectable control (Req 14.2 / AC 22.9 preserved) and, being frameless, has no
+per-widget frame inset -- so the char-count padding maps directly to pixels and the
+`:` lands at the same x on every row (the `calendar_header.rs` property). This
+replaces the prior design's framed-button-plus-inert-spacer approach, which had a
+non-uniform frame inset and forced the hedge. The hedge is removed; this is the
+decision.
+
+Because the `:` is now part of the single selectable monospace string, clicking
+anywhere on `connector + key + pad + " : "` selects the row's key control -- a
+single, predictable hit target. The connector glyphs sit inside the same
+selectable string; they are visually decorative but need no separate inert label.
+
+**Locked decision for the row construction (resolves MEDIUM-1 and Finding 1 width
+conflict):** each key node renders as a two-line block inside a vertical sub-`ui`,
+in this exact allocation order:
+
+1. **Line 1 -- aligned key-to-value row**, one `ui.horizontal`:
+   a. the frameless `ui.selectable_label(is_cursor, aligned_left_segment(...))`
+      (the connector + key + padding + " : ", monospace, selectable -- above);
+   b. IMMEDIATELY the value widget via `render_widget(ui, state, config, entry,
+      &effective) -> Option<egui::Id>`, placed right after the `:` so it STARTS at
+      the Value_Column; its returned id is recorded into `state.widget_ids` (so
+      Enter -> FocusKeyWidget, Req 21.6, still works). This horizontal contains NO
+      right-to-left block, so there is no left-aligned-vs-right-greedy width
+      conflict on this line (the explicit resolution of Finding 1): the value
+      widget simply extends rightward from the Value_Column as it does today (a
+      `f32::INFINITY` path field fills remaining width, a fixed-400 string field
+      or a slider takes its own width). The `:`/value START alignment is what AC
+      22.5 requires; widget widths are NOT constrained, so FR7 is intact.
+2. **Line 2 -- provenance + Reset + description**, in allocation order:
+   a. FIRST the VISIBLE, SELECTABLE description as the existing
+      `egui::Button::selectable(false, RichText::new(entry.description).small().weak())`
+      (Req 14.2 preserved -- it stays a visible selectable widget, NOT a tooltip --
+      resolves MEDIUM-1), left-aligned beneath the key;
+   b. THEN a right-to-left sub-layout (`ui.with_layout(right_to_left, ...)`)
+      holding the provenance/LOCKED badge, the staged-edit `*`, and the Reset
+      button -- UNCHANGED from `render_entry` today. The right-to-left block lives
+      on line 2 ONLY (never on line 1), so it never competes with the aligned
+      value widget for width. This is the explicit coexistence contract Finding 1
+      asked for: the aligned value column owns line 1; the right-greedy
+      provenance/Reset block owns line 2.
+3. **Inline validation error line** (unchanged) below, when `errors` has the key.
+
+The Value_Column (D5) is derived ONLY from line 1's `key_label` (connector + key);
+line 2 (description + provenance/Reset) does not participate in and does not
+perturb the `:` column.
+
+Net effect: selectable key name (now the frameless selectable_label carrying the
+aligned segment), visible selectable description (line 2a), value widget (line 1b,
+id still recorded), provenance/LOCKED badge, staged `*`, and Reset (line 2b) are
+ALL preserved with unchanged behaviour (FR7, AC 22.9). The only changes are: the
+connector prefix, the monospace char-count padding to the Value_Column, the `:`
+placement, moving the value widget onto the same (first) line at the column, and
+moving the description onto line 2 so line 1 is a clean key-to-value row for the
+column math. No individual node's behaviour changes -- visual-only (MEDIUM-1 and
+MEDIUM-2 fully resolved, no hedge).
+
+> Why line 1 and line 2 rather than a single line: the right-to-left
+> provenance/Reset block is width-greedy and a `f32::INFINITY` value widget is
+> also width-greedy; placing BOTH plus the aligned value column on one
+> `ui.horizontal` is exactly the width conflict Finding 1 flagged. Splitting the
+> row into an aligned line 1 (key -> `:` -> value) and a line 2 (description +
+> right-to-left provenance/Reset) removes the conflict deterministically without
+> constraining any widget width. The description was already on its own stacked
+> line today (inside the `ui.vertical`), so moving it to line 2 preserves its
+> existing visual relationship to the key.
+
+### D7 -- Preserve the focus contract (AC 22.10)
+
+`impl WorkspaceContext::render` still returns
+`InteriorFocus::single(filter_field_id())`; the Filter `TextEdit` still carries
+`filter_field_id()` and is allocated FIRST in the header block (D2). Every other
+header row is a non-interactive label, so the first Tab from the shell command
+field lands exactly on the Filter field (no phantom stop). The arm stays dispatched
+via `render_workspace_context` (`shell/render_body.rs`, the single focus-latch
+path); no per-arm focus ring. The frameless key `selectable_label`s and the
+description `Button::selectable`s in the tree body ARE focusable controls (as they
+are today), but they come AFTER the Filter field in allocation order, so they never
+precede it in Tab order. The existing
+`full_shell_config_first_tab_focuses_filter_field` test remains the binding proof.
+
+### D8 -- Preserve save convention (AC 22.11)
+
+No change to SAVE/END/RETURN. The in-panel Save button keeps enqueuing
+`ShellRequest::Command("SAVE")`. The new `Unsaved edits : <yes|no>` row is a pure
+read of `state.is_dirty()`. No autosave; edits still stage into `working` via the
+unchanged `commit_value` path.
+
+### D9 -- Column alignment mechanism: chosen and locked
+
+Two mechanisms were considered:
+
+1. `egui::Grid` with key and value columns -- REJECTED. `keys_editor_panel/render.rs`
+   (lines ~80-85) documents that a `TextEdit`'s `desired_width` is only honoured in
+   a plain horizontal layout; inside a `Grid` nested in a horizontal `ScrollArea`
+   the cells collapse to a few characters and the grid stretches its last column.
+   The config value widgets include a `f32::INFINITY` path field and sliders that
+   would fight a grid's column sizing, and a grid makes the connector prefix
+   awkward.
+2. **Monospace character-count padding (CHOSEN, locked).** Build `connector + key`
+   as a monospace char count, pad to the max visible key-label width, append
+   " : ", render the whole left segment as ONE frameless monospace
+   `selectable_label`, then place the value widget after it (D5/D6). Equal
+   monospace char counts give equal pixel widths. No new dependency, value widgets
+   keep their natural widths, the key control stays selectable, and the width rule
+   is a pure unit-testable function. Verified precedent:
+   `primary_option_menu/calendar_header.rs::centered_calendar_header`.
+
+### File-by-file change plan
+
+- `crates/ff-desktop/src/config_panel/layout.rs` -- NEW. Pure, GUI-free:
+  `Connector`, `connector_prefix`, `key_label`, `value_column_width`,
+  `aligned_left_segment`, plus a `#[cfg(test)]` module unit-testing single-group,
+  multi-group, filtered-subset, and empty-set column computation (AC 22.12), the
+  equal-width connector prefixes, and the padded segment shape.
+- `crates/ff-desktop/src/config_panel/mod.rs` -- add `mod layout;` and any
+  `pub use layout::{...}` the render needs. NO state fields added (the column is
+  computed per-frame, not stored).
+- `crates/ff-desktop/src/config_panel/render.rs` -- re-skin only:
+  - header block (D2): Filter+Save row with UNCHANGED allocation order + new
+    non-interactive `Unsaved edits : yes|no` label row + persist-error +
+    Source-File, then ONE separator;
+  - tree body: group rows as `[<DisplayName>]` headers (unchanged toggle), key
+    rows via the D6 two-line layout (frameless aligned selectable_label + value on
+    line 1; description + right-to-left provenance/Reset on line 2) using the
+    `layout.rs` helpers and the last-child look-ahead; `widget_ids` still recorded;
+  - compute `column` per frame from the visible key labels (first pass over `rows`);
+  - DROP the `ui.indent` wrapper for key rows (connector prefix conveys depth).
+- `crates/ff-desktop/src/shell/tests_focus.rs` -- keep
+  `full_shell_config_first_tab_focuses_filter_field` green (binding AC 22.10 proof
+  after the header re-layout).
+- NO change to `tree.rs`, `widgets.rs`, `keyboard.rs`, `commit.rs`, the shell
+  dispatch, the `ff-config` crate, `menus/settings.toml`, or persistence.
+
+If the re-skin pushes `render.rs` toward 400 non-test lines, extract the per-row
+draw into a `render_key_row(...)` helper (and, if still over, a
+`config_panel/render_rows.rs`); run the 400-line check before landing.
+
+### Error handling and edge cases
+
+- Empty visible set (filter matches nothing): `value_column_width([]) == 0`; no key
+  rows render (group rows may). No panic. Unit-tested.
+- All groups collapsed: only `[<DisplayName>]` headers render; the column sees an
+  empty key-label set; recomputes on the next expand (AC 22.6).
+- Very long value (e.g. a path): the `:` column is positioned by the widest KEY
+  label, not the value; a long value extends rightward in the `ScrollArea` as
+  today. Column stays aligned.
+- Very long key relative to siblings: widens the shared column for the whole visible
+  set (intended, D5). Not an error.
+- Non-ASCII in a key: schema keys are ASCII dotted paths by construction; the
+  char-count width measure assumes single-cell glyphs (accepted, documented
+  limitation, not a failure path). Box-drawing connectors are single-cell in egui's
+  monospace face.
+- LOCKED key: value widget stays disabled (`add_enabled_ui(!locked)`), badge shows
+  `LOCKED`; aligned layout unchanged.
+- Keyboard cursor on a re-laid-out row: cursor model unchanged (`tree.rs`); the
+  highlight still paints around the row rect via `paint_cursor_highlight`.
+
+### Testability
+
+- Unit (pure, no egui) in `layout.rs`: `value_column_width` over single group,
+  multiple groups, a filtered subset, and the empty set (AC 22.12);
+  `connector_prefix`/`key_label`/`aligned_left_segment` producing the expected
+  strings (including that `├── ` and `└── ` are equal width, and the `:` lands at
+  the same cell for differing key lengths); last-child connector selection given a
+  `rows` slice.
+- Integration (full-shell `egui_kittest`): keep
+  `full_shell_config_first_tab_focuses_filter_field` green -- open `CONFIG`, assert
+  `first_interior_id == filter_field_id()`, assert the first Tab from the command
+  field focuses the Filter field with no phantom stop (AC 22.10). This is the
+  mandatory GUI behaviour test (workspace-conformance.md); it proves the D2/D7
+  placement after the header re-layout.
+- Pixel-exact connector rendering and on-screen column position are the justified
+  manual/visual exception per testing.md; the width logic is unit-tested and the
+  connectors are deterministic strings from `layout.rs`.
+
+Agent verification is COMPILE-ONLY per the testing.md execution split: scoped
+`cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`,
+`cargo fmt -p ff-desktop -- --check`, and the new scoped `layout.rs` tests where
+quick. The owner runs the authoritative full gate.
+
+### Resolution of the 2 MEDIUM design-review findings
+
+- **MEDIUM-1 / Finding 1 (one-horizontal row mixes a left-column value widget and
+  a right-to-left block without pinning coexistence) -- RESOLVED.** D6 splits the
+  key node into TWO lines: line 1 is the aligned `connector + key + : + value`
+  `ui.horizontal` with NO right-to-left block; line 2 carries the selectable
+  description then the right-to-left provenance/Reset block. The width-greedy
+  right-to-left block and the (possibly `f32::INFINITY`) value widget are on
+  DIFFERENT lines, so they never fight for row width. Allocation order is pinned
+  explicitly (line 1: selectable_label then value; line 2: description then
+  right-to-left block).
+- **MEDIUM-2 / Finding 2 (char-count alignment across `ui.indent` + framed
+  selectable button is asserted, hedged with a runtime fallback) -- RESOLVED.** D6
+  LOCKS one mechanism: drop the `ui.indent` wrapper (connector conveys depth) and
+  render the whole aligned left segment (`connector + key + padding + " : "`) as a
+  SINGLE frameless `ui.selectable_label(..., RichText::monospace(...))`. Frameless
+  = no per-widget frame inset, so char-count maps directly to pixels (the
+  `calendar_header.rs` property). The key control stays SELECTABLE (Req 14.2). The
+  prior "if the button frame proves non-uniform, switch to ..." hedge is REMOVED;
+  the frameless single-string selectable_label IS the decision.
+
+### Resolution of the 2 NIT findings
+
+- **NIT (widget-width note omits the fixed-400 string case) -- RESOLVED.** "What
+  exists today" above now states all three cases: path strings `f32::INFINITY`,
+  non-path strings fixed `desired_width(400.0)`, bounded numbers sliders; the
+  `:`/value START-alignment argument (D6 line 1) applies to each.
+- **NIT (line-count off by one) -- RESOLVED.** Stated as `render.rs` = 407 lines
+  total, `#[cfg(test)]` at line 297, ~296 non-test lines (~100 lines of headroom).
+
+### No other design changes
+
+No schema, persistence, command, grouping, expand/collapse, keyboard-navigation
+(Req 21), or save-convention changes. This delta is purely the visual re-skin of
+`config_panel/render.rs` plus the new pure `config_panel/layout.rs`.

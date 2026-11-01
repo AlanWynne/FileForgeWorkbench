@@ -622,6 +622,124 @@ the standard desktop tree-control convention.
 
 ---
 
+### Requirement 22: Config View -- Demarcated Tree-View Re-skin
+
+**User Story:** As a workbench user, I want the Configuration Context to be
+clearly demarcated into a header area and a tree body, with bracketed group
+headers, box-drawing child connectors, and the values lined up in one vertical
+column, so that the configuration browser reads like a standard, well-structured
+tree control instead of an undifferentiated list.
+
+**Source:** owner request ("The configuration editor is not clear and well
+demarcated between areas ... create a tree view ... where branches can be
+expanded and collapsed very much like they can currently but clearly represented
+... the values for each node should be aligned vertically"). The grouping
+mechanism is explicitly to be preserved ("that mechanism should just continue,
+it is just the representation that I want changed").
+
+> **Scope note.** This is a VISUAL/representation change ONLY. It REFINES how the
+> Config View from Requirements 15, 20, and 21 is drawn; it does NOT replace
+> them. The grouping mechanism, expand/collapse behaviour, config persistence,
+> SAVE/END/RETURN save semantics (Cross-Cutting Save Convention below), the
+> `WorkspaceContext` focus contract, and the keyboard tree navigation
+> (Requirement 21) are all preserved unchanged -- only the way the existing
+> `Visible_Rows` model is drawn changes.
+
+**Glossary (reuses Requirement 21 terms):** Config_Tree, Tree_Cursor,
+Visible_Rows as defined in Requirement 21. Additional term:
+- **Value_Column** -- the single vertical column at which the `:` separator and
+  the value widget of every currently-visible key row are aligned, positioned
+  just past the widest visible key label (connector prefix + key text).
+
+#### Functional intent
+
+- **Demarcated header area.** A header area (the `Command ===>` line owned by the
+  shell, a `Filter` row, and an `Unsaved edits : <yes|no>` row) separated from
+  the tree body by a horizontal rule.
+- **Bracketed group headers.** Each of the existing namespace groups renders as a
+  bracketed header `[<DisplayName>]` (the 8 confirmed groups: `[Accessibility]`,
+  `[Catalogs]`, `[Editor]`, `[Logging]`, `[Menu]`, `[Theme]`, `[Ui]`, `[Vfs]`),
+  in the existing sorted order, each still clickable to expand/collapse.
+- **Box-drawing child connectors.** Under an expanded group, each child key
+  renders with box-drawing tree connectors (U+2500-U+257F), in a monospace
+  context so they align.
+- **Vertically aligned Value_Column.** The `:` and value of all visible key rows
+  line up in one column, recomputed from the currently-visible rows.
+- **Preserve everything else.** Grouping mechanism, expand/collapse, per-key edit
+  controls, the SELECTABLE key name, the VISIBLE + SELECTABLE key description
+  (Requirement 14.2), the focus contract, and the save convention are unchanged.
+
+#### Acceptance Criteria
+
+22.1. THE Config View SHALL render a header area, separated from the tree body by
+a horizontal rule, that shows the `Command ===>` line, a `Filter` row, and an
+`Unsaved edits : <yes|no>` row; the two areas SHALL be clearly demarcated.
+
+22.2. WHEN the working-copy buffer is non-empty, THE `Unsaved edits` row SHALL
+show `yes`; WHEN it is empty, it SHALL show `no` -- i.e. the indicator SHALL
+equal `ConfigPanelState.is_dirty()`.
+
+22.3. THE Config View SHALL render each top-level namespace group as a bracketed
+header `[<DisplayName>]` using the existing display-name capitalisation, in the
+existing sorted group order from `visible_rows`.
+
+22.4. WHEN a group is EXPANDED, THE Config View SHALL render each of its child
+key nodes with box-drawing tree connectors (U+2500-U+257F): a branch-tee
+connector for every child except the last, and an L-connector for the LAST child
+of the group.
+
+22.5. THE Config View SHALL align the `:` separator and the value text of ALL
+currently visible key rows into a single vertical Value_Column, positioned just
+past the widest visible key label (connector prefix + key).
+
+22.6. WHEN the set of visible rows changes (a group is expanded or collapsed, or
+the filter changes), THE Config View SHALL recompute the Value_Column position
+from the new set of currently visible rows.
+
+22.7. THE grouping mechanism (namespace derivation and group membership via
+`namespace_of` + `visible_rows`) and the 8 confirmed groups (Accessibility,
+Catalogs, Editor, Logging, Menu, Theme, Ui, Vfs) SHALL be unchanged by this
+rendering redesign.
+
+22.8. Expand/collapse SHALL continue to toggle the visibility of a group's child
+key nodes using the existing per-namespace `collapsed` state, via BOTH the
+existing mouse trigger (click the group header) AND the existing keyboard
+triggers (Right/Left/Enter through `reduce_config_key`).
+
+22.9. Each visible key node SHALL continue to expose its existing value widget,
+provenance/LOCKED badge, staged-edit indicator, and Reset-to-Default control with
+unchanged behaviour, AND its existing selectable key name and visible selectable
+key description (Requirement 14.2) SHALL remain selectable and visible (NOT moved
+to hover/tooltip, NOT downgraded to inert text).
+
+22.10. THE Config View's `WorkspaceContext::render` SHALL return
+`InteriorFocus::single(filter_field_id())` and be dispatched via
+`render_workspace_context`; the first Tab from the command field SHALL focus the
+Filter field with no phantom stop (covered by the full-shell first-Tab
+egui_kittest test, extended/kept green).
+
+22.11. THE SAVE / END / RETURN semantics SHALL be unchanged (SAVE commits+stays,
+END commits+exits, RETURN discards+exits); no autosave SHALL be introduced.
+
+22.12. THE Value_Column position SHALL be produced by a pure, egui-independent
+function over the visible-row key labels (max-width -> column), unit-tested for:
+single group, multiple groups, filtered subset, and the empty set.
+
+#### Out of scope (Requirement 22)
+
+- Changing namespace derivation or group membership (grouping mechanism frozen).
+- Changing config persistence, layering, validation, or the SAVE/END/RETURN flush.
+- Changing the Requirement 21 keyboard navigation transition table -- only its
+  on-screen representation is re-skinned.
+- New config keys, groups, or editing widgets; any change to `menus/settings.toml`
+  or the `CONFIG` command resolution (Requirement 20).
+- Multi-level nesting below the two-level (group -> key) model; the tree stays two
+  deep. Because the tree is strictly two-level (depth 0 group, depth 1 key, no
+  intermediate levels), a "vertical continuation bar for intermediate levels"
+  does not apply; only branch-tee and L-connectors are drawn, matching AC 22.4.
+
+---
+
 ## Cross-Cutting: Save Convention (project-master Requirement 11)
 
 The Config / Settings Workspace Context follows the ISPF-style explicit-commit
