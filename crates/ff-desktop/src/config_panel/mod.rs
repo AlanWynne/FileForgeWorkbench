@@ -22,6 +22,7 @@ pub use tree::{
 
 mod commit;
 mod keyboard;
+mod layout;
 mod render;
 mod widgets;
 pub use render::render;

@@ -1561,6 +1561,78 @@ fn full_shell_config_first_tab_focuses_filter_field() {
     );
 }
 
+// === Requirement 22: Config tree re-skin -- bracketed headers + collapse ====
+
+/// Compute the exact rendered label of the `[Editor]` group header for the
+/// current config schema, matching `render.rs`'s
+/// `format!("{arrow} [{name}] ({count})")`. Pure helper so the assertion below
+/// does not hardcode the editor-key count (it is schema-driven).
+fn editor_group_header_label(
+    harness: &egui_kittest::Harness<'_, super::WorkbenchShell>,
+    expanded: bool,
+) -> String {
+    let count = harness
+        .state()
+        .config_handle
+        .list_schema_entries()
+        .iter()
+        .filter(|e| e.key.split('.').next() == Some("editor"))
+        .count();
+    let arrow = if expanded { "v" } else { ">" };
+    format!("{} [Editor] ({})", arrow, count)
+}
+
+// Validates: Requirement 22.3 -- the Config tree renders each namespace group as
+// a bracketed `[<DisplayName>]` header. Requirement 22.8 -- collapsing a group
+// (the existing collapsed-state model) hides its child key rows; the header
+// arrow flips and the expanded-form header label is no longer present.
+#[test]
+fn full_shell_config_tree_renders_bracketed_group_headers_and_collapse_hides_children() {
+    use crate::tab_state::KindTag;
+    use egui_kittest::kittest::Queryable;
+    let mut harness = harness_shell();
+    harness.state_mut().dispatch_command_string("CONFIG");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::ConfigPanel,
+        "CONFIG opens the flat Config panel"
+    );
+
+    // AC 22.3: the bracketed, expanded `[Editor]` group header is rendered.
+    let expanded_label = editor_group_header_label(&harness, true);
+    assert!(
+        harness.query_by_label(&expanded_label).is_some(),
+        "the Config tree must render the bracketed group header '{expanded_label}'"
+    );
+
+    // AC 22.8: collapse the Editor group via the existing collapsed-state model
+    // (the same state the mouse/keyboard triggers write) and re-render.
+    harness
+        .state_mut()
+        .config_panel
+        .collapsed
+        .insert("editor".to_string(), true);
+    for _ in 0..2 {
+        harness.run();
+    }
+
+    // The expanded-form header is gone; the collapsed-form header (arrow `>`)
+    // is now rendered -- proving the header re-skin tracks collapse state and
+    // the children are hidden (the expanded label row no longer exists).
+    assert!(
+        harness.query_by_label(&expanded_label).is_none(),
+        "after collapse the expanded-form group header must no longer render"
+    );
+    let collapsed_label = editor_group_header_label(&harness, false);
+    assert!(
+        harness.query_by_label(&collapsed_label).is_some(),
+        "after collapse the collapsed-form header '{collapsed_label}' must render"
+    );
+}
+
 /// Validates: Requirement 23.7 -- when the command field does NOT have focus,
 /// Up/Down are NOT hijacked for history (the field content is left unchanged).
 #[test]

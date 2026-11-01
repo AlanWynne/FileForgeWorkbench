@@ -10,6 +10,7 @@ use ff_config::schema::SchemaEntry;
 use ff_config::ConfigHandle;
 
 use super::keyboard::{config_keyboard_effects, tree_has_keyboard};
+use super::layout::{aligned_left_segment, key_label, value_column_width, Connector};
 use super::widgets::render_widget;
 use super::{
     filter_field_id, reconcile_cursor, visible_rows, ConfigNodeId, ConfigPanelState, TreeEntry,
@@ -53,20 +54,29 @@ pub fn render(
         });
     });
 
+    // == Unsaved-edits indicator row -- Req 22.1, 22.2 (non-interactive) ======
+    // A plain label (adds NO Tab stop, so the Filter field above stays the
+    // first interior control -- AC 22.10). Authoritative dirty indicator tied
+    // to is_dirty() (AC 22.2).
+    let dirty_word = if state.is_dirty() { "yes" } else { "no" };
+    ui.label(format!("Unsaved edits : {}", dirty_word));
+
     // Surface a persist error from the last SAVE/END attempt (Req 11.4).
     if let Some(err) = &state.persist_error {
         ui.colored_label(egui::Color32::RED, err.as_str());
     }
-    ui.separator();
 
-    // == Source file indicator -- Req 15.8 ===
+    // == Source file indicator -- Req 15.8 (header metadata) =================
     if let Some(user_path) = ff_config::paths::user_config_path() {
         ui.horizontal(|ui| {
             ui.label(ff_i18n::t("ff-desktop-config-panel-source-file"));
             ui.monospace(user_path.to_string_lossy().as_ref());
         });
-        ui.separator();
     }
+
+    // Exactly ONE horizontal rule demarcates the header area from the tree
+    // body (AC 22.1).
+    ui.separator();
 
     // == Collect schema entries + build the Config_Tree rows ===
     let schema_entries = config.list_schema_entries();
@@ -98,11 +108,27 @@ pub fn render(
         config_keyboard_effects(ui, state, &rows);
     }
 
-    // == Render each row -- namespace group headers + key entries -- Req 15.2 =
+    // == Compute the Value_Column once per frame (AC 22.5, 22.6) =============
+    // The column is the max key-label width over the CURRENTLY VISIBLE key rows
+    // (the freshly built `rows`), so expand/collapse and filter changes
+    // recompute it automatically. Connectors are equal width, so the connector
+    // chosen here does not affect the width; we use the real last-child
+    // connector for each row for consistency.
+    let visible_key_labels: Vec<String> = rows
+        .iter()
+        .enumerate()
+        .filter_map(|(i, row)| match &row.id {
+            ConfigNodeId::Key(key) => Some(key_label(connector_for_row(&rows, i), key)),
+            ConfigNodeId::Namespace(_) => None,
+        })
+        .collect();
+    let column = value_column_width(&visible_key_labels);
+
+    // == Render each row -- bracketed group headers + key entries -- Req 22 ===
     let cursor = state.cursor.clone();
     let selection_stroke = ui.visuals().selection.stroke;
     egui::ScrollArea::vertical().show(ui, |ui| {
-        for row in &rows {
+        for (i, row) in rows.iter().enumerate() {
             let is_cursor = cursor.as_ref() == Some(&row.id);
             match &row.id {
                 ConfigNodeId::Namespace(ns) => {
@@ -111,8 +137,11 @@ pub fn render(
                         .iter()
                         .filter(|e| namespace_of(&e.key) == *ns && entry_matches(e, &state.filter))
                         .count();
+                    // Bracketed group header `[<DisplayName>]` with the existing
+                    // expand/collapse arrow and count (AC 22.3), still a
+                    // clickable selectable_label toggling collapsed[ns].
                     let arrow = if row.expanded { "v" } else { ">" };
-                    let header = format!("{} {} ({})", arrow, ns_display_name(ns), count);
+                    let header = format!("{} [{}] ({})", arrow, ns_display_name(ns), count);
                     let resp = ui.selectable_label(is_cursor, egui::RichText::new(header).strong());
                     if resp.clicked() {
                         // Mouse toggles the SAME collapsed state the keyboard writes.
@@ -124,18 +153,32 @@ pub fn render(
                 }
                 ConfigNodeId::Key(key) => {
                     if let Some(entry) = entry_by_key.get(key) {
-                        let resp = ui
-                            .indent(("config_key_indent", key), |ui| {
-                                render_entry(ui, state, config, entry, is_cursor)
-                            })
-                            .response;
+                        let connector = connector_for_row(&rows, i);
+                        // No ui.indent wrapper: the connector prefix conveys
+                        // depth (design D6).
+                        let resp =
+                            render_key_row(ui, state, config, entry, connector, column, is_cursor);
                         paint_cursor_highlight(ui, &resp, is_cursor, selection_stroke);
                     }
-                    ui.separator();
                 }
             }
         }
     });
+}
+
+/// Pick the box-drawing connector for the key row at index `i`: `Last` when the
+/// NEXT row is not a `Key` (end of the group or end of the list), else `Tee`
+/// (design D4 O(1) look-ahead over the single pass; no change to `visible_rows`).
+fn connector_for_row(rows: &[super::ConfigRow], i: usize) -> Connector {
+    let is_last_child = match rows.get(i + 1) {
+        Some(next) => !matches!(next.id, ConfigNodeId::Key(_)),
+        None => true,
+    };
+    if is_last_child {
+        Connector::Last
+    } else {
+        Connector::Tee
+    }
 }
 
 /// Whether an entry matches the (already-lowercased-inside) filter -- key OR
@@ -163,16 +206,23 @@ fn paint_cursor_highlight(
     }
 }
 
-/// Render a single schema entry row with widget, provenance badge, and reset button.
+/// Render a single schema entry key row as the LOCKED two-line tree block
+/// (design D6): line 1 is the aligned connector+key+":"+value row (the key a
+/// frameless selectable monospace control, the value widget starting at the
+/// Value_Column); line 2 is the selectable description plus the right-to-left
+/// provenance/LOCKED badge, staged `*`, and Reset block. Returns the response of
+/// the vertical block so the caller can paint the cursor highlight.
 ///
-/// Validates: Requirement 15.3, 15.4, 15.5, 15.6, 18.6
-fn render_entry(
+/// Validates: Requirement 22.4, 22.5, 22.9; Requirement 14.2, 15.3-15.6, 18.6
+fn render_key_row(
     ui: &mut egui::Ui,
     state: &mut ConfigPanelState,
     config: &ConfigHandle,
     entry: &SchemaEntry,
-    _is_cursor: bool,
-) {
+    connector: Connector,
+    column: usize,
+    is_cursor: bool,
+) -> egui::Response {
     let key = &entry.key;
     let locked = config.is_locked(key);
 
@@ -192,80 +242,86 @@ fn render_entry(
         ),
     };
 
-    ui.horizontal(|ui| {
-        // Key + description
-        // Validates: Requirement 14.2 -- selectable key name and description
-        ui.vertical(|ui| {
-            ui.add(egui::Button::selectable(
-                false,
-                egui::RichText::new(key.as_str()).monospace(),
-            ));
+    ui.vertical(|ui| {
+        // -- Line 1: aligned key -> `:` -> value (NO right-to-left block) ----
+        ui.horizontal(|ui| {
+            // The key stays a SELECTABLE control (Req 14.2 / AC 22.9). Frameless
+            // + monospace so char-count padding maps directly to pixels and the
+            // `:` lands at the Value_Column on every row (design D6, the
+            // calendar_header idiom).
+            let segment = aligned_left_segment(connector, key, column);
+            // The key stays a selectable control for Req 14.2; its own click
+            // response is not needed (the row's cursor highlight is painted by
+            // the caller against the vertical block's rect).
+            let _ = ui.selectable_label(is_cursor, egui::RichText::new(segment).monospace());
+
+            // Value widget starts at the Value_Column -- disabled for locked
+            // keys (Req 18.6). Its id is recorded so Enter can focus it (Req 21.6).
+            let widget_id = ui
+                .add_enabled_ui(!locked, |ui| {
+                    render_widget(ui, state, config, entry, &effective)
+                })
+                .inner;
+            if let Some(id) = widget_id {
+                state.widget_ids.insert(entry.key.clone(), id);
+            }
+        });
+
+        // -- Line 2: selectable description + right-to-left provenance block --
+        ui.horizontal(|ui| {
+            // Visible, SELECTABLE description (Req 14.2) -- left-aligned.
             ui.add(egui::Button::selectable(
                 false,
                 egui::RichText::new(entry.description.as_str())
                     .small()
                     .weak(),
             ));
-        });
 
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Provenance / LOCKED badge -- Req 15.3, 18.6
-            let badge_color = if locked {
-                egui::Color32::from_rgb(200, 80, 80)
-            } else {
-                egui::Color32::from_rgb(120, 180, 120)
-            };
-            ui.add(egui::Button::selectable(
-                false,
-                egui::RichText::new(provenance_label)
-                    .small()
-                    .color(badge_color),
-            ));
-
-            // A staged (unsaved) edit on this key shows an asterisk after the
-            // provenance badge so the working-copy state is visible (Req 11.9).
-            if state.working.contains_key(key) {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // Provenance / LOCKED badge -- Req 15.3, 18.6
+                let badge_color = if locked {
+                    egui::Color32::from_rgb(200, 80, 80)
+                } else {
+                    egui::Color32::from_rgb(120, 180, 120)
+                };
                 ui.add(egui::Button::selectable(
                     false,
-                    egui::RichText::new("*")
+                    egui::RichText::new(provenance_label)
                         .small()
-                        .color(egui::Color32::from_rgb(220, 180, 100)),
+                        .color(badge_color),
                 ));
-            }
 
-            // Reset to Default button -- Req 15.6 (disabled when locked or at
-            // Default WITH no staged edit). A key with a staged Set can still be
-            // Reset to revert the pending edit; a key already at Default with a
-            // staged Reset needs no further Reset.
-            let is_at_default = provenance_label == "Default";
-            let has_staged_edit = state.working.contains_key(key);
-            let reset_enabled = !locked && (!is_at_default || has_staged_edit);
-            ui.add_enabled_ui(reset_enabled, |ui| {
-                if ui.small_button("\u{21ba} Reset").clicked() {
-                    // Stage a Reset into the working buffer (Req 11.2): the user
-                    // override is removed on the next SAVE/END, not immediately.
-                    state.stage_reset(key);
+                // A staged (unsaved) edit on this key shows an asterisk after
+                // the provenance badge (Req 11.9).
+                if state.working.contains_key(key) {
+                    ui.add(egui::Button::selectable(
+                        false,
+                        egui::RichText::new("*")
+                            .small()
+                            .color(egui::Color32::from_rgb(220, 180, 100)),
+                    ));
                 }
+
+                // Reset to Default button -- Req 15.6 (disabled when locked or at
+                // Default WITH no staged edit).
+                let is_at_default = provenance_label == "Default";
+                let has_staged_edit = state.working.contains_key(key);
+                let reset_enabled = !locked && (!is_at_default || has_staged_edit);
+                ui.add_enabled_ui(reset_enabled, |ui| {
+                    if ui.small_button("\u{21ba} Reset").clicked() {
+                        // Stage a Reset into the working buffer (Req 11.2).
+                        state.stage_reset(key);
+                    }
+                });
             });
         });
-    });
 
-    // Value widget -- disabled for locked keys (Req 18.6)
-    let widget_id = ui
-        .add_enabled_ui(!locked, |ui| {
-            render_widget(ui, state, config, entry, &effective)
-        })
-        .inner;
-    // Record the value widget's id so Enter on this key node can focus it
-    // (Requirement 21.6).
-    if let Some(id) = widget_id {
-        state.widget_ids.insert(entry.key.clone(), id);
-    }
-
-    // Inline validation error -- Req 15.5
-    if let Some(err) = state.errors.get(key) {
-        ui.colored_label(egui::Color32::RED, err.as_str());
-    }
+        // Inline validation error -- Req 15.5
+        if let Some(err) = state.errors.get(key) {
+            ui.colored_label(egui::Color32::RED, err.as_str());
+        }
+    })
+    .response
 }
 
 /// Extract the namespace (first dot-segment) from a key path.
