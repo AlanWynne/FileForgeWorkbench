@@ -159,7 +159,7 @@ impl IspfTableRender for AliasEditorState {
         Some(first)
     }
 
-    fn render_row_cells(&self, ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) {
-        render_data_row(ui, backing, row);
+    fn render_row_cells(&self, ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) -> bool {
+        render_data_row(ui, backing, row)
     }
 }

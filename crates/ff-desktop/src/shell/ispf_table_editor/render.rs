@@ -49,8 +49,11 @@ pub trait IspfTableRender: IspfTableHost {
     fn render_filter_cells(&mut self, ui: &mut egui::Ui) -> Option<egui::Id>;
 
     /// Render one data row's Act cell + per-column cells for the row at BACKING
-    /// index `backing`, binding edits directly to `row`.
-    fn render_row_cells(&self, ui: &mut egui::Ui, backing: usize, row: &mut Self::Row);
+    /// index `backing`, binding edits directly to `row`. Returns `true` WHEN
+    /// Enter was pressed with that row's Act field focused, so the surface can
+    /// apply the pending line-command batch from the Act cell itself (the ISPF
+    /// in-cell Enter, command-configurator Req 7.6).
+    fn render_row_cells(&self, ui: &mut egui::Ui, backing: usize, row: &mut Self::Row) -> bool;
 }
 
 /// The reported interior focus anchors a host sets from the surface's result.
@@ -154,30 +157,44 @@ where
     ui.separator();
 
     // --- Data rows inside a scroll area with a right-hand scrollbar -------
+    // `act_enter` is set WHEN Enter is pressed inside a row's Act cell (the ISPF
+    // in-cell apply): the pending line-command batch must run from there too, not
+    // only from the `Command ===>` line (command-configurator Req 7.6).
     let rows_height = ui.available_height().max(64.0);
-    egui::ScrollArea::vertical()
+    let act_enter = egui::ScrollArea::vertical()
         .id_salt("ispf_table_rows")
         .auto_shrink([false, false])
         .max_height(rows_height)
         .show(ui, |ui| {
+            let mut act_enter = false;
             if rows.is_empty() {
                 // EMPTY-STORE affordance (Req 4.6): always render one empty
                 // insertable scratch row at backing index 0 so the first entry
-                // can be created; promote it into `rows` on the first edit.
+                // can be created; promote it into `rows` on the first edit. An
+                // Enter in the scratch row's Act cell applies the batch AFTER the
+                // scratch has been promoted into `rows`.
                 let mut scratch = blank_scratch();
                 let default = blank_scratch();
-                host.render_row_cells(ui, 0, &mut scratch);
+                act_enter |= host.render_row_cells(ui, 0, &mut scratch);
                 if scratch != default {
                     rows.push(scratch);
                 }
             } else {
                 for &backing in displayed {
                     if let Some(row) = rows.get_mut(backing) {
-                        host.render_row_cells(ui, backing, row);
+                        act_enter |= host.render_row_cells(ui, backing, row);
                     }
                 }
             }
-        });
+            act_enter
+        })
+        .inner;
+
+    // A command-line verb/Enter takes precedence (it already applies line
+    // commands first); otherwise an Act-cell Enter applies the pending batch.
+    if act_enter && matches!(action, TableAction::None) {
+        action = TableAction::ApplyLineCommands;
+    }
 
     (action, anchors)
 }

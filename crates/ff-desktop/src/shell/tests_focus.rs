@@ -1262,6 +1262,112 @@ fn full_shell_alias_editor_empty_store_i_insert_shows_editable_row() {
     );
 }
 
+// Validates: command-configurator Requirement 7.4, 7.6 -- the ISPF in-Act-cell
+// Enter: with a row's Act field FOCUSED, typing a line command (I / R / D) and
+// pressing Enter RIGHT THERE (without tabbing to the `Command ===>` line) applies
+// the pending batch. This reproduces the owner's "line commands still not
+// working" symptom: before the fix the batch ran ONLY on a `Command ===>` Enter,
+// so an Act-cell Enter did nothing. A seeded two-row store is used so I inserts
+// after row 0, R clones row 0 after itself, and D deletes a row.
+#[test]
+fn full_shell_alias_editor_enter_in_act_cell_applies_line_command() {
+    use crate::alias_editor_panel::AliasRowEdit;
+    use crate::shell::user_aliases::AliasEnvironment;
+    use crate::tab_state::KindTag;
+
+    let seed_two = || {
+        let a = AliasRowEdit {
+            surface: "AONE".to_string(),
+            canonical: "EDIT".to_string(),
+            environment: AliasEnvironment::Ffcmd,
+            ..Default::default()
+        };
+        let b = AliasRowEdit {
+            surface: "BTWO".to_string(),
+            canonical: "VIEW".to_string(),
+            environment: AliasEnvironment::Ffcmd,
+            ..Default::default()
+        };
+        vec![a, b]
+    };
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let mut harness = harness_shell();
+    harness.state_mut().dir_overrides.user_aliases = Some(dir.path().join("aliases"));
+    harness.state_mut().dispatch_command_string("ALIASES");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor
+    );
+
+    // --- I: inserts a blank row AFTER the marked row ---------------------
+    harness.state_mut().alias_editor_panel.rows = seed_two();
+    harness.run();
+    let act_id = egui::Id::new(("alias_act", 0usize));
+    harness.ctx.memory_mut(|m| m.request_focus(act_id));
+    harness.run();
+    harness
+        .input_mut()
+        .events
+        .push(egui::Event::Text("I".to_string()));
+    harness.run();
+    // Enter WHILE the Act cell holds focus (NOT the command line).
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    harness.run();
+    {
+        let rows = &harness.state().alias_editor_panel.rows;
+        assert_eq!(rows.len(), 3, "Enter in the Act cell inserted a blank row");
+        assert_eq!(rows[0].surface, "AONE");
+        assert_eq!(rows[1], AliasRowEdit::default(), "a blank row after AONE");
+        assert_eq!(rows[2].surface, "BTWO");
+    }
+
+    // --- R: clones the marked row AFTER it -------------------------------
+    harness.state_mut().alias_editor_panel.rows = seed_two();
+    harness.run();
+    harness.ctx.memory_mut(|m| m.request_focus(act_id));
+    harness.run();
+    harness
+        .input_mut()
+        .events
+        .push(egui::Event::Text("R".to_string()));
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    harness.run();
+    {
+        let rows = &harness.state().alias_editor_panel.rows;
+        assert_eq!(rows.len(), 3, "Enter in the Act cell cloned the row");
+        assert_eq!(rows[0].surface, "AONE");
+        assert_eq!(rows[1].surface, "AONE", "R clones AONE after itself");
+        assert_eq!(rows[1].canonical, "EDIT");
+        assert_eq!(rows[2].surface, "BTWO");
+    }
+
+    // --- D: deletes the marked row ---------------------------------------
+    harness.state_mut().alias_editor_panel.rows = seed_two();
+    harness.run();
+    harness.ctx.memory_mut(|m| m.request_focus(act_id));
+    harness.run();
+    harness
+        .input_mut()
+        .events
+        .push(egui::Event::Text("D".to_string()));
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.run();
+    harness.run();
+    {
+        let rows = &harness.state().alias_editor_panel.rows;
+        assert_eq!(rows.len(), 1, "Enter in the Act cell deleted the row");
+        assert_eq!(rows[0].surface, "BTWO");
+    }
+}
+
 // === B057: Theme Editor Tab lands on the selector combo (no phantom stop) ====
 
 // Validates: menu-and-statusbar Req 16.3 (B057, CR-CH-023) -- on the Theme

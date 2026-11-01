@@ -79,16 +79,24 @@ pub(super) fn revalidate_root_for_env(row: &mut AliasRowEdit) {
 /// CR-CH-075 (Req 7.3) adds the Description cell. All edits bind directly to the
 /// mutable row (B054 pattern).
 ///
-/// Validates: command-configurator Requirement 5.13, 5.18, 5.21, 6.2, 7.3
-pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) {
+/// Returns `true` WHEN Enter was pressed with the Act field focused, so the
+/// surface can apply the pending line-command batch RIGHT THERE in the Act cell
+/// -- the ISPF behaviour where the user types I / D / R / C in a row and presses
+/// Enter without tabbing to the `Command ===>` line (command-configurator
+/// Req 7.6; ispf-table-editor Req 4.6). The stable Act egui id is PRESERVED so
+/// the full-shell focus tests are unaffected.
+///
+/// Validates: command-configurator Requirement 5.13, 5.18, 5.21, 6.2, 7.3, 7.6
+pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) -> bool {
     ui.horizontal(|ui| {
         // Act: the ISPF line-command field (I / R / D). One focusable control.
-        ui.add(
+        let act_resp = ui.add(
             egui::TextEdit::singleline(&mut row.act)
                 .id(row_control_id("alias_act", backing))
                 .desired_width(28.0)
                 .hint_text("_"),
         );
+        let act_enter = act_resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
         // CE dropdown; on change, re-validate the root against the new env.
         let ce_resp = render_ce_combo(ui, ("alias_ce", backing), &mut row.environment);
         if ce_resp.changed() {
@@ -130,7 +138,9 @@ pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut Alias
                 .desired_width(180.0)
                 .hint_text("note"),
         );
-    });
+        act_enter
+    })
+    .inner
 }
 
 #[cfg(test)]
