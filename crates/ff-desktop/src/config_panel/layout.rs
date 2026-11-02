@@ -1,136 +1,180 @@
 //! Pure, GUI-free layout helpers for the Config View tree render
-//! (configuration-system Requirement 22). These compute the PER-GROUP
-//! vertically-aligned Value_Column position over a single group's
-//! currently-visible key labels.
+//! (configuration-system Requirement 22). These compute the GLOBAL
+//! vertically-aligned Value_Column position across EVERY currently-visible row
+//! of the whole panel -- the header rows (`Filter`, `Unsaved edits`), the
+//! bracketed group-header rows, and the indented child key rows all share one
+//! `:` column.
 //!
-//! SUPERSEDES the box-drawing-connector approach (commit a3059de): egui's
-//! native `CollapsingHeader` now owns hierarchy, indentation, and the
-//! expand/collapse expander, so the obsolete connector glyphs (U+2500-U+257F)
-//! and the former single GLOBAL `value_column_width` are gone. Alignment is now
-//! PER GROUP: within each `CollapsingHeader` body the `:`/value column is
-//! computed over THAT GROUP'S visible keys only, which is robust against egui's
-//! per-header indentation (strict global pixel alignment across groups fights
-//! that indentation and is deliberately NOT attempted -- design delta D10/D11).
+//! SUPERSEDES both the box-drawing-connector approach (commit a3059de) AND the
+//! PER-GROUP value column of commit 128d8d2. The owner explicitly asked for a
+//! SINGLE GLOBAL aligned `:` column across the whole panel (not per group), with
+//! the group headers flush-left as `[Group] : expanded|collapsed` and the child
+//! rows indented exactly one level under their group. There are no box-drawing
+//! glyphs and no `. . .` dot-leaders -- the alignment is a single padded `:`
+//! column only.
 //!
-//! The mechanism is monospace CHARACTER-COUNT padding: building the left
-//! segment as one monospace string and right-padding to the max visible
-//! key-label width inside the group makes equal char counts map to equal pixel
-//! widths, so the `:` separator and value widget land in the same column on
-//! every row of that group (the `primary_option_menu/calendar_header.rs` idiom).
+//! The mechanism is monospace CHARACTER-COUNT padding: every row's LEFT-LABEL is
+//! built as one monospace string (a group's left-label is its bracketed name; a
+//! child's left-label is the one-level indent + its full key; a header row's
+//! left-label is its caption). Right-padding each left-label to the max visible
+//! left-label width makes equal char counts map to equal pixel widths, so the
+//! `:` separator and the value/state widget land in the same column on every row
+//! of the panel (the `primary_option_menu/calendar_header.rs` idiom).
 //!
 //! Everything here is pure and deterministic so it is unit-tested independently
 //! of egui (AC 22.12).
 
-/// The number of monospace CHARACTER cells the `:` column must sit at WITHIN A
-/// GROUP: the max char-count of the key text over the group's currently VISIBLE
-/// key rows, plus one padding space. Group-header rows do not participate.
-/// Returns 0 for the empty set (a group with no visible key rows).
+/// The number of monospace spaces a child key row is indented beneath its group
+/// header (exactly one level, AC 22.4). The indent is baked INTO the child's
+/// left-label string (not egui container indentation) so the global `:` column
+/// is computed over the real on-screen left-label width.
+pub const CHILD_INDENT: usize = 4;
+
+/// Build a group header's LEFT-LABEL: the bracketed display name, flush-left
+/// (no indent), e.g. `"[Editor]"`. Pure.
+///
+/// Validates: Requirement 22.3, 22.4
+pub fn group_left_label(display_name: &str) -> String {
+    format!("[{}]", display_name)
+}
+
+/// Build a child key row's LEFT-LABEL: one level of indent then the full key,
+/// e.g. `"    editor.tab_size"`. Pure.
+///
+/// Validates: Requirement 22.4
+pub fn child_left_label(key: &str) -> String {
+    format!("{}{}", " ".repeat(CHILD_INDENT), key)
+}
+
+/// The number of monospace CHARACTER cells the GLOBAL `:` column must sit at:
+/// the max char-count over EVERY currently-visible left-label (header rows,
+/// bracketed group rows, and indented child rows), plus one padding space.
+/// Returns 0 for the empty set.
+///
+/// This is the GLOBAL width across the whole panel (AC 22.5, superseding the
+/// per-group width of commit 128d8d2): the caller collects every visible
+/// left-label -- the header captions, each `group_left_label`, and each
+/// `child_left_label` of an expanded group -- and passes them all here.
 ///
 /// Validates: Requirement 22.5, 22.6, 22.12
-pub fn value_column_width(visible_keys_in_group: &[String]) -> usize {
-    visible_keys_in_group
+pub fn global_key_column_width(visible_left_labels: &[String]) -> usize {
+    visible_left_labels
         .iter()
-        .map(|k| k.chars().count())
+        .map(|label| label.chars().count())
         .max()
         .map(|w| w + 1)
         .unwrap_or(0)
 }
 
-/// Build the left segment of a key row as ONE monospace string: the key text
+/// Build the left segment of a row as ONE monospace string: the left-label
 /// right-padded to `column` cells, then `" : "`. Appending the value widget
-/// after this lands the `:` in the same column on every row of the group. The
-/// connector prefix is GONE -- egui's `CollapsingHeader` owns the indentation.
-/// Pure.
+/// after this lands the `:` in the same GLOBAL column on every row. Pure.
 ///
 /// Validates: Requirement 22.5
-pub fn aligned_left_segment(key: &str, column: usize) -> String {
-    let pad = column.saturating_sub(key.chars().count());
-    format!("{}{} : ", key, " ".repeat(pad))
+pub fn aligned_left_segment(left_label: &str, column: usize) -> String {
+    let pad = column.saturating_sub(left_label.chars().count());
+    format!("{}{} : ", left_label, " ".repeat(pad))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Validates: Requirement 22.12 -- empty group yields a zero-width column.
+    // Validates: Requirement 22.12 -- the empty set yields a zero-width column.
     #[test]
-    fn value_column_width_empty_group_is_zero() {
-        let keys: Vec<String> = Vec::new();
-        assert_eq!(value_column_width(&keys), 0);
+    fn global_key_column_width_empty_is_zero() {
+        let labels: Vec<String> = Vec::new();
+        assert_eq!(global_key_column_width(&labels), 0);
     }
 
-    // Validates: Requirement 22.12 -- single key: column = key width + 1.
+    // Validates: Requirement 22.12 -- a single label: column = width + 1.
     #[test]
-    fn value_column_width_single_key() {
-        let keys = vec!["accessibility.reduce_motion".to_string()];
-        let expected = keys[0].chars().count() + 1;
-        assert_eq!(value_column_width(&keys), expected);
+    fn global_key_column_width_single_label() {
+        let labels = vec![child_left_label("accessibility.reduce_motion")];
+        let expected = labels[0].chars().count() + 1;
+        assert_eq!(global_key_column_width(&labels), expected);
     }
 
-    // Validates: Requirement 22.5, 22.12 -- within a group the column is the max
-    // over the group's visible key labels (the widest key decides).
+    // Validates: Requirement 22.5, 22.12 -- the GLOBAL width is the max over ALL
+    // visible left-labels: header captions, bracketed groups, and indented
+    // children together (the widest of the whole panel decides).
     #[test]
-    fn value_column_width_takes_widest_key_in_group() {
-        let keys = vec![
-            "editor.tab_size".to_string(),
-            "editor.trim_trailing_whitespace".to_string(),
-            "editor.line_endings".to_string(),
+    fn global_key_column_width_takes_widest_over_whole_panel() {
+        let labels = vec![
+            "Filter".to_string(),
+            "Unsaved edits".to_string(),
+            group_left_label("Editor"),
+            child_left_label("editor.tab_size"),
+            child_left_label("editor.trim_trailing_whitespace"),
+            group_left_label("Catalogs"),
+            child_left_label("catalogs.default_mainframe_root"),
         ];
-        let widest = keys.iter().map(|k| k.chars().count()).max().unwrap();
-        assert_eq!(value_column_width(&keys), widest + 1);
-    }
-
-    // Validates: Requirement 22.6, 22.12 -- a filtered subset recomputes from
-    // only the keys passed (a filtered-out long key cannot widen the column).
-    #[test]
-    fn value_column_width_filtered_subset_ignores_absent_keys() {
-        let full = vec![
-            "catalogs.default_mainframe_root".to_string(),
-            "catalogs.level".to_string(),
-        ];
-        let subset = vec![full[1].clone()];
-        let full_width = value_column_width(&full);
-        let subset_width = value_column_width(&subset);
-        assert!(
-            subset_width < full_width,
-            "a narrower visible subset yields a narrower column"
-        );
-        assert_eq!(subset_width, full[1].chars().count() + 1);
-    }
-
-    // Validates: Requirement 22.5 -- the aligned segment right-pads the key to
-    // the column then appends " : "; the ':' lands at the same cell for keys of
-    // differing length within the group.
-    #[test]
-    fn aligned_left_segment_pads_to_column_and_aligns_colon() {
-        let short = "editor.tab_size";
-        let long = "editor.trim_trailing_whitespace";
-        let keys = vec![short.to_string(), long.to_string()];
-        let column = value_column_width(&keys);
-
-        let seg_short = aligned_left_segment(short, column);
-        let seg_long = aligned_left_segment(long, column);
-
-        let colon_char_short = seg_short.split(" : ").next().unwrap().chars().count();
-        let colon_char_long = seg_long.split(" : ").next().unwrap().chars().count();
+        let widest = labels.iter().map(|l| l.chars().count()).max().unwrap();
+        assert_eq!(global_key_column_width(&labels), widest + 1);
+        // The widest here is an indented child, not a group or header row.
         assert_eq!(
-            colon_char_short, colon_char_long,
-            "the ':' must align to the same column for both keys in the group"
+            widest,
+            child_left_label("catalogs.default_mainframe_root")
+                .chars()
+                .count()
         );
-        assert_eq!(colon_char_short, column);
     }
 
-    // Validates: Requirement 22.5 -- the widest key needs a single pad cell (the
-    // ':' sits exactly one cell past it, from the +1 in value_column_width).
+    // Validates: Requirement 22.6 -- a collapsed group contributes only its
+    // header row (not its children), so collapsing can narrow the global column.
     #[test]
-    fn aligned_left_segment_widest_key_single_pad() {
-        let key = "catalogs.default_mainframe_root";
-        let keys = vec![key.to_string()];
-        let column = value_column_width(&keys);
-        let seg = aligned_left_segment(key, column);
-        assert_eq!(column, key.chars().count() + 1);
-        let before_colon = seg.split(" : ").next().unwrap();
-        assert_eq!(before_colon.chars().count(), column);
-        assert!(before_colon.ends_with(' '));
+    fn global_key_column_width_excludes_hidden_children() {
+        let expanded = vec![
+            group_left_label("Catalogs"),
+            child_left_label("catalogs.default_mainframe_root"),
+        ];
+        // Collapsed: only the bracketed group header remains visible.
+        let collapsed = vec![group_left_label("Catalogs")];
+        let expanded_w = global_key_column_width(&expanded);
+        let collapsed_w = global_key_column_width(&collapsed);
+        assert!(
+            collapsed_w < expanded_w,
+            "hiding a wide child narrows the global column"
+        );
+    }
+
+    // Validates: Requirement 22.5 -- the aligned segment right-pads the label to
+    // the column then appends " : "; the ':' lands at the same cell for a header
+    // row, a group row, and a child row (GLOBAL alignment).
+    #[test]
+    fn aligned_left_segment_aligns_colon_globally() {
+        let header = "Unsaved edits".to_string();
+        let group = group_left_label("Editor");
+        let child = child_left_label("editor.trim_trailing_whitespace");
+        let labels = vec![header.clone(), group.clone(), child.clone()];
+        let column = global_key_column_width(&labels);
+
+        let seg_header = aligned_left_segment(&header, column);
+        let seg_group = aligned_left_segment(&group, column);
+        let seg_child = aligned_left_segment(&child, column);
+
+        let colon_header = seg_header.split(" : ").next().unwrap().chars().count();
+        let colon_group = seg_group.split(" : ").next().unwrap().chars().count();
+        let colon_child = seg_child.split(" : ").next().unwrap().chars().count();
+        assert_eq!(colon_header, column);
+        assert_eq!(colon_group, column);
+        assert_eq!(colon_child, column);
+    }
+
+    // Validates: Requirement 22.4 -- a child row is indented exactly one level
+    // (CHILD_INDENT spaces) beneath its flush-left group header.
+    #[test]
+    fn child_is_indented_one_level_under_flush_left_group() {
+        let group = group_left_label("Editor");
+        let child = child_left_label("editor.tab_size");
+        assert!(!group.starts_with(' '), "group header is flush-left");
+        assert!(
+            child.starts_with(&" ".repeat(CHILD_INDENT)),
+            "child row is indented one level"
+        );
+        assert!(
+            !child.starts_with(&" ".repeat(CHILD_INDENT + 1)),
+            "child row is indented EXACTLY one level"
+        );
     }
 }

@@ -1590,6 +1590,13 @@ persistence (Req 15.9), and validation (Req 15.4/15.5) are untouched.
 
 ## Design Delta: Config View Tree Rendering (Requirement 22, Visual Re-skin)
 
+> **LATEST APPROACH (config-tree-fix branch): see D13/D14.** D10/D11's
+> egui-native `CollapsingHeader` + PER-GROUP alignment is ITSELF superseded by
+> **D13/D14** (flush-left `[Group] : expanded|collapsed` headers, one-level
+> indented children, and a SINGLE GLOBAL `:` column across the whole panel, no
+> dot-leaders) per the owner's follow-up. The D1-D11 history below is retained for
+> context; the authoritative render model is D13/D14.
+>
 > **CHANGE OF APPROACH (config-tree-collapsing branch -- supersedes D1-D9 below).**
 > The original box-drawing-STRING renderer (decisions D1 through D9 in this
 > section) is **SUPERSEDED** by an **egui-native `CollapsingHeader`** design
@@ -2118,7 +2125,7 @@ and `aligned_left_segment` (connector helpers removed), still `#[cfg(test)]`
 unit-tested for the empty group, single key, widest-key, and filtered-subset
 cases (AC 22.12).
 
-### D12 -- Files changed (this branch)
+### D12 -- Files changed (128d8d2 CollapsingHeader branch)
 
 - `config_panel/layout.rs` -- connector glyphs removed; `value_column_width` is
   now per-group; `aligned_left_segment` drops the connector arg.
@@ -2131,3 +2138,92 @@ cases (AC 22.12).
   while the bracketed header stays; the first-Tab focus test is kept green.
 - `docs/specs/configuration-system/{requirements,design,tasks}.md` -- Req 22
   criteria adjusted (D10/D11 here; see requirements.md change notes).
+
+### D13 -- GLOBAL alignment + flush-left state-labelled headers (SUPERSEDES D10/D11)
+
+> Owner follow-up on the config-tree-fix branch, reviewing 128d8d2. Two fixes:
+> a reported DUPLICATE-RENDER defect, and a layout that must match the owner's
+> mock. This SUPERSEDES the egui-native-`CollapsingHeader` + per-group alignment
+> of D10/D11.
+
+**Duplicate-render audit (AC 22.1a).** The report was that the panel drew the
+list twice (a tree, then a `Settings` heading + a `Setting / Value / State`
+table). On audit, 128d8d2 had ALREADY removed the stale table renderer: the
+single render path is `WorkspaceContext::render` -> `render` ->
+`render_header_area` + ONE group loop, dispatched once by
+`render_workspace_context`. No second render path remained to delete. The fix
+this branch adds is a REGRESSION TEST
+(`full_shell_config_tree_renders_list_exactly_once_no_duplicate`) asserting a
+known key's row resolves to a UNIQUE widget (kittest `get_by_label` panics on a
+duplicate), so the defect cannot silently return.
+
+**Render model (AC 22.3/22.4/22.5/22.6).** egui's `CollapsingHeader` is DROPPED.
+The panel now owns the hierarchy itself so a single GLOBAL `:` column is
+well-defined:
+
+1. **Flush-left state-labelled group header.** `render_group` draws ONE clickable
+   monospace `selectable_label` whose text is
+   `aligned_left_segment("[DisplayName]", column) + "expanded"|"collapsed"`. The
+   state word reflects the live per-namespace `collapsed` model. A click toggles
+   `collapsed[ns]` (and sets the Tree_Cursor) -- the same single mutation path
+   the keyboard reducer writes, so click-to-collapse is preserved WITHOUT egui's
+   native triangle. No key count, no `v`/`>` arrow, no box-drawing glyph.
+2. **One-level-indented child rows.** When expanded, each child row's left-label
+   is `child_left_label(key)` = `CHILD_INDENT` (4) spaces + the full key. The
+   indent is baked into the monospace string, NOT an egui container indent, so
+   every row shares one left origin and one `:` column.
+3. **Single GLOBAL Value_Column.** `global_column` collects EVERY visible
+   left-label -- the `Filter` and `Unsaved edits` header captions, each
+   `group_left_label`, and each `child_left_label` of an EXPANDED group -- and
+   `layout::global_key_column_width` returns `max(char-count) + 1`. The header
+   rows (`render_header_area`) and the tree rows all pad to this one column, so
+   the `:` and the value/state line up across the WHOLE panel. No `. . .`
+   dot-leaders.
+4. **Key rows preserved (AC 22.9).** `render_key_row` is unchanged except that
+   line 1's left-label is now `aligned_left_segment(child_left_label(key),
+   column)` (global column, one-level indent). The selectable key segment, the
+   value widget (+ `widget_ids` for Enter-to-focus), the selectable description,
+   the provenance/LOCKED badge, the staged `*`, and Reset are all unchanged. The
+   Tree_Cursor highlight is retained on group headers and key rows.
+
+**Pure helpers (AC 22.12).** `layout.rs` now exposes `CHILD_INDENT`,
+`group_left_label`, `child_left_label`, `global_key_column_width`, and
+`aligned_left_segment` -- all pure and `#[cfg(test)]` unit-tested for the empty
+set, single label, widest-label-over-the-whole-panel, collapse-excludes-children,
+global colon alignment across a header/group/child, and the one-level-indent
+cases. `render::global_column` is unit-tested for the whole-panel span + collapse
+tracking. The per-group `value_column_width` of D11 is REMOVED.
+
+**Focus contract (AC 22.10) unchanged.** The Filter `TextEdit`
+(`filter_field_id()`) is still rendered first and reported as
+`InteriorFocus::single`; the flush-left group headers are `selectable_label`s
+rendered AFTER it, so the first Tab from the command field still lands on the
+Filter field (no phantom stop) -- `full_shell_config_first_tab_focuses_filter_field`
+stays green.
+
+### D14 -- Files changed (config-tree-fix branch)
+
+- `config_panel/layout.rs` -- rewritten for GLOBAL alignment: `CHILD_INDENT`,
+  `group_left_label`, `child_left_label`, `global_key_column_width`,
+  `aligned_left_segment`; the per-group `value_column_width` removed.
+- `config_panel/render.rs` -- group render replaced with flush-left
+  state-labelled headers + one-level-indented child rows + the GLOBAL
+  `global_column`; header rows aligned to the same column; `CollapsingHeader`
+  dropped. Adds the `#[cfg(test)]` `rendered_group_header` source-of-truth helper
+  for the test. Under 400 non-test lines.
+- `config_panel/mod.rs` -- re-exports `rendered_group_header` under `#[cfg(test)]`.
+- `shell/tests_focus.rs` -- the bracketed-header/collapse test is adapted to the
+  flush-left `[Group] : expanded|collapsed` form (delegating to
+  `rendered_group_header`) and to the state-word flip on collapse; a new
+  `full_shell_config_tree_renders_list_exactly_once_no_duplicate` regression test
+  is added; the first-Tab focus test is kept green.
+- `docs/specs/configuration-system/{requirements,design,tasks}.md` -- Req 22
+  criteria re-revised to GLOBAL alignment + the duplicate-render criterion
+  (D13 here).
+
+**Justified-manual note.** Pixel-exact appearance -- that the monospace `:`
+column visually lines up across all rows and that the flush-left/indent reads
+like the mock -- is the owner's visual gate. The behaviour (single render,
+global-column computation, flush-left state-labelled headers, one-level indent,
+collapse behaviour, focus contract) is covered by the pure unit tests and the
+full-shell egui_kittest tests above.

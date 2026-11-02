@@ -24,8 +24,11 @@ mod commit;
 mod keyboard;
 mod layout;
 mod render;
+mod rows;
 mod widgets;
 pub use render::render;
+#[cfg(test)]
+pub use render::rendered_group_header;
 
 /// A single pending edit held in the Config panel's WORKING-COPY BUFFER
 /// (project-master Requirement 11, B081). The panel edits this buffer only; the

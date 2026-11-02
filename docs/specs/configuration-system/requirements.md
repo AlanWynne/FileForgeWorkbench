@@ -626,12 +626,31 @@ the standard desktop tree-control convention.
 
 > **REVISED (config-tree-collapsing branch).** The original wording mandated
 > literal box-drawing child connectors (U+2500-U+257F) and a SINGLE GLOBAL
-> aligned value column. That approach was font-metric-fragile and did not track
-> egui's indentation. Requirement 22 now mandates **egui-native collapsible
-> `[<Group>]` headers** (egui draws the triangle expander and owns indentation)
-> with **PER-GROUP aligned value columns**. Each changed criterion is annotated
-> "(REVISED ...)" below; AC 22.10 (first-Tab focus) and all preservation criteria
-> (22.2, 22.3, 22.7, 22.8, 22.9, 22.11) are retained unchanged in intent.
+> aligned value column. Commit 128d8d2 then moved to **egui-native collapsible
+> `[<Group>]` headers** with **PER-GROUP aligned value columns**.
+>
+> **RE-REVISED (config-tree-fix branch, owner follow-up -- supersedes the
+> 128d8d2 per-group decision).** The owner reviewed 128d8d2 and asked for two
+> concrete fixes:
+> 1. A DUPLICATE-RENDER defect was reported (the list appearing to draw twice --
+>    a tree then a `Settings` heading + `Setting / Value / State` table). The
+>    panel MUST render the config list EXACTLY ONCE (AC 22.1a below). (On audit
+>    the stale table path had already been removed by 128d8d2; the single render
+>    path is now asserted by a regression test so the duplicate cannot return.)
+> 2. The layout MUST match the owner's mock: group headers FLUSH-LEFT, each
+>    `[<Group>] : expanded|collapsed` showing the live collapse state in text
+>    (the egui-native triangle is DROPPED); child rows INDENTED exactly one level
+>    under their group; and a SINGLE GLOBAL `:`/value column aligned across EVERY
+>    visible row of the panel -- the `Filter` and `Unsaved edits` header rows, the
+>    group rows, and the child rows all share one `:` column (NOT per-group). No
+>    `. . .` dot-leaders anywhere. This SUPERSEDES the per-group alignment and the
+>    native-triangle header of 128d8d2.
+>
+> Click-to-collapse is preserved: the flush-left header is a clickable control
+> that toggles the existing per-namespace collapsed state. Each changed criterion
+> is annotated "(RE-REVISED ...)" below; AC 22.10 (first-Tab focus) and all
+> preservation criteria (22.2, 22.7, 22.8, 22.9, 22.11) are retained unchanged in
+> intent.
 
 **User Story:** As a workbench user, I want the Configuration Context to be
 clearly demarcated into a header area and a tree body, with egui-native
@@ -659,31 +678,44 @@ support this kind of thing ... Let egui handle indentation and expansion state")
 
 **Glossary (reuses Requirement 21 terms):** Config_Tree, Tree_Cursor,
 Visible_Rows as defined in Requirement 21. Additional term:
-- **Value_Column** -- (REVISED: now PER GROUP) the vertical column WITHIN A GROUP
-  at which the `:` separator and the value widget of that group's currently-visible
-  key rows are aligned, positioned just past the group's widest visible key text.
-  There is no longer a single global column across groups (egui's per-header
-  indentation makes a cross-group pixel column meaningless).
+- **Value_Column** -- (RE-REVISED: now a SINGLE GLOBAL column across the whole
+  panel) the vertical column at which the `:` separator and the value/state of
+  EVERY currently-visible row align: the `Filter` and `Unsaved edits` header
+  rows, every group-header row, and every child key row. Its position is the max
+  character width over ALL currently-visible LEFT-LABELS (a group's left-label is
+  its bracketed name `[<Group>]`; a child's left-label is the one-level indent +
+  its full key; a header row's left-label is its caption), plus one pad cell.
+  Because the indentation is baked into the monospace left-label string (not an
+  egui container indent), a single cross-row column is well-defined. This
+  SUPERSEDES the per-group column of 128d8d2.
 
 #### Functional intent
 
+- **Single render, no duplicate.** The panel renders the config list EXACTLY
+  ONCE. There is no second copy drawn as a `Settings` heading + a
+  `Setting / Value / State` table beneath the tree. (RE-REVISED: duplicate-render
+  defect fix.)
 - **Demarcated header area.** A header area (the `Command ===>` line owned by the
   shell, a `Filter` row, and an `Unsaved edits : <yes|no>` row) separated from
-  the tree body by a horizontal rule.
-- **egui-native collapsible group headers.** Each of the existing namespace
-  groups renders as an egui `CollapsingHeader` labelled `[<DisplayName>]` (the 8
-  confirmed groups: `[Accessibility]`, `[Catalogs]`, `[Editor]`, `[Logging]`,
-  `[Menu]`, `[Theme]`, `[Ui]`, `[Vfs]`), in the existing sorted order, with egui's
-  NATIVE triangle expander and egui-owned indentation; each still clickable to
-  expand/collapse. (REVISED: replaces the hand-drawn `v`/`>` arrow + box-drawing
-  connectors.)
-- **egui-owned hierarchy, no box-drawing glyphs.** egui's `CollapsingHeader`
-  provides the expander and the indentation of the group's child rows. The former
-  box-drawing connector glyphs (U+2500-U+257F) are REMOVED. (REVISED.)
-- **Per-group vertically aligned value column.** Within each group's body, the `:`
-  and value of that group's visible key rows line up in one column, recomputed
-  from that group's currently-visible keys. (REVISED: per-group, not a single
-  global column.)
+  the tree body by a horizontal rule, with the `Filter` and `Unsaved edits` rows
+  aligned to the same GLOBAL `:` column as the tree.
+- **Flush-left group headers labelled with collapse state.** Each of the existing
+  namespace groups renders FLUSH-LEFT as `[<DisplayName>] : expanded|collapsed`
+  (the 8 confirmed groups: `[Accessibility]`, `[Catalogs]`, `[Editor]`,
+  `[Logging]`, `[Menu]`, `[Theme]`, `[Ui]`, `[Vfs]`), in the existing sorted
+  order; the state word reflects the live per-namespace collapse state. The
+  egui-native triangle is DROPPED; the header is a clickable control that toggles
+  the same collapsed state. (RE-REVISED: supersedes the native-triangle header of
+  128d8d2.)
+- **One-level-indented child rows, no box-drawing glyphs.** When a group is
+  expanded, its child key rows render INDENTED exactly one level under the
+  flush-left group header. The indent is part of the monospace left-label. No
+  box-drawing connector glyphs (U+2500-U+257F).
+- **Single GLOBAL vertically aligned value column.** The `:` separator and the
+  value/state of EVERY visible row (header rows, group rows, child rows) line up
+  in ONE column across the WHOLE panel, computed from the max width over all
+  currently-visible left-labels. No `. . .` dot-leaders. (RE-REVISED: global, not
+  per-group.)
 - **Preserve everything else.** Grouping mechanism, expand/collapse, per-key edit
   controls, the SELECTABLE key name, the VISIBLE + SELECTABLE key description
   (Requirement 14.2), the focus contract, and the save convention are unchanged.
@@ -694,32 +726,47 @@ Visible_Rows as defined in Requirement 21. Additional term:
 a horizontal rule, that shows the `Command ===>` line, a `Filter` row, and an
 `Unsaved edits : <yes|no>` row; the two areas SHALL be clearly demarcated.
 
+22.1a. (RE-REVISED -- duplicate-render defect) THE Config View SHALL render the
+config list EXACTLY ONCE. It SHALL NOT draw a second copy of the list (e.g. a
+`Settings` heading followed by a `Setting / Value / State` table beneath the
+tree). Each schema key's row SHALL appear exactly once in the panel. (Enforced by
+a full-shell regression test asserting a known key's row resolves to a unique
+widget; the stale table path was already removed in 128d8d2.)
+
 22.2. WHEN the working-copy buffer is non-empty, THE `Unsaved edits` row SHALL
 show `yes`; WHEN it is empty, it SHALL show `no` -- i.e. the indicator SHALL
 equal `ConfigPanelState.is_dirty()`.
 
-22.3. (REVISED) THE Config View SHALL render each top-level namespace group as an
-egui-native `CollapsingHeader` labelled `[<DisplayName>]` (using the existing
-display-name capitalisation), in the existing sorted group order from
-`visible_rows`, with egui's NATIVE triangle expander. (The former `v`/`>` text
-arrow is removed; egui draws the expander.)
+22.3. (RE-REVISED) THE Config View SHALL render each top-level namespace group as
+a FLUSH-LEFT clickable header row labelled `[<DisplayName>] : expanded|collapsed`
+(using the existing display-name capitalisation), in the existing sorted group
+order from `visible_rows`. The state word SHALL reflect the live per-namespace
+collapse state (`expanded` when not collapsed, `collapsed` when collapsed). The
+egui-native triangle expander is DROPPED; the header carries no `v`/`>` arrow and
+no key count. (Supersedes the native-triangle `[<DisplayName>]` header of
+128d8d2.)
 
-22.4. (REVISED) WHEN a group is EXPANDED, THE Config View SHALL render its child
-key nodes inside the `CollapsingHeader` body, with egui providing the hierarchy
-indication (the triangle expander) and the body indentation. The Config View
-SHALL NOT paint box-drawing connector glyphs (U+2500-U+257F); the former
-branch-tee / L-connector rendering is OBSOLETE and removed.
+22.4. (RE-REVISED) WHEN a group is EXPANDED, THE Config View SHALL render its
+child key nodes INDENTED exactly one level under the flush-left group header. The
+one-level indent SHALL be part of the child row's monospace left-label (not an
+egui container indent). THE Config View SHALL NOT paint box-drawing connector
+glyphs (U+2500-U+257F) and SHALL NOT use `. . .` dot-leaders.
 
-22.5. (REVISED) THE Config View SHALL align the `:` separator and the value text
-of each group's currently-visible key rows into a PER-GROUP vertical
-Value_Column, positioned just past that group's widest visible key text. (No
-single global column across groups -- egui's per-header indentation makes a
-cross-group pixel column meaningless.)
+22.5. (RE-REVISED) THE Config View SHALL align the `:` separator and the
+value/state of EVERY currently-visible row into a SINGLE GLOBAL vertical
+Value_Column spanning the whole panel: the `Filter` header row, the
+`Unsaved edits` header row, every group-header row, and every child key row. The
+column position SHALL be the max character width over ALL currently-visible
+left-labels (bracketed group names, indented child keys, and the header
+captions), plus one pad cell; each left-label SHALL be right-padded in monospace
+to that width, then ` : `, then the value/state. (Supersedes the per-group column
+of 128d8d2 -- the owner explicitly requested GLOBAL alignment.)
 
-22.6. (REVISED) WHEN the set of a group's visible rows changes (that group is
-expanded or collapsed, or the filter changes which of its keys match), THE Config
-View SHALL recompute THAT group's Value_Column position from its
-currently-visible keys.
+22.6. (RE-REVISED) WHEN the set of currently-visible rows changes (any group is
+expanded or collapsed, or the filter changes which keys match), THE Config View
+SHALL recompute the GLOBAL Value_Column position from the new set of visible
+left-labels (a collapsed group contributes only its header row, not its
+children).
 
 22.7. THE grouping mechanism (namespace derivation and group membership via
 `namespace_of` + `visible_rows`) and the 8 confirmed groups (Accessibility,
@@ -746,10 +793,13 @@ egui_kittest test, extended/kept green).
 22.11. THE SAVE / END / RETURN semantics SHALL be unchanged (SAVE commits+stays,
 END commits+exits, RETURN discards+exits); no autosave SHALL be introduced.
 
-22.12. (REVISED) THE PER-GROUP Value_Column position SHALL be produced by a pure,
-egui-independent function over a group's visible key labels (max-width ->
-column), unit-tested for: an empty group, a single key, the widest-key case, and
-a filtered subset.
+22.12. (RE-REVISED) THE GLOBAL Value_Column position SHALL be produced by a pure,
+egui-independent function over the whole panel's currently-visible left-labels
+(max-width -> column), unit-tested for: the empty set, a single label, the
+widest-label case over the whole panel (header + group + child labels together),
+and the collapse case (a hidden group's children are excluded). The
+left-label builders (flush-left bracketed group name; one-level-indented child
+key) and the padding helper SHALL also be pure and unit-tested.
 
 #### Out of scope (Requirement 22)
 
@@ -760,9 +810,8 @@ a filtered subset.
 - New config keys, groups, or editing widgets; any change to `menus/settings.toml`
   or the `CONFIG` command resolution (Requirement 20).
 - Multi-level nesting below the two-level (group -> key) model; the tree stays two
-  deep. Because the tree is strictly two-level (depth 0 group, depth 1 key, no
-  intermediate levels), a "vertical continuation bar for intermediate levels"
-  does not apply; only branch-tee and L-connectors are drawn, matching AC 22.4.
+  deep (depth 0 flush-left group, depth 1 one-level-indented key). No box-drawing
+  connectors or dot-leaders are drawn at any level (AC 22.4).
 
 ---
 

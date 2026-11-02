@@ -726,3 +726,37 @@ re-homed inside the CollapsingHeader body.
     - Covers: Requirement 22.10
   - [x] 43.3 Scoped compile-verify (agent COMPILE-ONLY): `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, `cargo test -p ff-desktop layout`; logs under `_ignore/logs/` read back; owner runs the authoritative full gate + visual check (pixel-exact appearance + the native-triangle click are the justified manual exceptions)
     - Covers: Requirement 22 (verification)
+
+## Phase (config-tree-fix) -- GLOBAL alignment + flush-left state-labelled headers + duplicate-render guard (Requirement 22, SUPERSEDES the per-group phases above)
+
+Owner follow-up on 128d8d2: fix the reported DUPLICATE-RENDER defect and make the
+layout match the owner's mock -- flush-left `[Group] : expanded|collapsed` headers
+(native triangle dropped), child rows indented one level, and a SINGLE GLOBAL `:`
+column across the whole panel (header rows + group rows + child rows), no
+dot-leaders. Design delta D13/D14; requirements 22.1a, 22.3-22.6, 22.12 re-revised.
+
+- [x] 44. Rewrite `config_panel/layout.rs` for GLOBAL alignment + unit tests (Req 22.4, 22.5, 22.6, 22.12)
+  - [x] 44.1 Replace per-group `value_column_width` with `global_key_column_width` (max over ALL visible left-labels + 1); add `group_left_label`, `child_left_label` (one-level `CHILD_INDENT` indent), keep `aligned_left_segment`
+    - Covers: Requirement 22.4, 22.5
+  - [x] 44.2 `#[cfg(test)]` unit tests, each annotated `// Validates: Requirement 22.x`: empty set, single label, widest-over-whole-panel, collapse-excludes-children, global colon alignment across header/group/child, one-level indent
+    - Covers: Requirement 22.4, 22.5, 22.6, 22.12
+- [x] 45. Rebuild `config_panel/render.rs` on flush-left state-labelled headers + global column (Req 22.1a, 22.3, 22.4, 22.5, 22.6, 22.8, 22.9)
+  - [x] 45.1 Compute `global_column` over every visible left-label (header captions + groups + expanded-group children); align the Filter and Unsaved-edits header rows to it
+    - Covers: Requirement 22.5, 22.6
+  - [x] 45.2 Render each group as a FLUSH-LEFT clickable `selectable_label` `[DisplayName] : expanded|collapsed`; click toggles the `collapsed` model (no native triangle); children indented one level
+    - Covers: Requirement 22.3, 22.4, 22.8
+  - [x] 45.3 Keep `render_key_row` behaviour (selectable key + value widget + selectable description + provenance/LOCKED + staged `*` + Reset); only the left-label becomes `aligned_left_segment(child_left_label(key), column)`
+    - Covers: Requirement 22.9
+  - [x] 45.4 Confirm the single render path (one `WorkspaceContext::render` -> `render` -> one group loop); add `#[cfg(test)] rendered_group_header` source-of-truth helper
+    - Covers: Requirement 22.1a
+  - [x] 45.5 Keep the file under 400 non-test lines; `render::global_column` unit-tested for whole-panel span + collapse tracking
+    - Covers: Requirement 22 (file-size rule)
+- [x] 46. Adapt + add egui_kittest tests + scoped compile-verify (Req 22.1a, 22.3, 22.8, 22.10)
+  - [x] 46.1 Adapt `full_shell_config_tree_renders_bracketed_group_headers_and_collapse_hides_children` to the flush-left `[Group] : expanded|collapsed` form (via `rendered_group_header`) + state-word flip on collapse
+    - Covers: Requirement 22.3, 22.8
+  - [x] 46.2 Add `full_shell_config_tree_renders_list_exactly_once_no_duplicate` asserting a known key's row is a UNIQUE widget (no duplicate copy)
+    - Covers: Requirement 22.1a
+  - [x] 46.3 Keep `full_shell_config_first_tab_focuses_filter_field` GREEN (first Tab -> `filter_field_id()`, no phantom stop before the flush-left headers)
+    - Covers: Requirement 22.10
+  - [x] 46.4 Scoped compile-verify (agent COMPILE-ONLY): `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, `cargo test -p ff-desktop layout` (+ the config focus tests by name); logs under `_ignore/logs/` read back; owner runs the authoritative full gate + visual check (pixel-exact `:` alignment is the justified manual exception)
+    - Covers: Requirement 22 (verification)

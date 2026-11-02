@@ -2,29 +2,41 @@
 //! (configuration-system Requirement 15 + Requirement 21 + Requirement 22).
 //! Split out of `config_panel/mod.rs` for the 400-line rule.
 //!
-//! Requirement 22 render model (SUPERSEDES the box-drawing-string renderer of
-//! commit a3059de): each namespace group is an egui-native
-//! `CollapsingHeader`/`CollapsingState` labelled `[<DisplayName>]`, so egui owns
-//! the hierarchy, indentation, and the triangle expander. The former
-//! box-drawing connector glyphs and the single GLOBAL value column are gone;
-//! value alignment is now PER GROUP (see `layout::value_column_width`). The
-//! existing per-key value widgets, provenance/LOCKED badge, staged marker, and
-//! Reset control are RE-HOMED unchanged inside each header body.
+//! Requirement 22 render model (SUPERSEDES both the box-drawing-string renderer
+//! of commit a3059de AND the egui-native-`CollapsingHeader` + PER-GROUP value
+//! column of commit 128d8d2). The owner's follow-up request mandates:
+//! - group headers FLUSH-LEFT, each `[<Group>] : expanded|collapsed`, showing
+//!   the live collapse state in text (no native triangle);
+//! - child property rows INDENTED exactly one level under their group header,
+//!   each `key : value`;
+//! - a SINGLE GLOBAL `:` column aligned across EVERY visible row of the panel
+//!   (the `Filter` and `Unsaved edits` header rows, the group rows, and the
+//!   child rows) -- see `layout::global_key_column_width`;
+//! - no `. . .` dot-leaders.
+//!
+//! Click-to-collapse is preserved: the group header is a clickable monospace
+//! control that toggles the existing per-namespace `collapsed` model (keeping
+//! the keyboard reducer and the mouse toggle in sync). The per-key value widget,
+//! provenance/LOCKED badge, staged marker, selectable key name, and selectable
+//! description are all preserved.
 
 use std::collections::{BTreeMap, HashMap};
 
 use eframe::egui;
-use ff_config::layer::ConfigLayer;
 use ff_config::schema::SchemaEntry;
 use ff_config::ConfigHandle;
 
 use super::keyboard::{config_keyboard_effects, tree_has_keyboard};
-use super::layout::{aligned_left_segment, value_column_width};
-use super::widgets::render_widget;
+use super::layout::{aligned_left_segment, child_left_label, group_left_label};
+use super::rows::{paint_cursor_highlight, render_key_row};
 use super::{
     filter_field_id, reconcile_cursor, visible_rows, ConfigNodeId, ConfigPanelState, TreeEntry,
 };
 use crate::shell::workspace_context::ShellRequest;
+
+/// The caption of the (non-interactive) Unsaved-edits header row. A module
+/// constant so the row caption and the global-width computation agree.
+const UNSAVED_LABEL: &str = "Unsaved edits";
 
 /// Validates: Requirement 15.1-15.8; Requirement 22.1-22.11; project-master Requirement 11.8
 pub fn render(
@@ -33,12 +45,6 @@ pub fn render(
     config: &ConfigHandle,
     requests: &mut Vec<ShellRequest>,
 ) {
-    render_header_area(ui, state, requests);
-
-    // Exactly ONE horizontal rule demarcates the header area from the tree
-    // body (AC 22.1).
-    ui.separator();
-
     // == Collect schema entries + build the Config_Tree rows ===
     let schema_entries = config.list_schema_entries();
     let entry_by_key: HashMap<String, SchemaEntry> = schema_entries
@@ -55,12 +61,25 @@ pub fn render(
         .collect();
 
     // Visible_Rows drives the KEYBOARD cursor/navigation (respects collapsed);
-    // the grouped map below drives the CollapsingHeader RENDER (holds every
-    // matching key per group, egui hides a collapsed group's body).
+    // the grouped map below drives the per-group RENDER.
     let rows = visible_rows(&tree_entries, &state.filter, &state.collapsed);
+    let groups = grouped_visible_keys(&tree_entries, &state.filter);
+
+    // GLOBAL `:` column: the max char-width over EVERY currently-visible
+    // left-label of the whole panel (header captions + bracketed group rows +
+    // the indented child rows of EXPANDED groups), per AC 22.5 (global, not
+    // per-group). Computed once and used by both the header area and the tree.
+    let column = global_column(&groups, &state.collapsed);
 
     // Rebuild the per-frame key -> widget-id map fresh each frame.
     state.widget_ids.clear();
+
+    // == Header area (aligned to the SAME global column) ===
+    render_header_area(ui, state, requests, column);
+
+    // Exactly ONE horizontal rule demarcates the header area from the tree
+    // body (AC 22.1).
+    ui.separator();
 
     // == Keyboard tree navigation (CR-CH-039) ===
     reconcile_cursor(&rows, &rows, &mut state.cursor);
@@ -68,12 +87,12 @@ pub fn render(
         config_keyboard_effects(ui, state, &rows);
     }
 
-    // == Render the tree -- egui-native CollapsingHeader per group (Req 22) ===
-    let groups = grouped_visible_keys(&tree_entries, &state.filter);
+    // == Render the tree -- flush-left group rows + indented child rows (Req 22).
     let gctx = GroupCtx {
         entry_by_key: &entry_by_key,
         cursor: state.cursor.clone(),
         selection_stroke: ui.visuals().selection.stroke,
+        column,
     };
     egui::ScrollArea::vertical().show(ui, |ui| {
         for (ns, keys) in &groups {
@@ -82,29 +101,85 @@ pub fn render(
     });
 }
 
+/// Compute the EXACT rendered text of a namespace group's flush-left header row
+/// for the live schema + collapse state: `aligned_left_segment("[<Display>]",
+/// global_column) + "expanded"|"collapsed"`. This is the single source of truth
+/// for the header label, used by `render_group` (indirectly, via the same
+/// `aligned_left_segment`/`global_column`) and by the full-shell egui_kittest
+/// test so the test matches what is actually drawn (AC 22.3). Test-support only.
+#[cfg(test)]
+pub fn rendered_group_header(
+    config: &ConfigHandle,
+    collapsed: &HashMap<String, bool>,
+    ns: &str,
+) -> String {
+    let tree_entries: Vec<TreeEntry> = config
+        .list_schema_entries()
+        .iter()
+        .map(|e| TreeEntry {
+            key: e.key.clone(),
+            description: e.description.clone(),
+        })
+        .collect();
+    let groups = grouped_visible_keys(&tree_entries, "");
+    let column = global_column(&groups, collapsed);
+    let expanded = !collapsed.get(ns).copied().unwrap_or(false);
+    let state_word = if expanded { "expanded" } else { "collapsed" };
+    format!(
+        "{}{}",
+        aligned_left_segment(&group_left_label(&ns_display_name(ns)), column),
+        state_word
+    )
+}
+
+/// Collect every currently-visible left-label and compute the GLOBAL `:` column
+/// width over them (AC 22.5): the two header captions, each group's bracketed
+/// label, and -- only for EXPANDED groups -- each child key's indented label.
+fn global_column(groups: &[(String, Vec<String>)], collapsed: &HashMap<String, bool>) -> usize {
+    let mut labels: Vec<String> = vec![
+        ff_i18n::t("ff-desktop-config-panel-filter"),
+        UNSAVED_LABEL.to_string(),
+    ];
+    for (ns, keys) in groups {
+        labels.push(group_left_label(&ns_display_name(ns)));
+        let expanded = !collapsed.get(ns).copied().unwrap_or(false);
+        if expanded {
+            for key in keys {
+                labels.push(child_left_label(key));
+            }
+        }
+    }
+    super::layout::global_key_column_width(&labels)
+}
+
 /// The per-frame render context shared by every group: the schema-entry lookup,
-/// the current Tree_Cursor, and the selection stroke used for the cursor
-/// highlight. Bundled into one borrow so `render_group` stays within the
-/// argument-count limit.
+/// the current Tree_Cursor, the selection stroke used for the cursor highlight,
+/// and the GLOBAL `:` column every row aligns to.
 struct GroupCtx<'a> {
     entry_by_key: &'a HashMap<String, SchemaEntry>,
     cursor: Option<ConfigNodeId>,
     selection_stroke: egui::Stroke,
+    column: usize,
 }
 
 /// Render the demarcated header area above the tree (AC 22.1, 22.2): the Filter
 /// field (the FIRST interior control, `filter_field_id()`), the Save
-/// affordance, the non-interactive `Unsaved edits : yes|no` row, any persist
-/// error, and the Source File indicator. The `Command ===>` line is owned by
-/// the shell above this panel.
+/// affordance, the non-interactive `Unsaved edits : yes|no` row (aligned to the
+/// GLOBAL column), any persist error, and the Source File indicator. The
+/// `Command ===>` line is owned by the shell above this panel.
 fn render_header_area(
     ui: &mut egui::Ui,
     state: &mut ConfigPanelState,
     requests: &mut Vec<ShellRequest>,
+    column: usize,
 ) {
     // == Filter + Save bar -- Req 15.7; save-convention Req 11.8 ===
     ui.horizontal(|ui| {
-        ui.label(ff_i18n::t("ff-desktop-config-panel-filter"));
+        // The Filter caption padded to the GLOBAL column so its `:` lines up with
+        // every group/child row below (AC 22.5). Monospace so char count maps to
+        // pixels.
+        let filter_caption = ff_i18n::t("ff-desktop-config-panel-filter");
+        ui.monospace(aligned_left_segment(&filter_caption, column));
         // Stable id so Tab focus round-trips and the shell can anchor the
         // command-field -> first-interior boundary here (B058, AC 22.10).
         ui.add(egui::TextEdit::singleline(&mut state.filter).id(filter_field_id()));
@@ -132,11 +207,15 @@ fn render_header_area(
     });
 
     // == Unsaved-edits indicator row -- Req 22.1, 22.2 (non-interactive) ======
-    // A plain label (adds NO Tab stop, so the Filter field above stays the
-    // first interior control -- AC 22.10). Authoritative dirty indicator tied
-    // to is_dirty() (AC 22.2).
+    // A plain monospace label (adds NO Tab stop, so the Filter field above stays
+    // the first interior control -- AC 22.10). Authoritative dirty indicator
+    // tied to is_dirty() (AC 22.2), aligned to the GLOBAL `:` column.
     let dirty_word = if state.is_dirty() { "yes" } else { "no" };
-    ui.label(format!("Unsaved edits : {}", dirty_word));
+    ui.monospace(format!(
+        "{}{}",
+        aligned_left_segment(UNSAVED_LABEL, column),
+        dirty_word
+    ));
 
     // Surface a persist error from the last SAVE/END attempt (Req 11.4).
     if let Some(err) = &state.persist_error {
@@ -152,12 +231,12 @@ fn render_header_area(
     }
 }
 
-/// Render one namespace group as an egui-native collapsible section
-/// (AC 22.3, 22.4, 22.8). The header shows the bracketed `[<DisplayName>]` label
-/// with egui's native triangle expander; its open-state is DRIVEN from the
-/// existing per-namespace `collapsed` model (keeping the keyboard reducer and
-/// the mouse toggle in sync), and a click on the header toggles that same model.
-/// Inside the body, keys are rendered with a PER-GROUP aligned Value_Column.
+/// Render one namespace group: a FLUSH-LEFT clickable header row
+/// `[<DisplayName>] : expanded|collapsed` (AC 22.3), its `:` aligned to the
+/// GLOBAL column; and, when expanded, each child key row INDENTED one level
+/// under it (AC 22.4). Clicking the header toggles the existing per-namespace
+/// `collapsed` model (AC 22.8) -- the same state the keyboard reducer writes --
+/// so click-to-collapse is preserved without egui's native triangle.
 fn render_group(
     ui: &mut egui::Ui,
     state: &mut ConfigPanelState,
@@ -167,50 +246,47 @@ fn render_group(
     keys: &[String],
 ) {
     let expanded = !state.collapsed.get(ns).copied().unwrap_or(false);
-    let header = format!("[{}] ({})", ns_display_name(ns), keys.len());
     let is_group_cursor = gctx.cursor.as_ref() == Some(&ConfigNodeId::Namespace(ns.to_string()));
-    // Per-group Value_Column over THIS group's visible keys (AC 22.5, 22.6).
-    let column = value_column_width(keys);
 
-    // egui-native CollapsingHeader with its default triangle expander. `.open`
-    // is forced from the authoritative per-namespace `collapsed` model each
-    // frame, so the keyboard reducer and the mouse toggle stay in sync (AC
-    // 22.8); the header's own click response is read back to toggle that same
-    // model. egui owns the hierarchy, indentation, and expander -- the former
-    // box-drawing connector glyphs are gone (Req 22 superseding delta).
-    let coll = egui::CollapsingHeader::new(egui::RichText::new(&header).strong())
-        .id_salt(("config_group", ns))
-        .open(Some(expanded))
-        .show(ui, |ui| {
-            for key in keys {
-                if let Some(entry) = gctx.entry_by_key.get(key) {
-                    let is_cursor = gctx.cursor.as_ref() == Some(&ConfigNodeId::Key(key.clone()));
-                    let resp = render_key_row(ui, state, config, entry, column, is_cursor);
-                    paint_cursor_highlight(ui, &resp, is_cursor, gctx.selection_stroke);
-                }
-            }
-        });
+    // Flush-left header row: `[Group]` padded to the global column, ` : `, then
+    // the live collapse state word. A single clickable monospace selectable
+    // label so char-count padding maps to pixels and the `:` aligns globally.
+    let state_word = if expanded { "expanded" } else { "collapsed" };
+    let header_text = format!(
+        "{}{}",
+        aligned_left_segment(&group_left_label(&ns_display_name(ns)), gctx.column),
+        state_word
+    );
+    let header_resp = ui.selectable_label(
+        is_group_cursor,
+        egui::RichText::new(header_text).strong().monospace(),
+    );
 
-    // A click anywhere on the header toggles the SAME `collapsed` state the
-    // keyboard writes (AC 22.8). `.open(Some(..))` forces state from the model,
-    // so this click is the single authoritative mutation.
-    if coll.header_response.clicked() {
+    // A click on the header toggles the SAME `collapsed` state the keyboard
+    // writes (AC 22.8). This is the single authoritative mutation.
+    if header_resp.clicked() {
         let now = state.collapsed.get(ns).copied().unwrap_or(false);
         state.collapsed.insert(ns.to_string(), !now);
         state.cursor = Some(ConfigNodeId::Namespace(ns.to_string()));
     }
-    paint_cursor_highlight(
-        ui,
-        &coll.header_response,
-        is_group_cursor,
-        gctx.selection_stroke,
-    );
+    paint_cursor_highlight(ui, &header_resp, is_group_cursor, gctx.selection_stroke);
+
+    // Child key rows, indented one level, only while the group is expanded.
+    if expanded {
+        for key in keys {
+            if let Some(entry) = gctx.entry_by_key.get(key) {
+                let is_cursor = gctx.cursor.as_ref() == Some(&ConfigNodeId::Key(key.clone()));
+                let resp = render_key_row(ui, state, config, entry, gctx.column, is_cursor);
+                paint_cursor_highlight(ui, &resp, is_cursor, gctx.selection_stroke);
+            }
+        }
+    }
 }
 
 /// Group the filter-matching schema keys by namespace, sorted by namespace and
 /// by key within each group -- the SAME grouping + ordering `visible_rows`
-/// produces, but holding EVERY matching key per group (not gated by collapse)
-/// because egui's `CollapsingHeader` hides a collapsed group's body (AC 22.7).
+/// produces, but holding EVERY matching key per group (collapse is handled by
+/// the render loop skipping the children of a collapsed group).
 fn grouped_visible_keys(tree_entries: &[TreeEntry], filter: &str) -> Vec<(String, Vec<String>)> {
     let mut groups: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for e in tree_entries {
@@ -240,157 +316,18 @@ fn entry_matches(entry: &TreeEntry, filter: &str) -> bool {
     entry.key.to_lowercase().contains(&f) || entry.description.to_lowercase().contains(&f)
 }
 
-/// Paint the Tree_Cursor selection outline around a row's rect (Requirement
-/// 21.8) so the keyboard position is always visible, distinct from egui hover.
-fn paint_cursor_highlight(
-    ui: &egui::Ui,
-    resp: &egui::Response,
-    is_cursor: bool,
-    stroke: egui::Stroke,
-) {
-    if is_cursor {
-        ui.painter()
-            .rect_stroke(resp.rect.expand(1.0), 2.0, stroke, egui::StrokeKind::Inside);
-    }
-}
-
-/// Render a single schema entry key row inside a group body: line 1 is the
-/// per-group-aligned key + ":" + value widget (the key a frameless selectable
-/// monospace control), line 2 is the selectable description plus the
-/// right-to-left provenance/LOCKED badge, staged `*` marker, and Reset block.
-/// Re-homed unchanged from the pre-CollapsingHeader renderer (AC 22.9); only the
-/// box-drawing connector argument is removed.
-///
-/// Validates: Requirement 22.4, 22.5, 22.9; Requirement 14.2, 15.3-15.6, 18.6
-fn render_key_row(
-    ui: &mut egui::Ui,
-    state: &mut ConfigPanelState,
-    config: &ConfigHandle,
-    entry: &SchemaEntry,
-    column: usize,
-    is_cursor: bool,
-) -> egui::Response {
-    let key = &entry.key;
-    let locked = config.is_locked(key);
-
-    // Resolve current effective value and provenance.
-    let (effective, provenance_label) = match config.get_with_provenance(key) {
-        Ok(ev) => {
-            let label = if locked {
-                "LOCKED"
-            } else {
-                layer_label(ev.provenance.layer)
-            };
-            (ev.value, label)
-        }
-        Err(_) => (
-            entry.default.clone(),
-            if locked { "LOCKED" } else { "Default" },
-        ),
-    };
-
-    ui.vertical(|ui| {
-        // -- Line 1: per-group-aligned key -> `:` -> value -------------------
-        ui.horizontal(|ui| {
-            // The key stays a SELECTABLE control (Req 14.2 / AC 22.9). Frameless
-            // + monospace so char-count padding maps to pixels and the `:` lands
-            // at the per-group Value_Column on every row of the group.
-            let segment = aligned_left_segment(key, column);
-            let _ = ui.selectable_label(is_cursor, egui::RichText::new(segment).monospace());
-
-            // Value widget starts at the Value_Column -- disabled for locked
-            // keys (Req 18.6). Its id is recorded so Enter can focus it (Req 21.6).
-            let widget_id = ui
-                .add_enabled_ui(!locked, |ui| {
-                    render_widget(ui, state, config, entry, &effective)
-                })
-                .inner;
-            if let Some(id) = widget_id {
-                state.widget_ids.insert(entry.key.clone(), id);
-            }
-        });
-
-        // -- Line 2: selectable description + right-to-left provenance block --
-        ui.horizontal(|ui| {
-            // Visible, SELECTABLE description (Req 14.2) -- left-aligned.
-            ui.add(egui::Button::selectable(
-                false,
-                egui::RichText::new(entry.description.as_str())
-                    .small()
-                    .weak(),
-            ));
-
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                // Provenance / LOCKED badge -- Req 15.3, 18.6
-                let badge_color = if locked {
-                    egui::Color32::from_rgb(200, 80, 80)
-                } else {
-                    egui::Color32::from_rgb(120, 180, 120)
-                };
-                ui.add(egui::Button::selectable(
-                    false,
-                    egui::RichText::new(provenance_label)
-                        .small()
-                        .color(badge_color),
-                ));
-
-                // A staged (unsaved) edit on this key shows an asterisk after
-                // the provenance badge (Req 11.9).
-                if state.working.contains_key(key) {
-                    ui.add(egui::Button::selectable(
-                        false,
-                        egui::RichText::new("*")
-                            .small()
-                            .color(egui::Color32::from_rgb(220, 180, 100)),
-                    ));
-                }
-
-                // Reset to Default button -- Req 15.6 (disabled when locked or at
-                // Default WITH no staged edit).
-                let is_at_default = provenance_label == "Default";
-                let has_staged_edit = state.working.contains_key(key);
-                let reset_enabled = !locked && (!is_at_default || has_staged_edit);
-                ui.add_enabled_ui(reset_enabled, |ui| {
-                    if ui.small_button("\u{21ba} Reset").clicked() {
-                        // Stage a Reset into the working buffer (Req 11.2).
-                        state.stage_reset(key);
-                    }
-                });
-            });
-        });
-
-        // Inline validation error -- Req 15.5
-        if let Some(err) = state.errors.get(key) {
-            ui.colored_label(egui::Color32::RED, err.as_str());
-        }
-    })
-    .response
-}
-
 /// Extract the namespace (first dot-segment) from a key path.
 fn namespace_of(key: &str) -> String {
     key.split('.').next().unwrap_or(key).to_string()
 }
 
 /// Human-readable display name for a namespace segment.
-fn ns_display_name(ns: &str) -> String {
+pub(crate) fn ns_display_name(ns: &str) -> String {
     let mut s = ns.to_string();
     if let Some(c) = s.get_mut(0..1) {
         c.make_ascii_uppercase();
     }
     s
-}
-
-/// Map a `ConfigLayer` to a short provenance label string.
-fn layer_label(layer: ConfigLayer) -> &'static str {
-    match layer {
-        ConfigLayer::Defaults => "Default",
-        ConfigLayer::System => "System",
-        ConfigLayer::User => "User",
-        ConfigLayer::Profile => "Profile",
-        ConfigLayer::Project => "Project",
-        ConfigLayer::Workspace => "Workspace",
-    }
 }
 
 #[cfg(test)]
@@ -451,6 +388,36 @@ mod tests {
         assert_eq!(filtered[0].0, "logging");
     }
 
+    // Validates: Requirement 22.5, 22.6 -- the GLOBAL column spans header rows,
+    // group rows, and (for expanded groups) child rows; collapsing a group drops
+    // its children from the computation.
+    #[test]
+    fn global_column_spans_whole_panel_and_tracks_collapse() {
+        let groups = vec![
+            (
+                "catalogs".to_string(),
+                vec!["catalogs.default_mainframe_root".to_string()],
+            ),
+            ("editor".to_string(), vec!["editor.tab_size".to_string()]),
+        ];
+        // All expanded: the widest row is the long catalogs child (indented).
+        let all_expanded = global_column(&groups, &HashMap::new());
+        let widest_child = child_left_label("catalogs.default_mainframe_root")
+            .chars()
+            .count();
+        assert_eq!(all_expanded, widest_child + 1);
+
+        // Collapse catalogs: its wide child no longer participates, so the global
+        // column narrows (AC 22.6).
+        let mut collapsed = HashMap::new();
+        collapsed.insert("catalogs".to_string(), true);
+        let with_collapse = global_column(&groups, &collapsed);
+        assert!(
+            with_collapse < all_expanded,
+            "collapsing a group with a wide child narrows the global column"
+        );
+    }
+
     // Validates: Requirement 15.7 -- filter_hides_non_matching_keys (logic test)
     #[test]
     fn filter_hides_non_matching_keys() {
@@ -464,17 +431,6 @@ mod tests {
         };
         assert!(entry_matches(&e1, "tab"));
         assert!(!entry_matches(&e2, "tab"));
-    }
-
-    // Validates: Requirement 15.3 -- provenance badge shows correct layer label
-    #[test]
-    fn provenance_badge_shows_correct_layer() {
-        assert_eq!(layer_label(ConfigLayer::Defaults), "Default");
-        assert_eq!(layer_label(ConfigLayer::User), "User");
-        assert_eq!(layer_label(ConfigLayer::Project), "Project");
-        assert_eq!(layer_label(ConfigLayer::System), "System");
-        assert_eq!(layer_label(ConfigLayer::Profile), "Profile");
-        assert_eq!(layer_label(ConfigLayer::Workspace), "Workspace");
     }
 
     // Validates: Requirement 15.3 -- widget type selected for enum string
@@ -505,13 +461,6 @@ mod tests {
             pattern: None,
         };
         assert!(constraints.min.is_some() && constraints.max.is_some());
-    }
-
-    // Validates: Requirement 15.6 -- reset button hidden when at default (provenance check)
-    #[test]
-    fn reset_button_hidden_when_at_default() {
-        let at_default = layer_label(ConfigLayer::Defaults) == "Default";
-        assert!(at_default, "Default layer should produce 'Default' label");
     }
 
     // Validates: Requirement 15.10 -- F3/END returns to POM (routing test)
