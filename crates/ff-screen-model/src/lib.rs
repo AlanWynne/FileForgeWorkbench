@@ -25,7 +25,8 @@ mod redact;
 mod render;
 
 pub use model::{
-    Colour, Cursor, Dimensions, Field, FieldAttributes, ScreenModel, StatusBar, Table,
+    Colour, Cursor, Dimensions, Field, FieldAttributes, MarkdownSection, ScreenModel, StatusBar,
+    Table,
 };
 pub use raster::{
     crop, encode_png, rasterise_screen, rasterise_text, screen_png, PixelRect, RasterImage,

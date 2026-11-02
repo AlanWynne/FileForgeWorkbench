@@ -44,6 +44,32 @@ fn ns_display_name(ns: &str) -> String {
     s
 }
 
+/// The two column headers used by every Config Markdown section table
+/// (master-screen-directive Req 4.4c): `Property | Value`.
+fn property_value_headers() -> Vec<String> {
+    vec!["Property".to_string(), "Value".to_string()]
+}
+
+/// A per-group Markdown section with an empty child table: the heading is
+/// `[Group]  (expanded|collapsed)` reflecting the group's current collapse
+/// state. Child rows are appended by the caller as it walks the key rows.
+fn config_markdown_group_section(ns: &str, expanded: bool) -> ff_screen_model::MarkdownSection {
+    use ff_screen_model::{MarkdownSection, Table};
+    let state = if expanded { "expanded" } else { "collapsed" };
+    MarkdownSection {
+        heading: Some(format!(
+            "{}  ({})",
+            group_left_label(&ns_display_name(ns)),
+            state
+        )),
+        table: Table {
+            caption: None,
+            headers: property_value_headers(),
+            rows: Vec::new(),
+        },
+    }
+}
+
 /// Compute the GLOBAL `:` column for the capture over EVERY currently-visible
 /// left-label -- the two header captions, each bracketed group label, and the
 /// indented child label of every expanded group -- EXACTLY as
@@ -145,10 +171,92 @@ impl WorkbenchShell {
                 .push(self.config_capture_row_line(row, column));
         }
 
+        // MARKDOWN-ONLY flavor (master-screen-directive Req 4.4c, user-approved
+        // option 3): the SAME visible `rows` drive a per-group `### [Group]
+        // (state)` heading + 2-column Property/Value table. The Markdown renderer
+        // consumes `markdown_sections` INSTEAD of the fenced tree; every other
+        // flavor (the plain-text box-drawing tree above) ignores it, so this
+        // changes ONLY the Markdown capture.
+        model.markdown_sections = self.config_capture_markdown_sections(&rows, &filter_caption);
+
         if let Some(err) = &p.persist_error {
             model.messages.push(err.clone());
         }
         model
+    }
+
+    /// Build the MARKDOWN-ONLY per-group sections from the SAME visible `rows`
+    /// the plain-text capture uses (master-screen-directive Req 4.4c): a
+    /// heading-less intro table of the header fields (Filter, Unsaved edits)
+    /// followed by one `### [Group]  (expanded|collapsed)` heading per namespace
+    /// group, each with a 2-column `Property | Value` GFM table of that group's
+    /// CHILD keys and their current effective values. Because `visible_rows`
+    /// omits the children of a COLLAPSED group, a collapsed group here emits its
+    /// heading with an EMPTY child table -- MIRRORING the plain-text flavor,
+    /// which likewise lists no children for a collapsed group.
+    fn config_capture_markdown_sections(
+        &self,
+        rows: &[crate::config_panel::ConfigRow],
+        filter_caption: &str,
+    ) -> Vec<ff_screen_model::MarkdownSection> {
+        use ff_screen_model::MarkdownSection;
+        let mut sections = vec![self.config_markdown_intro_section(filter_caption)];
+
+        // One section per namespace group, in the SAME order as `rows`; each key
+        // row appends a Property/Value row to the current group's table.
+        for row in rows {
+            match &row.id {
+                ConfigNodeId::Namespace(ns) => {
+                    sections.push(config_markdown_group_section(ns, row.expanded))
+                }
+                ConfigNodeId::Key(key) => {
+                    if let Some(MarkdownSection { table, .. }) = sections.last_mut() {
+                        table
+                            .rows
+                            .push(vec![key.clone(), self.config_capture_value(key)]);
+                    }
+                }
+            }
+        }
+        sections
+    }
+
+    /// The heading-less intro section (Namespace filter if set, Filter, Unsaved
+    /// edits) that belongs to no namespace group.
+    fn config_markdown_intro_section(
+        &self,
+        filter_caption: &str,
+    ) -> ff_screen_model::MarkdownSection {
+        use ff_screen_model::{MarkdownSection, Table};
+        let p = &self.config_panel;
+        let mut rows: Vec<Vec<String>> = Vec::new();
+        if let Some(ns) = &p.namespace_filter {
+            rows.push(vec!["Namespace".to_string(), ns.clone()]);
+        }
+        rows.push(vec![filter_caption.to_string(), p.filter.clone()]);
+        rows.push(vec![
+            UNSAVED_LABEL.to_string(),
+            if p.is_dirty() { "yes" } else { "no" }.to_string(),
+        ]);
+        MarkdownSection {
+            heading: None,
+            table: Table {
+                caption: None,
+                headers: property_value_headers(),
+                rows,
+            },
+        }
+    }
+
+    /// The current displayed value of `key` for the Markdown capture, marking a
+    /// staged (unsaved) edit the same way the plain-text flavor does.
+    fn config_capture_value(&self, key: &str) -> String {
+        let value = self.config_key_display_value(key);
+        if self.config_panel.working.contains_key(key) {
+            format!("{value} (unsaved)")
+        } else {
+            value
+        }
     }
 
     /// Compose the EXACT captured text line for one visible Config tree row,

@@ -209,6 +209,25 @@ Context in the workbench.
     `Settings` / `Setting / Value / State` table block. A capture that emits the
     list twice (once dot-leadered and once as a table) or that adds dot-leaders
     the render does not use is a DEFECT.
+4.4c CONFIG MARKDOWN FLAVOR (user-approved "option 3"). The Config panel's
+    MARKDOWN capture (the clipboard flavor, `SnapshotFormat::Markdown`) SHALL
+    render, for EACH namespace group IN THE SAME ORDER as the plain-text tree /
+    the GUI, a level-3 heading `### [Group]  (expanded|collapsed)` reflecting the
+    group's ACTUAL current collapse state, immediately followed by a GFM table
+    with the header row `Property | Value` and one row per CHILD key of that
+    group -- the key in column 1 and its CURRENT effective value (same source as
+    the plain-text flavor; a staged edit marked `(unsaved)`; an empty value ->
+    empty cell; Markdown-special characters in values escaped) in column 2. The
+    header-area fields (Filter, Unsaved edits, and the Namespace filter when set)
+    belong to NO group and SHALL render as a heading-less intro `Property | Value`
+    table BEFORE the first group heading. A COLLAPSED group SHALL emit its heading
+    with an EMPTY child table, MIRRORING the plain-text flavor (which lists no
+    children for a collapsed group). The Markdown capture SHALL NOT be a single
+    flat `Property | Value` mega-table spanning all groups, SHALL NOT duplicate
+    any key, and SHALL NOT contain the old `Setting / Value / State` block. This
+    is realised through the `ScreenModel.markdown_sections` field consumed ONLY
+    by the Markdown renderer; the plain-text (box-drawing tree, Req 4.4b) and
+    every other flavor are UNCHANGED.
 4.5 THE snapshot + capture contract SHALL be realised ONLY through the existing
     `ScreenProvider` trait and the existing SNAPSHOT / CAPTURE command dispatch
     (screen-snapshot-scrm Req 11); NO Context SHALL expose snapshot/capture

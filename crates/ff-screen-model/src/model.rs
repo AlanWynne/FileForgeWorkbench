@@ -100,6 +100,28 @@ pub struct Table {
     pub rows: Vec<Vec<String>>,
 }
 
+/// A MARKDOWN-ONLY structured section: an optional level-3 heading followed by
+/// a GFM table. This is a FLAVOR-SPECIFIC field consumed ONLY by the Markdown
+/// renderer (`render::markdown`); the plain-text, ANSI, HTML, and YAML renderers
+/// ignore it entirely, so a Context that populates it changes ONLY its Markdown
+/// capture and leaves every other flavor untouched.
+///
+/// It exists so a Context (such as the Config panel) can express a per-group
+/// `### heading + 2-column Property/Value table` Markdown layout WITHOUT
+/// disturbing the plain-text flavor, which continues to render from
+/// `body_lines`. When `heading` is `None` the renderer emits the table with no
+/// heading (an intro table).
+///
+/// Validates: master-screen-directive Requirement 4.4c.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct MarkdownSection {
+    /// The level-3 heading text (rendered as `### <heading>`), or `None` to emit
+    /// the table with no heading (e.g. an intro table above the first group).
+    pub heading: Option<String>,
+    /// The section's table, rendered as a GFM table by the Markdown renderer.
+    pub table: Table,
+}
+
 /// The status bar line(s) at the bottom of a screen.
 ///
 /// Validates: Requirement 3.8.
@@ -182,6 +204,15 @@ pub struct ScreenModel {
     pub fields: Vec<Field>,
     /// Tabular elements, in visual order.
     pub tables: Vec<Table>,
+    /// MARKDOWN-ONLY structured sections (heading + GFM table), in visual order.
+    /// Consumed ONLY by the Markdown renderer; every other renderer ignores this
+    /// field, so populating it changes ONLY the Markdown capture flavor. A
+    /// Context that does not need per-group Markdown sections leaves this EMPTY
+    /// and its Markdown rendering is unchanged.
+    ///
+    /// Validates: master-screen-directive Requirement 4.4c.
+    #[serde(default)]
+    pub markdown_sections: Vec<MarkdownSection>,
     /// Free-standing messages (errors, info lines).
     pub messages: Vec<String>,
     /// Full-screen chrome shown BELOW the body, in visual order: the calendar

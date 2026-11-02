@@ -321,3 +321,134 @@ fn config_capture_mirrors_visible_render_single_representation() {
         "the ':' column equals the global width from the pure helper"
     );
 }
+
+// Validates: master-screen-directive Req 4.4c (user-approved option 3) -- the
+// Config Context MARKDOWN capture renders, for EACH namespace group in order, a
+// level-3 `### [Group]  (expanded|collapsed)` heading followed by a 2-column
+// `Property | Value` GFM table of that group's child keys + current values. The
+// header fields render as a heading-less intro table BEFORE the first group.
+// There is NO single flat Property/Value mega-table spanning all groups and NO
+// leftover `Setting / Value / State` block; each group heading appears once and
+// a known key (logging.level) appears exactly once.
+#[test]
+fn config_markdown_capture_renders_per_group_headings_and_tables() {
+    use ff_screen_model::{RenderOptions, SnapshotFormat};
+
+    let mut harness = harness_shell();
+    open_config(&mut harness);
+
+    let model = harness.state().config_panel_screen_model();
+    let md = ff_screen_model::render(&model, SnapshotFormat::Markdown, RenderOptions::default());
+
+    // A per-group level-3 heading for Logging, reflecting its collapse state.
+    assert!(
+        md.contains("### [Logging]  (expanded)"),
+        "a '### [Logging]  (expanded)' heading must be present;\n{md}"
+    );
+
+    // The Logging heading is immediately followed by a Property | Value table
+    // header (GFM header row + separator) -- the per-group table, not a flat one.
+    let after_logging = md
+        .split("### [Logging]  (expanded)")
+        .nth(1)
+        .expect("text after the Logging heading");
+    let table_head = after_logging
+        .trim_start_matches(['\n', '\r'])
+        .lines()
+        .next()
+        .unwrap_or("");
+    assert_eq!(
+        table_head, "| Property | Value |",
+        "the heading is immediately followed by a 'Property | Value' table;\n{md}"
+    );
+
+    // The Logging table contains the row 'logging.level | info', and
+    // 'logging.level' appears EXACTLY ONCE across the whole capture (no dup).
+    assert!(
+        md.contains("| logging.level | info |"),
+        "the Logging table has a 'logging.level | info' row;\n{md}"
+    );
+    assert_eq!(
+        md.matches("logging.level").count(),
+        1,
+        "'logging.level' appears exactly once (no duplicate block);\n{md}"
+    );
+
+    // One '### [Group]' heading per namespace group, each appearing exactly
+    // once and IN THE SAME ORDER as the visible rows. The exact set of groups
+    // depends on the schema registered in the harness, so derive the expected
+    // list from the SAME visible rows the capture uses rather than hardcoding
+    // it -- that keeps the test faithful to "the same groups as the plain-text
+    // / GUI" across schema builds.
+    use crate::config_panel::{visible_rows, ConfigNodeId, TreeEntry};
+    let entries = harness.state().config_handle.list_schema_entries();
+    let tree_entries: Vec<TreeEntry> = entries
+        .iter()
+        .map(|e| TreeEntry {
+            key: e.key.clone(),
+            description: e.description.clone(),
+        })
+        .collect();
+    let rows = visible_rows(
+        &tree_entries,
+        &harness.state().config_panel.filter,
+        &harness.state().config_panel.collapsed,
+    );
+    let group_headings: Vec<String> = rows
+        .iter()
+        .filter_map(|r| match &r.id {
+            ConfigNodeId::Namespace(ns) => {
+                let mut disp = ns.clone();
+                if let Some(c) = disp.get_mut(0..1) {
+                    c.make_ascii_uppercase();
+                }
+                Some(format!("### [{disp}]"))
+            }
+            ConfigNodeId::Key(_) => None,
+        })
+        .collect();
+    assert!(
+        !group_headings.is_empty(),
+        "the capture must list at least one namespace group;\n{md}"
+    );
+    for g in &group_headings {
+        assert_eq!(
+            md.matches(g.as_str()).count(),
+            1,
+            "group heading {g:?} must appear exactly once;\n{md}"
+        );
+    }
+    // The group headings appear IN ORDER.
+    let mut last = 0usize;
+    for g in &group_headings {
+        let at = md.find(g.as_str()).unwrap_or_else(|| panic!("{g} present"));
+        assert!(
+            at >= last,
+            "group headings must be in order; {g} out of order"
+        );
+        last = at;
+    }
+
+    // There is NO flat mega-table: the header row 'Property | Value' appears once
+    // per section (the intro + one per group), never a single table carrying all
+    // keys. Confirm the count equals 1 (intro) + the number of groups.
+    assert_eq!(
+        md.matches("| Property | Value |").count(),
+        group_headings.len() + 1,
+        "one Property/Value header per section (intro + one per group), not a flat mega-table;\n{md}"
+    );
+
+    // No leftover 'Setting / Value / State' table from the old defect.
+    assert!(
+        !md.contains("Setting") || !md.contains("State"),
+        "no leftover 'Setting / Value / State' table block;\n{md}"
+    );
+
+    // The header fields render BEFORE the first group heading (intro).
+    let first_group_at = md.find("### [").expect("a group heading exists");
+    let intro = &md[..first_group_at];
+    assert!(
+        intro.contains("Unsaved edits"),
+        "header fields (Unsaved edits) render before the first group;\n{md}"
+    );
+}

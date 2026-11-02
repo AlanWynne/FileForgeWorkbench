@@ -3,7 +3,7 @@
 //!
 //! Validates: screen-snapshot-scrm Requirement 4.4.
 
-use crate::model::ScreenModel;
+use crate::model::{ScreenModel, Table};
 use crate::render::{text, RenderOptions};
 
 /// Render `model` as Markdown.
@@ -12,6 +12,18 @@ pub fn render_markdown(model: &ScreenModel) -> String {
     // Heading from the title.
     if !model.title.is_empty() {
         out.push_str(&format!("# {}\n\n", model.title));
+    }
+
+    // FLAVOR-SPECIFIC per-group sections (master-screen-directive Req 4.4c): when
+    // a Context supplies `markdown_sections` (the Config panel does), the Markdown
+    // capture is those sections -- each an optional `### heading` followed by a
+    // GFM table -- INSTEAD of the generic fenced-code-block body + property
+    // table. Every other flavor ignores `markdown_sections`, so the plain-text
+    // (box-drawing tree) capture is unaffected. A Context that leaves the field
+    // empty falls through to the generic Markdown path below, unchanged.
+    if !model.markdown_sections.is_empty() {
+        render_markdown_sections(model, &mut out);
+        return out;
     }
 
     // The framed screen text as a fenced code block (Requirement 4.4, 5.1). Use
@@ -50,38 +62,66 @@ pub fn render_markdown(model: &ScreenModel) -> String {
         if let Some(cap) = &table.caption {
             out.push_str(&format!("**{}**\n\n", cap));
         }
-        if !table.headers.is_empty() {
-            out.push_str(&format!(
-                "| {} |\n",
-                table
-                    .headers
-                    .iter()
-                    .map(|h| escape_cell(h))
-                    .collect::<Vec<_>>()
-                    .join(" | ")
-            ));
-            out.push_str(&format!(
-                "|{}|\n",
-                table
-                    .headers
-                    .iter()
-                    .map(|_| "------")
-                    .collect::<Vec<_>>()
-                    .join("|")
-            ));
-        }
-        for row in &table.rows {
-            out.push_str(&format!(
-                "| {} |\n",
-                row.iter()
-                    .map(|c| escape_cell(c))
-                    .collect::<Vec<_>>()
-                    .join(" | ")
-            ));
-        }
+        push_gfm_table(&mut out, table);
     }
 
     out
+}
+
+/// Render the FLAVOR-SPECIFIC `markdown_sections` (master-screen-directive Req
+/// 4.4c): each section is an optional `### heading` followed by a GFM table.
+/// Used by the Config panel to emit one heading + 2-column Property/Value table
+/// per namespace group (and a heading-less intro table for the header fields).
+fn render_markdown_sections(model: &ScreenModel, out: &mut String) {
+    for (idx, section) in model.markdown_sections.iter().enumerate() {
+        if let Some(heading) = &section.heading {
+            // A blank line before every heading except an opening one that
+            // immediately follows the title's own blank line.
+            if idx > 0 || !out.ends_with("\n\n") {
+                out.push('\n');
+            }
+            out.push_str(&format!("### {}\n\n", heading));
+        } else {
+            if idx > 0 {
+                out.push('\n');
+            }
+        }
+        push_gfm_table(out, &section.table);
+    }
+}
+
+/// Emit a [`Table`] as a GFM table (header row, separator, data rows) with every
+/// cell escaped. A table with no headers emits only its data rows.
+fn push_gfm_table(out: &mut String, table: &Table) {
+    if !table.headers.is_empty() {
+        out.push_str(&format!(
+            "| {} |\n",
+            table
+                .headers
+                .iter()
+                .map(|h| escape_cell(h))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        ));
+        out.push_str(&format!(
+            "|{}|\n",
+            table
+                .headers
+                .iter()
+                .map(|_| "------")
+                .collect::<Vec<_>>()
+                .join("|")
+        ));
+    }
+    for row in &table.rows {
+        out.push_str(&format!(
+            "| {} |\n",
+            row.iter()
+                .map(|c| escape_cell(c))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        ));
+    }
 }
 
 /// Escape a Markdown table cell (pipes would break the table).
@@ -92,7 +132,7 @@ fn escape_cell(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{Field, Table};
+    use crate::model::Field;
 
     // Validates: Requirement 4.4 -- fenced code block + property table + title.
     #[test]
