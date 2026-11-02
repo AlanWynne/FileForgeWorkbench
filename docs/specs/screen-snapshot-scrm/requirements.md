@@ -50,7 +50,9 @@ The text is therefore no longer the sole authoritative artefact for the
 CLIPBOARD; it is one of two co-equal flavors offered simultaneously. The
 logical-model-first rule (text and picture both rendered FROM the logical model,
 never a raw egui screengrab) remains in force and still constrains all export
-requirements. See Requirement 23 for the clipboard-flavor acceptance criteria.
+requirements. See Requirement 23 for the clipboard-flavor acceptance criteria,
+and Requirement 28 (CR-CH-079) for the rule that EACH text flavor carries BOTH
+the box-drawn layout AND the property/value tables.
 
 NOTE (implementation feasibility, to confirm during design): offering image and
 text clipboard flavors simultaneously is well-supported by the OS clipboard
@@ -1068,6 +1070,86 @@ Both kinds are in scope:
 
 ---
 
+## Requirement 28 -- Each clipboard text flavor carries BOTH the box-drawn layout AND the property/value tables (CR-CH-079)
+
+**User story:** As a user who pastes a screen SNAPSHOT into Word AND into Notepad,
+I want EACH text flavor to carry BOTH the box-drawn screen layout AND the
+property/value pairs as tables, so neither paste target loses half the
+representation.
+
+### Context (owner-confirmed 2026-11-02, CR-CH-079)
+
+Requirement 23 established the three-flavor clipboard (PICTURE / TEXT / COMPOSITE
+RICH HTML). As SHIPPED, each TEXT-bearing flavor carries only ONE of the two text
+representations a table-bearing screen can offer (owner-observed on the Config
+snapshot):
+
+- The COMPOSITE RICH (`CF_HTML`) flavor, consumed by Word, embeds the PNG picture
+  AND the box-drawn layout (the `<pre>`/per-line monospace `<span>` body built
+  from `body_lines`), but NOT the property/value tables.
+- The PLAIN-TEXT (`CF_UNICODETEXT`) flavor, consumed by Notepad, is the Markdown
+  rendering. For a Context that supplies `markdown_sections` (the Config panel),
+  the Markdown renderer early-returns the per-group Property/Value TABLES ONLY and
+  omits the box-drawn layout.
+
+So Word gets image + box but no tables; Notepad gets tables but no box. This
+requirement makes both flavors SYMMETRIC: each text flavor carries BOTH
+representations. The PNG picture flavor (Req 23.2) is UNCHANGED.
+
+This requirement BUILDS ON the existing SCRM clipboard flavors (Req 23) and the
+`ff-screen-model` renderers; it introduces NO new clipboard flavor and NO new
+framework mechanism. It modifies WHAT each existing flavor's text contains.
+
+#### Acceptance Criteria
+28.1 WHEN a SNAPSHOT targets the clipboard AND the active screen model carries
+     BOTH a box-drawn layout (`body_lines`, or the generic framed body) AND
+     tabular property/value content (`markdown_sections` and/or `tables`/`fields`),
+     THE PLAIN-TEXT (`CF_UNICODETEXT`) flavor SHALL contain BOTH the box-drawn
+     layout AND the property/value pairs rendered as Markdown-style tables, in a
+     single plain-text block. `[CR-CH-079]`
+28.2 WHEN a SNAPSHOT targets the clipboard AND the active screen model carries
+     BOTH representations (as in 28.1), THE COMPOSITE RICH (`CF_HTML`) flavor
+     SHALL contain the PNG window image AND the box-drawn layout AND the
+     property/value pairs rendered as HTML tables (`<table>`), the HTML tables
+     being the structural equivalent of the plain-text flavor's Markdown tables.
+     `[CR-CH-079]`
+28.3 THE PNG picture flavor (the `CF_DIB`/`CF_DIBV5` window screenshot, Req 23.2,
+     23.4) SHALL be UNCHANGED by this requirement: nothing about the image
+     content, cropping (Req 23.2a), or its placement changes. `[CR-CH-079]`
+28.4 WITHIN each text flavor, the ORDER SHALL be the box-drawn layout FIRST, then
+     the property/value tables. In the `CF_HTML` flavor the PNG image paragraph
+     comes first (as today, Req 23.5f), then the box-drawn `<pre>`/monospace body,
+     then the HTML tables. This mirrors the visual reading order (the framed
+     screen, then its data broken out as tables) and preserves the existing
+     image-then-box ordering of the composite. `[CR-CH-079]`
+28.5 THE box-drawn layout inside the `CF_HTML` flavor SHALL retain the monospace
+     per-line `<span>` treatment that makes it render fixed-width and aligned in
+     Word (Req 23.5f); adding the HTML tables SHALL NOT regress that treatment,
+     and the CF_HTML header byte offsets (StartHTML/EndHTML/StartFragment/
+     EndFragment) SHALL remain correct after the markup grows. `[CR-CH-079]`
+28.6 THE property/value tables in BOTH flavors SHALL be rendered from the SAME
+     logical content the Markdown renderer already derives for the Context (for
+     the Config panel, the per-group `markdown_sections`: a heading-less intro
+     table plus one `[Group] (state)` heading + 2-column `Property | Value` table
+     per namespace group), so the two flavors show the SAME data and group
+     structure, differing only in table syntax (Markdown vs HTML). `[CR-CH-079]`
+28.7 THIS rule SHALL be GENERAL to all table-bearing screen snapshots, NOT
+     Config-specific: any Context whose screen model carries both a box-drawn
+     layout and tabular content (via `markdown_sections`, `tables`, or `fields`)
+     SHALL have both flavors carry both representations, implemented in the shared
+     `ff-screen-model` renderers / clipboard composite path so every Context
+     inherits it. A Context that supplies ONLY a box layout (no tables) SHALL be
+     unaffected (both flavors carry just the box); a Context that supplies ONLY
+     tables SHALL likewise be unaffected. `[CR-CH-079]`
+28.8 THE change SHALL preserve existing single-format behaviour: `SNAPSHOT
+     MARKDOWN`, `SNAPSHOT HTML`, `SNAPSHOT TEXT`, and the file/PDF export paths
+     (Req 4.2-4.6, 4.8, 12, 23.3) retain their current output. Where a shared
+     renderer is changed to satisfy 28.1/28.2, any single-format consumer that
+     relied on the previous (one-representation) output SHALL be reconciled so its
+     documented behaviour still holds. `[CR-CH-079]`
+
+---
+
 ## Out of scope (v1) / future enhancements
 
 Recorded from the SCRM source "Future Enhancements"; NOT gated here, listed so the
@@ -1124,3 +1206,8 @@ Requirement 12 (Export) for readability but keeps the next free sequential numbe
 (20) rather than renumbering existing requirements. Requirements 12.7 and 14.5
 cross-reference it. A later editorial pass MAY renumber into strict sequence
 before the gate closes.
+
+Requirement 28 (CR-CH-079) is appended after Requirement 27 with the next free
+sequential number (28); it extends Requirement 23 (the three-flavor clipboard) so
+that EACH text flavor carries BOTH the box-drawn layout AND the property/value
+tables.

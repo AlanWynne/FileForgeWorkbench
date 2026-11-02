@@ -286,5 +286,143 @@ Every requirement in requirements.md maps to a section here: Req 1->S1/S3; Req
 12->S3/S5; Req 13->S3; Req 14->S3; Req 15->S3 (DIDL fields on ScreenCapture);
 Req 16->S6; Req 17->S3; Req 18->S9; Req 19->S8; Req 20->S5; Req 9.10-9.12 /
 10.9-10.10 / 17.2a (recorder delta)->S3/S4; Req 21 (macro export)->DEFERRED, not
-designed in v1 beyond the schema-sufficiency guarantee (Req 21.2). tasks.md will
-carry the per-criterion task breakdown and TCR rows.
+designed in v1 beyond the schema-sufficiency guarantee (Req 21.2); Req 28
+(dual-representation clipboard flavors, CR-CH-079)->S11. tasks.md will carry the
+per-criterion task breakdown and TCR rows.
+
+## 11. Dual-representation clipboard text flavors (Req 28, CR-CH-079)
+
+### Investigation verdict -- where each representation is generated today
+
+Settled against the code (NOT assumed), reading
+`crates/ff-screen-model/src/render/{text,markdown,html}.rs`,
+`crates/ff-screen-model/src/model.rs`,
+`crates/ff-desktop/src/shell/screen_providers_config.rs`,
+`crates/ff-desktop/src/shell/commands_snapshot.rs`, and
+`crates/ff-desktop/src/clipboard_html.rs`:
+
+- The clipboard SNAPSHOT places THREE OS flavors in one transaction
+  (`OsClipboard::place` in `clipboard_backend`): `CF_DIB`/`CF_DIBV5` (the real
+  window PNG), `CF_UNICODETEXT` (the plain-text flavor), and `CF_HTML` (the
+  composite rich flavor). This is the Req 23 three-flavor model and is NOT
+  changing in count.
+- The PLAIN-TEXT (`CF_UNICODETEXT`) flavor is produced by
+  `stash_composite_request` as `render_snapshot(model, Markdown)` -- the Markdown
+  renderer (`render/markdown.rs::render_markdown`). For a Context that populates
+  `model.markdown_sections` (the Config panel does, via
+  `config_capture_markdown_sections`), `render_markdown` takes the
+  `markdown_sections` branch and `return`s EARLY: it emits ONLY the per-group
+  `### [Group] (state)` heading + 2-column `Property | Value` GFM tables and
+  NEVER renders the fenced box-drawn body. => Notepad gets tables, no box.
+  (Confirmed as the owner-observed behaviour.)
+- The COMPOSITE RICH (`CF_HTML`) flavor is built by
+  `clipboard_html::build_cf_html(png, pre_text)`, where `pre_text` is
+  `render(model, PlainText, default)` -- i.e. the box-drawn screen from
+  `render/text.rs::render_plain` (which renders `body_lines` verbatim inside the
+  frame). `build_cf_html` emits the PNG `<img>` paragraph followed by ONE
+  monospace `<span>` paragraph per box line (Req 23.5f). It does NOT render
+  `markdown_sections`, `tables`, or `fields` as HTML tables at all. => Word gets
+  image + box, no tables.
+- So the asymmetry is structural: the two text flavors use DIFFERENT renderers
+  (Markdown vs PlainText-into-CF_HTML), and for a `markdown_sections` Context the
+  Markdown renderer deliberately swaps the box body OUT for tables, while the
+  CF_HTML path only ever carries the box body and never the tables.
+
+### Chosen design -- make both flavors carry both, in the shared path
+
+The fix is GENERAL (Req 28.7), implemented in the shared `ff-screen-model`
+renderers and the shared `clipboard_html` composite, so every table-bearing
+Context inherits it; the Config provider is NOT special-cased.
+
+PLAIN-TEXT flavor (`CF_UNICODETEXT`), satisfying Req 28.1/28.4/28.6:
+- Change `render/markdown.rs::render_markdown` so that when `markdown_sections`
+  is present it emits the box-drawn body FIRST (the fenced Unicode-box block, as
+  the generic path already does via `text::render_plain` inside a code fence),
+  THEN the `markdown_sections` tables -- instead of early-returning tables only.
+  The box-first-then-tables order (Req 28.4) matches the generic Markdown path,
+  which already emits the fenced body then the property table then table
+  elements.
+- A Context with NO `markdown_sections` is unchanged (Req 28.7): it still gets
+  the fenced body + the `fields` property table + each `tables` element, which
+  already carries both representations.
+
+COMPOSITE RICH flavor (`CF_HTML`), satisfying Req 28.2/28.4/28.5/28.6:
+- Extend the composite so that, after the PNG `<img>` paragraph and the per-line
+  monospace box `<span>` paragraphs, it appends HTML `<table>` markup for the
+  same property/value content. Two viable approaches were considered:
+  - (A) Have `build_cf_html` take an extra "tables HTML" argument produced by the
+    HTML renderer from the model's tabular content, and append it inside the
+    fragment after the box paragraphs.
+  - (B) Render the whole model via `render/html.rs::render_html` and inject it
+    into the fragment.
+  CHOSEN: (A). `render_html` renders `fields`/`tables` but NOT
+  `markdown_sections`, and it also re-emits the title/body/command-line chrome,
+  which would duplicate what the box `<pre>` already shows. (A) keeps the box
+  body exactly as Req 23.5f tuned it (monospace per-line `<span>`, which Word
+  honours) and appends ONLY the tables, derived from the SAME content the
+  Markdown flavor uses. Concretely: add a small HTML-table emitter (either a new
+  `render/html.rs` helper that renders `markdown_sections`/`tables` as `<table>`
+  with `<caption>` group headings, or reuse the existing `ffwb-table` emitter)
+  and pass its output to `build_cf_html` as a new `tables_html` parameter
+  appended after the box paragraphs, inside the fragment and before
+  `<!--EndFragment-->`.
+- The CF_HTML header byte offsets are already recomputed from the assembled
+  `doc_prefix`/`body`/`doc_suffix` lengths in `build_cf_html`; appending the
+  tables to `body` keeps the two-pass offset math correct automatically
+  (Req 28.5). Existing offset round-trip tests
+  (`cf_html_offsets_round_trip_after_monospace_style`) extend to cover the
+  tables-present case.
+
+Shared table content (Req 28.6): both flavors derive their tables from the SAME
+logical source the Markdown renderer already uses -- `model.markdown_sections`
+when present, else `model.fields`/`model.tables`. For the Config panel this is
+the heading-less intro table + one `[Group] (state)` + `Property | Value` table
+per namespace group, so Word's HTML tables and Notepad's Markdown tables show
+identical data and grouping, differing only in syntax.
+
+### Error handling and edge cases
+- A model with box layout but NO tabular content: both flavors carry just the box
+  (no empty table block emitted) -- Req 28.7. The emitters guard on
+  `markdown_sections`/`tables`/`fields` being non-empty, exactly as the Markdown
+  renderer already does.
+- A model with tables but no `body_lines` and no generic framed body: the box
+  block is whatever `render_plain` produces for that model (its generic framed
+  body); the tables follow. No new failure mode -- both are pure
+  `ScreenModel -> String` functions that cannot fail.
+- A collapsed Config group: its `markdown_sections` entry has an empty child
+  table; the HTML emitter emits the heading with an empty table body, MIRRORING
+  the Markdown flavor (which already does this) -- consistent across flavors.
+- Secret redaction is unchanged: redaction happens on the model BEFORE either
+  renderer runs (single-point, Req 27.4), so both the box body and the new tables
+  carry only the redacted placeholder.
+
+### Framework check (framework-conformance.md)
+This builds ON the existing SCRM clipboard flavors (Req 23) and the
+`ff-screen-model` renderer/`Table`/`MarkdownSection` model. NO new clipboard
+flavor, NO new framework mechanism, NO change to `resolve_target` / dispatch, NO
+change to the `ScreenProvider` trait or `ScreenModel` public type. The changes
+are: (1) `render_markdown` no longer early-returns when `markdown_sections` is
+present (it emits box-then-tables); (2) `build_cf_html` gains a `tables_html`
+parameter and an HTML-table emitter is added to `render/html.rs`. Both are
+additive within existing crates. `build_cf_html`'s signature change is INTERNAL
+to `ff-desktop` (not a cross-crate public contract) -- see the gate summary's
+owner-decision note; it is called from exactly one place
+(`place_snapshot_composite`). No public API of `ff-screen-model` or `ff-scrm` is
+reshaped. => No framework change; no owner framework confirmation required beyond
+approving this gate.
+
+### Testability
+- Unit (ff-screen-model): `render_markdown` on a model WITH `markdown_sections`
+  now contains BOTH a Unicode box glyph (U+250C family) AND the `| Property |
+  Value |` table header (box-before-table ordering asserted by index).
+- Unit (ff-screen-model): the new HTML-table emitter renders
+  `markdown_sections`/`tables` as `<table>`/`<tr>`/`<td>` with group headings.
+- Unit (ff-desktop): `build_cf_html` output for a Config fixture contains the
+  `<img ... base64`, the monospace box `<span>` paragraphs, AND `<table>` markup,
+  in that order; the four CF_HTML offsets still round-trip.
+- Unit (ff-desktop): a shell-level test over a Config `ScreenModel` fixture
+  asserting the `CF_UNICODETEXT` flavor string contains both the box block and
+  the Markdown tables, and the `CF_HTML` flavor contains both the box block and
+  HTML tables (the owner's two acceptance checks, Req 28.1/28.2).
+- The real-paste-into-Word confirmation (Req 23.5d/23.5f style) remains a MANUAL
+  check recorded in the TCR, since it cannot be driven headlessly.

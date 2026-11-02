@@ -292,6 +292,74 @@ door; no second dispatcher, no new navigation stack.
         stays redacted. Validated by cf_html_pre_forces_monospace_font /
         cf_html_offsets_round_trip_after_monospace_style. (Req 23.5f)
 
+## Phase 2F -- each clipboard text flavor carries BOTH box layout AND property/value tables (Req 28, CR-CH-079)
+
+TDD per testing.md: write the failing test first, then the minimum change. Scope
+the SCOPED trio (`cargo check/clippy/fmt -p ff-screen-model` and `-p ff-desktop`)
+per gate-policy.md; the full suite + the manual Word/Notepad paste are the owner's
+run.
+
+NOTE on numbering: Phase 2F tasks are prefixed `2F.` to avoid visual collision
+with SCRM Requirement numbers 24-28 (which exist as separate requirements).
+
+- [ ] 2F.1 Plain-text flavor carries box layout AND Markdown tables (Req 28.1, 28.4, 28.6, 28.7, 28.8)
+  - [ ] 2F.1.1 Failing test (ff-screen-model): `render_markdown` on a model WITH
+        `markdown_sections` contains BOTH a Unicode box glyph (U+250C family) AND
+        a `| Property | Value |` table header, with the box block BEFORE the first
+        table (assert by index). (Req 28.1, 28.4)
+  - [ ] 2F.1.2 Change `render/markdown.rs::render_markdown` so a present
+        `markdown_sections` no longer early-returns tables-only: emit the fenced
+        Unicode box-drawn body FIRST, then the `markdown_sections` tables. Keep the
+        no-`markdown_sections` path (fenced body + fields table + table elements)
+        unchanged. (Req 28.1, 28.4, 28.6, 28.7)
+  - [ ] 2F.1.3 Regression test: a model with NO `markdown_sections` and no tabular
+        content still renders box-only (Req 28.7); a model with only tables still
+        renders box + tables. (Req 28.7, 28.8)
+
+- [ ] 2F.2 HTML-table emitter for the composite rich flavor (Req 28.2, 28.6, 28.7)
+  - [ ] 2F.2.1 Failing test (ff-screen-model): a new HTML-table emitter renders
+        `markdown_sections` (and `tables`) as `<table>`/`<tr>`/`<td>` with the
+        per-group heading as a caption/heading row and a `Property`/`Value` header
+        row. (Req 28.2, 28.6)
+  - [ ] 2F.2.2 Add the emitter in `render/html.rs` (a focused helper that renders
+        the tabular content only, NOT the whole model, to avoid duplicating the
+        box/chrome). (Req 28.2, 28.6, 28.7)
+
+- [ ] 2F.3 Composite CF_HTML carries image + box layout + HTML tables (Req 28.2, 28.4, 28.5)
+  - [ ] 2F.3.1 Failing test (ff-desktop): `clipboard_html::build_cf_html` output for
+        a Config fixture contains, in order, the base64 `<img>`, the monospace box
+        `<span>` paragraphs, AND `<table>` markup; and the four CF_HTML offsets
+        (StartHTML/EndHTML/StartFragment/EndFragment) still round-trip with the
+        tables present. (Req 28.2, 28.4, 28.5)
+  - [ ] 2F.3.2 Extend `build_cf_html` with a `tables_html` parameter appended inside
+        the fragment after the box paragraphs and before `<!--EndFragment-->`;
+        keep the per-line monospace `<span>` treatment (Req 23.5f) intact; let the
+        existing two-pass offset math recompute. Update the single caller
+        (`place_snapshot_composite`) to pass the emitter output. (Req 28.2, 28.4,
+        28.5)
+  - [ ] 2F.3.3 Regression test: `build_cf_html` with NO tables (box-only model) is
+        byte-identical to the pre-change output (the box-only path is unaffected).
+        (Req 28.3, 28.7)
+
+- [ ] 2F.4 End-to-end flavor assertions over a Config snapshot fixture (Req 28.1, 28.2, 28.3)
+  - [ ] 2F.4.1 Failing test (ff-desktop): over a Config `ScreenModel` fixture, the
+        `CF_UNICODETEXT` flavor string contains BOTH the box block AND the Markdown
+        `| Property | Value |` tables. (Req 28.1)
+  - [ ] 2F.4.2 Failing test (ff-desktop): over the same fixture, the `CF_HTML` flavor
+        contains BOTH the box `<span>` block AND HTML `<table>` tables, plus the
+        base64 image. (Req 28.2)
+  - [ ] 2F.4.3 Assert the PNG/DIB picture flavor is unchanged by this change
+        (picture bytes/placement identical to before). (Req 28.3)
+  - [ ] 2F.4.4 MANUAL (record in TCR): paste into Word shows image + box + tables;
+        paste into Notepad shows box + tables. Cannot be driven headlessly. (Req
+        28.1, 28.2)
+
+- [ ] 2F.5 Reconcile single-format consumers (Req 28.8)
+  - [ ] 2F.5.1 Confirm `SNAPSHOT MARKDOWN` / `SNAPSHOT HTML` / `SNAPSHOT TEXT` and
+        the file/PDF export paths still produce their documented output after the
+        shared-renderer change; adjust or add tests where the Markdown single-file
+        output now also carries the box body. (Req 28.8)
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification
