@@ -53,9 +53,11 @@ fn override_row(surface: &str, canonical: &str, env: AliasEnvironment) -> UserAl
 }
 
 /// Run a `Command ===>` SAVE (the redesign's save path): apply pending line
-/// commands then validate + write (Req 5.14, 5.22).
+/// commands then validate + write (Req 5.16, 5.22). CR-CH-077 single-chrome: the
+/// shell's command field routes the typed verb into the Alias
+/// command-environment handler, so the test drives that handler directly.
 fn save(shell: &mut WorkbenchShell) {
-    shell.apply_alias_editor_action(AliasEditorAction::CommandLine("SAVE".to_string()));
+    shell.apply_alias_command_line("SAVE");
 }
 
 // Validates: command-configurator Requirement 5.2 -- the ALIASES verb opens the
@@ -452,7 +454,8 @@ fn manual_sort_matches_auto_sort_on_save_order() {
         row("MID", "BROWSE", AliasEnvironment::Ffcmd, ""),
     ];
     // A bare SORT orders by the first sortable column (Alias = surface).
-    shell.apply_alias_editor_action(AliasEditorAction::CommandLine("SORT".to_string()));
+    // CR-CH-077 single-chrome: routed through the Alias command-environment handler.
+    shell.apply_alias_command_line("SORT");
     let surfaces: Vec<String> = shell
         .alias_editor_panel
         .rows

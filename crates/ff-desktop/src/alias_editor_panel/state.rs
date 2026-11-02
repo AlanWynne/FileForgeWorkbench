@@ -43,12 +43,15 @@ pub enum AliasEditorAction {
     #[default]
     None,
     /// Apply the pending Act line commands (I / R / D) as a deterministic batch
-    /// (Req 5.16). Emitted on a bare `Command ===>` Enter with no verb.
+    /// (Req 5.16). Emitted on an in-Act-cell Enter.
+    ///
+    /// CR-CH-077 single-chrome: a typed `Command ===>` VERB no longer arrives as
+    /// an action -- the shell's app-level command field is the one command line
+    /// and the shell routes it straight into `apply_alias_command_line` (the
+    /// Alias command-environment handler), so there is no `CommandLine` action
+    /// variant here. The render still reports `ApplyLineCommands` for the
+    /// in-cell Enter (Req 5.16, 5.22).
     ApplyLineCommands,
-    /// A `Command ===>` primary command was entered (carries the typed text).
-    /// The shell applies pending line commands FIRST, then interprets the verb
-    /// (Req 5.14, 5.22).
-    CommandLine(String),
 }
 
 /// Per-Context UI state for the Alias Editor. Lives on the shell (like

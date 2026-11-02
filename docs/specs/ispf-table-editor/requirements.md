@@ -407,19 +407,35 @@ chrome mechanism.
 
 #### Acceptance Criteria
 
-1. THE shared Table_Editor SHALL own exactly ONE `Command ===>` line and ONE
-   column HEADER row for the Context. A host editor's Workspace Context SHALL NOT
-   draw its OWN additional title line or `Command ===>` line on top of the
-   component's; the live panel SHALL show a SINGLE Title line (the Context / Kind
-   descriptive title), a SINGLE `Command ===>` line, a single header row, and the
-   data rows, matching the owner's EXPECTATION sketch (concerns.md).
+1. THE single Title line and the single `Command ===>` line SHALL be the SHELL's
+   APP-LEVEL chrome (the shell Title_Line + the shell command field): per the
+   owner-confirmed option-A (shell-level) design, these are the ONE Title and the
+   ONE `Command ===>` line for the Context. A table-editor Context (the Alias
+   Context first) SHALL NOT draw its OWN duplicate Title line or `Command ===>`
+   line on top of the shell's; neither the host Context nor the shared
+   Table_Editor surface SHALL render a second Title or a second command line. The
+   live panel SHALL therefore show a SINGLE Title line (the Context / Kind
+   descriptive title), a SINGLE `Command ===>` line (the shell command field), a
+   single column HEADER row, and the data rows, matching the owner's EXPECTATION
+   sketch (concerns.md). (NOTE 2026-11-01: this criterion was reconciled IN PLACE
+   from its original wording -- which had the COMPONENT own the `Command ===>`
+   line -- to the owner-confirmed option-A shell-level design implemented under
+   CR-CH-077; see Requirement 10.2 for the routing contract.)
 
-2. THE host Context SHALL NOT render a redundant second heading (e.g. a
-   "FileForge Workbench Alias Editor" body heading) or a second command line
-   below the component's; where such a duplicate is currently drawn by the host
-   arm, the fix SHALL REMOVE that duplicate draw rather than suppress the
-   component's chrome. The one descriptive Title line is the Context / Kind title
-   (CR-NR-090 / CR-CH-045); the `[XXX]` tab-header tag is separate and unchanged.
+2. WHEN a table-editor Context (the Alias Context first) is ACTIVE, THE shell
+   command field SHALL ROUTE the entered command line into that Context's
+   COMMAND-ENVIRONMENT handler: `run_command_line` SHALL first apply any pending
+   Act line commands, then interpret the Context command verbs (FILTER / RESET /
+   SORT), then FALL THROUGH to the single FFCMD front door for SAVE / END /
+   RETURN / REFRESH. THE host Context SHALL NOT render a redundant second heading
+   (e.g. a "FileForge Workbench Alias Editor" body heading) or a second command
+   line below the shell's; where such a duplicate is currently drawn by the host
+   arm, the fix SHALL REMOVE that duplicate draw rather than suppress the shell's
+   chrome. The one descriptive Title line is the Context / Kind title (CR-NR-090 /
+   CR-CH-045); the `[XXX]` tab-header tag is separate and unchanged. (NOTE
+   2026-11-01: reconciled IN PLACE from the original wording -- which had the
+   COMPONENT own the `Command ===>` line -- to the owner-confirmed option-A
+   shell-level routing implemented under CR-CH-077.)
 
 3. THE Context's `ScreenProvider` that builds the markdown / text snapshot SHALL
    render the SAME single-chrome layout the live panel shows: the snapshot SHALL

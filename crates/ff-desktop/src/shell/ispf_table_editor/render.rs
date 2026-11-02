@@ -1,14 +1,21 @@
 //! Shared ISPF Table Editor -- the generic egui RENDER surface (CR-CH-075,
 //! ispf-table-editor Requirement 4.6, 5, FEAT-002).
 //!
-//! [`render_ispf_table`] draws the common ISPF chrome ONCE for every table
-//! editor Context: the `Command ===>` primary command line (the entry control),
-//! a column header row from the host's [`super::state::ColumnSpec`] list, a
-//! FILTER row, the scrolling data rows (each with an Act cell plus the host's
-//! per-column cells in visual Tab order), and the always-present scratch row
-//! when the backing list is empty (Req 4.6). The egui-free apply pass
-//! ([`super::line_commands`]) + Sort ([`super::sort`]) stay the structural core;
-//! this surface only paints and collects the typed intent.
+//! [`render_ispf_table`] draws the common ISPF table body ONCE for every table
+//! editor Context: a column header row from the host's
+//! [`super::state::ColumnSpec`] list, a FILTER row, the scrolling data rows
+//! (each with an Act cell plus the host's per-column cells in visual Tab order),
+//! and the always-present scratch row when the backing list is empty (Req 4.6).
+//! The egui-free apply pass ([`super::line_commands`]) + Sort ([`super::sort`])
+//! stay the structural core; this surface only paints and collects the typed
+//! intent.
+//!
+//! CR-CH-077 single-chrome: the surface draws NEITHER a Title heading NOR its own
+//! `Command ===>` line. The shell's app-level Title_Line is the one title and
+//! the shell's app-level command field is the one `Command ===>` line, which the
+//! shell routes into the host's command-line handler for a table-editor Context
+//! (Req 10.1, 10.2). The Act-cell in-cell Enter remains the surface's own apply
+//! trigger (`RowCells::act_enter`).
 //!
 //! Cell painting is DELEGATED to the host via [`IspfTableRender`] (a SEPARATE,
 //! egui-aware trait) so the pure [`super::state::IspfTableHost`] contract stays
@@ -16,21 +23,41 @@
 //! `IspfTableRender` for the per-row and filter-row egui cells it owns (e.g. the
 //! Alias editor's cascading CE -> Root dropdowns).
 
+use super::arrow_nav::apply_arrow_walk;
 use super::state::{IspfTableHost, TableEditorState};
+
+/// What a host's per-row render reports back to the surface: whether Enter was
+/// pressed in that row's Act cell (the ISPF in-cell apply) and the row's
+/// focusable cell ids in VISUAL (Tab) order (Act first, then the host's columns).
+/// The surface assembles these into the field matrix the arrow walk navigates
+/// (CR-CH-078, Requirement 11.3). Returning the FRESH same-frame ids -- rather
+/// than guessing a combo id -- is the B056 lesson: a guessed id does not
+/// round-trip through egui focus.
+#[derive(Debug, Clone, Default)]
+pub struct RowCells {
+    /// `true` WHEN Enter was pressed with this row's Act field focused.
+    pub act_enter: bool,
+    /// The row's focusable cell ids, left-to-right in visual order.
+    pub cell_ids: Vec<egui::Id>,
+}
 
 /// The structural intent the render surface collected this frame (ispf-table
 /// -editor Requirement 4, 5). The host's shell applies it after the owned-panel
 /// swap, exactly like the Alias editor's existing `AliasEditorAction`.
+///
+/// CR-CH-077 single-chrome: the surface no longer owns a `Command ===>` line, so
+/// the only structural intent it still collects is the in-Act-cell Enter
+/// (`ApplyLineCommands`). A typed `Command ===>` VERB now arrives via the shell's
+/// app-level command field, which the shell routes into the host's command-line
+/// handler directly (see `run_command_line` -> `apply_alias_command_line`), not
+/// as a `TableAction` -- so there is no `CommandLine` variant here any more.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum TableAction {
     /// Nothing to apply this frame.
     #[default]
     None,
-    /// A bare `Command ===>` Enter: apply the pending Act line commands only.
+    /// An in-Act-cell Enter: apply the pending Act line commands only.
     ApplyLineCommands,
-    /// A `Command ===>` verb was entered (carries the typed text). The shell
-    /// applies pending line commands first, then interprets the verb.
-    CommandLine(String),
 }
 
 /// The egui-aware render contract a host implements ALONGSIDE
@@ -38,10 +65,6 @@ pub enum TableAction {
 /// generic surface cannot know (dropdowns, text fields, the host's stable ids);
 /// the chrome (command line, headers, scroll, scratch row) is the surface's.
 pub trait IspfTableRender: IspfTableHost {
-    /// The stable egui id of the `Command ===>` primary command field. Each host
-    /// keeps its existing id so focus tests are unaffected.
-    fn command_line_id(&self) -> egui::Id;
-
     /// Render the FILTER row's interactive cells (the host's filterable columns),
     /// returning the egui [`egui::Id`] of the FIRST focusable filter control so
     /// the surface can report it as the interior focus anchor. The row's leading
@@ -49,11 +72,13 @@ pub trait IspfTableRender: IspfTableHost {
     fn render_filter_cells(&mut self, ui: &mut egui::Ui) -> Option<egui::Id>;
 
     /// Render one data row's Act cell + per-column cells for the row at BACKING
-    /// index `backing`, binding edits directly to `row`. Returns `true` WHEN
-    /// Enter was pressed with that row's Act field focused, so the surface can
-    /// apply the pending line-command batch from the Act cell itself (the ISPF
-    /// in-cell Enter, command-configurator Req 7.6).
-    fn render_row_cells(&self, ui: &mut egui::Ui, backing: usize, row: &mut Self::Row) -> bool;
+    /// index `backing`, binding edits directly to `row`. Returns a [`RowCells`]
+    /// carrying whether Enter was pressed with that row's Act field focused (so
+    /// the surface can apply the pending line-command batch from the Act cell
+    /// itself -- the ISPF in-cell Enter, command-configurator Req 7.6) AND the
+    /// row's focusable cell ids in visual order, captured FRESH this frame, so
+    /// the surface can assemble the arrow-navigation field matrix (Req 11.3).
+    fn render_row_cells(&self, ui: &mut egui::Ui, backing: usize, row: &mut Self::Row) -> RowCells;
 }
 
 /// The reported interior focus anchors a host sets from the surface's result.
@@ -67,12 +92,13 @@ pub struct InteriorAnchors {
 }
 
 /// The non-core inputs the surface needs besides `host` / `state` / `rows` /
-/// `displayed`: the centred ISPF heading, the optional inline error, and the
-/// blank-row factory the empty-store scratch row is built from.
+/// `displayed`: the optional inline error and the blank-row factory the
+/// empty-store scratch row is built from.
+///
+/// CR-CH-077 single-chrome: there is NO `title` field -- the surface no longer
+/// draws a centred heading; the shell's app-level Title_Line is the one title.
 pub struct TableRenderParams<'a, F> {
-    /// The centred ISPF title line.
-    pub title: &'a str,
-    /// The optional inline error shown under the command line.
+    /// The optional inline error shown above the header.
     pub error: Option<&'a str>,
     /// A factory for a fresh blank row (the empty-store scratch row + its
     /// unchanged baseline).
@@ -105,36 +131,22 @@ where
     H::Row: PartialEq,
 {
     let TableRenderParams {
-        title,
         error,
         blank_scratch,
     } = params;
     let mut action = TableAction::None;
     let mut anchors = InteriorAnchors::default();
 
-    // --- Title (ISPF) ----------------------------------------------------
-    ui.vertical_centered(|ui| {
-        ui.label(egui::RichText::new(title).strong());
-    });
-
-    // --- Command ===> primary command line -------------------------------
-    let cmd_id = host.command_line_id();
-    ui.horizontal(|ui| {
-        ui.label("Command ===>");
-        let resp = ui.add(
-            egui::TextEdit::singleline(&mut state.command_line)
-                .id(cmd_id)
-                .desired_width(ui.available_width().max(200.0)),
-        );
-        if resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-            let text = std::mem::take(&mut state.command_line);
-            action = if text.trim().is_empty() {
-                TableAction::ApplyLineCommands
-            } else {
-                TableAction::CommandLine(text)
-            };
-        }
-    });
+    // CR-CH-077 single-chrome: the surface draws NEITHER a centred Title heading
+    // NOR its own `Command ===>` line. The shell's app-level Title_Line (the
+    // Context / Kind descriptive title) is the ONE title, and the shell's
+    // app-level command field is the ONE `Command ===>` line, which the shell
+    // routes into the host's command-line handler for a table-editor Context
+    // (see `run_command_line`). This REMOVES the former duplicate chrome the host
+    // drew on top of the shell's; it adds no new chrome mechanism and changes no
+    // dispatch / navigation / save seam (Requirement 10.1, 10.2, 10.4). The same
+    // single-chrome applies to every future host (Menu / Kinds) automatically.
+    let _ = state;
 
     if let Some(err) = error {
         ui.colored_label(egui::Color32::from_rgb(0xD2, 0x0F, 0x39), err);
@@ -161,6 +173,9 @@ where
     // in-cell apply): the pending line-command batch must run from there too, not
     // only from the `Command ===>` line (command-configurator Req 7.6).
     let rows_height = ui.available_height().max(64.0);
+    // The arrow-navigation field matrix (row-major, visual Tab order) assembled
+    // from the FRESH same-frame cell ids each row reports (Req 11.3).
+    let mut field_matrix: Vec<Vec<egui::Id>> = Vec::new();
     let act_enter = egui::ScrollArea::vertical()
         .id_salt("ispf_table_rows")
         .auto_shrink([false, false])
@@ -175,20 +190,35 @@ where
                 // scratch has been promoted into `rows`.
                 let mut scratch = blank_scratch();
                 let default = blank_scratch();
-                act_enter |= host.render_row_cells(ui, 0, &mut scratch);
+                let cells = host.render_row_cells(ui, 0, &mut scratch);
+                act_enter |= cells.act_enter;
+                field_matrix.push(cells.cell_ids);
                 if scratch != default {
                     rows.push(scratch);
                 }
             } else {
                 for &backing in displayed {
                     if let Some(row) = rows.get_mut(backing) {
-                        act_enter |= host.render_row_cells(ui, backing, row);
+                        let cells = host.render_row_cells(ui, backing, row);
+                        act_enter |= cells.act_enter;
+                        field_matrix.push(cells.cell_ids);
                     }
                 }
             }
             act_enter
         })
         .inner;
+
+    // --- Arrow-key field-matrix navigation (CR-CH-078, Req 11) -----------
+    // The component OWNS the arrow walk: CONSUME any arrow press BEFORE egui
+    // traverses (the render_menu_bar / render_chrome B056-B059 lesson) and move
+    // focus to the clamped adjacent cell. `apply_arrow_walk` SELF-GUARDS: it only
+    // acts (and only consumes the arrows) when a MATRIX cell holds focus, so when
+    // the shell's app-level command field holds focus the CR-NR-096 Up/Down
+    // history gesture is preserved (Req 11.5). The surface no longer owns a
+    // command line (CR-CH-077), so there is no in-surface id to exclude here.
+    let focused = ui.ctx().memory(|m| m.focused());
+    apply_arrow_walk(ui, &field_matrix, focused);
 
     // A command-line verb/Enter takes precedence (it already applies line
     // commands first); otherwise an Act-cell Enter applies the pending batch.

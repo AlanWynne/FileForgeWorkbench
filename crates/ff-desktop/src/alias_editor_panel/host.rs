@@ -5,10 +5,11 @@
 //!   - [`IspfTableHost`] (egui-free): the column model, the enabled line-command
 //!     set (I/D/C + SORT, Req 7.4), blank/clone rows for the apply pass, the Act
 //!     accessors, the display filter, and the per-column sort key.
-//!   - [`IspfTableRender`] (egui-aware): the stable command-line id, the FILTER
-//!     row's cascading CE -> Root cells, and the per-row Act / CE / Root / Alias /
-//!     Parameters / Description cells, preserving the exact egui ids the
-//!     full-shell focus tests depend on.
+//!   - [`IspfTableRender`] (egui-aware): the FILTER row's cascading CE -> Root
+//!     cells and the per-row Act / CE / Root / Alias / Parameters / Description
+//!     cells, preserving the exact egui ids the full-shell focus tests depend on.
+//!     CR-CH-077 single-chrome: the host no longer owns a `Command ===>` line --
+//!     the shell's app-level command field is the one command line.
 //!
 //! The shared sort key is `user_aliases::alias_sort_key` (uppercased surface asc,
 //! canonical tie-break) so a manual `SORT` and the auto-sort-on-save order
@@ -110,10 +111,6 @@ impl IspfTableHost for AliasEditorState {
 }
 
 impl IspfTableRender for AliasEditorState {
-    fn command_line_id(&self) -> egui::Id {
-        egui::Id::new("alias_editor_command_line")
-    }
-
     fn render_filter_cells(&mut self, ui: &mut egui::Ui) -> Option<egui::Id> {
         // Filter CE dropdown -- the FIRST interior control (Req 5.23 / 7.8). Its
         // id is captured FRESH each frame from the combo response.
@@ -159,7 +156,12 @@ impl IspfTableRender for AliasEditorState {
         Some(first)
     }
 
-    fn render_row_cells(&self, ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) -> bool {
+    fn render_row_cells(
+        &self,
+        ui: &mut egui::Ui,
+        backing: usize,
+        row: &mut AliasRowEdit,
+    ) -> crate::shell::ispf_table_editor::render::RowCells {
         render_data_row(ui, backing, row)
     }
 }

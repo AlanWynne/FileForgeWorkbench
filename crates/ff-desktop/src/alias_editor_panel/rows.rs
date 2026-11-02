@@ -44,14 +44,14 @@ pub(super) fn render_root_combo(
     salt: impl std::hash::Hash,
     env: AliasEnvironment,
     canonical: &mut String,
-) {
+) -> egui::Id {
     let roots = EnvironmentRegistry::root_commands(env.env_name());
     let shown = if canonical.is_empty() {
         "--".to_string()
     } else {
         canonical.clone()
     };
-    egui::ComboBox::from_id_salt(salt)
+    let combo = egui::ComboBox::from_id_salt(salt)
         .selected_text(shown)
         .width(96.0)
         .show_ui(ui, |ui| {
@@ -60,6 +60,7 @@ pub(super) fn render_root_combo(
                 ui.selectable_value(canonical, root.clone(), root);
             }
         });
+    combo.response.id
 }
 
 /// Re-validate a row's `canonical` against its (possibly just-changed) CE: if the
@@ -86,24 +87,33 @@ pub(super) fn revalidate_root_for_env(row: &mut AliasRowEdit) {
 /// Req 7.6; ispf-table-editor Req 4.6). The stable Act egui id is PRESERVED so
 /// the full-shell focus tests are unaffected.
 ///
-/// Validates: command-configurator Requirement 5.13, 5.18, 5.21, 6.2, 7.3, 7.6
-pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut AliasRowEdit) -> bool {
+/// Validates: command-configurator Requirement 5.13, 5.18, 5.21, 6.2, 7.3, 7.6;
+/// ispf-table-editor Requirement 11.3 (the fresh same-frame cell ids)
+pub(super) fn render_data_row(
+    ui: &mut egui::Ui,
+    backing: usize,
+    row: &mut AliasRowEdit,
+) -> crate::shell::ispf_table_editor::render::RowCells {
     ui.horizontal(|ui| {
         // Act: the ISPF line-command field (I / R / D). One focusable control.
+        let act_id = row_control_id("alias_act", backing);
         let act_resp = ui.add(
             egui::TextEdit::singleline(&mut row.act)
-                .id(row_control_id("alias_act", backing))
+                .id(act_id)
                 .desired_width(28.0)
                 .hint_text("_"),
         );
         let act_enter = act_resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-        // CE dropdown; on change, re-validate the root against the new env.
+        // CE dropdown; on change, re-validate the root against the new env. Its
+        // id is captured FRESH from the response (B056: a guessed combo id does
+        // not round-trip through focus).
         let ce_resp = render_ce_combo(ui, ("alias_ce", backing), &mut row.environment);
+        let ce_id = ce_resp.id;
         if ce_resp.changed() {
             revalidate_root_for_env(row);
         }
-        // Root dropdown sourced from root_commands(CE).
-        render_root_combo(
+        // Root dropdown sourced from root_commands(CE); fresh id from the combo.
+        let root_id = render_root_combo(
             ui,
             ("alias_root", backing),
             row.environment,
@@ -112,9 +122,10 @@ pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut Alias
         // CR-CH-072 (Req 6.2): the L18N (localisation-key) column is REMOVED --
         // the surface IS the authoritative localised text.
         // ALIAS (surface).
+        let surface_id = row_control_id("alias_surface", backing);
         let surface_resp = ui.add(
             egui::TextEdit::singleline(&mut row.surface)
-                .id(row_control_id("alias_surface", backing))
+                .id(surface_id)
                 .desired_width(120.0)
                 .hint_text("name"),
         );
@@ -125,20 +136,33 @@ pub(super) fn render_data_row(ui: &mut egui::Ui, backing: usize, row: &mut Alias
             }
         }
         // Parameters (command_template).
+        let template_id = row_control_id("alias_template", backing);
         ui.add(
             egui::TextEdit::singleline(&mut row.command_template)
-                .id(row_control_id("alias_template", backing))
+                .id(template_id)
                 .desired_width(260.0)
                 .hint_text("(&1)"),
         );
         // CR-CH-075 (Req 7.3): Description -- an optional human-readable note.
+        let description_id = row_control_id("alias_description", backing);
         ui.add(
             egui::TextEdit::singleline(&mut row.description)
-                .id(row_control_id("alias_description", backing))
+                .id(description_id)
                 .desired_width(180.0)
                 .hint_text("note"),
         );
-        act_enter
+        crate::shell::ispf_table_editor::render::RowCells {
+            act_enter,
+            // Visual (Tab) order: Act, CE, Root, Alias, Parameters, Description.
+            cell_ids: vec![
+                act_id,
+                ce_id,
+                root_id,
+                surface_id,
+                template_id,
+                description_id,
+            ],
+        }
     })
     .inner
 }

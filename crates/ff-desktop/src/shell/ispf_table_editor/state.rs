@@ -128,6 +128,13 @@ pub struct LineCommandSet {
     pub move_: bool,
     /// `SORT <column>` -- reorder the backing list by a sortable column.
     pub sort: bool,
+    /// Whether the DOUBLED block forms (`RR` / `DD` / `CC` / `MM`) are enabled
+    /// (ispf-table-editor Requirement 9.5, CR-CH-076). Blocks are OPT-IN per host:
+    /// a host that leaves this `false` continues to clear and ignore a doubled
+    /// marker with a non-blocking notice (Requirement 4.5). `MM` additionally
+    /// depends on `move_`, so a host with `blocks = true, move_ = false` (the
+    /// Alias set) enables RR / DD / CC but not MM (Requirement 7.12).
+    pub blocks: bool,
 }
 
 impl LineCommandSet {
@@ -142,6 +149,7 @@ impl LineCommandSet {
             copy: true,
             move_: false,
             sort: true,
+            blocks: true,
         }
     }
 
@@ -304,6 +312,34 @@ mod tests {
         assert!(set.repeat, "Repeat (R) is enabled for aliases");
         assert!(!set.move_, "Move is not enabled for aliases");
         assert!(set.sort, "Sort is enabled for aliases");
+    }
+
+    // Validates: ispf-table-editor Requirement 9.1, 9.5 -- the Alias set opts IN
+    // to block line commands (blocks == true) while keeping Move disabled (so MM
+    // stays off); a default/non-alias set does NOT enable blocks (blocks ==
+    // false), so a host must opt in explicitly.
+    #[test]
+    fn block_opt_in_flag_is_per_host() {
+        let alias = LineCommandSet::alias();
+        assert!(alias.blocks, "the Alias set opts in to block line commands");
+        assert!(
+            !alias.move_,
+            "Move stays disabled on the Alias set so MM is off"
+        );
+
+        let non_alias = LineCommandSet {
+            insert: true,
+            delete: true,
+            repeat: false,
+            copy: false,
+            move_: false,
+            sort: false,
+            blocks: false,
+        };
+        assert!(
+            !non_alias.blocks,
+            "a host that does not opt in has blocks == false"
+        );
     }
 
     // Validates: ispf-table-editor Requirement 3 -- FilterState sets, reads, and

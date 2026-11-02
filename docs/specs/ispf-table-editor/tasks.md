@@ -116,20 +116,34 @@ OWNER runs the full `cargo gate` (`.kiro/steering/gate-policy.md`). No file over
         e.g. Alias) that a matched `CC`/`CC` + `A` block copy applied on Enter
         restructures the rows as expected. (Validates Req 9.1, 9.3)
 
-- [ ] 10. Single-chrome layout -- CR-CH-077 (Req 10)
-  - [ ] 10.1 Write a FAILING full-shell egui_kittest / snapshot test asserting the
+- [x] 10. Single-chrome layout -- CR-CH-077 (Req 10)
+  - [x] 10.1 Write a FAILING full-shell egui_kittest / snapshot test asserting the
         live panel shows exactly ONE Title line and ONE `Command ===>` line (no
         duplicate host-drawn heading / command line). (Validates Req 10.1, 10.2)
-  - [ ] 10.2 Remove the duplicate title/command-line draw from the host Context
+    - Added `full_shell_alias_editor_is_single_chrome` (tests_focus.rs): asserts
+      exactly ONE "Command ===>" node, ZERO "FileForge Workbench Alias Editor"
+      heading, and ONE "Alias Editor" Title via the accessibility tree.
+  - [x] 10.2 Remove the duplicate title/command-line draw from the host Context
         render arm (Alias first; same fix pattern for Menu / Kinds) so only the
         shared component's chrome renders. (Req 10.1, 10.2)
-  - [ ] 10.3 Write a FAILING unit/snapshot test that the `ScreenProvider` output
+    - Owner decision: the SURVIVING title + command line are the shell's
+      app-level Title_Line + command field. The shared `render_ispf_table`
+      surface now draws NEITHER a centred title NOR a `Command ===>` line; the
+      shell's command field is routed into the Alias command-environment handler
+      (`run_command_line` -> `apply_alias_command_line`) when the Alias Context
+      is active. Same pattern applies to future Menu / Kinds hosts automatically.
+  - [x] 10.3 Write a FAILING unit/snapshot test that the `ScreenProvider` output
         INCLUDES the `Command ===>` line and the column header row in the same
-        order/columns as the live surface (today both are missing).
+        order/columns as the live surface.
         (Validates Req 10.3)
-  - [ ] 10.4 Extend the host `ScreenProvider` to emit the single-chrome layout
+    - Added `full_shell_alias_screen_model_carries_command_line_and_header`
+      (tests_screen_directive.rs).
+  - [x] 10.4 Extend the host `ScreenProvider` to emit the single-chrome layout
         (Title -> `Command ===>` -> header -> rows), reading the shared
         `ColumnSpec` order (Req 7.3), so live and snapshot AGREE. (Req 10.3, 10.4)
+    - Already satisfied by the existing provider: `alias_editor_screen_model`
+      sets `command_line` from the shell command text and pushes `alias_table()`
+      (headers in ALIAS_COLUMNS order). Test 10.3 is the regression guard.
 
 - [ ] 11. Full arrow-key focus navigation -- CR-CH-078 (Req 11)
   - [ ] 11.1 Write FAILING pure unit tests for the matrix-walk target computation:

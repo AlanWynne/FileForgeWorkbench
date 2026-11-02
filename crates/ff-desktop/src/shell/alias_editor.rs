@@ -133,16 +133,18 @@ impl WorkbenchShell {
     ///
     /// Per-field edits (surface / root / environment / template / act) are
     /// applied DIRECTLY by the render on the mutable working rows, so they do not
-    /// appear as actions here -- only the line-command batch and the primary
-    /// command do (Req 5.14, 5.16, 5.22).
+    /// appear as actions here. CR-CH-077 single-chrome: the only action the
+    /// render now reports is the in-Act-cell Enter (`ApplyLineCommands`); a typed
+    /// `Command ===>` verb arrives via the shell's app-level command field and is
+    /// routed straight to [`Self::apply_alias_command_line`] (the Alias
+    /// command-environment handler), not through this action (Req 5.16, 5.22).
     ///
-    /// Validates: command-configurator Requirement 5.14, 5.16, 5.22
+    /// Validates: command-configurator Requirement 5.16, 5.22
     pub(super) fn apply_alias_editor_action(&mut self, action: AliasEditorAction) {
         use AliasEditorAction as A;
         match action {
             A::None => {}
             A::ApplyLineCommands => self.apply_pending_line_commands(),
-            A::CommandLine(text) => self.apply_alias_command_line(&text),
         }
     }
 

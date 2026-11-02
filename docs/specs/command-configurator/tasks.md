@@ -195,6 +195,28 @@ focus, scope) has no such dependency and may be built first.
   - [x] 7.7.2 Update `docs/quality/TCR.md`: set the CR-NR-113 command-configurator Req 5.1-5.12 rows to their correct status as each test lands
     - Covers: Requirement 5 (all criteria)
 
+- [ ] 7.8 Shared ISPF Table Editor extensions on the Alias host (CR-CH-076/077/078, Req 7.11-7.13)
+  - The shared-component work is tracked in `docs/specs/ispf-table-editor/tasks.md`
+    (block commands = group 9, single-chrome = group 10, arrow nav = group 11).
+    These sub-rows record the Alias-host criteria they satisfy.
+  - [ ] 7.8.1 (Req 7.11, CR-CH-076) Alias opts in to the block Line_Command_Set
+        (`DD`/`CC`/`RR`); `MM` (move block) stays DISABLED on Alias -- everything
+        is sorted and saved on Alias + Command Environment, so Move has no place
+        here (owner, 2026-11-01). Tracked in ispf-table-editor group 9.
+  - [x] 7.8.2 (Req 7.12, CR-CH-077) Single-chrome: the Alias Context no longer
+        draws its own title/`Command ===>` line. DEVIATION FROM THE LITERAL
+        CRITERION: Req 7.12 / ispf-table Req 10.1 say the surviving command line
+        is "the shared component's"; the OWNER decided (2026-11-02) the surviving
+        Title + command line are the SHELL's app-level Title_Line + command field.
+        The shared `render_ispf_table` surface now draws NEITHER; the shell routes
+        its command field into the Alias command-environment handler
+        (`run_command_line` -> `apply_alias_command_line`) when the Alias Context
+        is active, which keeps the single front-door / save seam intact. The
+        snapshot already carries the `Command ===>` line + header (regression
+        guard added). Implemented/tested in ispf-table-editor group 10.
+  - [ ] 7.8.3 (Req 7.13, CR-CH-078) Arrow-key focus navigation inherited from the
+        shared component. Tracked in ispf-table-editor group 11.
+
 ## Task 8: Alias Editor ISPF redesign (CR-CH-068, Gate 2, Requirement 5.13-5.24)
 
 REDESIGN the Alias Editor UI/interaction into the ISPF-style editor (Command line
@@ -229,6 +251,12 @@ quick; the authoritative full suite/gate is the owner's manual run.
     - Validates: Requirement 5.14, 5.22
   - [x] 8.3.2 Implement the `AliasEditorAction::CommandLine(String)` variant, its render (the `Command ===>` field with stable id `alias_editor_command_line`, Enter -> action), and its `apply_alias_editor_action` arm ordering line-commands-before-primary-command (Req 5.22)
     - Validates: Requirement 5.14, 5.22
+    - SUPERSEDED by CR-CH-077 (single-chrome, Req 7.12): the surface's own
+      `alias_editor_command_line` field and the `AliasEditorAction::CommandLine`
+      variant are REMOVED; the shell's app-level command field is the one command
+      line and is routed into `apply_alias_command_line` directly. The
+      line-commands-before-primary-command ordering is unchanged (still in
+      `apply_alias_command_line`).
 
 - [x] 8.4 Cascading CE -> Root dropdowns (consume CR-CH-067)
   - [x] 8.4.1 Write failing unit tests: a row's Root options equal `EnvironmentRegistry::root_commands(row.environment.env_name())`; changing CE re-sources Root and clears/flags a now-invalid Root; a (CE, Root) pair chosen from the dropdowns satisfies `EnvironmentRegistry::contains_root(..)` (valid by construction, design 9.10.5)

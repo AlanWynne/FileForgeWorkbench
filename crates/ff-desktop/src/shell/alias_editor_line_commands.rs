@@ -147,7 +147,7 @@ fn parse_filter_ce(token: &str) -> Option<AliasEnvironment> {
 mod tests {
     use super::super::tests_common::make_shell;
     use super::*;
-    use crate::alias_editor_panel::{AliasEditorAction, AliasRowEdit};
+    use crate::alias_editor_panel::AliasRowEdit;
 
     fn data_row(surface: &str, canonical: &str, env: AliasEnvironment) -> AliasRowEdit {
         AliasRowEdit {
@@ -365,8 +365,9 @@ mod tests {
         let mut r = data_row("GG", "GSEARCH", AliasEnvironment::Ffcmd);
         r.act = "I".to_string();
         shell.alias_editor_panel.rows = vec![r];
-        // Route through the action entry point (as the render would).
-        shell.apply_alias_editor_action(AliasEditorAction::CommandLine("SAVE".to_string()));
+        // CR-CH-077 single-chrome: the shell's command field routes a typed
+        // `Command ===>` verb straight into the Alias command-environment handler.
+        shell.apply_alias_command_line("SAVE");
         // The I was applied (a blank row was inserted) BEFORE save; the blank row
         // has an empty surface, so the save FAILS validation and surfaces an error
         // -- proving line commands ran first (the pre-I single valid row would have

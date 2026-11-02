@@ -54,12 +54,12 @@ pub fn render(ui: &mut egui::Ui, state: &mut AliasEditorState) -> AliasEditorAct
     // never display positions -- the index hazard stays the host's concern).
     let displayed = displayed_indices(&state.rows, state.filter_ce, &state.filter_root);
 
-    // Move the transient command-line + rows out so the shared surface can borrow
-    // the host (`state`) mutably for cell rendering while owning the text.
-    let mut editor = TableEditorState {
-        command_line: std::mem::take(&mut state.command_line),
-        ..Default::default()
-    };
+    // Move the rows out so the shared surface can borrow the host (`state`)
+    // mutably for cell rendering. CR-CH-077 single-chrome: the surface no longer
+    // owns a `Command ===>` line, so the transient `TableEditorState` carries no
+    // command text -- the shell's app-level command field is the one command
+    // line and is routed into the Alias command-line handler by the shell.
+    let mut editor = TableEditorState::default();
     let mut rows = std::mem::take(&mut state.rows);
     let error = state.error.clone();
 
@@ -70,21 +70,21 @@ pub fn render(ui: &mut egui::Ui, state: &mut AliasEditorState) -> AliasEditorAct
         &mut rows,
         &displayed,
         TableRenderParams {
-            title: "FileForge Workbench Alias Editor",
             error: error.as_deref(),
             blank_scratch: super::state::AliasRowEdit::default,
         },
     );
 
     // Put the owned pieces back and record the reported focus anchors.
-    state.command_line = editor.command_line;
     state.rows = rows;
     state.first_interior_id = anchors.first;
     state.last_interior_id = anchors.last;
 
+    // CR-CH-077 single-chrome: the surface only reports the in-Act-cell Enter;
+    // a typed `Command ===>` verb arrives via the shell's command field, routed
+    // straight to `apply_alias_command_line`, never through this action.
     match table_action {
         TableAction::None => AliasEditorAction::None,
         TableAction::ApplyLineCommands => AliasEditorAction::ApplyLineCommands,
-        TableAction::CommandLine(text) => AliasEditorAction::CommandLine(text),
     }
 }

@@ -22,6 +22,7 @@
 use ff_line_commands::command::{classify, LineCommandCategory, LineCommandKind};
 use ff_line_commands::LineCommandParser;
 
+use super::block_apply::{resolve_blocks, BlockMarker};
 use super::state::{IspfTableHost, LineCommandSet};
 
 /// The non-blocking outcome of one apply pass (ispf-table-editor Requirement
@@ -34,7 +35,7 @@ pub struct ApplyResult {
 }
 
 impl ApplyResult {
-    fn push(&mut self, notice: impl Into<String>) {
+    pub(super) fn push(&mut self, notice: impl Into<String>) {
         self.notices.push(notice.into());
     }
 }
@@ -65,6 +66,7 @@ pub fn apply_line_commands<H: IspfTableHost>(host: &H, rows: &mut Vec<H::Row>) -
     // --- 1. Parse + classify every non-empty Act cell -----------------------
     let mut entries: Vec<Entry> = Vec::new();
     let mut targets: Vec<(usize, LineCommandKind)> = Vec::new();
+    let mut blocks: Vec<BlockMarker> = Vec::new();
     let mut clear: Vec<usize> = Vec::new();
     for (index, row) in rows.iter().enumerate() {
         let act = host.act_of(row).trim();
@@ -76,23 +78,38 @@ pub fn apply_line_commands<H: IspfTableHost>(host: &H, rows: &mut Vec<H::Row>) -
             clear.push(index);
             continue;
         };
-        if !command_enabled(&parsed.kind, &set) {
-            result.push(format!("ignored line command '{act}' (not enabled)"));
-            clear.push(index);
-            continue;
-        }
         match classify(&parsed.kind) {
-            LineCommandCategory::Target => targets.push((index, parsed.kind)),
-            LineCommandCategory::Immediate | LineCommandCategory::Source => entries.push(Entry {
-                index,
-                kind: parsed.kind,
-            }),
-            // Block markers are not enabled by any current host set; treat as
-            // unrecognised and clear (defensive -- command_enabled already
-            // rejects them for the alias set).
+            LineCommandCategory::Target => {
+                if set.copy || set.move_ {
+                    targets.push((index, parsed.kind));
+                } else {
+                    result.push(format!("ignored line command '{act}' (not enabled)"));
+                    clear.push(index);
+                }
+            }
+            // A doubled block marker (RR/DD/CC/MM). When the host opts in to
+            // blocks it is collected for the block pass; otherwise it is cleared
+            // and ignored with a non-blocking notice (Requirement 9.5, 4.5).
+            LineCommandCategory::Block if set.blocks && block_enabled(&parsed.kind) => {
+                blocks.push(BlockMarker {
+                    index,
+                    kind: parsed.kind,
+                });
+            }
             LineCommandCategory::Block => {
                 result.push(format!("ignored block line command '{act}' (not enabled)"));
                 clear.push(index);
+            }
+            LineCommandCategory::Immediate | LineCommandCategory::Source => {
+                if command_enabled(&parsed.kind, &set) {
+                    entries.push(Entry {
+                        index,
+                        kind: parsed.kind,
+                    });
+                } else {
+                    result.push(format!("ignored line command '{act}' (not enabled)"));
+                    clear.push(index);
+                }
             }
         }
     }
@@ -133,6 +150,21 @@ pub fn apply_line_commands<H: IspfTableHost>(host: &H, rows: &mut Vec<H::Row>) -
     if !unresolved_sources.is_empty() {
         result.push("copy/move source pending a target (A/B)".to_string());
     }
+
+    // --- 2b. Resolve DOUBLED block markers (RR/DD/CC/MM) --------------------
+    // Blocks are paired via the `ff-line-commands` engine; CC/MM consume the
+    // same A/B targets as a single C/M (so `consumed_targets` is shared). A
+    // malformed/overlapping block is retained with a non-blocking notice and
+    // does not abort the rest of the batch (Requirement 9.3, 9.4).
+    let block_plan = resolve_blocks::<H>(
+        rows,
+        &set,
+        &blocks,
+        &targets,
+        &mut consumed_targets,
+        &mut result,
+    );
+
     // A target with no source is a harmless no-op: clear it with a notice.
     for (t_index, _) in &targets {
         if !consumed_targets.contains(t_index) {
@@ -169,6 +201,27 @@ pub fn apply_line_commands<H: IspfTableHost>(host: &H, rows: &mut Vec<H::Row>) -
         if op.is_move {
             removed[op.source] = true;
         }
+    }
+
+    // Fold the resolved block plan into the same before/after/removed model. The
+    // clones are snapshotted NOW while the original indices are valid, exactly
+    // like the single-command copy/repeat path (Requirement 9.1, 9.3).
+    for insert in &block_plan.inserts {
+        for &src in &insert.rows {
+            let mut clone = host.clone_row(&rows[src]);
+            host.clear_act(&mut clone);
+            if insert.before {
+                before[insert.target].push(clone);
+            } else {
+                after[insert.target].push(clone);
+            }
+        }
+    }
+    for &i in &block_plan.removed {
+        removed[i] = true;
+    }
+    for &i in &block_plan.clear {
+        host.clear_act(&mut rows[i]);
     }
 
     for entry in entries
@@ -246,6 +299,22 @@ fn command_enabled(kind: &LineCommandKind, set: &LineCommandSet) -> bool {
     }
 }
 
+/// Whether a parsed BLOCK kind is one the table editor's block set permits. The
+/// enabled block set is EXACTLY RR / DD / CC / MM (ispf-table-editor Requirement
+/// 9.1); every other `*Block` marker (XX / TT / shift / ... ) is rejected even
+/// when a host opts in to blocks. `MM` is additionally gated on the host's
+/// `move_` flag inside the block pass (Requirement 7.12), so it is admitted here
+/// and dropped-with-notice there when Move is disabled.
+fn block_enabled(kind: &LineCommandKind) -> bool {
+    matches!(
+        kind,
+        LineCommandKind::DeleteBlock
+            | LineCommandKind::RepeatBlock
+            | LineCommandKind::CopyBlock
+            | LineCommandKind::MoveBlock
+    )
+}
+
 // === Tests ==================================================================
 
 #[cfg(test)]
@@ -269,9 +338,12 @@ mod tests {
         }
     }
 
-    /// A stub host enabling I / D / C / SORT (the Alias set) over StubRow.
+    /// A stub host enabling I / D / R / C / SORT (the Alias set) over StubRow.
+    /// `move_enabled` adds `M` / `MM` so the CC/MM block tests can exercise the
+    /// move-block path a move-enabled host (not Alias) would have.
     struct StubHost {
         columns: Vec<ColumnSpec>,
+        move_enabled: bool,
     }
 
     impl StubHost {
@@ -282,6 +354,16 @@ mod tests {
                     ColumnSpec::filterable("value", "Value", CompareMode::ContainsIgnoreCase)
                         .with_sortable(),
                 ],
+                move_enabled: false,
+            }
+        }
+
+        /// A blocks-enabled AND move-enabled host (blocks on, move_ on), used by
+        /// the CC/MM block tests.
+        fn with_move() -> Self {
+            Self {
+                move_enabled: true,
+                ..Self::new()
             }
         }
     }
@@ -292,7 +374,10 @@ mod tests {
             &self.columns
         }
         fn line_command_set(&self) -> LineCommandSet {
-            LineCommandSet::alias()
+            LineCommandSet {
+                move_: self.move_enabled,
+                ..LineCommandSet::alias()
+            }
         }
         fn blank_row(&self) -> StubRow {
             StubRow::default()
@@ -552,6 +637,324 @@ mod tests {
         let res = apply_line_commands(&host, &mut rows);
         assert_eq!(rows.len(), 2, "Move disabled -> no structural change");
         assert_eq!(rows[0].act, "", "the disabled M is cleared");
+        assert!(
+            res.notices.iter().any(|n| n.contains("not enabled")),
+            "a not-enabled notice is surfaced: {:?}",
+            res.notices
+        );
+    }
+
+    // === CR-CH-076 block line commands (RR/DD/CC/MM) ======================
+
+    fn values(rows: &[StubRow]) -> Vec<String> {
+        rows.iter().map(|x| x.value.clone()).collect()
+    }
+
+    // Validates: ispf-table-editor Requirement 9.1 -- a matched DD/DD pair
+    // deletes the WHOLE inclusive range (both endpoints and every row between).
+    #[test]
+    fn block_dd_deletes_inclusive_range() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "DD"), r("B", ""), r("C", "DD"), r("D", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert!(res.notices.is_empty(), "clean DD block: {:?}", res.notices);
+        assert_eq!(values(&rows), vec!["D".to_string()]);
+    }
+
+    // Validates: ispf-table-editor Requirement 9.1 -- a matched RR/RR pair
+    // duplicates EVERY row in the inclusive range, immediately after the block.
+    #[test]
+    fn block_rr_duplicates_inclusive_range() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "RR"), r("B", ""), r("C", "RR"), r("Z", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert!(res.notices.is_empty(), "clean RR block: {:?}", res.notices);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "B".to_string(),
+                "C".to_string(),
+                "A".to_string(),
+                "B".to_string(),
+                "C".to_string(),
+                "Z".to_string(),
+            ],
+            "the whole range is duplicated after the block"
+        );
+        assert!(rows[0].act.is_empty(), "the RR markers are cleared");
+        assert!(rows[2].act.is_empty());
+    }
+
+    // Validates: ispf-table-editor Requirement 9.3 -- a CC/CC block + an `A`
+    // target copies the whole block AFTER the target row.
+    #[test]
+    fn block_cc_copies_range_after_target() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "CC"), r("B", "CC"), r("T", "A"), r("Z", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert!(res.notices.is_empty(), "clean CC block: {:?}", res.notices);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "B".to_string(),
+                "T".to_string(),
+                "A".to_string(),
+                "B".to_string(),
+                "Z".to_string(),
+            ],
+            "the block is copied after the target"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.3 -- a CC/CC block + a `B`
+    // target copies the whole block BEFORE the target row.
+    #[test]
+    fn block_cc_copies_range_before_target() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "CC"), r("B", "CC"), r("T", "B")];
+        apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "B".to_string(),
+                "A".to_string(),
+                "B".to_string(),
+                "T".to_string(),
+            ],
+            "the block is copied before the target"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.3 -- an MM/MM block + an `A`
+    // target MOVES the whole block (removes the source range, re-inserts after
+    // the target) on a move-ENABLED host.
+    #[test]
+    fn block_mm_moves_range_after_target() {
+        let host = StubHost::with_move();
+        let mut rows = vec![r("A", "MM"), r("B", "MM"), r("T", "A"), r("Z", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert!(res.notices.is_empty(), "clean MM block: {:?}", res.notices);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "T".to_string(),
+                "A".to_string(),
+                "B".to_string(),
+                "Z".to_string(),
+            ],
+            "the block is moved after the target (source range removed)"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.1 -- the two markers may be
+    // typed in REVERSED order and still form the same inclusive range (the
+    // smaller and larger backing index normalise to start/end).
+    #[test]
+    fn block_dd_reversed_markers_same_range() {
+        let host = StubHost::new();
+        // The second-typed marker is on the earlier row; order must not matter.
+        let mut rows = vec![
+            r("A", ""),
+            r("B", "DD"),
+            r("C", ""),
+            r("D", "DD"),
+            r("E", ""),
+        ];
+        apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            values(&rows),
+            vec!["A".to_string(), "E".to_string()],
+            "rows B..=D are deleted regardless of marker typing order"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.4 -- a LONE DD marker makes NO
+    // structural change, retains the marker (act stays 'DD'), and surfaces a
+    // non-blocking notice, while a well-formed I in the SAME batch still applies.
+    #[test]
+    fn block_lone_dd_retained_notice_batch_continues() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "DD"), r("B", "I"), r("C", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "B".to_string(),
+                "".to_string(),
+                "C".to_string(),
+            ],
+            "the lone DD makes no change; the I still inserts after B"
+        );
+        assert_eq!(rows[0].act, "DD", "the lone DD marker is retained");
+        assert!(
+            res.notices.iter().any(|n| n.contains("not closed")),
+            "a non-blocking 'block not closed' notice is surfaced: {:?}",
+            res.notices
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.4 -- THREE DD markers are
+    // malformed (too many): no structural change, the markers are retained, and
+    // a non-blocking notice is surfaced.
+    #[test]
+    fn block_too_many_dd_markers_no_change() {
+        let host = StubHost::new();
+        let mut rows = vec![r("A", "DD"), r("B", "DD"), r("C", "DD"), r("D", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "B".to_string(),
+                "C".to_string(),
+                "D".to_string(),
+            ],
+            "too many markers -> no structural change"
+        );
+        assert_eq!(rows[0].act, "DD", "the markers are retained");
+        assert_eq!(rows[2].act, "DD");
+        assert!(
+            res.notices.iter().any(|n| n.contains("not closed")),
+            "a non-blocking notice is surfaced: {:?}",
+            res.notices
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.4 -- overlapping DD and RR
+    // ranges are rejected with a notice and NEITHER is applied.
+    #[test]
+    fn block_overlapping_dd_and_rr_rejected() {
+        let host = StubHost::new();
+        // DD spans rows 0..=2, RR spans rows 1..=3 -> overlap.
+        let mut rows = vec![
+            r("A", "DD"),
+            r("B", "RR"),
+            r("C", "DD"),
+            r("D", "RR"),
+            r("E", ""),
+        ];
+        let res = apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "B".to_string(),
+                "C".to_string(),
+                "D".to_string(),
+                "E".to_string(),
+            ],
+            "overlapping blocks -> neither applied"
+        );
+        assert!(
+            res.notices.iter().any(|n| n.contains("overlapping")),
+            "an overlap notice is surfaced: {:?}",
+            res.notices
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.2 -- the single `R` vs the
+    // doubled `RR` distinction is preserved: a single R repeats exactly ONE row
+    // while a matched RR/RR pair repeats the whole range, in the SAME batch.
+    #[test]
+    fn single_r_vs_block_rr_distinct() {
+        let host = StubHost::new();
+        // Row 0: single R (repeat one). Rows 2..=3: RR block (repeat range).
+        let mut rows = vec![r("A", "R"), r("B", ""), r("C", "RR"), r("D", "RR")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert!(
+            res.notices.is_empty(),
+            "clean mixed batch: {:?}",
+            res.notices
+        );
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "A".to_string(), // single R clone of A
+                "B".to_string(),
+                "C".to_string(),
+                "D".to_string(),
+                "C".to_string(), // RR range duplicated after the block
+                "D".to_string(),
+            ],
+            "single R repeats one row; RR/RR repeats the range"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 9.5 -- a host that does NOT opt in
+    // to blocks clears and ignores a doubled marker with a non-blocking notice
+    // (unchanged Requirement 4.5 behaviour).
+    #[test]
+    fn block_marker_ignored_when_host_opts_out() {
+        struct NoBlockHost {
+            columns: Vec<ColumnSpec>,
+        }
+        impl IspfTableHost for NoBlockHost {
+            type Row = StubRow;
+            fn columns(&self) -> &[ColumnSpec] {
+                &self.columns
+            }
+            fn line_command_set(&self) -> LineCommandSet {
+                LineCommandSet {
+                    blocks: false,
+                    ..LineCommandSet::alias()
+                }
+            }
+            fn blank_row(&self) -> StubRow {
+                StubRow::default()
+            }
+            fn clone_row(&self, row: &StubRow) -> StubRow {
+                row.clone()
+            }
+            fn act_of<'a>(&self, row: &'a StubRow) -> &'a str {
+                &row.act
+            }
+            fn clear_act(&self, row: &mut StubRow) {
+                row.act.clear();
+            }
+            fn filter_matches(&self, _row: &StubRow, _filter: &FilterState) -> bool {
+                true
+            }
+            fn sort_key(&self, row: &StubRow, _column: super::super::state::ColumnId) -> String {
+                row.value.to_uppercase()
+            }
+        }
+        let host = NoBlockHost {
+            columns: vec![ColumnSpec::display("act", "Act")],
+        };
+        let mut rows = vec![r("A", "DD"), r("B", "DD")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert_eq!(rows.len(), 2, "blocks off -> no structural change");
+        assert!(rows[0].act.is_empty(), "the doubled marker is cleared");
+        assert!(
+            res.notices.iter().any(|n| n.contains("not enabled")),
+            "a not-enabled notice is surfaced: {:?}",
+            res.notices
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 7.12 -- an MM block on a
+    // move-DISABLED host (the Alias set: blocks on, move_ off) is dropped with a
+    // not-enabled notice; its markers are retained and no row moves.
+    #[test]
+    fn block_mm_disabled_when_move_off() {
+        let host = StubHost::new(); // move_enabled = false (the Alias shape)
+        let mut rows = vec![r("A", "MM"), r("B", "MM"), r("T", "A"), r("Z", "")];
+        let res = apply_line_commands(&host, &mut rows);
+        assert_eq!(
+            values(&rows),
+            vec![
+                "A".to_string(),
+                "B".to_string(),
+                "T".to_string(),
+                "Z".to_string(),
+            ],
+            "MM disabled -> no structural change"
+        );
         assert!(
             res.notices.iter().any(|n| n.contains("not enabled")),
             "a not-enabled notice is surfaced: {:?}",

@@ -153,6 +153,74 @@ fn conformance_every_retrofitted_context_is_capturable() {
     }
 }
 
+// Validates: ispf-table-editor Requirement 10.3 (CR-CH-077) -- the Alias
+// ScreenProvider snapshot renders the SAME single-chrome layout the live panel
+// shows: the captured model carries the `Command ===>` line (from the shell's
+// command line, which is the single surviving command line after CR-CH-077) AND
+// a table whose header row is the Alias columns in order
+// [Act, CE, Command, Alias, Parameters, Description], so the snapshot shows
+// Title -> Command ===> -> header -> rows, AGREEING with the live panel.
+#[test]
+fn full_shell_alias_screen_model_carries_command_line_and_header() {
+    use crate::alias_editor_panel::AliasRowEdit;
+    use crate::shell::user_aliases::AliasEnvironment;
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let mut harness = harness_shell();
+    harness.state_mut().dir_overrides.user_aliases = Some(dir.path().join("aliases"));
+    harness.state_mut().dispatch_command_string("ALIASES");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor,
+        "ALIASES opens the Alias Editor Context"
+    );
+
+    // Seed one row and type a command line so the captured chrome is observable.
+    harness.state_mut().alias_editor_panel.rows = vec![AliasRowEdit {
+        surface: "SS".to_string(),
+        canonical: "SNAPSHOT".to_string(),
+        environment: AliasEnvironment::Ffcmd,
+        ..Default::default()
+    }];
+    harness.state_mut().command_text = "FILTER ffcmd".to_string();
+    harness.run();
+
+    let model = harness.state().alias_editor_screen_model();
+
+    // The snapshot carries the single `Command ===>` line (the shell command
+    // line text, CR-CH-077 single-chrome).
+    assert_eq!(
+        model.command_line, "FILTER ffcmd",
+        "the captured model must carry the Command ===> line text"
+    );
+
+    // The snapshot carries a table whose header is the Alias columns in order.
+    let table = model
+        .tables
+        .first()
+        .expect("the captured model must carry the Alias table");
+    assert_eq!(
+        table.headers,
+        vec![
+            "Act".to_string(),
+            "CE".to_string(),
+            "Command".to_string(),
+            "Alias".to_string(),
+            "Parameters".to_string(),
+            "Description".to_string(),
+        ],
+        "the captured table header must match the live ALIAS_COLUMNS order (Req 7.3)"
+    );
+    // The seeded row is present under the header.
+    assert!(
+        table.rows.iter().any(|r| r.contains(&"SS".to_string())),
+        "the seeded alias row must appear under the header"
+    );
+}
+
 // Validates: master-screen-directive Req 4.3, 4.4; screen-snapshot-scrm Req 2.3
 // -- the parked editor Context (FileEditor / Untitled) is the ONE remaining
 // DOCUMENTED opt-out and reports the not-capturable state THROUGH the seam.

@@ -508,17 +508,26 @@ live. Criteria 7.2 / 7.3 are therefore SETTLED on option (a); option (b)
 
 7.12. SINGLE-CHROME LAYOUT (CR-CH-077). THE Alias Context SHALL show exactly ONE
    Title line (the Context / Kind descriptive title) and ONE `Command ===>` line
-   -- the shared component's -- and SHALL NOT draw its OWN additional title /
-   heading or `Command ===>` line on top of the component's (ispf-table-editor
-   Requirement 10.1, 10.2). The previously duplicated body heading ("FileForge
-   Workbench Alias Editor") and the duplicated command line SHALL be REMOVED from
-   the Alias Context render arm. THE Alias Context's `ScreenProvider` snapshot
-   SHALL render the SAME single-chrome layout -- INCLUDING the `Command ===>` line
-   and the column header row (today both are missing from the Alias snapshot) --
-   in the 7.2 column order, so the live Alias panel and its captured snapshot
-   AGREE (ispf-table-editor Requirement 10.3). This changes NO dispatch,
-   navigation, descriptor, effect pattern, or save path (ispf-table-editor
-   Requirement 10.4).
+   -- the SHELL's APP-LEVEL chrome (the shell Title_Line + the shell command
+   field), per the owner-confirmed option-A (shell-level) design -- and the Alias
+   Context SHALL NOT draw its OWN duplicate title / heading or `Command ===>` line
+   on top of the shell's (ispf-table-editor Requirement 10.1, 10.2). WHEN the
+   Alias Context is ACTIVE THE shell command field SHALL ROUTE the entered command
+   line into the Alias command-environment handler: `run_command_line` applies any
+   pending Act line commands, then interprets FILTER / RESET / SORT, then FALLS
+   THROUGH to the single FFCMD front door for SAVE / END / RETURN / REFRESH
+   (ispf-table-editor Requirement 10.2). The previously duplicated body heading
+   ("FileForge Workbench Alias Editor") and the duplicated command line SHALL be
+   REMOVED from the Alias Context render arm. THE Alias Context's `ScreenProvider`
+   snapshot SHALL render the SAME single-chrome layout -- INCLUDING the single
+   Title line, the `Command ===>` line, and the column header row (today the
+   command line and header are missing from the Alias snapshot) -- in the 7.2
+   column order, so the live Alias panel and its captured snapshot AGREE
+   (ispf-table-editor Requirement 10.3). This changes NO dispatch, navigation,
+   descriptor, effect pattern, or save path (ispf-table-editor Requirement 10.4).
+   (NOTE 2026-11-01: this criterion was reconciled IN PLACE from its original
+   wording -- which had the shared COMPONENT own the one `Command ===>` line -- to
+   the owner-confirmed option-A shell-level design implemented under CR-CH-077.)
 
 7.13. ARROW-KEY FOCUS NAVIGATION (CR-CH-078). THE Alias_Editor SHALL inherit the
    shared component's full arrow-key focus navigation (ispf-table-editor

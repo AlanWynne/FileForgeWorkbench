@@ -1195,6 +1195,61 @@ fn full_shell_alias_editor_first_tab_focuses_first_interior() {
     );
 }
 
+// Validates: ispf-table-editor Requirement 10.1, 10.2 (CR-CH-077) -- the live
+// Alias panel is SINGLE-CHROME: it shows exactly ONE "Command ===>" line (the
+// shell's app-level command field, which is the single surviving command line
+// per the owner's decision) and NOT the shared surface's redundant centred
+// "FileForge Workbench Alias Editor" heading on top of the shell's Kind
+// Title_Line. The shell's descriptive Title_Line ("Alias Editor") remains the
+// one title. Queried via the accessibility tree (get_all_by_label), the same
+// seam the Save-button and config-tree full-shell tests use.
+#[test]
+fn full_shell_alias_editor_is_single_chrome() {
+    use crate::tab_state::KindTag;
+    use egui_kittest::kittest::Queryable;
+
+    let mut harness = harness_shell();
+    harness.state_mut().dispatch_command_string("ALIASES");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor,
+        "ALIASES opens the Alias Editor Context"
+    );
+    harness.run();
+
+    // Exactly ONE "Command ===>" line (the shell's app-level command field). The
+    // shared surface must NOT draw a second one on top of it (Req 10.1, 10.2).
+    // `query_all_by_label` returns an iterator (empty allowed), unlike
+    // `get_all_by_label` which panics when nothing matches.
+    let command_lines = harness.query_all_by_label("Command ===>").count();
+    assert_eq!(
+        command_lines, 1,
+        "the live Alias panel must show exactly ONE 'Command ===>' line \
+         (single-chrome, CR-CH-077); found {command_lines}"
+    );
+
+    // The shared surface's redundant centred heading must be gone (Req 10.2):
+    // the one descriptive title is the shell Title_Line ("Alias Editor"), not a
+    // body heading.
+    let redundant = harness
+        .query_all_by_label("FileForge Workbench Alias Editor")
+        .count();
+    assert_eq!(
+        redundant, 0,
+        "the redundant surface title 'FileForge Workbench Alias Editor' must \
+         be removed (single-chrome, CR-CH-077); found {redundant}"
+    );
+    // The single descriptive Title line remains (the shell's Kind Title_Line).
+    let titles = harness.query_all_by_label("Alias Editor").count();
+    assert_eq!(
+        titles, 1,
+        "the one descriptive Title line ('Alias Editor') must remain; found {titles}"
+    );
+}
+
 // Validates: command-configurator Req 5.17 (CR-CH-068) -- the empty-store
 // I-insert regression (the test the add-row-bug findings identified as missing).
 // With an EMPTY user store, the editor still renders an always-present insertable
@@ -1231,11 +1286,10 @@ fn full_shell_alias_editor_empty_store_i_insert_shows_editable_row() {
         .events
         .push(egui::Event::Text("I".to_string()));
     harness.run();
-    // Enter on the Command line applies the pending line commands.
-    let cmd_id = egui::Id::new("alias_editor_command_line");
-    harness.ctx.memory_mut(|m| m.request_focus(cmd_id));
-    harness.run();
-    harness.key_press(egui::Key::Enter);
+    // CR-CH-077 single-chrome: the one command line is the shell's app-level
+    // command field. A bare Enter (empty line) on it applies the pending Act
+    // line commands through the Alias command-environment routing.
+    harness.state_mut().run_command_line("");
     harness.run();
     harness.run();
     // A visible editable data row now exists (the scratch I was promoted + the
@@ -1366,6 +1420,144 @@ fn full_shell_alias_editor_enter_in_act_cell_applies_line_command() {
         assert_eq!(rows.len(), 1, "Enter in the Act cell deleted the row");
         assert_eq!(rows[0].surface, "BTWO");
     }
+}
+
+// Validates: ispf-table-editor Requirement 11.1, 11.2, 11.3 (CR-CH-078) -- the
+// shared component's full arrow-key field-matrix navigation, end to end through
+// the live Alias host. With two seeded rows: ArrowDown from row 0's Act cell
+// focuses row 1's Act cell (same column, row below); ArrowDown again on the last
+// row leaves focus unchanged (clamp, no wrap); ArrowRight from row 0's Act cell
+// moves to the next column (the CE combo) in the same row. Each arrow is consumed
+// before egui traverses, so there is no stray Tab-style traversal.
+#[test]
+fn full_shell_alias_editor_arrow_down_and_right_walk_the_matrix() {
+    use crate::alias_editor_panel::AliasRowEdit;
+    use crate::shell::user_aliases::AliasEnvironment;
+    use crate::tab_state::KindTag;
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let mut harness = harness_shell();
+    harness.state_mut().dir_overrides.user_aliases = Some(dir.path().join("aliases"));
+    harness.state_mut().dispatch_command_string("ALIASES");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor
+    );
+
+    // Seed two rows so there is a row above/below to walk between.
+    let seed = |surface: &str, canonical: &str| AliasRowEdit {
+        surface: surface.to_string(),
+        canonical: canonical.to_string(),
+        environment: AliasEnvironment::Ffcmd,
+        ..Default::default()
+    };
+    harness.state_mut().alias_editor_panel.rows = vec![seed("AONE", "EDIT"), seed("BTWO", "VIEW")];
+    harness.run();
+
+    let act0 = egui::Id::new(("alias_act", 0usize));
+    let act1 = egui::Id::new(("alias_act", 1usize));
+
+    // ArrowDown from row 0's Act cell -> row 1's Act cell (same column, below).
+    harness.ctx.memory_mut(|m| m.request_focus(act0));
+    harness.run();
+    harness.key_press(egui::Key::ArrowDown);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(act1),
+        "ArrowDown from row 0 Act must focus row 1 Act (same column, row below)"
+    );
+
+    // ArrowDown again on the LAST row -> focus unchanged (clamp, no wrap).
+    harness.key_press(egui::Key::ArrowDown);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(act1),
+        "ArrowDown on the last row leaves focus unchanged (clamp)"
+    );
+
+    // ArrowRight from row 0's Act cell -> the next column (CE combo) in row 0.
+    harness.ctx.memory_mut(|m| m.request_focus(act0));
+    harness.run();
+    harness.key_press(egui::Key::ArrowRight);
+    harness.run();
+    let after_right = harness.ctx.memory(|m| m.focused());
+    assert_ne!(
+        after_right,
+        Some(act0),
+        "ArrowRight must move focus off the Act cell to the next column in the row"
+    );
+    assert!(
+        after_right.is_some() && after_right != Some(act1),
+        "ArrowRight stays in row 0 (not row 1) and lands on a real control; got {after_right:?}"
+    );
+}
+
+// Validates: ispf-table-editor Requirement 9.1, 9.3 (CR-CH-076) -- a CC/CC block
+// copy applies end to end through the Alias host: with three seeded rows, `CC`
+// on rows 0 and 1 marks the inclusive block and `A` on row 2 targets after it.
+// A `Command ===>` Enter applies the pending batch (the ISPF primary-command
+// cycle), and the two-row block is copied AFTER row 2. This proves the shared
+// block path (blocks opt-in on the Alias set) is reachable from the live host.
+#[test]
+fn full_shell_alias_editor_cc_block_copies_after_target() {
+    use crate::alias_editor_panel::AliasRowEdit;
+    use crate::shell::user_aliases::AliasEnvironment;
+    use crate::tab_state::KindTag;
+
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let mut harness = harness_shell();
+    harness.state_mut().dir_overrides.user_aliases = Some(dir.path().join("aliases"));
+    harness.state_mut().dispatch_command_string("ALIASES");
+    for _ in 0..4 {
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor
+    );
+
+    // Seed three rows and mark a CC/CC block (rows 0..=1) copied after row 2 (A).
+    let seed = |surface: &str, canonical: &str, act: &str| AliasRowEdit {
+        surface: surface.to_string(),
+        canonical: canonical.to_string(),
+        environment: AliasEnvironment::Ffcmd,
+        act: act.to_string(),
+        ..Default::default()
+    };
+    harness.state_mut().alias_editor_panel.rows = vec![
+        seed("AONE", "EDIT", "CC"),
+        seed("BTWO", "VIEW", "CC"),
+        seed("CTHREE", "BROWSE", "A"),
+    ];
+    harness.run();
+
+    // CR-CH-077 single-chrome: apply via a bare Enter on the shell's app-level
+    // command line (the one command line), routed into the Alias command
+    // environment, which applies the pending batch.
+    harness.state_mut().run_command_line("");
+    harness.run();
+    harness.run();
+
+    let rows = &harness.state().alias_editor_panel.rows;
+    let surfaces: Vec<_> = rows.iter().map(|r| r.surface.clone()).collect();
+    assert_eq!(
+        surfaces,
+        vec![
+            "AONE".to_string(),
+            "BTWO".to_string(),
+            "CTHREE".to_string(),
+            "AONE".to_string(),
+            "BTWO".to_string(),
+        ],
+        "the two-row CC block is copied after the A target (row 2)"
+    );
+    // Every consumed Act cell is cleared.
+    assert!(rows.iter().all(|r| r.act.is_empty()), "Act cells cleared");
 }
 
 // === B057: Theme Editor Tab lands on the selector combo (no phantom stop) ====

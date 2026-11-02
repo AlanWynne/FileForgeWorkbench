@@ -28,7 +28,25 @@ impl WorkbenchShell {
     pub(super) fn run_command_line(&mut self, cmd: &str) {
         let original = cmd.trim().to_string();
         self.begin_command_line();
-        self.dispatch_command_string(&original);
+        // CR-CH-077 single-chrome: the shared ISPF Table_Editor no longer draws
+        // its own `Command ===>` line, so the shell's app-level command field IS
+        // the one command line for a table-editor Context. When the Alias Editor
+        // is the active Context, route the typed line through its command-line
+        // handler (apply pending Act line commands FIRST, then FILTER / RESET /
+        // SORT panel-locally, falling through to the SINGLE FFCMD front door for
+        // SAVE / END / RETURN / REFRESH). This replaces the former surface
+        // command line as the ENTRY widget WITHOUT adding a new dispatch path:
+        // non-panel verbs still reach `dispatch_command_string` via the handler's
+        // fall-through. The same routing applies to future table-editor hosts
+        // (Menu / Kinds) once they consume the shared surface.
+        if matches!(
+            self.tabs.active_tab().kind.tag(),
+            crate::tab_state::KindTag::AliasEditor
+        ) {
+            self.apply_alias_command_line(&original);
+        } else {
+            self.dispatch_command_string(&original);
+        }
         self.finish_command_line(&original);
     }
 

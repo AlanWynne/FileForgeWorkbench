@@ -11,16 +11,21 @@
 //! navigation stack, save path, or on-disk format -- it operates purely on the
 //! host's in-memory working-copy row list.
 
+pub(crate) mod arrow_nav;
+pub(crate) mod block_apply;
 pub(crate) mod line_commands;
 pub(crate) mod render;
 pub(crate) mod sort;
 pub(crate) mod state;
 
 #[allow(unused_imports)]
+pub(crate) use arrow_nav::{apply_arrow_walk, arrow_target, ArrowDir};
+
+#[allow(unused_imports)]
 pub(crate) use line_commands::{apply_line_commands, ApplyResult};
 #[allow(unused_imports)]
 pub(crate) use render::{
-    render_ispf_table, InteriorAnchors, IspfTableRender, TableAction, TableRenderParams,
+    render_ispf_table, InteriorAnchors, IspfTableRender, RowCells, TableAction, TableRenderParams,
 };
 #[allow(unused_imports)]
 pub(crate) use sort::{apply_sort, parse_sort_command, SortResult};
