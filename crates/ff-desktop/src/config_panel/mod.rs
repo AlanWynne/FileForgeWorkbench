@@ -23,6 +23,9 @@ pub use tree::{
 mod commit;
 mod keyboard;
 mod layout;
+pub use layout::{
+    aligned_left_segment, child_left_label, global_key_column_width, group_left_label,
+};
 mod render;
 mod rows;
 mod widgets;

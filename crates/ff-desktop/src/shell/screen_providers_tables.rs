@@ -15,18 +15,7 @@ use ff_screen_model::Table;
 use ff_theme::ThemePalette;
 
 use super::WorkbenchShell;
-use crate::config_panel::{visible_rows, ConfigNodeId, TreeEntry};
 use crate::theme_editor_panel::EditableToken;
-
-/// The namespace display name helper mirrored from the Config provider so group
-/// rows show the same label the panel does.
-fn ns_display_name(ns: &str) -> String {
-    let mut s = ns.to_string();
-    if let Some(c) = s.get_mut(0..1) {
-        c.make_ascii_uppercase();
-    }
-    s
-}
 
 impl WorkbenchShell {
     /// Theme table: one row per editable token `[Setting, Value]`, the Value
@@ -179,60 +168,6 @@ impl WorkbenchShell {
                 "Title".to_string(),
                 "Menu bar".to_string(),
                 "Key list".to_string(),
-            ],
-            rows,
-        }
-    }
-
-    /// Config table: the REAL visible settings-tree rows `[Setting, Value,
-    /// State]`, respecting the current filter and expand/collapse state (A3). A
-    /// namespace group row carries its display name and an expanded/collapsed
-    /// State; a key row carries its current effective value (staged edit marked
-    /// unsaved) and an empty State. Built from the panel's live state + the
-    /// config handle, never from egui (Req 2.2).
-    pub(super) fn config_table(&self) -> Table {
-        let p = &self.config_panel;
-        let schema_entries = self.config_handle.list_schema_entries();
-        let tree_entries: Vec<TreeEntry> = schema_entries
-            .iter()
-            .map(|e| TreeEntry {
-                key: e.key.clone(),
-                description: e.description.clone(),
-            })
-            .collect();
-        let visible = visible_rows(&tree_entries, &p.filter, &p.collapsed);
-        let rows = visible
-            .iter()
-            .map(|row| match &row.id {
-                ConfigNodeId::Namespace(ns) => {
-                    let state = if row.expanded {
-                        "expanded"
-                    } else {
-                        "collapsed"
-                    };
-                    vec![
-                        format!("[{}]", ns_display_name(ns)),
-                        String::new(),
-                        state.to_string(),
-                    ]
-                }
-                ConfigNodeId::Key(key) => {
-                    let value = self.config_key_display_value(key);
-                    let value = if p.working.contains_key(key) {
-                        format!("{value} (unsaved)")
-                    } else {
-                        value
-                    };
-                    vec![key.clone(), value, String::new()]
-                }
-            })
-            .collect();
-        Table {
-            caption: Some("Settings".to_string()),
-            headers: vec![
-                "Setting".to_string(),
-                "Value".to_string(),
-                "State".to_string(),
             ],
             rows,
         }

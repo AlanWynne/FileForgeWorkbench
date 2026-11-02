@@ -241,11 +241,16 @@ fn kinds_screen_model_populates_table_with_real_kind_rows() {
 }
 
 // Validates: screen-snapshot-scrm Req 27.8 / master-screen-directive Req 4.4a
-// (A2/A3) -- the Config provider populates a table of the real visible settings
-// rows ([Setting, Value, State]) alongside the retained summary fields, so the
-// capture renders as a proper table.
+// (Config Bug 3) -- the Config capture is a SINGLE representation that mirrors
+// the visible render: the real settings rows are emitted as pre-composed
+// body_lines, NOT as a second Settings/Setting-Value-State table (which
+// duplicated the list in the pasted text). The provider must therefore emit NO
+// table at all.
+//
+// Validates: screen-snapshot-scrm Req 27.8, 27.9; master-screen-directive Req
+// 4.4b.
 #[test]
-fn config_screen_model_populates_settings_table() {
+fn config_screen_model_emits_single_body_line_tree_not_duplicate_table() {
     let mut shell = make_shell();
     shell.dispatch_command_string("CONFIG");
     assert_eq!(
@@ -254,34 +259,20 @@ fn config_screen_model_populates_settings_table() {
         "precondition: CONFIG opens the Config panel"
     );
     let model = shell.config_panel_screen_model();
-    let table = model
-        .tables
-        .first()
-        .expect("Config capture populates a settings table (A3)");
-    assert_eq!(
-        table.headers,
-        vec![
-            "Setting".to_string(),
-            "Value".to_string(),
-            "State".to_string(),
-        ]
-    );
+    // NO duplicate Settings table block (Bug 3): the former second list is gone.
     assert!(
-        !table.rows.is_empty(),
-        "the Config table lists the real visible settings rows"
+        model.tables.is_empty(),
+        "the Config capture must NOT emit a duplicate settings table, got {:?}",
+        model.tables
     );
-    // At least one real namespace group header row (a bracketed Setting with an
-    // expanded/collapsed State).
+    // The real settings rows live in body_lines as a single representation, with
+    // at least one bracketed namespace group header flush-left.
     assert!(
-        table.rows.iter().any(|r| {
-            r.first().map(|c| c.starts_with('[')).unwrap_or(false)
-                && (r
-                    .get(2)
-                    .map(|s| s == "expanded" || s == "collapsed")
-                    .unwrap_or(false))
+        model.body_lines.iter().any(|l| {
+            l.starts_with('[') && (l.ends_with("expanded") || l.ends_with("collapsed"))
         }),
-        "the Config table carries the real namespace group rows, got {:?}",
-        table.rows
+        "the real namespace group rows are captured as body_lines, got {:?}",
+        model.body_lines
     );
 }
 

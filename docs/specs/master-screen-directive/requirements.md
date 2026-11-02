@@ -197,6 +197,18 @@ Context in the workbench.
     Req 27.8 for dialogs. Capture SHALL also be side-effect-free: issuing
     SNAPSHOT SHALL NOT mutate the screen it captures (e.g. SNAPSHOT must not
     collapse a focused tree item).
+4.4b MIRRORS THE VISIBLE RENDER (CR-NR-114, Config Bug 3, owner finding). A
+    Context whose `ScreenModel` capture is rendered to text SHALL emit a SINGLE
+    representation that mirrors the live render EXACTLY -- each visible row
+    appears ONCE, in the same order, with the same alignment the GUI uses. For
+    the Config panel specifically the captured text SHALL: emit each namespace
+    group header ONCE, flush-left, as `[Group] : expanded|collapsed`; emit each
+    child key ONCE, indented one level, as `key : value`; align every row on a
+    SINGLE global `:` column using the SAME pure layout helpers the render uses
+    (`config_panel::layout`); and contain NO `. . .` dot-leaders and NO second
+    `Settings` / `Setting / Value / State` table block. A capture that emits the
+    list twice (once dot-leadered and once as a table) or that adds dot-leaders
+    the render does not use is a DEFECT.
 4.5 THE snapshot + capture contract SHALL be realised ONLY through the existing
     `ScreenProvider` trait and the existing SNAPSHOT / CAPTURE command dispatch
     (screen-snapshot-scrm Req 11); NO Context SHALL expose snapshot/capture

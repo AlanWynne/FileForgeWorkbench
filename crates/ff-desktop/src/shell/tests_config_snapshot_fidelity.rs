@@ -34,7 +34,8 @@ fn open_config(harness: &mut egui_kittest::Harness<'_, super::WorkbenchShell>) {
 // Validates: screen-snapshot-scrm Req 27.8 / master-screen-directive Req 4.4a
 // (Config Bug 2) -- the Config ScreenProvider captures the REAL settings tree:
 // namespace group rows AND key rows with their current effective values, not a
-// thin two-field (Filter + Unsaved) summary.
+// thin two-field (Filter + Unsaved) summary. The faithful tree is emitted as
+// pre-composed `body_lines` that mirror the visible render (Config Bug 3).
 #[test]
 fn config_screen_model_captures_the_real_settings_tree() {
     let mut harness = harness_shell();
@@ -42,52 +43,58 @@ fn config_screen_model_captures_the_real_settings_tree() {
 
     let model = harness.state().config_panel_screen_model();
 
-    // The thin-model baseline fields are still present...
+    // The capture is emitted as pre-composed body lines (mirror the render),
+    // NOT the generic label/value fields path and NOT a tables block.
     assert!(
-        model.fields.iter().any(|f| f.label == "Filter"),
-        "Filter field retained"
+        model.fields.is_empty(),
+        "the config capture uses body_lines, not the generic fields path"
     );
     assert!(
-        model.fields.iter().any(|f| f.label == "Unsaved edits"),
-        "Unsaved-edits field retained"
+        model.tables.is_empty(),
+        "the config capture has no duplicate Settings table block (Bug 3)"
     );
 
-    // ...but the model is NO LONGER just those two: it carries the real tree.
+    // The header rows are present (aligned, no dot-leaders).
+    assert!(
+        model.body_lines.iter().any(|l| l.contains("Filter")),
+        "Filter header row retained"
+    );
+    assert!(
+        model.body_lines.iter().any(|l| l.contains("Unsaved edits")),
+        "Unsaved-edits header row retained"
+    );
+
     // There must be at least one namespace GROUP header row (e.g. "[Editor]",
-    // "[Accessibility]"): a bracketed label with an expanded/collapsed value.
-    let group_rows: Vec<_> = model
-        .fields
+    // "[Accessibility]"): a bracketed flush-left label ending in the state word.
+    let group_lines: Vec<_> = model
+        .body_lines
         .iter()
-        .filter(|f| {
-            f.label.starts_with('[')
-                && f.label.ends_with(']')
-                && (f.value == "expanded" || f.value == "collapsed")
-        })
+        .filter(|l| l.starts_with('[') && (l.ends_with("expanded") || l.ends_with("collapsed")))
         .collect();
     assert!(
-        !group_rows.is_empty(),
+        !group_lines.is_empty(),
         "the capture must list the real settings-tree namespace groups (Bug 2); \
-         got fields: {:?}",
-        model.fields.iter().map(|f| &f.label).collect::<Vec<_>>()
+         got body_lines: {:?}",
+        model.body_lines
     );
 
     // There must be at least one KEY row -- a dotted schema key with a value --
     // under an expanded group, proving actual settings + values are captured.
-    let key_rows: Vec<_> = model
-        .fields
+    let key_lines: Vec<_> = model
+        .body_lines
         .iter()
-        .filter(|f| f.label.contains('.'))
+        .filter(|l| l.trim_start().contains('.') && l.contains(" : "))
         .collect();
     assert!(
-        !key_rows.is_empty(),
+        !key_lines.is_empty(),
         "the capture must list real settings keys with their values (Bug 2); \
-         got fields: {:?}",
-        model.fields.iter().map(|f| &f.label).collect::<Vec<_>>()
+         got body_lines: {:?}",
+        model.body_lines
     );
 
     // The whole thing is strictly richer than the old 2-field summary.
     assert!(
-        model.fields.len() > 2,
+        model.body_lines.len() > 2,
         "the faithful model is richer than the thin Filter+Unsaved summary (Bug 2)"
     );
 }
@@ -117,19 +124,23 @@ fn config_screen_model_captures_staged_edit_value() {
     harness.run();
 
     let model = harness.state().config_panel_screen_model();
-    let row = model.fields.iter().find(|f| f.label == key);
+    // The key row is a body line whose (trimmed) left segment is the dotted key.
+    let row = model
+        .body_lines
+        .iter()
+        .find(|l| l.trim_start().starts_with(key) && l.contains(" : "));
     // The accessibility namespace may or may not exist in every schema build;
     // when it does, the staged value must be captured and marked unsaved.
     if let Some(row) = row {
         assert!(
-            row.value.contains("true"),
+            row.contains("true"),
             "the staged working value is captured, got {:?}",
-            row.value
+            row
         );
         assert!(
-            row.value.contains("unsaved"),
+            row.contains("unsaved"),
             "a staged edit is marked unsaved in the capture, got {:?}",
-            row.value
+            row
         );
     }
 }
@@ -179,5 +190,134 @@ fn command_submit_does_not_collapse_focused_config_tree_node() {
             .values()
             .any(|collapsed| *collapsed),
         "submitting a command must not collapse the focused config-tree node (Bug 1)"
+    );
+}
+
+// Validates: screen-snapshot-scrm Req 27.8, 27.9 / master-screen-directive Req
+// 4.4b (Config Bug 3) -- the Config capture text MIRRORS the visible render
+// EXACTLY: each row appears ONCE, there are NO ". . ." dot-leaders, a group
+// header renders flush-left as "[Editor] : expanded|collapsed", a child renders
+// indented with a single " : " separator, there is NO duplicate Settings table
+// block, and the ":" column is aligned per the pure layout helper.
+#[test]
+fn config_capture_mirrors_visible_render_single_representation() {
+    use crate::config_panel::{
+        aligned_left_segment, child_left_label, global_key_column_width, group_left_label,
+    };
+    use ff_screen_model::{RenderOptions, SnapshotFormat};
+
+    let mut harness = harness_shell();
+    open_config(&mut harness);
+
+    let model = harness.state().config_panel_screen_model();
+
+    // (b) NO ". . ." dot-leaders anywhere in the model's body lines, and the
+    // capture is NOT the generic fields/tables path (which would re-emit the
+    // list twice -- once dot-leadered, once as the Settings table).
+    assert!(
+        model.fields.is_empty() && model.tables.is_empty(),
+        "capture is a single body_lines representation (no fields, no table)"
+    );
+    for line in &model.body_lines {
+        assert!(
+            !line.contains(". . ."),
+            "no dot-leaders in the capture, got: {line:?}"
+        );
+    }
+
+    // The same must hold for the ACTUAL rendered snapshot text the user pastes:
+    // the plain-text and the Markdown (clipboard) flavors both render from this
+    // one model, so neither may contain dot-leaders, and the key must appear
+    // exactly once in each.
+    let key = "editor.tab_size";
+    let plain =
+        ff_screen_model::render(&model, SnapshotFormat::PlainText, RenderOptions::default());
+    let markdown =
+        ff_screen_model::render(&model, SnapshotFormat::Markdown, RenderOptions::default());
+    for rendered in [&plain, &markdown] {
+        assert!(
+            !rendered.contains(". . ."),
+            "rendered snapshot has no dot-leaders"
+        );
+        // (a) a known key appears EXACTLY ONCE (guards the former duplicate).
+        assert_eq!(
+            rendered.matches(key).count(),
+            1,
+            "'{key}' must appear exactly once in the capture (no duplicate list);\n{rendered}"
+        );
+    }
+
+    // (c) a group header renders flush-left as "[<Group>] : expanded|collapsed".
+    // Editor is a stable namespace in the schema.
+    let editor_group = model
+        .body_lines
+        .iter()
+        .find(|l| l.starts_with(&group_left_label("Editor")))
+        .expect("the capture lists the [Editor] group header");
+    assert!(
+        editor_group.ends_with(" : expanded") || editor_group.ends_with(" : collapsed"),
+        "group header is '[Editor] : expanded|collapsed', got {editor_group:?}"
+    );
+    assert!(
+        !editor_group.starts_with(' '),
+        "group header is flush-left (no indent), got {editor_group:?}"
+    );
+
+    // (d) a child row is indented one level and uses a single ' : ' separator.
+    let child = model
+        .body_lines
+        .iter()
+        .find(|l| l.trim_start().starts_with(key))
+        .expect("the capture lists the editor.tab_size key row");
+    assert!(
+        child.starts_with(&child_left_label("")),
+        "child row is indented one level, got {child:?}"
+    );
+    assert_eq!(
+        child.matches(" : ").count(),
+        1,
+        "child row has a single ' : ' separator, got {child:?}"
+    );
+
+    // (e) the ':' column alignment matches the PURE helper: recompute the global
+    // column over the same visible labels and assert the child's ':' sits there.
+    let p = &harness.state().config_panel;
+    let entries = harness.state().config_handle.list_schema_entries();
+    // Build the authoritative labels exactly as the provider does.
+    let mut visible_labels = vec![
+        ff_i18n::t("ff-desktop-config-panel-filter"),
+        "Unsaved edits".to_string(),
+    ];
+    let mut namespaces: Vec<String> = entries
+        .iter()
+        .map(|e| e.key.split('.').next().unwrap_or(&e.key).to_string())
+        .collect();
+    namespaces.sort();
+    namespaces.dedup();
+    for ns in &namespaces {
+        let mut disp = ns.clone();
+        if let Some(c) = disp.get_mut(0..1) {
+            c.make_ascii_uppercase();
+        }
+        visible_labels.push(group_left_label(&disp));
+        if !p.collapsed.get(ns).copied().unwrap_or(false) {
+            for e in &entries {
+                if e.key.split('.').next().unwrap_or(&e.key) == ns {
+                    visible_labels.push(child_left_label(&e.key));
+                }
+            }
+        }
+    }
+    let column = global_key_column_width(&visible_labels);
+    let expected_child_left = aligned_left_segment(&child_left_label(key), column);
+    assert!(
+        child.starts_with(&expected_child_left),
+        "the ':' column matches the pure helper; expected prefix {expected_child_left:?}, got {child:?}"
+    );
+    // The ':' lands at the global column cell (char count before " : ").
+    let colon_cell = child.split(" : ").next().unwrap().chars().count();
+    assert_eq!(
+        colon_cell, column,
+        "the ':' column equals the global width from the pure helper"
     );
 }
