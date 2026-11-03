@@ -376,9 +376,13 @@ automatically on screen transitions, optionally filtered by rules.
      and a Markdown rendering, so each Capture is a bitmap + ANSI + Markdown +
      command record. This CONFIRMS and extends the Wave 2R recorder (Req 9.10-9.12,
      17.2a) to carry the picture + Markdown variants per Capture. `[forward-plan]`
-9.14 THE per-transition bitmap of Req 9.13 SHALL be produced by rasterising the
-     logical TEXT render (Requirement 23), NOT by screen-grabbing egui
-     (consistent with Req 1 and Req 2.2). `[forward-plan]`
+9.14 REVISED (CR-NR-114, aligning with revised Req 1.3 / 23.2): THE per-transition
+     PICTURE of Req 9.13 SHALL be a REAL WINDOW SCREENSHOT (the application
+     window's rendered pixels), the SAME picture flavor the SNAPSHOT path produces
+     (Req 23.2), NOT a rasterisation of the logical TEXT render. The ANSI/TEXT and
+     Markdown renderings of the Capture remain Screen_Model-derived (Req 1, 2.2).
+     This supersedes the earlier "rasterise the text render" wording so the
+     recorder's picture matches the snapshot's picture. `[forward-plan]`
 
 ---
 
@@ -1150,6 +1154,194 @@ framework mechanism. It modifies WHAT each existing flavor's text contains.
 
 ---
 
+## Requirement 29 -- Full-window snapshot FIDELITY: a faithful top-to-bottom box-drawn mirror of EVERY framed screen, on both the snapshot AND capture paths (CR-CH-115)
+
+**User story:** As a user who copies ANY screen SNAPSHOT (or records a CAPTURE),
+I want the box-drawn text rendering to be a faithful mirror of the WHOLE framed
+window -- the window title bar, the active workspace tab tag, the workspace
+title, the `Command ===>` line near the top, the full-width data grid with
+column separators and the always-present empty scratch row, the information
+bar, and the function-key bar when it is visible -- so the capture reads like the
+real screen instead of a thin, collapsed box that drops most of the chrome.
+
+### Context (owner-confirmed 2026-11-03, CR-CH-115)
+
+The owner pasted the live Alias Editor SNAPSHOT and the box collapsed to a
+title, a `SS . . . : SNAPSHOT` dot-leader field line, and an un-separated column
+list -- missing the window title bar, the `[ALIASES]` tab tag, the top
+`Command ===>` line, the `|`-separated grid, the scratch row, the info bar, and
+the F-key bar. This requirement makes the box-drawn text rendering a faithful
+full-window mirror for EVERY Context, GENERAL (not Alias-specific), and extends
+the SAME fidelity to the CAPTURE path (recording), which shares the snapshot's
+`ScreenProvider` seam and `ff-screen-model` renderer.
+
+This requirement BUILDS ON the existing SCRM `ScreenProvider` seam (Req 2), the
+`ff-screen-model` `ScreenModel` + text renderer (Req 3, 5), and the per-Context
+`*_screen_model()` builders. It extends Req 3.8-3.13 (which already defined the
+full-screen model for the POM/menu Context) to EVERY table-bearing and
+field-bearing Context. It introduces NO new clipboard flavor, NO new framework
+mechanism, and NO reshape of a public `ff-screen-model` / `ff-scrm` type (the
+`ScreenModel` struct already carries `header_lines`, `body_lines`,
+`footer_lines`, `tables`, `command_line`, and `status_bar`; see design.md).
+
+The text-field / combo cell CONVENTIONS below are owner-confirmed canonical and
+are the SAME in the plain-text and HTML flavors (the owner's original `[---- ]v`
+mock was a sketch; `[value v]` is the agreed convention -- see design.md for the
+best-practice rationale). Unicode box-drawing in the RENDERED snapshot/fixture
+output is deliberate runtime product content, exempt from the ASCII-only
+documentation rule (consistent with Req 1.1, 5.1).
+
+### Top-chrome acceptance criteria (always present)
+
+29.1 WHEN any capturable Context's screen model is rendered to box-drawn text
+     THE rendering SHALL begin with a WINDOW TITLE BAR line inside the frame, as
+     the FIRST in-frame content line (above the workspace title row and the body):
+     the application name followed by the window-control glyphs, in plain ASCII,
+     e.g. `# | FileForge Workbench                      _ [] X`. The application
+     name is the live window title; the `_ [] X` are the minimise / maximise /
+     close control glyphs as plain ASCII. THE literal leading `# |` marker, the
+     exact padding, and the `_ [] X` glyph set are SETTLED-BUT-TUNABLE at
+     implementation (they follow the owner's 2026-11-03 mock; confirmable, not
+     locked), as Req 25.3 treats its menu labels. `[CR-CH-115]`
+29.2 WHEN any capturable Context's screen model is rendered THE rendering SHALL
+     place, as the SECOND in-frame content line (directly under the window title
+     bar and still above the workspace title row and the body), the TAB-TAG line
+     for the ACTIVE workspace -- the Context's `[XXX]` tab tag (e.g. `[ALIASES]`,
+     `[CONFIG]`, `[THEME]`, `[POM]`), the terse bracketed Tab_Header tag distinct
+     from the descriptive display title (CR-NR-090 / CR-CH-045). The correct tag
+     per Context SHALL be emitted (see design.md for the tag source). `[CR-CH-115]`
+     NOTE on renderer order: because the current `render/text.rs::render_plain`
+     emits `model.title` (the border) first and `header_lines` BELOW the body,
+     the title bar + tab tag SHALL be delivered as the FIRST TWO `body_lines`
+     (which render directly under the title separator), NOT as `header_lines`;
+     the design (Section 12) specifies this so "begin with the window title bar"
+     holds against the real renderer. `[CR-CH-115]`
+29.3 WHEN any capturable Context's screen model is rendered THE rendering SHALL
+     include the workspace TITLE line (the descriptive display title, e.g.
+     "Alias Editor"). THE title MAY be carried in the frame border (as today) OR
+     as a chrome line, provided it appears exactly ONCE and is not duplicated.
+     `[CR-CH-115]`
+29.4 WHEN any capturable Context's screen model is rendered THE `Command ===>`
+     line SHALL be positioned near the TOP, under the title (NOT at the bottom
+     and NOT outside the frame). This CORRECTS the current Alias rendering, where
+     the command line is emitted outside/below the frame. THE command line SHALL
+     carry its current typed VALUE followed by an underscore input area (e.g.
+     `Command ===> ss___...`), consistent with the POM/menu rendering (Req 3.11).
+     THE underscore input-area width SHALL match the existing POM/menu
+     command-line field width (the same run length the menu builder already
+     emits), so the command line is consistent across every Context rather than
+     a per-Context length. `[CR-CH-115]`
+
+### Body grid acceptance criteria (faithful mirror of the live panel)
+
+29.5 WHEN a Context presents tabular data THE box-drawn body SHALL render a
+     COLUMN HEADER row and data rows using the `|` column separator between
+     cells (NOT space-only joins), so the grid reads as a real ISPF table. THE
+     ASCII fallback (Req 5.2) SHALL use `|` as today. `[CR-CH-115]`
+29.6 THE grid cells SHALL be FIXED-WIDTH, padded to each column's width (each
+     column width = max(header width, widest cell width in that column,
+     including the scratch row)); WHERE a combo `[value v]` or a filled value
+     exceeds the header width THE column SHALL WIDEN to that value and EVERY row
+     -- header, data rows, and the scratch row -- SHALL pad to the widened width
+     so the grid stays aligned (no truncation). `[CR-CH-115]`
+29.6a THE box body SHALL FILL THE FULL FRAME WIDTH rather than collapse to the
+     widest single content line: the frame inner width SHALL be derived from the
+     screen model's column count (`model.dimensions.columns`, the conventional
+     24x80 default, or the live panel column count where a Context threads it
+     onto the model), and the grid SHALL be padded to that frame width. This is
+     DISTINCT from the per-column max of 29.6: 29.6 sizes each column to its
+     content; 29.6a pads the whole framed body out to the frame width so a narrow
+     table still fills the window. `[CR-CH-115]`
+29.7 THE box-drawn body SHALL include the always-present empty SCRATCH row at the
+     bottom of the data rows (the insertable row the live table editor shows), so
+     the capture mirrors the live panel's insert affordance. THE scratch row
+     SHALL be a PROVIDER-OWNED row carried in `model.tables[*].rows` (a full row
+     of empty cells, each rendered per 29.8/29.9), NOT a row appended only inside
+     the plain-text renderer, so that the SAME scratch row appears in BOTH the
+     plain-text grid AND the HTML `<table>` flavor (29.7a). `[CR-CH-115]`
+29.7a THE scratch row SHALL appear IDENTICALLY in the plain-text and HTML text
+     flavors: in the HTML flavor it is a trailing `<tr>` of empty `<td>` cells
+     carrying the same `[ v]` / `____` cell strings as the plain-text row,
+     because the cell text is provider-owned (see 29.8/29.9) and both the
+     plain-text grid renderer and the HTML `<td>` emitter consume the same
+     `model.tables` rows. `[CR-CH-115]`
+29.8 A DROPDOWN / COMBO cell SHALL render as `[value v]` -- the selected value in
+     square brackets with a trailing space and a `v` marker -- padded to the
+     column width; an EMPTY combo SHALL render as `[ v]` padded to the column
+     width. This convention SHALL be IDENTICAL in the plain-text and HTML text
+     flavors: the cell string `[value v]` / `[ v]` is produced by the PROVIDER
+     when it builds the row, so the plain-text grid and the HTML `<td>` emit the
+     SAME verbatim string. WHERE a `[value v]` is wider than its column header
+     THE column SHALL widen to it per 29.6 (no truncation). `[CR-CH-115]`
+29.9 AN EDITABLE TEXT cell that is EMPTY SHALL render as a run of underscores
+     `____` to the field width; an editable text cell that is FILLED SHALL render
+     its value padded to the field width. This convention SHALL be IDENTICAL in
+     the plain-text and HTML text flavors (same provider-owned cell string in the
+     plain-text grid and the HTML `<td>`). WHERE a filled value is wider than its
+     column header THE column SHALL widen to it per 29.6 (no truncation).
+     `[CR-CH-115]`
+
+### Bottom-chrome acceptance criteria
+
+29.10 WHEN any capturable Context's screen model is rendered THE rendering SHALL
+     include the INFORMATION / STATUS bar at the BOTTOM, carrying the live status
+     text the screen shows (`model.status_bar.text`). THE exact live status
+     SOURCE the info bar mirrors (the shell's current status line) is
+     SETTLED-BUT-TUNABLE at implementation -- confirmable, not locked -- as Req
+     25.3 treats its labels. WHERE the status text is EMPTY the bottom info bar
+     SHALL still be a defined (possibly blank) bottom line, NOT dropped (distinct
+     from the F-key bar of 29.11, which IS omitted when hidden). `[CR-CH-115]`
+29.11 WHERE the FUNCTION-KEY (F-key) bar is currently VISIBLE (the live
+     `key_bar_visible` state is on) THE rendering SHALL include the F-key display
+     line(s) at the bottom; WHERE it is HIDDEN THE rendering SHALL OMIT the F-key
+     bar entirely, so the capture reflects the live F-key-bar visibility state.
+     (Mirrors Req 3.10's pfshow rule, generalised to every Context.) `[CR-CH-115]`
+
+### General-scope and shared-renderer acceptance criteria
+
+29.12 THE full-window fidelity of 29.1-29.11 SHALL be GENERAL to ALL capturable
+     Contexts -- not Alias-specific. It SHALL be implemented in the SHARED place
+     (the `ff-screen-model` text renderer plus a shared shell helper that builds
+     the common chrome -- title bar, tab tag, title, command line, info bar,
+     F-key bar -- for every per-Context `*_screen_model()` builder), so every
+     Context inherits the faithful box without per-Context bespoke chrome code.
+     `[CR-CH-115]`
+29.13 THE chrome lines (title bar, tab tag, title, command line, info bar, F-key
+     bar) and the grid SHALL be built PURELY from the live LOGICAL state (the
+     window title, the active Kind's tab tag, `command_text`, the panel's rows,
+     the status text, `key_bar_visible` / `key_bar_scope`), NEVER by reading egui
+     widgets (consistent with Req 2.2, 5.4). `[CR-CH-115]`
+29.14 THE SAME full-window fidelity SHALL apply to the CAPTURE path (recording),
+     not only to the single point-in-time SNAPSHOT. BECAUSE capture and snapshot
+     share the one `ScreenProvider` seam and the one `ff-screen-model` renderer
+     (see design.md), the fidelity SHALL be delivered in that shared path so a
+     CAPTURE SCREEN / auto-capture records the IDENTICAL faithful box a SNAPSHOT
+     produces for the same screen. No second, divergent capture renderer SHALL be
+     introduced. `[CR-CH-115]`
+29.15 THE existing POM / menu rendering (Req 3.8-3.13) SHALL be reconciled with
+     the generalised chrome so the POM capture GAINS the window title bar and the
+     `[POM]` tab tag (which the 2026-11-01 Bug-2 correction had removed), while
+     keeping its two-column options+calendar body and its top `Command ===>`
+     line. The owner's 2026-11-03 direction RE-ADDS the title bar + tab tag to
+     ALL snapshots, superseding the Bug-2 "no header block" decision FOR THE
+     TITLE BAR + TAB TAG specifically. `[CR-CH-115]`
+29.16 THE picture (PNG) flavor (Req 23.2) and the property/value table flavors
+     (Req 28) SHALL be UNCHANGED by this requirement: it governs the BOX-DRAWN
+     TEXT layout and its chrome only. A Context with no tabular content SHALL
+     still gain the top/bottom chrome (title bar, tab tag, title, command line,
+     info bar, F-key-when-visible) around whatever body it renders. `[CR-CH-115]`
+
+### Feeds the workspace-architecture alignment (recorded intent)
+
+29.17 THE full-window fidelity model (the common chrome + grid conventions) SHALL
+     be recorded as a first-class INPUT to the upcoming workspace-architecture
+     alignment: a Context that renders a faithful full-window box is, by
+     construction, one whose logical screen model is complete, which is the same
+     completeness the workspace-architecture model needs. (Owner direction;
+     design.md Section 12 records this.) `[CR-CH-115]`
+
+---
+
 ## Out of scope (v1) / future enhancements
 
 Recorded from the SCRM source "Future Enhancements"; NOT gated here, listed so the
@@ -1211,3 +1403,22 @@ Requirement 28 (CR-CH-079) is appended after Requirement 27 with the next free
 sequential number (28); it extends Requirement 23 (the three-flavor clipboard) so
 that EACH text flavor carries BOTH the box-drawn layout AND the property/value
 tables.
+
+Requirement 29 (CR-CH-115) is appended after Requirement 28 with the next free
+sequential number (29); it extends Requirement 3.8-3.13 (the full-screen logical
+model, previously defined for the POM/menu Context) to EVERY capturable Context
+as a faithful full-window box-drawn mirror, and extends the SAME fidelity to the
+capture path. It supersedes the 2026-11-01 Bug-2 "no header block" correction FOR
+THE WINDOW TITLE BAR + TAB TAG specifically (29.15).
+
+Design-review revision 1 (addressing
+`.agents/tasks/snapshot-fidelity-gate/design-review.json`) added two sub-criteria
+to Requirement 29 -- 29.6a (the frame-width source, `model.dimensions.columns`,
+distinct from the per-column max of 29.6) and 29.7a (the scratch row is a
+provider-owned row so it appears identically in the plain-text and HTML flavors)
+-- and tightened 29.1/29.2 (title bar + tab tag are the first two in-frame body
+lines, reconciled with the real `render_plain` order), 29.4 (underscore width =
+POM/menu field width), 29.6/29.8/29.9 (widen-on-overflow, no truncation), and
+29.10 (settled-but-tunable status source; defined-blank info bar when status is
+empty). Req 9.14 was revised to a real window screenshot to align with Req 1.3 /
+23.2.

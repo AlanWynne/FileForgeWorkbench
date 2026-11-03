@@ -186,25 +186,33 @@ door; no second dispatcher, no new navigation stack.
   - [ ] 15.4 Tests: snapshot text contains the calendar + PF-key line when pfshow
         on, omits the PF-key line when off. (Req 3.9, 3.10)
 
-- [ ] 16. Picture snapshot formats + format picker (Req 4.7-4.8, 23)
-  - [ ] 16.1 Add PNG as a SNAPSHOT picture format by rasterising the TEXT render
-        (pinned encoder dep, exact version). (Req 23.1, 23.2, 23.7)
+- [ ] 16. Picture snapshot formats + composite clipboard (NO picker) (Req 4.1, 4.7-4.8, 23)
+  - [ ] 16.1 Add the PNG picture flavor as a REAL WINDOW SCREENSHOT of the
+        FileForge application window (the window's rendered pixels), NOT a
+        text-rasterised image (pinned encoder dep, exact version). This matches
+        the REVISED Req 1.3 / 23.2 (the former text-raster PNG is superseded).
+        (Req 23.1, 23.2, 1.3, 23.7)
   - [ ] 16.2 Add `SNAPSHOT PDF` reusing `ff-scrm/pdf.rs`, selectable text.
         (Req 23.3)
-  - [ ] 16.3 No-arg `SNAPSHOT` pops a format picker dispatching the chosen
-        `SNAPSHOT <format>` through the single front door; explicit-format form
-        skips the picker. (Req 4.7, 4.8, 23.6)
+  - [ ] 16.3 No-arg `SNAPSHOT` places the COMPOSITE clipboard payload (PNG
+        picture + Markdown-fenced text, Req 23) directly, with NO format picker
+        (Req 4.7 RETIRED the picker); the explicit `SNAPSHOT <format>` verbs are
+        RETAINED for single-format output. (Req 4.1, 4.7, 4.8, 23.6)
   - [ ] 16.4 Where the format supports it, produce BOTH the picture AND the
-        ANSI/TEXT rendering; picture is optional-secondary. (Req 23.4, 23.5)
-  - [ ] 16.5 Tests: PNG bytes produced from the text render; picker dispatches the
-        chosen format; both-outputs where supported. (Req 23.2, 4.7, 23.4)
+        ANSI/TEXT rendering; the text stays authoritative-selectable, the picture
+        is the co-equal image flavor (Req 1.2, 23.4, 23.5).
+  - [ ] 16.5 Tests: the PNG is a real window screengrab (not a text raster); bare
+        `SNAPSHOT` places the composite with no picker; both-outputs where
+        supported. (Req 23.2, 4.1, 4.7, 23.4)
 
 - [ ] 17. Capture START records bitmap + ANSI + Markdown + command (Req 9.13-9.14)
   - [ ] 17.1 At the auto-capture hook, store per Capture the bitmap (task 16
         encoder) + ANSI + Markdown + the triggering-command metadata (confirm
         Wave 2R tasks 11-13). (Req 9.13, 9.10-9.12, 17.2a)
-  - [ ] 17.2 The per-transition bitmap is rasterised from the TEXT render, not an
-        egui grab. (Req 9.14)
+  - [ ] 17.2 The per-transition bitmap is a REAL WINDOW SCREENSHOT (consistent
+        with the revised PNG picture flavor, Req 1.3 / 23.2), NOT a text-raster;
+        the ANSI/TEXT + Markdown renderings remain Screen_Model-derived. (Req
+        9.14 as revised by Req 1.3 / 23.2)
   - [ ] 17.3 Tests: a command-caused transition records command + bitmap + ANSI +
         Markdown; an interval/rule capture records no command. (Req 9.13, 9.12)
 
@@ -365,6 +373,128 @@ with SCRM Requirement numbers 24-28 (which exist as separate requirements).
       asserted a key appears once in the Markdown flavor now assert it appears
       twice (box body + table row); plain-text stays once. `SNAPSHOT HTML`/`TEXT`
       and PDF paths are unchanged (verified by the existing scrm/backend tests).
+
+## Phase 2G -- full-window snapshot FIDELITY: faithful box mirror on snapshot AND capture (Req 29, CR-CH-115)
+
+TDD per testing.md: write the failing test first, then the minimum change. Each
+test carries its `// Validates:` annotation. Scope the SCOPED trio
+(`cargo check/clippy/fmt -p ff-screen-model` and `-p ff-desktop`) per
+gate-policy.md; the full suite + the manual on-screen visual match are the
+owner's run. The work lives in TWO shared places (design.md Section 12): the
+`ff-screen-model` grid renderer and a shared `ff-desktop` chrome helper, so every
+Context inherits the fidelity (Req 29.12) and capture inherits it via the shared
+seam (Req 29.14). NOTE on numbering: Phase 2G tasks are prefixed `2G.` to avoid
+collision with SCRM Requirement numbers.
+
+- [ ] 2G.1 Grid-aware table rendering in `ff-screen-model` (Req 29.5, 29.6, 29.6a, 29.7, 29.7a, 29.8, 29.9)
+  - [ ] 2G.1.1 Failing test (ff-screen-model): `render_plain` of a `Table`
+        renders a `|`-separated, FIXED-WIDTH header + data rows (not a `join("  ")`
+        space list), filling the column widths. (Req 29.5, 29.6)
+  - [ ] 2G.1.2 Change `render/text.rs` table rendering to a fixed-width,
+        `|`-separated grid (ASCII `|` in the fallback per Req 5.2); compute each
+        column width as max(header, cells, scratch row); pad every cell; a value
+        wider than its header WIDENS the column and pads every row (no
+        truncation). (Req 29.5, 29.6)
+  - [ ] 2G.1.1a Failing test + change: a NARROW grid pads out to the FRAME WIDTH
+        `model.dimensions.columns` (not to the widest content line); derive
+        `inner_width = max(widest content line, model.dimensions.columns)`.
+        (Req 29.6a)
+  - [ ] 2G.1.3 Failing test + change: the always-present empty SCRATCH row is a
+        PROVIDER-OWNED row carried in `model.tables[*].rows` (a full row of empty
+        cells), NOT appended inside the text renderer, so both the plain-text grid
+        AND the HTML `<td>` flavor carry it. (Req 29.7, 29.7a)
+  - [ ] 2G.1.4 Failing test + change: a combo cell string `[value v]` (empty
+        `[ v]`) and an empty editable cell `____` render verbatim and stay aligned
+        in the fixed-width grid; the convention is the SAME string in plain-text
+        and HTML flavors (the cell text is provider-owned, the renderer stays a
+        dumb `|` grid -- no `Table` reshape). (Req 29.8, 29.9)
+  - [ ] 2G.1.6 Failing test (ff-screen-model): the HTML flavor (`render/html.rs`)
+        of the SAME grid model contains a `<td>` with `[value v]`, a `<td>` with
+        `____`, and the trailing scratch-row `<tr>` of empty cells, proving the
+        conventions + scratch row are IDENTICAL across flavors (provider-owned
+        cell text, consumed by both the `|` grid and the `<td>` emitter with no
+        flavor-specific code). (Req 29.7a, 29.8, 29.9)
+  - [ ] 2G.1.5 Regression test: a box-only model with no `Table` is unchanged by
+        the grid work. (Req 29.16)
+
+- [ ] 2G.2 Shared full-window chrome helper in `ff-desktop` (Req 29.1, 29.2, 29.3, 29.4, 29.10, 29.11, 29.13)
+  - [ ] 2G.2.1 Failing test (ff-desktop): a helper applied to a model yields a
+        rendering whose FIRST in-frame body row is the window-title-bar line
+        `# | FileForge Workbench ... _ [] X` and whose SECOND is the active
+        Context's `[XXX]` tab-tag line (sourced from
+        `BuiltinKind::default_title()`). The title bar + tab tag are the first two
+        `body_lines` (NOT `header_lines`, which `render_plain` emits BELOW the
+        body). (Req 29.1, 29.2)
+  - [ ] 2G.2.2 Add the shared helper (e.g. `screen_chrome.rs` /
+        `screen_providers.rs`): PREPEND the title-bar + tab-tag lines as the first
+        two `body_lines` (ahead of any Context body); fold `self.command_text`
+        into a TOP `body_line` `Command ===> <value><underscores>` (after the
+        title-bar + tab-tag lines) with the underscore run at the POM/menu
+        command-line field width, and clear `model.command_line`; set
+        `model.status_bar.text` from live status (bottom info bar is a defined
+        line even when status is empty); append the F-key line to `footer_lines`
+        ONLY when `key_bar_visible` (reuse `screen_snapshot::key_bar_line`). Keep
+        the title in the border (emitted once). Pure logical state, no egui.
+        (Req 29.3, 29.4, 29.10, 29.11, 29.13)
+  - [ ] 2G.2.3 Failing test: the command line renders NEAR THE TOP inside the
+        frame (not outside/below), carrying its typed value + underscore input
+        area. (Req 29.4)
+  - [ ] 2G.2.4 Failing test: the info/status bar renders at the BOTTOM; the F-key
+        line is present when `key_bar_visible` is true and ABSENT when false.
+        (Req 29.10, 29.11)
+
+- [ ] 2G.3 Wire every per-Context builder through the shared helper (Req 29.12, 29.15, 29.16)
+  - [ ] 2G.3.1 Call the shared chrome helper from each `*_screen_model()` builder
+        in `screen_providers.rs` and `screen_providers_config.rs` (Alias, Config,
+        Theme, Menus, Keys, Kinds, Command Configurator, Search Results, Event
+        Log, Macro Library, Plugin Manager, Help, SCRM viewer) so every Context
+        gains the chrome. (Req 29.12)
+  - [ ] 2G.3.2 Reconcile the POM/menu path: add ONLY the title-bar + tab-tag
+        header lines to `menu_workspace_screen_model_full` /
+        `menu_screen_chrome`, keeping its two-column body + top command line + PF
+        footer; this RE-ADDS the title bar + `[POM]` tag that the 2026-11-01 Bug-2
+        correction removed. (Req 29.15)
+  - [ ] 2G.3.3 Alias provider populates its row cells with the `[value v]` combo
+        convention for the CE column (and any combo column) and `____` for empty
+        editable cells, so the grid mirrors the live Alias table. (Req 29.8, 29.9)
+  - [ ] 2G.3.4 A field-only / no-table Context still gains the top/bottom chrome
+        around its body (regression). (Req 29.16)
+
+- [ ] 2G.4 GENERAL-scope proof: a markdown_sections Context AND a table Context (Req 29.12)
+  - [ ] 2G.4.1 Full-shell egui_kittest (ff-desktop): over the live ALIAS Editor
+        (a TABLE Context), a SNAPSHOT's box text contains the title-bar line, the
+        `[ALIASES]` tag, a `|`-separated header, a combo `[value v]` cell, an
+        empty `____` cell, the scratch row, the info bar, and the F-key line only
+        when visible. (Req 29.1, 29.2, 29.5, 29.7, 29.8, 29.9, 29.10, 29.11)
+  - [ ] 2G.4.2 Full-shell egui_kittest (ff-desktop): over the live CONFIG panel
+        (a `markdown_sections` Context), a SNAPSHOT's box text contains the
+        title-bar line, the `[CONFIG]` tag, the top `Command ===>` line, the info
+        bar, and the F-key line only when visible -- proving the fidelity is
+        GENERAL, not Alias-specific. (Req 29.12)
+  - [ ] 2G.4.3 HTML-flavor assertion (ff-desktop): the HTML text flavor of the
+        live ALIAS (table) Context snapshot contains a `<td>` with `[value v]`, a
+        `<td>` with `____`, and the trailing scratch-row `<tr>`, proving the cell
+        conventions + scratch row are identical in the HTML flavor (Req 29.7a,
+        29.8, 29.9).
+
+- [ ] 2G.5 Capture-path parity: the same faithful box on capture (Req 29.14)
+  - [ ] 2G.5.1 Failing test (ff-desktop): for the same Context, the model from
+        the CAPTURE seam (`active_screen_model()`) renders to the IDENTICAL box
+        text as the SNAPSHOT seam (`active_screen_capture()` -> model), proving
+        snapshot and capture share one renderer and no divergent capture path is
+        introduced. (Req 29.14)
+  - [ ] 2G.5.2 Test (ff-desktop): a CAPTURE SCREEN / auto-capture of a table
+        Context records a capture whose rendered box contains the title bar, tab
+        tag, `|`-separated grid, scratch row, and info bar. (Req 29.14)
+
+- [ ] 2G.6 MANUAL + reconciliation (Req 29.3, 29.16)
+  - [ ] 2G.6.1 Confirm the title appears exactly ONCE (border, not duplicated in
+        body) across the covered Contexts. (Req 29.3)
+  - [ ] 2G.6.2 Confirm the PNG picture flavor (Req 23.2) and the property/value
+        table flavors (Req 28) are UNCHANGED by the box-layout work. (Req 29.16)
+  - [ ] 2G.6.3 MANUAL (record in TCR): the on-screen SNAPSHOT of the Alias Editor
+        visually matches the live framed window top-to-bottom; cannot be driven
+        headlessly. (Req 29.1-29.11)
 
 ## Cross-cutting
 

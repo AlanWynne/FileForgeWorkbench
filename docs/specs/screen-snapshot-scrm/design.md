@@ -287,8 +287,9 @@ Every requirement in requirements.md maps to a section here: Req 1->S1/S3; Req
 Req 16->S6; Req 17->S3; Req 18->S9; Req 19->S8; Req 20->S5; Req 9.10-9.12 /
 10.9-10.10 / 17.2a (recorder delta)->S3/S4; Req 21 (macro export)->DEFERRED, not
 designed in v1 beyond the schema-sufficiency guarantee (Req 21.2); Req 28
-(dual-representation clipboard flavors, CR-CH-079)->S11. tasks.md will carry the
-per-criterion task breakdown and TCR rows.
+(dual-representation clipboard flavors, CR-CH-079)->S11; Req 29 (full-window
+snapshot fidelity, CR-CH-115)->S12. tasks.md will carry the per-criterion task
+breakdown and TCR rows.
 
 ## 11. Dual-representation clipboard text flavors (Req 28, CR-CH-079)
 
@@ -426,3 +427,372 @@ approving this gate.
   HTML tables (the owner's two acceptance checks, Req 28.1/28.2).
 - The real-paste-into-Word confirmation (Req 23.5d/23.5f style) remains a MANUAL
   check recorded in the TCR, since it cannot be driven headlessly.
+
+## 12. Full-window snapshot FIDELITY (Req 29, CR-CH-115)
+
+### Investigation verdict -- where the box is rendered today and WHY it is thin
+
+Settled against the code (NOT assumed), reading
+`crates/ff-screen-model/src/render/text.rs`,
+`crates/ff-screen-model/src/model.rs`,
+`crates/ff-desktop/src/screen_snapshot.rs`,
+`crates/ff-desktop/src/shell/screen_provider.rs`,
+`crates/ff-desktop/src/shell/screen_providers.rs`,
+`crates/ff-desktop/src/shell/screen_providers_config.rs`,
+`crates/ff-desktop/src/shell/commands_snapshot.rs`,
+`crates/ff-desktop/src/shell/commands_scrm.rs`, and
+`crates/ff-desktop/src/workspace_kind/mod.rs`:
+
+- **One renderer, one model.** The box-drawn text is produced by
+  `render/text.rs::render_plain(model, options)` from a single `ScreenModel`.
+  The model already carries all the slots fidelity needs: `title` (rendered in
+  the top border), `header_lines` (emitted under the title), `body_lines`
+  (emitted verbatim inside the frame directly under the title separator),
+  `fields`, `tables`, `messages`, `buttons`, `footer_lines`, `command_line`,
+  `status_bar`, `cursor`, `dimensions`. So NO new model type is needed -- the
+  thinness is in WHAT each per-Context builder populates and in two renderer
+  details, not in the model's expressiveness.
+
+- **Why the Alias (and every editor/panel) box is thin.** The per-Context
+  builders in `screen_providers.rs` (`alias_editor_screen_model`,
+  `theme_editor_screen_model`, `menus_editor_screen_model`,
+  `keys_editor_screen_model`, `kinds_editor_screen_model`,
+  `command_configurator_screen_model`, `search_results_screen_model`, ...)
+  populate ONLY `model.fields` (producing the `SS . . . : SNAPSHOT` dot-leader
+  lines seen in the owner's paste), optionally ONE `model.tables` entry, and
+  `model.command_line = self.command_text`. They set NO `header_lines` (no window
+  title bar, no `[XXX]` tab tag), NO `footer_lines` (no info bar, no F-key bar),
+  and they leave the command line in `model.command_line`, which `render_plain`
+  emits OUTSIDE the frame at the BOTTOM (the owner-observed "Command ===> ss"
+  below the box). That is the entire gap: the editor/panel builders produce a
+  title + fields + one table, with no chrome and a bottom-placed command line.
+
+- **Why the table reads without separators.** `render/text.rs` renders a
+  `Table` as `headers.join("  ")` and `row.join("  ")` -- space-joined, NOT
+  `|`-separated, NOT fixed-width-padded, NOT full-width. So even the one table a
+  builder DOES provide collapses to an un-separated column list (the owner's
+  `Act  CE  Command  Alias ...` line). There is NO `[value v]` / `____` /
+  padded-value cell convention anywhere today.
+
+- **The POM/menu Context is the one rich builder, but deliberately lost its
+  chrome.** `screen_snapshot.rs::menu_workspace_screen_model_full` +
+  `screen_provider.rs::menu_screen_chrome` build a faithful two-column body (the
+  `Command ===>` row FIRST as a `body_line`, option rows left + calendar right,
+  the PF-key footer when `key_bar_visible`). But the 2026-11-01 Bug-2 correction
+  deliberately REMOVED the window title bar / menu-bar echo / `[POM]` tag / title
+  line from the menu chrome (see the doc comment on `menu_screen_chrome`). The
+  owner's 2026-11-03 direction RE-ADDS the title bar + tab tag to ALL snapshots
+  (Req 29.15), so the menu path must regain those two lines while keeping its
+  two-column body.
+
+### Where the chrome, tab tag, and F-key visibility come from (settled)
+
+- **Window title bar text.** The application window title is the static
+  `"FileForge Workbench"` set in `main.rs` (`ViewportBuilder::with_title(...)`
+  and the `run_native` app name). The title-bar line (Req 29.1) is composed from
+  this name + the plain-ASCII control glyphs `_ [] X`; it is a constant plus
+  fixed glyphs, built in the shared helper (no egui read).
+- **Tab tag `[XXX]`.** The active Context's terse bracketed tag comes from
+  `workspace_kind::BuiltinKind::default_title()` (e.g. `[POM]`, `[THEME]`,
+  `[CONFIG]`, `[ALIASES]`), reachable from the active tab via
+  `BuiltinKind::from_tab_kind(tab.kind.tag(), tab.is_home)` -- the SAME source
+  `screen_providers::active_display_title` already uses for the DISPLAY title,
+  so the tag is one method call away in the shared helper. (The Alias Kind's tag
+  is `[ALIASES]`, confirmed via `helpers.rs` key-map context mapping and the
+  Kind registry.)
+- **Workspace title line.** `screen_providers::active_display_title(self)` (the
+  descriptive display title already used as `model.title`). Keep it in the border
+  to avoid duplication (Req 29.3).
+- **Command line value.** `self.command_text` (the live command field), already
+  read by every builder; it must be folded into a TOP `body_line`
+  `Command ===> <value><underscores>` (as the menu builder already does) rather
+  than left in `model.command_line` (Req 29.4).
+- **Information / status bar.** The live status text the shell shows; it maps to
+  `model.status_bar.text`. (render_plain already emits `status_bar` below the
+  frame; Req 29.10 keeps the info bar at the bottom. The shared helper fills it
+  from the shell's status source.)
+- **F-key bar visibility.** `self.key_bar_visible` (bool) plus
+  `self.key_bar_scope` -- EXACTLY the state `menu_screen_chrome` already reads to
+  decide whether to emit the PF-key footer. The shared helper reuses
+  `screen_snapshot::key_bar_line(active_key_map, scope_segment, modifier)` and
+  emits the footer ONLY when `key_bar_visible` is true (Req 29.11), mirroring the
+  pfshow rule (Req 3.10).
+
+### Snapshot vs capture: ONE shared path (settled)
+
+Snapshot and capture do NOT diverge. `SNAPSHOT` (`commands_snapshot.rs`) and
+`CAPTURE SCREEN` / auto-capture (`commands_scrm.rs::auto_capture_active_context`)
+BOTH obtain their model from the SAME seam:
+`active_screen_capture()` -> `ScreenCapture::Model` (snapshot) and its thin
+`into_model()` wrapper `active_screen_model()` (capture). Both then render through
+the SAME `ff-screen-model` renderer. There is NO separate capture renderer and NO
+distinct capture code path for the box. Therefore improving the shared per-Context
+builders + the shared `render/text.rs` grid rendering AUTOMATICALLY delivers the
+same fidelity to capture (Req 29.14). Capture is "recording / possibly multi-frame"
+only in that it appends successive models to a Collection; each model is produced
+by the identical provider seam, so each recorded frame is the same faithful box.
+
+### Chosen design -- a shared chrome helper + a grid-aware renderer
+
+The fix is GENERAL (Req 29.12) and lives in TWO shared places:
+
+1. **A shared shell helper `apply_full_window_chrome(model, ...)` (in
+   `ff-desktop`, e.g. in `screen_providers.rs` or a new small
+   `screen_chrome.rs`).** Every per-Context `*_screen_model()` builder calls it
+   after populating its body. The helper:
+   - PREPENDS the window-title-bar line and the `[XXX]` tab-tag line as the
+     FIRST TWO `body_lines` (Req 29.1, 29.2) -- NOT as `header_lines`. This is a
+     correction forced by the real renderer order (see "Renderer-order
+     reconciliation" below): `render/text.rs::render_plain` emits `model.title`
+     (the border) first, then `body_lines` directly under the title separator,
+     then `header_lines` BELOW the body. So to make the rendering BEGIN with the
+     title bar and place the tab tag directly under it, the two chrome lines must
+     be the FIRST body lines, inserted ahead of any body the Context already
+     produced (and ahead of the TOP command-line body line below). `header_lines`
+     is NOT used for them.
+   - folds `self.command_text` into a TOP `body_line`
+     `Command ===> <value><underscores>` (inserted after the title-bar + tab-tag
+     lines, before the data body) and clears `model.command_line` so the renderer
+     does not also echo it at the bottom (Req 29.4). The underscore run matches
+     the POM/menu command-line field width (Req 29.4) so it is consistent across
+     Contexts.
+   - sets `model.status_bar.text` from the live status (Req 29.10); the bottom
+     info bar is always a defined line even when the status text is empty.
+   - appends the F-key bar line to `footer_lines` ONLY when `key_bar_visible`
+     (Req 29.11), reusing `screen_snapshot::key_bar_line`.
+   The title stays in `model.title` (the border), emitted once (Req 29.3). This
+   is pure logical-state composition, no egui (Req 29.13).
+
+   **Renderer-order reconciliation (Req 29.1/29.2 against the real renderer).**
+   Verified against `crates/ff-screen-model/src/render/text.rs::render_plain`:
+   it emits, in order, the top border, the `model.title` row, the title
+   separator, then each `model.body_lines` line (directly under the separator,
+   no leading blank), then (after a blank) each `model.header_lines` line, then
+   fields, tables, messages, buttons, and footer_lines, then the bottom border,
+   then `command_line` and `status_bar` OUTSIDE the frame. Therefore appending
+   the title bar + tab tag as `header_lines` would render them BELOW the body,
+   failing "begin with the title bar" (29.1) and "directly under the title bar"
+   (29.2). The chosen fix is option (b) of the two the review raised: fold the
+   title-bar and tab-tag lines as the FIRST TWO `body_lines` (they already render
+   directly under the title separator), keep the workspace title in the border
+   emitted once (29.3), and leave `render_plain`'s section order UNCHANGED. No
+   renderer reordering is required and no other Context's `header_lines`/
+   `footer_lines` usage is disturbed. A unit test asserts the first in-frame body
+   row is the title bar and the second is the tab tag (task 2G.2.1).
+
+2. **A grid-aware `Table` rendering in `ff-screen-model/src/render/text.rs`
+   (and the matching HTML emitter path, `render/html.rs`).** The text table
+   renderer changes from `join("  ")` to a FIXED-WIDTH, `|`-separated,
+   full-width grid (Req 29.5, 29.6, 29.6a) with:
+   - a per-column width = max(header width, widest cell width in that column
+     INCLUDING the scratch row) (Req 29.6); a `[value v]` or filled value wider
+     than its header WIDENS the column and every row (header, data, scratch) pads
+     to the widened width -- no truncation (Req 29.6 overflow rule);
+   - `|` separators between cells (ASCII `|` is also the fallback, Req 5.2);
+   - the always-present empty SCRATCH row (Req 29.7) -- see the provider-owned
+     scratch-row decision below;
+   - cell CONVENTIONS: a combo cell renders `[value v]` (empty `[ v]`) padded to
+     the column width (Req 29.8); an empty editable text cell renders `____` to
+     the field width, a filled one renders its padded value (Req 29.9).
+
+   **Frame-width source (Req 29.6a).** The current `render_plain` derives
+   `inner_width` from the WIDEST content line -- exactly the "collapse to the
+   widest single content line" 29.6a forbids. The fix threads the frame width
+   from `model.dimensions.columns` (the model already carries `Dimensions`,
+   default 24x80; verified in `crates/ff-screen-model/src/model.rs`): the
+   renderer takes `inner_width = max(widest content line, model.dimensions.columns)`
+   so a narrow table still pads out to the frame width, while a table wider than
+   the nominal columns still fits. A Context that knows its live panel column
+   count MAY thread it onto `model.dimensions.columns`; absent that, the 80-column
+   default applies. This keeps `Dimensions` PUBLIC SHAPE UNCHANGED (it is an
+   existing field) and gives 29.6a a deterministic source. A unit test asserts a
+   narrow grid pads to `model.dimensions.columns`, not to the widest content line
+   (task 2G.1.1/2G.1.2).
+
+   **Provider-owned scratch row AND cell conventions (makes the HTML flavor
+   identical for free -- Req 29.7a, 29.8, 29.9).** To carry the combo-vs-text
+   distinction AND the scratch row without reshaping the public `Table` type
+   (framework-conformance), BOTH are applied by the PROVIDER when it builds
+   `model.tables[*].rows`: the provider (which already knows which column is a
+   combo) emits the `[value v]` / `[ v]` / `____` / padded-value STRINGS as the
+   cell text, and appends the empty SCRATCH row (a full row of those empty-cell
+   strings) as the LAST entry in `rows`. The text renderer stays a dumb
+   fixed-width `|` grid and the HTML emitter stays a dumb `<td>` emitter; neither
+   invents the conventions or the scratch row. Because both the plain-text
+   renderer (`render/text.rs`) AND the HTML `<td>` emitter (`render/html.rs`,
+   verified: it emits `<td>{cell}</td>` per `table.rows` cell at the
+   `for row in &table.rows` loop) consume the SAME provider-owned `rows`, the
+   `[value v]` / `____` strings and the trailing scratch row appear IDENTICALLY
+   in both flavors with NO flavor-specific code (Req 29.7a, 29.8, 29.9). This is
+   the key correction over an earlier draft that appended the scratch row inside
+   the TEXT renderer only (which would never reach the HTML `<td>` path). This
+   keeps `ScreenModel` / `Table` PUBLIC SHAPES UNCHANGED. (Alternative
+   considered: add a `CellKind` enum to `Table` -- REJECTED for this gate because
+   it reshapes a public type and is not needed; the provider-owned convention is
+   sufficient and keeps both renderers generic. Recorded so the implementer does
+   not reach for the enum.)
+
+   NOTE: the grid work changes `render/text.rs` and `render/html.rs` so the text
+   renderer emits `|`-separated fixed-width cells rather than `join("  ")`. The
+   HTML `<td>` emitter already renders each provider cell verbatim, so the HTML
+   flavor needs NO structural change to carry the conventions and scratch row --
+   only the Phase 2F HTML-table path (Req 28) continues to render these rows, now
+   with the fidelity cell strings in them. A Phase 2G test asserts the HTML
+   flavor of a grid Context contains a `<td>` `[value v]`, a `<td>` `____`, and
+   the trailing scratch-row `<tr>` (task 2G.1.6).
+
+#### Combo-cell representation: best-practice rationale (owner question)
+
+The owner's original `[---- ]v` was a sketch and asked for a recommendation. The
+canonical convention is `[value v]`: square brackets signal a bounded
+selection control (a closed set of choices), and the trailing `v` is the
+universal down-chevron affordance for a dropdown, kept ASCII (`v`, not a Unicode
+chevron) so it survives a plain-text paste and the ASCII-fallback frame. An empty
+combo is `[ v]` so an un-selected dropdown still reads as a dropdown, not as an
+empty text field (which is `____`). This cleanly distinguishes the THREE cell
+kinds a user sees -- a dropdown (`[value v]`), an empty editable field (`____`),
+and a filled editable field (the padded value) -- in monospaced text, in BOTH the
+plain-text and HTML flavors identically (Req 29.8, 29.9).
+
+### Error handling and edge cases
+
+- A Context with NO tabular content (Req 29.16): the shared chrome helper still
+  adds the title bar, tab tag, title, top command line, info bar, and F-key bar;
+  the body is whatever fields/messages the Context renders. No empty grid is
+  emitted.
+- A Context whose status text is empty: the info-bar line is still a defined
+  (possibly blank) bottom line; the renderer must not drop the bottom chrome just
+  because the status text is empty (distinct from the F-key bar, which IS omitted
+  when hidden).
+- A ragged table (a row with fewer cells than headers): the renderer pads missing
+  cells to empty (`____`-free) blanks so the grid stays aligned; the scratch row
+  is a full row of empty cells.
+- Secret redaction (Req 27.4) is unchanged: redaction happens on the model BEFORE
+  the renderer runs, so both the grid cells and the chrome carry only redacted
+  text.
+- The POM/menu path (Req 29.15): it already composes its own body_lines and
+  top command line; the shared helper adds ONLY the title-bar + tab-tag header
+  lines (and leaves the menu's existing two-column body + PF footer intact), so
+  the menu regains the two chrome lines Bug-2 removed without disturbing its
+  body.
+
+### Framework check (framework-conformance.md)
+
+This BUILDS ON the existing SCRM/ff-screen-model rendering. NO new framework
+mechanism: dispatch (`resolve_target` / `target_dispatch`) is untouched; the
+`ScreenProvider` seam, `ScreenModel`, and `Table` PUBLIC SHAPES are UNCHANGED
+(the combo/text cell convention is provider-owned cell text, not a new type); no
+new navigation stack, no new persistence format, no new clipboard flavor. The
+changes are: (1) a new shared shell helper that composes the common chrome from
+LIVE LOGICAL STATE; (2) a grid-aware `render/text.rs` table rendering (fixed-width
+`|` grid + scratch row) and the matching HTML-table grid treatment; (3) each
+per-Context builder calls the helper. All additive within existing crates. =>
+NO framework change; no owner framework confirmation required beyond approving
+this gate. (If, during implementation, the combo/text distinction turns out to
+NEED a `Table` reshape, that becomes a flagged framework change -- but the design
+above avoids it.)
+
+### Testability
+
+- Unit (ff-screen-model): `render_plain` of a `Table` emits a `|`-separated,
+  fixed-width header + rows + a trailing empty scratch row; a combo cell string
+  `[value v]` and an empty editable cell `____` render verbatim and aligned.
+- Unit (ff-screen-model): a NARROW `Table` pads out to `model.dimensions.columns`
+  (the frame width) rather than to the widest content line (Req 29.6a); a value
+  wider than its column header widens the column and pads every row including the
+  scratch row (Req 29.6 overflow).
+- Unit (ff-screen-model): the HTML flavor (`render/html.rs`) of the SAME grid
+  model contains a `<td>` with `[value v]`, a `<td>` with `____`, and the
+  trailing scratch-row `<tr>` of empty cells -- proving the conventions and
+  scratch row are identical across flavors because the cell text is
+  provider-owned (Req 29.7a, 29.8, 29.9).
+- Unit (ff-screen-model / ff-desktop): the FIRST in-frame body row is the
+  window-title-bar line and the SECOND is the `[XXX]` tab tag (Req 29.1, 29.2),
+  confirming the title-bar + tab tag are the first two `body_lines` and the
+  renderer order is honoured.
+- Unit (ff-desktop): the shared chrome helper, applied to a table Context
+  (Alias) model, yields `header_lines` containing the `FileForge Workbench ... _ [] X`
+  title bar and the `[ALIASES]` tag; a TOP `body_line` `Command ===>`; a bottom
+  info bar; and an F-key line ONLY when `key_bar_visible` is true.
+- Unit (ff-desktop): the SAME assertions over a `markdown_sections` Context
+  (Config) model, proving the fidelity is GENERAL (title bar, `[CONFIG]` tag,
+  top command line, info bar, F-key-when-visible).
+- Unit (ff-desktop): a CAPTURE-path test -- `active_screen_model()` (the capture
+  seam) for the same Context yields a model that renders to the IDENTICAL
+  faithful box as the SNAPSHOT seam, proving Req 29.14 (shared path).
+- Full-shell egui_kittest (ff-desktop): over the live Alias Editor, a SNAPSHOT's
+  box text contains the title-bar line, the `[ALIASES]` tag, a `|`-separated
+  header, the scratch row, the info bar, and the F-key line per `key_bar_visible`.
+- The real on-screen visual match remains a MANUAL check recorded in the TCR
+  (pixel-exact appearance cannot be driven headlessly).
+
+### Feeds the workspace-architecture alignment (recorded, Req 29.17)
+
+This work is intended to FEED the upcoming workspace-architecture alignment, and
+is a first-class input to that model. A Context that renders a faithful
+full-window box is, by construction, a Context whose logical screen model is
+complete: it exposes its title, its tab identity, its command line, its full
+data grid, its status, and its key bar through the one `ScreenProvider` seam.
+That is exactly the per-Context completeness the workspace-architecture model
+needs to describe a workspace uniformly. So the common chrome helper + the grid
+conventions defined here are not only a snapshot-fidelity fix; they are a probe
+that proves each Context can describe its whole screen through the shared seam,
+which the workspace-architecture alignment can then build on. Keeping the chrome
+helper and grid rendering in the SHARED path (not per-Context) is what makes this
+reusable as that model lands.
+
+### Design-review responses (CR-CH-115 revision 1)
+
+The design review `.agents/tasks/snapshot-fidelity-gate/design-review.json`
+(verdict CHANGES_REQUESTED, 0 HIGH / 4 MEDIUM / 3 NIT) was addressed as follows.
+
+- **Finding 1 (MEDIUM -- HTML-flavor identity of cell conventions + scratch row
+  not designed or tested): ADDRESSED.** The scratch row is now a PROVIDER-OWNED
+  row in `model.tables[*].rows` (Req 29.7 / 29.7a), not a text-renderer-only
+  append, so both the plain-text `|` grid and the HTML `<td>` emitter (verified
+  `render/html.rs` emits `<td>{cell}</td>` per row) carry the SAME `[value v]` /
+  `____` strings and the trailing scratch-row `<tr>` with no flavor-specific
+  code. The grid-renderer design bullet states this; Testability adds an HTML
+  unit test; tasks add 2G.1.6 (ff-screen-model HTML `<td>`/`<tr>` test) and
+  2G.4.3 (full-shell HTML-flavor assertion over the Alias Context).
+
+- **Finding 2 (MEDIUM -- "begins with window title bar" not reconciled with the
+  renderer order): ADDRESSED.** Verified `render/text.rs::render_plain` emits
+  title (border) then `body_lines` then `header_lines` (below the body). Chosen
+  option (b): the title-bar and tab-tag lines are the FIRST TWO `body_lines`
+  (not `header_lines`), so they render directly under the title separator and the
+  rendering BEGINS with the title bar. Req 29.1/29.2 now say "first/second
+  in-frame content line" with an explicit renderer-order note; design.md adds a
+  "Renderer-order reconciliation" subsection; task 2G.2.1 asserts the first body
+  row is the title bar and the second is the tab tag; `render_plain`'s section
+  order is left UNCHANGED.
+
+- **Finding 3 (MEDIUM -- "fill the full panel/frame width" undefined, conflicts
+  with per-column-max): ADDRESSED.** Split into two criteria: 29.6 = per-column
+  width (max header/cells, with a widen-on-overflow rule); NEW 29.6a = the frame
+  width, sourced from `model.dimensions.columns` (verified existing field,
+  default 24x80), with `inner_width = max(widest content line,
+  model.dimensions.columns)`. design.md adds a "Frame-width source" paragraph;
+  task 2G.1.1a asserts a narrow grid pads to the frame width, not the widest
+  content line.
+
+- **Finding 4 (MEDIUM -- stale Wave F tasks contradict revised requirements):
+  ADDRESSED.** Task 16.1 and 17.2 now specify a REAL WINDOW SCREENSHOT (Req 1.3 /
+  23.2), not a text raster; task 16.3 now places the composite with NO picker
+  (Req 4.1 / 4.7 RETIRED). The underlying requirement contradiction was also
+  fixed: Req 9.14 is revised to a real window screenshot (was "rasterise the
+  text render"), aligning it with Req 1.3 / 23.2.
+
+- **Finding 5 (NIT -- command-line underscore width unspecified): ADDRESSED.**
+  Req 29.4 now sets the underscore run to the existing POM/menu command-line
+  field width; task 2G.2.2 restates it.
+
+- **Finding 6 (NIT -- combo/text overflow unspecified): ADDRESSED.** Req 29.6
+  (and 29.8/29.9) now state a value wider than its header WIDENS the column and
+  every row (header, data, scratch) pads to the widened width -- no truncation.
+
+- **Finding 7 (NIT -- gate-summary "open owner decisions" vs "settled" EARS):
+  ADDRESSED.** Req 29.1 (title-bar glyph literal) and Req 29.10 (info-bar status
+  source) now carry an explicit SETTLED-BUT-TUNABLE note (as Req 25.3 does), so
+  an approver knows these are confirmable, not locked. The gate summary is
+  updated to cross-reference the settled-but-tunable wording.
