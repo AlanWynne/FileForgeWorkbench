@@ -1,0 +1,38 @@
+[Accessibility]
+reduce_motion = false
+
+[Catalogs]
+default_mainframe_root = 'C:\Users\A142367\AppData\Roaming\ffworkbench\catalogs\mainframe'
+default_posix_root = 'C:\Users\A142367\AppData\Roaming\ffworkbench\catalogs\posix'
+
+[Editor]
+indent_style = "space"
+insert_final_newline = true
+line_endings = "lf"
+tab_size = 4
+trim_trailing_whitespace = false
+
+[Logging]
+directory = 'C:\Users\A142367\AppData\Roaming\ffworkbench\logging'
+level = "info"
+max_file_size_mb = 10
+max_retained_files = 5
+
+[Server]
+host = "localhost"
+
+[Server.http]
+port = 8080
+tls = false
+
+[Server.http.limits]
+max_connections = 128
+timeout_seconds = 30
+
+[[Server.routes]]
+path = "/"
+method = "GET"
+
+[[Server.routes]]
+path = "/api"
+method = "POST"
