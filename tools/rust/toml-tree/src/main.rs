@@ -23,9 +23,9 @@ use toml::Value;
 
 /// A node in the rendered tree.
 ///
-/// A `Leaf` is a scalar key/value pair (or a key whose value is an array of
-/// scalars, which still renders inline on the right). A `Branch` is a table or
-/// an array-of-tables that expands into its own indented child branches.
+/// A `Leaf` is a scalar key/value pair (or a key whose value is an empty array,
+/// which still renders inline as `[]` on the right). A `Branch` is a table or a
+/// non-empty array that expands into its own indented child branches.
 enum Node {
     Leaf {
         key: String,
@@ -103,13 +103,16 @@ fn collect_nodes(doc: &Value) -> Vec<Node> {
     sections
 }
 
-/// A value "expands" into its own branch when it is a table or an array whose
-/// elements are tables (an array-of-tables). Scalars and arrays of scalars stay
-/// inline on the right.
+/// A value "expands" into its own branch when it is a table or a NON-EMPTY
+/// array (of any element type - tables, scalars, or nested arrays). An empty
+/// array stays inline as `[]`; only scalars and empty arrays remain inline.
 fn expands(v: &Value) -> bool {
     match v {
         Value::Table(_) => true,
-        Value::Array(a) => a.iter().all(|e| e.is_table()) && !a.is_empty(),
+        // Any non-empty array expands into indexed child nodes. An empty array
+        // deliberately stays inline (rendered as `[]`) rather than becoming an
+        // empty branch.
+        Value::Array(a) => !a.is_empty(),
         _ => false,
     }
 }
@@ -117,9 +120,11 @@ fn expands(v: &Value) -> bool {
 /// Build a branch node for an expanding value, recursing into children.
 ///
 /// - A table becomes a branch whose children are its keys (leaves for scalars,
-///   nested branches for sub-tables / arrays-of-tables).
-/// - An array-of-tables becomes a branch whose children are indexed branches
-///   `[0]`, `[1]`, ... one per element.
+///   nested branches for sub-tables / non-empty arrays).
+/// - A non-empty array becomes a branch whose children are indexed nodes `[0]`,
+///   `[1]`, ... one per element: a table/array element recurses into its own
+///   branch, while a scalar element lands in the catch-all arm and becomes a
+///   leaf whose key is the `[i]` label and whose value is the scalar.
 fn node_for(label: &str, v: &Value) -> Node {
     match v {
         Value::Table(t) => {
@@ -152,7 +157,9 @@ fn node_for(label: &str, v: &Value) -> Node {
                 children,
             }
         }
-        // Not reachable for a value that `expands`, but render defensively.
+        // A scalar array element reaches here: the `[i]` label becomes the leaf
+        // key and the scalar becomes its right-hand value. Also the defensive
+        // path for a non-expanding value passed directly.
         other => Node::Leaf {
             key: label.to_string(),
             value: render_value(other),
@@ -161,8 +168,9 @@ fn node_for(label: &str, v: &Value) -> Node {
 }
 
 /// Render a scalar/compound value the way it should appear after the colon.
-/// Only scalars and arrays of scalars reach this for inline display; tables and
-/// arrays-of-tables are expanded into branches before rendering.
+/// Only scalars and empty arrays (rendered `[]`) reach this for inline display;
+/// tables and non-empty arrays are expanded into branches before rendering. The
+/// Array/Table arms remain for the defensive catch-all in `node_for`.
 fn render_value(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
@@ -475,14 +483,68 @@ File: \"sample.toml\"
         );
     }
 
-    // Validates: scalar arrays still render inline on the right as a single
-    // `: [..]` value (only arrays-of-tables expand).
+    // Validates: a non-empty scalar array expands into indexed element leaves
+    // ([0]/[1]/[2] with values 1/2/3) rather than rendering inline as a single
+    // `: [..]` value.
     #[test]
-    fn scalar_array_stays_inline() {
+    fn scalar_array_expands_to_indexed_leaves() {
         let out = tree("[S]\nnums = [1, 2, 3]\n");
         assert!(
-            out.contains(": [1, 2, 3]"),
-            "scalar array should stay inline:\n{out}"
+            out.contains("[nums]"),
+            "scalar array should be a child branch:\n{out}"
+        );
+        assert!(
+            !out.contains(": [1, 2, 3]"),
+            "scalar array must not render inline:\n{out}"
+        );
+        // Each element becomes an indexed leaf: `[0] : 1`, `[1] : 2`, `[2] : 3`.
+        for (i, v) in [(0, 1), (1, 2), (2, 3)] {
+            assert!(
+                out.lines()
+                    .any(|l| l.contains(&format!("[{i}]")) && l.contains(&format!(": {v}"))),
+                "element [{i}] should be a leaf with value {v}:\n{out}"
+            );
+        }
+    }
+
+    // Validates: a nested array (array of arrays) expands recursively - the
+    // outer array becomes a branch of indexed element branches, each of which
+    // expands into its own indexed scalar leaves.
+    #[test]
+    fn nested_array_expands_recursively() {
+        let out = tree("[S]\ngrid = [[1, 2], [3, 4]]\n");
+        assert!(
+            out.contains("[grid]"),
+            "outer array should be a child branch:\n{out}"
+        );
+        // Outer elements [0] and [1] are themselves branches, each with their
+        // own [0]/[1] scalar leaves holding 1/2 and 3/4.
+        assert!(
+            out.lines().any(|l| l.contains("[0]") && l.contains(": 1")),
+            "inner element 1 should be a leaf:\n{out}"
+        );
+        assert!(
+            out.lines().any(|l| l.contains("[1]") && l.contains(": 4")),
+            "inner element 4 should be a leaf:\n{out}"
+        );
+        assert!(
+            !out.contains(": [["),
+            "nested array must not render inline:\n{out}"
+        );
+    }
+
+    // Validates: an empty array stays inline as `: []` (the chosen behaviour) -
+    // only non-empty arrays expand.
+    #[test]
+    fn empty_array_stays_inline() {
+        let out = tree("[S]\nempty = []\n");
+        assert!(
+            out.contains(": []"),
+            "empty array should stay inline as []:\n{out}"
+        );
+        assert!(
+            !out.contains("[empty]"),
+            "empty array must not expand into a branch:\n{out}"
         );
     }
 }

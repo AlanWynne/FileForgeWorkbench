@@ -72,10 +72,11 @@ The tree expands to arbitrary depth:
 - A nested sub-table (e.g. `[Server.http]`, which TOML nests as table `http`
   inside table `Server`) renders as its own indented child branch labelled
   `[http]`, not collapsed inline as `{ ... }`.
-- An array-of-tables (e.g. `[[Server.routes]]`) renders as a branch whose
-  children are indexed element nodes `[0]`, `[1]`, ...; each element expands into
-  its own fields. Scalar arrays (e.g. `[1, 2, 3]`) still render inline on the
-  right.
+- Any non-empty array (e.g. `[[Server.routes]]`, `ruler_columns = [80, 100, 120]`)
+  renders as a branch whose children are indexed element nodes `[0]`, `[1]`, ...
+  A table element expands into its own fields; a scalar element becomes a leaf
+  `[i] : <value>`; and a nested array (array of arrays) expands recursively the
+  same way. An empty array (`[]`) stays inline on the right.
 - Every level draws correct box-drawing connectors: a tee for a child with a
   following sibling, an L-corner for the last child, and a vertical pipe
   continuation under any ancestor that still has later siblings. The right-hand
