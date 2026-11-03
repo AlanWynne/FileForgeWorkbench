@@ -227,8 +227,7 @@ fn config_capture_mirrors_visible_render_single_representation() {
 
     // The same must hold for the ACTUAL rendered snapshot text the user pastes:
     // the plain-text and the Markdown (clipboard) flavors both render from this
-    // one model, so neither may contain dot-leaders, and the key must appear
-    // exactly once in each.
+    // one model, so neither may contain dot-leaders.
     let key = "editor.tab_size";
     let plain =
         ff_screen_model::render(&model, SnapshotFormat::PlainText, RenderOptions::default());
@@ -239,13 +238,26 @@ fn config_capture_mirrors_visible_render_single_representation() {
             !rendered.contains(". . ."),
             "rendered snapshot has no dot-leaders"
         );
-        // (a) a known key appears EXACTLY ONCE (guards the former duplicate).
-        assert_eq!(
-            rendered.matches(key).count(),
-            1,
-            "'{key}' must appear exactly once in the capture (no duplicate list);\n{rendered}"
-        );
     }
+    // The PLAIN-TEXT flavor is the box-drawing body only: the key appears EXACTLY
+    // ONCE (guards the former duplicate list). This flavor is UNCHANGED by Req 28.
+    assert_eq!(
+        plain.matches(key).count(),
+        1,
+        "'{key}' appears exactly once in the plain-text box capture (no duplicate list);\n{plain}"
+    );
+    // screen-snapshot-scrm Req 28.1/28.8: the MARKDOWN (CF_UNICODETEXT) flavor now
+    // carries BOTH the box-drawn layout AND the property/value tables, so a key
+    // appears EXACTLY TWICE -- once in the fenced box body, once in its group
+    // table row -- NOT the former tables-only single occurrence. This is the
+    // intended symmetric-flavor behaviour, not a duplicate-list defect (the
+    // per-group table structure is still asserted single by the dedicated
+    // per-group test below).
+    assert_eq!(
+        markdown.matches(key).count(),
+        2,
+        "'{key}' appears once in the box body and once in its table row (Req 28.1);\n{markdown}"
+    );
 
     // (c) a group header renders flush-left as "[<Group>] : expanded|collapsed".
     // Editor is a stable namespace in the schema.
@@ -362,16 +374,20 @@ fn config_markdown_capture_renders_per_group_headings_and_tables() {
         "the heading is immediately followed by a 'Property | Value' table;\n{md}"
     );
 
-    // The Logging table contains the row 'logging.level | info', and
-    // 'logging.level' appears EXACTLY ONCE across the whole capture (no dup).
+    // The Logging table contains the row 'logging.level | info'. Across the whole
+    // capture 'logging.level' now appears EXACTLY TWICE (screen-snapshot-scrm Req
+    // 28.1): once in the fenced box-drawn body and once in its group table row --
+    // the intended box+tables symmetry, not a duplicate table block (the former
+    // defect was a duplicate TABLE, still guarded by the per-section header count
+    // below).
     assert!(
         md.contains("| logging.level | info |"),
         "the Logging table has a 'logging.level | info' row;\n{md}"
     );
     assert_eq!(
         md.matches("logging.level").count(),
-        1,
-        "'logging.level' appears exactly once (no duplicate block);\n{md}"
+        2,
+        "'logging.level' appears once in the box body and once in its table row (Req 28.1);\n{md}"
     );
 
     // One '### [Group]' heading per namespace group, each appearing exactly

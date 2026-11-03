@@ -40,10 +40,14 @@
 //!
 //! Validates: screen-snapshot-scrm Requirement 23.5c, 23.5d.
 
-/// Build the CF_HTML payload: the picture (base64 `data:image/png` `<img>`) and
-/// the box-drawn `pre_text` (HTML-escaped, emitted as one monospace `<span>`
-/// paragraph per line), wrapped in the CF_HTML header with correct UTF-8 BYTE
-/// offsets and the `<!--StartFragment-->` / `<!--EndFragment-->` markers.
+/// Build the CF_HTML payload: the picture (base64 `data:image/png` `<img>`), the
+/// box-drawn `pre_text` (HTML-escaped, emitted as one monospace `<span>`
+/// paragraph per line), and the property/value `tables_html` (the
+/// `ff_screen_model` HTML-table emitter output, appended AFTER the box in
+/// image/box/tables order, Req 28.2/28.4), wrapped in the CF_HTML header with
+/// correct UTF-8 BYTE offsets and the `<!--StartFragment-->` /
+/// `<!--EndFragment-->` markers. `tables_html` is empty for a box-only model, in
+/// which case the payload is byte-identical to the pre-Req-28 output (Req 28.7).
 ///
 /// The header is written in two passes: a FIRST pass with zero-padded,
 /// fixed-width (10-digit) placeholder offsets so the header length is known and
@@ -56,8 +60,8 @@
 //
 // Wired into the live SNAPSHOT payload assembly in FEAT-002
 // (`shell/commands_snapshot::place_snapshot_composite`).
-pub fn build_cf_html(png: &[u8], pre_text: &str) -> String {
-    let body = fragment_html(png, pre_text);
+pub fn build_cf_html(png: &[u8], pre_text: &str, tables_html: &str) -> String {
+    let body = fragment_html(png, pre_text, tables_html);
 
     // The HTML document around the fragment markers. A document-level monospace
     // default in <head><style> is belt-and-braces (mirrors the @font-face Word's
@@ -137,7 +141,7 @@ fn line_paragraph(escaped_line: &str) -> String {
 /// box-drawn text emitted as ONE monospace `<span>` paragraph per line. Lines are
 /// split on `\n` (a trailing `\r` is stripped) so one `<p>` is emitted per
 /// screen line, blank lines included (Req 23.5f).
-fn fragment_html(png: &[u8], pre_text: &str) -> String {
+fn fragment_html(png: &[u8], pre_text: &str, tables_html: &str) -> String {
     let mut out = format!(
         "<p><img src=\"data:image/png;base64,{}\"></p>\r\n",
         base64_encode(png)
@@ -151,6 +155,16 @@ fn fragment_html(png: &[u8], pre_text: &str) -> String {
     for line in body.split('\n') {
         let line = line.strip_suffix('\r').unwrap_or(line);
         out.push_str(&line_paragraph(&html_escape(line)));
+    }
+    // screen-snapshot-scrm Req 28.2/28.4: after the image paragraph and the
+    // per-line monospace box paragraphs, append the property/value HTML tables
+    // (box-before-tables order). `tables_html` is the `ff_screen_model`
+    // HTML-table emitter output; it is already well-formed HTML and is NOT
+    // re-escaped. Empty for a box-only model (Req 28.7), leaving the fragment
+    // byte-identical to the pre-change output.
+    if !tables_html.is_empty() {
+        out.push_str("\r\n");
+        out.push_str(tables_html);
     }
     out
 }
@@ -217,7 +231,7 @@ mod tests {
     #[test]
     fn cf_html_header_offsets_index_the_markers() {
         let png = [0u8, 1, 2, 3, 4, 5, 6, 7];
-        let html = build_cf_html(&png, "box");
+        let html = build_cf_html(&png, "box", "");
         let bytes = html.as_bytes();
 
         let start_html = header_int(&html, "StartHTML:");
@@ -254,7 +268,7 @@ mod tests {
     #[test]
     fn cf_html_inlines_png_and_pre_text() {
         let png = [0x89, b'P', b'N', b'G'];
-        let html = build_cf_html(&png, "USER.TEST");
+        let html = build_cf_html(&png, "USER.TEST", "");
         assert!(
             html.contains("data:image/png;base64,"),
             "the PNG is inlined as a base64 data URL"
@@ -284,7 +298,7 @@ mod tests {
         let png = [0u8];
         // Three content lines with a blank middle line, plus a trailing newline.
         let body = "LINE.ONE\n\nLINE.THREE\n";
-        let html = build_cf_html(&png, body);
+        let html = build_cf_html(&png, body, "");
 
         // One <p ...><span ...> line paragraph per screen line (3), excluding the
         // image paragraph (which is a bare <p><img>, no line-paragraph style).
@@ -311,7 +325,7 @@ mod tests {
         let png = [0u8];
         // Simulate the already-redacted body the single-point redaction produces.
         let redacted = "Token . . . : ***REDACTED***";
-        let html = build_cf_html(&png, redacted);
+        let html = build_cf_html(&png, redacted, "");
         assert!(
             html.contains("***REDACTED***"),
             "the redaction placeholder is present in the fragment"
@@ -328,7 +342,7 @@ mod tests {
     // element is the per-line <span>, not a block element Word would remap.
     #[test]
     fn cf_html_applies_monospace_font_to_each_line_span() {
-        let html = build_cf_html(&[0u8], "USER.TEST");
+        let html = build_cf_html(&[0u8], "USER.TEST", "");
         // No <pre> anywhere -- the single-<pre> shape Word dropped the font from
         // is gone.
         assert!(
@@ -362,7 +376,7 @@ mod tests {
         let png = [0x89, b'P', b'N', b'G', 0, 1, 2, 3];
         // A box glyph exercises multi-byte UTF-8 in the fragment body.
         let text = format!("{}USER.TEST", '\u{250C}');
-        let html = build_cf_html(&png, &text);
+        let html = build_cf_html(&png, &text, "");
 
         let start_html = header_int(&html, "StartHTML:");
         let end_html = header_int(&html, "EndHTML:");
@@ -402,7 +416,7 @@ mod tests {
     fn cf_html_escapes_and_preserves_box_glyph() {
         let glyph = '\u{250C}'; // top-left corner
         let text = format!("{glyph}<a>&\"'");
-        let html = build_cf_html(&[0u8], &text);
+        let html = build_cf_html(&[0u8], &text, "");
         assert!(
             html.contains(glyph),
             "the box glyph survives into the line span"
@@ -411,6 +425,75 @@ mod tests {
         assert!(html.contains("&amp;"), "ampersand is escaped");
         assert!(html.contains("&quot;"), "double quote is escaped");
         assert!(html.contains("&#39;"), "single quote is escaped");
+    }
+
+    // Validates: screen-snapshot-scrm Req 28.2, 28.4 -- the composite CF_HTML
+    // carries, in order, the base64 `<img>`, the monospace box `<span>`
+    // paragraphs, AND the property/value `<table>` markup appended after the box.
+    #[test]
+    fn cf_html_carries_image_box_then_tables_in_order() {
+        let png = [0x89, b'P', b'N', b'G'];
+        let tables = "  <table class=\"ffwb-table\">\n    \
+             <tr><th>Property</th><th>Value</th></tr>\n    \
+             <tr><td>editor.tab_size</td><td>4</td></tr>\n  </table>\n";
+        let html = build_cf_html(&png, "BOX.LINE", tables);
+
+        let img_idx = html
+            .find("<p><img src=\"data:image/png;base64,")
+            .expect("image paragraph present");
+        let span_idx = html
+            .find("<span style=\"font-family:'Consolas','Courier New',monospace\">BOX.LINE")
+            .expect("monospace box span present");
+        let table_idx = html
+            .find("<table class=\"ffwb-table\">")
+            .expect("property/value table present");
+        assert!(
+            img_idx < span_idx && span_idx < table_idx,
+            "order is image, then box, then tables (Req 28.4)"
+        );
+        assert!(html.contains("<td>editor.tab_size</td><td>4</td>"));
+    }
+
+    // Validates: screen-snapshot-scrm Req 28.2, 28.5 -- with the tables appended,
+    // the four CF_HTML header offsets still round-trip to the fragment markers,
+    // and the tables live INSIDE the bracketed fragment.
+    #[test]
+    fn cf_html_offsets_round_trip_with_tables_present() {
+        let png = [0x89, b'P', b'N', b'G', 0, 1, 2, 3];
+        let tables = "  <table class=\"ffwb-table\">\n    \
+             <tr><td>k</td><td>v</td></tr>\n  </table>\n";
+        let html = build_cf_html(&png, "USER.TEST", tables);
+
+        let start_html = header_int(&html, "StartHTML:");
+        let end_html = header_int(&html, "EndHTML:");
+        let start_fragment = header_int(&html, "StartFragment:");
+        let end_fragment = header_int(&html, "EndFragment:");
+
+        assert!(html[..start_fragment].ends_with("<!--StartFragment-->"));
+        assert!(html[end_fragment..].starts_with("<!--EndFragment-->"));
+        assert!(html.as_bytes()[start_html..].starts_with(b"<html>"));
+        assert_eq!(end_html, html.len());
+        assert!(
+            html[start_fragment..end_fragment].contains("<table class=\"ffwb-table\">"),
+            "the appended tables live inside the bracketed fragment (Req 28.5)"
+        );
+    }
+
+    // Validates: screen-snapshot-scrm Req 28.3, 28.7 -- with NO tables (box-only
+    // model) the output is byte-identical to a build with an empty tables arg,
+    // i.e. the box-only path is unaffected by this change.
+    #[test]
+    fn cf_html_box_only_unchanged_when_no_tables() {
+        let png = [0x89, b'P', b'N', b'G'];
+        let with_empty = build_cf_html(&png, "BOX.LINE", "");
+        // No `<table>` markup leaks in when there are no tables.
+        assert!(
+            !with_empty.contains("<table"),
+            "a box-only composite carries no table markup"
+        );
+        // The trailing tables separator is absent, so the body ends at the last
+        // line paragraph exactly as before Req 28.
+        assert!(with_empty.contains("BOX.LINE</span></p><!--EndFragment-->"));
     }
 
     // Validates: Req 23.5d -- base64 encodes with correct padding for each

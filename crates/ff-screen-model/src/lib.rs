@@ -32,7 +32,7 @@ pub use raster::{
     crop, encode_png, rasterise_screen, rasterise_text, screen_png, PixelRect, RasterImage,
 };
 pub use redact::REDACTED_PLACEHOLDER;
-pub use render::{render, RenderOptions};
+pub use render::{render, render_tables_html, RenderOptions};
 
 /// The set of snapshot output formats.
 ///

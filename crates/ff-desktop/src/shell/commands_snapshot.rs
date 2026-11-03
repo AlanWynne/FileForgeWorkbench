@@ -154,7 +154,7 @@ impl WorkbenchShell {
             model,
             ff_screen_model::SnapshotFormat::Markdown,
         );
-        // Req 23.5c: the CF_HTML `<pre>` body is the plain Unicode box-drawn
+        // Req 23.5c: the CF_HTML monospace body is the plain Unicode box-drawn
         // screen (the default options frame with the U+2500 family), rendered
         // here so the frame loop never touches the model.
         let pre_text = ff_screen_model::render(
@@ -162,11 +162,20 @@ impl WorkbenchShell {
             ff_screen_model::SnapshotFormat::PlainText,
             ff_screen_model::RenderOptions::default(),
         );
+        // Req 28.2: the property/value HTML tables appended after the box in the
+        // CF_HTML flavor, derived from the SAME tabular content the Markdown
+        // flavor uses (`markdown_sections`, else `fields`/`tables`). Empty for a
+        // box-only model (Req 28.7), leaving the CF_HTML composite unchanged.
+        let tables_html = ff_screen_model::render_tables_html(model);
         // Stash the pre-rendered flavors and ask the frame loop for a live window
         // screenshot. The payload + clipboard placement happen on the
         // Event::Screenshot frame (see `shell/update.rs`). The picture naturally
         // includes any open dialog on top, which is correct for the dialog Copy.
-        self.snapshot.pending = Some(super::state_groups::PendingSnapshot { text, pre_text });
+        self.snapshot.pending = Some(super::state_groups::PendingSnapshot {
+            text,
+            pre_text,
+            tables_html,
+        });
         self.snapshot.screenshot_requested = true;
     }
 
@@ -183,11 +192,11 @@ impl WorkbenchShell {
     ///
     /// The picture is the REAL window grab (Req 23.4, 23.5d), not a synthetic
     /// text render; the CF_HTML composite carries the same PNG plus the plain
-    /// Unicode box-drawn `<pre>` body (Req 23.5c). ANSI is never a flavor here
-    /// (Req 23.5e).
+    /// Unicode box-drawn monospace body AND, after it, the property/value HTML
+    /// tables (Req 23.5c, 28.2, 28.4). ANSI is never a flavor here (Req 23.5e).
     ///
     /// Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d,
-    /// 23.5e.
+    /// 23.5e, 28.2.
     pub(super) fn place_snapshot_composite(
         &mut self,
         image: &egui::ColorImage,
@@ -206,6 +215,7 @@ impl WorkbenchShell {
         payload.html = Some(crate::clipboard_html::build_cf_html(
             &payload.png,
             &pending.pre_text,
+            &pending.tables_html,
         ));
         let fmt = snapshot_format_label(ff_screen_model::SnapshotFormat::Markdown);
         let mut backend = crate::clipboard_backend::OsClipboard;
@@ -453,5 +463,125 @@ mod dialog_crop_tests {
             "a full-window SNAPSHOT with no dialog is uncropped"
         );
         assert_eq!(out, full, "the capture is returned unchanged");
+    }
+}
+
+/// End-to-end flavor assertions over a Config-like `ScreenModel` fixture
+/// (screen-snapshot-scrm Req 28, CR-CH-079, task 2F.4): each clipboard TEXT
+/// flavor carries BOTH the box-drawn layout AND the property/value tables, and
+/// the PNG picture flavor is unchanged.
+#[cfg(test)]
+mod dual_representation_flavor_tests {
+    use ff_screen_model::{MarkdownSection, ScreenModel, SnapshotFormat, Table};
+
+    /// A Config-like model: a box-drawn body (`body_lines`) PLUS per-group
+    /// `markdown_sections` (a heading-less intro table + one `[Group]` heading +
+    /// Property/Value table), mirroring what the Config `ScreenProvider`
+    /// produces.
+    fn config_fixture() -> ScreenModel {
+        let mut m = ScreenModel::new("Configuration");
+        m.body_lines = vec![
+            "Filter:                              :".to_string(),
+            "Unsaved edits                        : no".to_string(),
+            "[Editor]                             : expanded".to_string(),
+            "    editor.tab_size                  : 4".to_string(),
+        ];
+        m.markdown_sections = vec![
+            MarkdownSection {
+                heading: None,
+                table: Table {
+                    caption: None,
+                    headers: vec!["Property".to_string(), "Value".to_string()],
+                    rows: vec![vec!["Unsaved edits".to_string(), "no".to_string()]],
+                },
+            },
+            MarkdownSection {
+                heading: Some("[Editor]  (expanded)".to_string()),
+                table: Table {
+                    caption: None,
+                    headers: vec!["Property".to_string(), "Value".to_string()],
+                    rows: vec![vec!["editor.tab_size".to_string(), "4".to_string()]],
+                },
+            },
+        ];
+        m
+    }
+
+    // Validates: screen-snapshot-scrm Requirement 28.1 -- the `CF_UNICODETEXT`
+    // flavor (the Markdown-fenced `render_snapshot(model, Markdown)` text) carries
+    // BOTH the box block AND the Markdown `| Property | Value |` tables, box
+    // before tables.
+    #[test]
+    fn cf_unicode_text_flavor_has_box_and_markdown_tables() {
+        let text =
+            crate::screen_snapshot::render_snapshot(&config_fixture(), SnapshotFormat::Markdown);
+        let box_idx = text.find('\u{250C}').expect("box frame present");
+        let table_idx = text
+            .find("| Property | Value |")
+            .expect("markdown property/value table present");
+        assert!(box_idx < table_idx, "box before tables (Req 28.4)");
+        assert!(text.contains("### [Editor]  (expanded)"));
+        assert!(text.contains("| editor.tab_size | 4 |"));
+    }
+
+    // Validates: screen-snapshot-scrm Requirement 28.2 -- the `CF_HTML` flavor
+    // (built by `build_cf_html` from the PNG, the plain box body, and the
+    // HTML-table emitter output) carries the base64 image, the monospace box
+    // `<span>` block, AND HTML `<table>` tables.
+    #[test]
+    fn cf_html_flavor_has_image_box_and_html_tables() {
+        let model = config_fixture();
+        let png = [0x89u8, b'P', b'N', b'G'];
+        let pre_text = ff_screen_model::render(
+            &model,
+            SnapshotFormat::PlainText,
+            ff_screen_model::RenderOptions::default(),
+        );
+        let tables_html = ff_screen_model::render_tables_html(&model);
+        let html = crate::clipboard_html::build_cf_html(&png, &pre_text, &tables_html);
+
+        assert!(
+            html.contains("data:image/png;base64,"),
+            "the PNG image is inlined (Req 28.2)"
+        );
+        assert!(
+            html.contains("<span style=\"font-family:'Consolas','Courier New',monospace\">"),
+            "the monospace box span block is present (Req 28.2, 28.5)"
+        );
+        assert!(
+            html.contains("<table class=\"ffwb-table\">"),
+            "HTML property/value tables are present (Req 28.2)"
+        );
+        assert!(html.contains("<td>editor.tab_size</td><td>4</td>"));
+
+        // Order: image, then box span, then table (Req 28.4).
+        let img_idx = html.find("data:image/png;base64,").unwrap();
+        let span_idx = html
+            .find("<span style=\"font-family:'Consolas','Courier New',monospace\">")
+            .unwrap();
+        let table_idx = html.find("<table class=\"ffwb-table\">").unwrap();
+        assert!(img_idx < span_idx && span_idx < table_idx);
+    }
+
+    // Validates: screen-snapshot-scrm Requirement 28.3 -- the PNG picture flavor
+    // is unchanged by this requirement: the picture bytes are produced by the
+    // unchanged `ff_screen_model` rasteriser from the model, independent of the
+    // text-flavor table work, and depend only on the model (not on
+    // `markdown_sections`).
+    #[test]
+    fn png_picture_flavor_unchanged_by_tables() {
+        let model = config_fixture();
+        let png_with_tables =
+            ff_screen_model::encode_png(&ff_screen_model::rasterise_screen(&model));
+        // A clone with the markdown_sections (a TEXT-flavor-only field) removed
+        // must rasterise to the IDENTICAL PNG: the picture path ignores tables.
+        let mut no_sections = model.clone();
+        no_sections.markdown_sections.clear();
+        let png_without_tables =
+            ff_screen_model::encode_png(&ff_screen_model::rasterise_screen(&no_sections));
+        assert_eq!(
+            png_with_tables, png_without_tables,
+            "the PNG picture flavor is independent of the property/value tables (Req 28.3)"
+        );
     }
 }

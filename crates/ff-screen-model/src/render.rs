@@ -13,6 +13,11 @@ mod yaml;
 use crate::model::ScreenModel;
 use crate::SnapshotFormat;
 
+/// Re-export the composite-flavor HTML-table emitter (screen-snapshot-scrm Req
+/// 28.2): renders ONLY a model's property/value tables as HTML `<table>` markup,
+/// for appending to the CF_HTML clipboard composite after the box-drawn body.
+pub use html::render_tables_html;
+
 /// Options controlling text rendering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RenderOptions {

@@ -131,19 +131,27 @@ pub(crate) struct PendingTabActions {
 /// container holding the pre-rendered text flavors captured in the command
 /// phase, waiting for the async window screenshot the frame loop requests.
 ///
-/// Both strings are rendered from the SAME logical screen model in the command
-/// phase (where the `ScreenProvider` seam lives), so the frame loop stays
-/// egui-only and never touches the model: `text` is the Markdown-fenced
-/// rendering published as the `CF_UNICODETEXT` flavor; `pre_text` is the plain
-/// Unicode box-drawn body placed inside the CF_HTML `<pre>` block.
+/// All three strings are rendered from the SAME logical screen model in the
+/// command phase (where the `ScreenProvider` seam lives), so the frame loop
+/// stays egui-only and never touches the model: `text` is the Markdown-fenced
+/// rendering published as the `CF_UNICODETEXT` flavor (which now carries BOTH the
+/// box layout AND the Markdown tables, Req 28.1); `pre_text` is the plain Unicode
+/// box-drawn body placed inside the CF_HTML monospace block; `tables_html` is the
+/// property/value HTML-table markup appended after the box in the CF_HTML flavor
+/// (Req 28.2), empty for a box-only model.
 ///
-/// Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d.
+/// Validates: screen-snapshot-scrm Requirement 4.1, 23.4, 23.5c, 23.5d, 28.1,
+/// 28.2.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct PendingSnapshot {
-    /// The Markdown-fenced text flavor (`CF_UNICODETEXT`).
+    /// The Markdown-fenced text flavor (`CF_UNICODETEXT`): box layout + Markdown
+    /// property/value tables (Req 28.1).
     pub text: String,
-    /// The plain Unicode box-drawn screen body (the CF_HTML `<pre>` body).
+    /// The plain Unicode box-drawn screen body (the CF_HTML monospace body).
     pub pre_text: String,
+    /// The property/value HTML tables appended after the box in the CF_HTML
+    /// composite flavor (Req 28.2). Empty for a box-only model (Req 28.7).
+    pub tables_html: String,
 }
 
 /// The shell's two-phase bare-SNAPSHOT state (CR-NR-114, FEAT-002). A grouped
