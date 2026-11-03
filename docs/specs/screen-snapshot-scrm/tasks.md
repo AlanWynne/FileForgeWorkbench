@@ -496,6 +496,68 @@ collision with SCRM Requirement numbers.
         visually matches the live framed window top-to-bottom; cannot be driven
         headlessly. (Req 29.1-29.11)
 
+## Phase 2H: Common-workspace-frame reproduction (Req 30, CR-NR-115)
+
+TDD-first; extends Phase 2G's shared chrome helper + grid renderer. Agents
+compile-verify and run scoped unit tests; the owner runs the full gate
+(gate-policy.md). This phase depends on `workspace-framework` Phase CF for the
+Message_Line and `last_action_at` shell state; where that state is absent the
+reproduction gracefully omits the message line.
+
+- [ ] 2H.1 Full tab bar in the reproduced frame (Req 30.4, revises 29.2)
+  - [ ] 2H.1.1 Failing test (ff-desktop): the shared chrome helper composes a tab
+        line with ALL open tab tags (e.g. `[ALIASES]` and `[CONFIG]`) each with a
+        close marker, not just the active tag
+    - Validates: Requirement 30.4
+  - [ ] 2H.1.2 Implement the full-tab-bar composition iterating `TabManager` +
+        `BuiltinKind::default_title()`; make 2H.1.1 pass
+    - Covers: Requirement 30.1, 30.4, 30.17
+
+- [ ] 2H.2 Menu-bar line in the reproduced frame (Req 30.3)
+  - [ ] 2H.2.1 Failing test (ff-desktop): the helper composes the menu-bar line
+        (e.g. `Settings | Help | SCRM`) from the live menu echo, under the window
+        title bar
+    - Validates: Requirement 30.3
+  - [ ] 2H.2.2 Implement the menu-bar line composition; make 2H.2.1 pass
+    - Covers: Requirement 30.1, 30.3, 30.17
+
+- [ ] 2H.3 Message line in the reproduced frame (Req 30.8, 30.9)
+  - [ ] 2H.3.1 Failing test (ff-desktop): WHEN the shell Message_Line state is
+        non-empty the reproduced frame includes the message line above the status
+        bar; WHEN empty it is omitted
+    - Validates: Requirement 30.8, 30.9
+  - [ ] 2H.3.2 Implement the message-line reproduction from the shell Message_Line
+        state (workspace-framework Req 7); make 2H.3.1 pass
+    - Covers: Requirement 30.8, 30.9, 30.17
+
+- [ ] 2H.4 Common + per-Kind status text in the reproduced frame (Req 30.10)
+  - [ ] 2H.4.1 Failing test (ff-desktop): the reproduced status line is `Last:
+        HH:MM | Prof: <name> | Ln n, Col n | <encoding> | <lines>` plus the active
+        Kind's segment, and contains NO `RUNNING`
+    - Validates: Requirement 30.10
+  - [ ] 2H.4.2 Implement the common+per-Kind status composition into
+        `model.status_bar.text`; make 2H.4.1 pass
+    - Covers: Requirement 30.10, 30.17
+
+- [ ] 2H.5 Box-drawing content grid (Req 30.12-30.14)
+  - [ ] 2H.5.1 Failing test (ff-screen-model): the text table renderer emits
+        box-drawing header/separator/bottom rules and box-drawing vertical
+        separators, keeping the `[value v]`/`[ v]`/`____`/padded cell conventions,
+        the scratch row, and the full-frame width from Phase 2G
+    - Validates: Requirement 30.12, 30.13, 30.14
+  - [ ] 2H.5.2 Implement box-drawing borders in the text table renderer (ASCII
+        fallback retained per Req 5.2); make 2H.5.1 pass
+    - Covers: Requirement 30.12, 30.13, 30.14
+
+- [ ] 2H.6 General scope + capture parity + full-shell assertion (Req 30.15, 30.16)
+  - [ ] 2H.6.1 Full-shell egui_kittest (ff-desktop): a SNAPSHOT over the live
+        Alias Editor contains the menu-bar line, BOTH open tab tags, the
+        box-drawing grid, the `Last:`/`Prof:` status segments, and no `RUNNING`
+    - Validates: Requirement 30.1, 30.3, 30.4, 30.10, 30.12, 30.15
+  - [ ] 2H.6.2 Capture-path parity test (ff-desktop): the capture seam yields the
+        IDENTICAL reproduced frame as the snapshot seam
+    - Validates: Requirement 30.16
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

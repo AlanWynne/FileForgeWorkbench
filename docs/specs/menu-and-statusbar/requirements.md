@@ -24,6 +24,7 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 - `theme-and-appearance` -- View menu exposes theme switching
 - `configuration-system` -- status bar segment configuration, recent files persistence
 - `plugin-architecture` -- plugins contribute menu items and status bar segments
+- `project-master` Requirement 11 (Save Convention) -- the Menus Editor Context MUST follow the ISPF-style explicit-save convention: a WORKING COPY on entry, SAVE commits + stays, END commits + exits, RETURN discards + exits, reaching the Context through the single shared command seam (not an in-panel button alone). See master Requirement 11 and `.kiro/steering/save-convention.md`.
 
 ## Glossary
 
@@ -123,6 +124,18 @@ The Command Field ("Command ===>") is an ISPF heritage element positioned above 
 **User Story:** As a user, I want a status bar at the bottom of the workbench window that shows me important real-time information about the current editor state, so that I can see my cursor position, editing mode, and file status at a glance.
 
 **Source:** FFE MVP Requirement 4 criterion 10. [FFE-MVP-4, WB]
+
+**Common-frame cross-reference (CR-NR-115):** The Status_Bar is one of the eight
+elements of the COMMON WORKSPACE FRAME whose boundary and composition are defined
+normatively in `workspace-framework` Requirement 7. Per that contract: the
+Status_Bar = shell-owned Common_Status_Segments (`Last: HH:MM` last-action time,
+`Prof: <ActiveProfileName>`, `Ln/Col`, encoding, line count) PLUS one
+Workspace_Status_Segment the active Workspace Kind contributes; the former
+`RUNNING` phase segment is REMOVED in favour of a new transient Message_Line
+rendered directly ABOVE the Status_Bar; the Function_Key_Bar is driven by
+`pfshow`. The per-Kind status content is decided in the per-Workspace-Kind
+follow-up gates. See `workspace-framework` Requirement 7 for the authoritative
+criteria; this Requirement 5 continues to own the Status_Bar panel mechanics.
 
 #### Acceptance Criteria
 

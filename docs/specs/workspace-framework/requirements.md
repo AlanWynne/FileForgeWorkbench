@@ -193,3 +193,170 @@ Context.
 4. This requirement constrains the framework SHAPE only; the detach FEATURE
    itself is delivered separately (layout-and-docking, "Detached Workspace") and
    is out of scope for the phase-1 migration. The framework MUST NOT preclude it.
+
+---
+
+### Requirement 7: The Common Workspace Frame -- common-vs-unique boundary (CR-NR-115)
+
+**User Story:** As the architecture owner, before building the next major
+extensions I want ONE model that says exactly which parts of every workspace are
+the SHELL's common frame and which parts each workspace / command environment
+owns, so that every workspace -- current and future -- has the same chrome drawn
+exactly once, and the per-workspace work that follows only has to fill the
+content area and contribute its own status content.
+
+#### Context (owner-confirmed 2026-11-03, CR-NR-115)
+
+The owner pasted a full-window sketch of the ISPF-style frame that is COMMON to
+every workspace and asked, as the explicit first step of the
+workspace-architecture alignment, to "separate out two parts: what is common to
+all workspaces and what is unique to each workspace ... lets try getting the
+common parts right first then we can focus on each workspace at a time" and
+confirmed "lets first get the common right then we can have a gate per workspace
+kind". This requirement is the BACKBONE of that alignment: it defines the common
+frame NORMATIVELY. The snapshot/capture reproduction of this frame is specified
+in `screen-snapshot-scrm` Requirement 30 (which revises Requirement 29); the
+status-bar and function-key-bar rendering detail is owned by `menu-and-statusbar`
+(Requirement 5, 7, 8, 12, 16). This requirement is the single place the
+common-vs-unique boundary is stated; the other specs build on it.
+
+This BUILDS ON existing framework seams (framework-conformance.md): the shell
+chrome already renders the window title bar (`main.rs`), the menu bar, the tab
+bar, the Title_Line, the `Command ===>` field, the Status_Bar
+(`shell/render_status.rs`), and the key-label bar
+(`shell/render_status.rs::render_key_label_bar`, driven by `pfshow`); the
+`WorkspaceContext` trait + `render_workspace_context` dispatch already draws each
+Context's content into the central panel. This requirement names the boundary
+between the two; it introduces NO new command-dispatch path, NO new navigation
+stack, and NO reshape of a public framework type. The one piece of NEW shell
+state it implies -- a transient Message_Line -- is ADDITIVE shell state (a new
+field/area), NOT a framework-type reshape; it is called out for owner
+confirmation in the design.
+
+#### Glossary additions
+
+| Term | Definition |
+|------|-----------|
+| **Common_Frame** | The set of chrome elements the SHELL owns and renders exactly once around every Workspace, regardless of Kind: the Window_Title_Bar, the Menu_Bar, the Tab_Bar, the Workspace_Title, the Primary_Command_Field, the Message_Line, the Status_Bar, and the Function_Key_Bar. |
+| **Content_Area** | The region between the Primary_Command_Field and the Message_Line that each Workspace / Command Environment owns and fills; the shell frame renders no content here. |
+| **Message_Line** | A transient informational line rendered directly ABOVE the Status_Bar, showing message(s) raised by the last action; cleared when the next action is taken. |
+| **Common_Status_Segment** | A Status_Bar segment the SHELL owns for every Workspace (last-action time, active profile, Ln/Col, encoding, line count). |
+| **Workspace_Status_Segment** | A Status_Bar segment whose content a specific Workspace Kind owns and contributes (e.g. the Alias Kind's `Aliases: nnn | Rows 1-nnn visible`). |
+
+#### Acceptance Criteria -- the eight common-frame elements (shell-owned, each exactly once)
+
+1. THE Common_Frame SHALL consist of EXACTLY these eight shell-owned elements,
+   rendered EXACTLY ONCE around every Workspace regardless of Kind, in this
+   top-to-bottom visual order: (1) Window_Title_Bar, (2) Menu_Bar, (3) Tab_Bar,
+   (4) Workspace_Title, (5) Primary_Command_Field, [Content_Area], (6)
+   Message_Line, (7) Status_Bar, (8) Function_Key_Bar. No Workspace SHALL draw
+   its own copy of any of these elements (single-chrome).
+2. THE Window_Title_Bar SHALL show the application brand token `FileForge
+   Workbench` (the brand token is NOT translated) followed by the window-control
+   glyphs (`_ [] X`, plain ASCII). Descriptive / chrome text other than the brand
+   token SHALL be translatable via the existing locale mechanism. The brand text
+   SHALL be the one live window title, not a second hardcoded copy.
+3. THE Menu_Bar SHALL be the live menu bar (e.g. `Settings | Help | SCRM`),
+   rendered once by the shell above the Tab_Bar (menu-and-statusbar Requirement
+   2.1, Requirement 22).
+4. THE Tab_Bar SHALL show ALL open Workspace tabs with their `[XXX]` Tab_Header
+   tags (e.g. `[ALIASES]  [CONFIG]`) and each tab's close affordance -- the full
+   tab bar, not only the active tab's tag. The `[XXX]` tag is the terse bracketed
+   Tab_Header tag, distinct from the descriptive Workspace_Title (CR-NR-090 /
+   CR-CH-045).
+5. THE Workspace_Title SHALL be the descriptive display title of the active
+   Workspace, rendered CENTERED on its own line, exactly once.
+6. THE Primary_Command_Field SHALL be the `Command ===>` line carrying the
+   current typed value followed by an underscore input area (`Command ===>
+   <value>____...`), rendered once near the top under the Workspace_Title.
+7. THE Content_Area between the Primary_Command_Field and the Message_Line SHALL
+   be owned and filled by the active Workspace / Command Environment; the shell
+   Common_Frame SHALL NOT render any content into it. For the purpose of this
+   backbone the Content_Area is an OPAQUE region the Workspace fills.
+8. THE Message_Line SHALL be rendered by the shell directly ABOVE the Status_Bar
+   (see Requirement 7 message-line criteria below).
+9. THE Status_Bar SHALL be a single shell-owned line composed of Common_Status_
+   Segments PLUS a Workspace_Status_Segment (see Requirement 7 status-bar
+   criteria below).
+10. THE Function_Key_Bar SHALL be rendered or hidden per the `pfshow` setting
+    (see Requirement 7 PF-key criteria below).
+
+#### Acceptance Criteria -- the Message_Line (transient, multi-message, cleared on next action)
+
+11. WHEN an action raises one or more informational messages THE Message_Line
+    SHALL display them in the line directly above the Status_Bar.
+12. THE Message_Line SHALL be CLEARED as soon as the NEXT action is taken, so a
+    message lives only until the following action; between actions it persists.
+13. WHERE multiple messages are present THE Message_Line MAY EXPAND to show more
+    than one message line.
+14. WHERE no message is present THE Message_Line SHALL be absent / empty (it is
+    not a permanently reserved blank line like the Status_Bar).
+15. THE Message_Line SHALL REPLACE the former `RUNNING` Status_Bar phase segment:
+    the `RUNNING` segment is redundant and SHALL be removed from the Status_Bar in
+    favour of the Message_Line (owner decision).
+
+#### Acceptance Criteria -- the Status_Bar common + per-workspace segment model
+
+16. THE Status_Bar SHALL contain these Common_Status_Segments, shell-owned for
+    every Workspace: a LAST-ACTION time `Last: HH:MM` (updated on each action, NOT
+    a continuously-ticking clock -- owner picked last-action over started/current),
+    `Prof: <ActiveProfileName>` (the active profile name, abbreviated from the
+    former `Profile: default`), the cursor `Ln <n>, Col <n>`, the encoding (e.g.
+    `UTF-8`), and the line count.
+17. THE Status_Bar SHALL ALSO contain a Workspace_Status_Segment whose content is
+    decided by the ACTIVE Workspace Kind (e.g. the Alias Kind contributes
+    `Aliases: nnn | Rows 1-nnn visible`). The common segments are shell-owned; the
+    per-Kind segment is workspace-owned. So the Status_Bar = Common_Status_Segments
+    + one Workspace_Status_Segment.
+18. THE former `Started HH:MM` segment SHALL be REPLACED by the `Last: HH:MM`
+    last-action time (owner decision Q2: last-action time, not started/current).
+19. THE former `Profile: default` / `Profile Default` segment SHALL be shortened
+    to `Prof: <ActiveProfileName>` (owner decision Q3).
+20. THE `RUNNING` phase segment SHALL NOT appear in the Status_Bar (superseded by
+    the Message_Line, criterion 15).
+21. THE DEFINITION of each Workspace Kind's Workspace_Status_Segment CONTENT is
+    OUT OF SCOPE for this common-frame requirement and SHALL be decided in the
+    per-Workspace-Kind follow-up gates; this requirement defines only that the
+    segment EXISTS and is Kind-owned.
+
+#### Acceptance Criteria -- the Function_Key_Bar (pfshow-driven)
+
+22. WHERE the `pfshow` setting is ON (the live `key_bar_visible` state) THE
+    Function_Key_Bar SHALL be rendered at the bottom of the frame; WHERE `pfshow`
+    is OFF THE Function_Key_Bar SHALL be omitted entirely. Its visibility is
+    driven by `pfshow`, not merely "shown when visible".
+
+#### Acceptance Criteria -- the common-vs-unique boundary (stated normatively)
+
+23. THE boundary SHALL be: the SHELL owns and renders the eight Common_Frame
+    elements (criteria 1-10) and the Common_Status_Segments (criterion 16); each
+    WORKSPACE / Command Environment owns the Content_Area (criterion 7) and its
+    Workspace_Status_Segment (criterion 17), and nothing else of the frame. A
+    Workspace SHALL NOT render any Common_Frame element itself (single
+    representation of each chrome element -- the single-representation principle,
+    which also forbids a Workspace re-rendering its own title or command line
+    inside the Content_Area).
+24. THE single-representation principle SHALL hold: each piece of screen content
+    SHALL be rendered exactly ONCE. A Workspace SHALL NOT duplicate data that is
+    already shown in the frame or in its own primary view (e.g. a fields block
+    that repeats grid data is a single-representation violation). The common-frame
+    rule here is the PRINCIPLE; the per-Workspace fix for a specific duplication
+    is a follow-up Kind gate.
+25. THE per-Workspace-Kind CONTENT of the Content_Area and the
+    Workspace_Status_Segment SHALL be specified in FOLLOW-UP gates, one per
+    Workspace Kind (Alias, Menu, Kinds, Config, Theme, ...), each building on this
+    common-frame contract. This requirement is deliberately the COMMON part only.
+
+#### Acceptance Criteria -- framework conformance
+
+26. THE Common_Frame SHALL be composed PURELY from live logical shell state (the
+    window title, the active Kind's tab tag, the command text, the live status
+    sources, `key_bar_visible`/`key_bar_scope`, the message store), never by
+    reading another Context's egui widgets, consistent with the
+    logical-model-first rule (screen-snapshot-scrm Requirement 2.2).
+27. THIS requirement SHALL introduce NO new command-dispatch path, NO new
+    navigation stack, NO new session-persistence format, and NO reshape of a
+    public framework type (`WorkspaceContext`, `InteriorFocus`,
+    `WorkspaceDescriptor`, `ScreenModel`). The Message_Line is ADDITIVE shell
+    state (a new shell field/area), which is NOT a framework-type reshape; it is
+    flagged for explicit owner confirmation in design.md.

@@ -796,3 +796,151 @@ The design review `.agents/tasks/snapshot-fidelity-gate/design-review.json`
   source) now carry an explicit SETTLED-BUT-TUNABLE note (as Req 25.3 does), so
   an approver knows these are confirmable, not locked. The gate summary is
   updated to cross-reference the settled-but-tunable wording.
+
+## 13. Snapshot/capture reproduction of the COMMON WORKSPACE FRAME (Req 30, CR-NR-115)
+
+### Overview
+
+Section 12 (CR-CH-115) made the box a faithful full-WINDOW mirror; this section
+aligns that reproduction with the NORMATIVE common-workspace-frame contract in
+`workspace-framework` Requirement 7 and design.md Section 11. It REVISES Req 29.2
+(reproduce the FULL tab bar, not just the active tag), EXTENDS the reproduced
+frame with the live menu-bar line and the message line, REVISES Req 29.10's
+status text to the common+per-Kind segment model, and CONFIRMS box-drawing for
+the content grid. It is the reproduction half; the frame itself and the
+common-vs-unique boundary live in `workspace-framework`. This builds on the SAME
+`ScreenProvider` seam + `ff-screen-model` renderer + shared chrome helper from
+Section 12; no new mechanism, no public-type reshape.
+
+### Investigation verdict (settled against code, NOT assumed)
+
+Read (in addition to Section 12's file set):
+`crates/ff-desktop/src/tab_manager.rs` (tab set + tags),
+`crates/ff-desktop/src/workspace_kind/mod.rs` (`BuiltinKind::default_title()`),
+`crates/ff-desktop/src/shell/render_status.rs` (live Status_Bar segments),
+`crates/ff-desktop/src/notification/mod.rs` (NotificationQueue, not a transient
+line), `crates/ff-desktop/src/screen_snapshot.rs::menu_workspace_screen_model_full`
+(no tab line emitted today).
+
+- **Full tab bar availability.** `TabManager` holds all open tabs; each tab's
+  `[XXX]` tag is `BuiltinKind::default_title()` / `from_tab_kind(...)` -- the same
+  source Section 12 uses for the active tag. So reproducing ALL tags + a close
+  marker (an ASCII `x`) is a composition change in the shared chrome helper that
+  iterates `TabManager` instead of reading only the active tab. No model reshape.
+- **Menu-bar line.** The live menu bar is the runtime echo of the menu TOML
+  (CR-NR-114); its heading list (e.g. `Settings | Help | SCRM`) is logical state,
+  composed into a chrome line with no egui read.
+- **Message line.** There is no transient message-line state today (Section 11
+  verdict); it is ADDITIVE shell state added by `workspace-framework` Requirement
+  7. The snapshot reproduces it from that state WHEN present, and omits it when
+  empty. This is the one element whose SOURCE is new shell state rather than an
+  existing field; it depends on the workspace-framework Req 7 Message_Line landing.
+- **Status text.** Section 12's Req 29.10 mirrored the live status text verbatim.
+  Req 30.10 supersedes that with the common+per-Kind model: the reproduced status
+  line is `Last: HH:MM | Prof: <name> | Ln n, Col n | <encoding> | <lines>` plus
+  the active Kind's segment, and NO `RUNNING`. The sources are the additive
+  `last_action_at`, `ff_session::active_profile()`, `tab.cursor`,
+  `tab.encoding_label()`, `tab.line_count`, and the Kind-owned segment.
+
+### Chosen design -- extend the shared chrome helper, keep the one renderer
+
+Reuse Section 12's shared chrome helper and grid-aware renderer; the changes are
+all composition within that one shared place (Req 30.15):
+
+1. The chrome helper, which in Section 12 prepended the window-title-bar + active
+   tab-tag as the first body lines, now composes FOUR top chrome lines in order:
+   Window_Title_Bar, Menu_Bar, FULL Tab_Bar (all tags + close marker),
+   Workspace_Title row is kept in the border; then the TOP `Command ===>` body
+   line. The helper iterates `TabManager` for the full tab line.
+2. The Message_Line is inserted as the LAST body line(s) before the bottom
+   chrome WHEN the shell's Message_Line state is non-empty, and omitted when
+   empty (Req 30.8, 30.9).
+3. The Status_Bar text is composed from the common+per-Kind segments (Req 30.10),
+   set on `model.status_bar.text`; `RUNNING` is not emitted.
+4. The Function_Key_Bar follows Section 12 unchanged (footer line when `pfshow`
+   on, Req 30.11).
+5. The content grid uses BOX-DRAWING borders (Req 30.12): the `ff-screen-model`
+   text table renderer emits box-drawing header/separator/bottom rules and
+   box-drawing vertical separators between the fixed-width cells, keeping the
+   `[value v]` / `[ v]` / `____` / padded-value cell conventions, the scratch
+   row, the full-frame width, and the widen-on-overflow rule from Section 12
+   (Req 30.13, 30.14). The ASCII fallback (Req 5.2) still uses `+ - |`.
+
+### Rendered-frame FIXTURE (box-drawing; runtime product content, exempt from the ASCII-only doc rule)
+
+```
++----------------------------------------------------------------------------------+
+| #  FileForge Workbench                                              _ [] X        |
++----------------------------------------------------------------------------------+
+| Settings | Help | SCRM                                                            |
++----------------------------------------------------------------------------------+
+| [ALIASES] x   [CONFIG] x                                                          |
++----------------------------------------------------------------------------------+
+|                               Alias Editor                                        |
++----------------------------------------------------------------------------------+
+| Command ===> ____________________________________________________________        |
++----------------------------------------------------------------------------------+
+|  (content area -- owned by the workspace / command environment)                   |
+|  +------+-----------+------------------+------------+------------------+--------+  |
+|  | Act  | CE      v | Command          | Alias      | Parameters       | Descr. |  |
+|  +------+-----------+------------------+------------+------------------+--------+  |
+|  | ____ | [FFCMD v] | SNAPSHOT         | SS         | &1               | note   |  |
+|  | ____ | [ v]      | ________________ | __________ | ________________ | ____   |  |
+|  +------+-----------+------------------+------------+------------------+--------+  |
++----------------------------------------------------------------------------------+
+| Snapshot copied to clipboard                                                      |
++----------------------------------------------------------------------------------+
+| Last: 10:42 | Prof: default | Ln 1, Col 1 | UTF-8 | 1 lines | Aliases: 1 | Rows 1 |
++----------------------------------------------------------------------------------+
+| Base | F1 Help | F3 Exit | F7 Up | F8 Down                                        |
++----------------------------------------------------------------------------------+
+```
+
+(The outer frame uses ASCII `+ - |` in this doc fixture for safe diffing; the
+RUNTIME product renders the outer frame AND the inner content grid with Unicode
+box-drawing glyphs per Req 30.12 / 5.1. The message line `Snapshot copied to
+clipboard` is present only because a message was live at capture time (Req 30.8);
+when no message is live that line is omitted (Req 30.9). The status line shows the
+common segments plus the Alias Kind's example segment.)
+
+### Error handling and edge cases
+
+- No message live: the message line is omitted (Req 30.9), distinct from the
+  Status_Bar which is always a defined line.
+- A single open tab: the full tab bar is just that one tag + its close marker.
+- A Kind that contributes no Workspace_Status_Segment: the status line is the
+  common segments only (the per-Kind segment is empty).
+- `pfshow` off: no Function_Key_Bar line (Req 30.11), as Section 12.
+- The Message_Line state is owned by `workspace-framework` Req 7; if that state
+  is not yet implemented, the snapshot simply omits the message line (graceful).
+
+### Framework check (framework-conformance.md)
+
+NO framework change: dispatch, navigation, and the public `ScreenModel` /
+`ScreenProvider` / `Table` shapes are UNCHANGED. The additions are composition in
+the shared chrome helper (full tab bar, menu-bar line, message line, common+per-
+Kind status text) and box-drawing border glyphs in the existing text table
+renderer. The ONLY new data source is the shell's Message_Line state, which is
+additive shell state defined in `workspace-framework` Requirement 7 (flagged
+there for owner confirmation), not a type reshape here. => no owner framework
+confirmation required for THIS spec beyond approving the gate.
+
+### Testability
+
+- Unit (ff-screen-model): the text table renderer emits box-drawing borders
+  (header rule, separator rule, vertical separators, bottom rule) while keeping
+  the Section 12 cell conventions, scratch row, and full-frame width (Req 30.12-
+  30.14).
+- Unit (ff-desktop): the shared chrome helper composes a FULL tab bar line with
+  ALL open tags + close markers (not just the active tag) (Req 30.4).
+- Unit (ff-desktop): the helper composes the menu-bar line from the live menu
+  echo (Req 30.3) and the common+per-Kind status text with NO `RUNNING` (Req
+  30.10).
+- Unit (ff-desktop): WHEN the shell Message_Line is non-empty the reproduced
+  frame includes the message line above the status bar; WHEN empty it is omitted
+  (Req 30.8, 30.9).
+- Full-shell egui_kittest: a SNAPSHOT over the live Alias Editor contains the
+  menu-bar line, both open tab tags, the box-drawing grid, the `Last:`/`Prof:`
+  status segments, and no `RUNNING`.
+- Capture-path parity test: the capture seam yields the IDENTICAL frame as the
+  snapshot seam (Req 30.16), as Section 12.

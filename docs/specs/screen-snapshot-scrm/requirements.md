@@ -1342,6 +1342,142 @@ documentation rule (consistent with Req 1.1, 5.1).
 
 ---
 
+## Requirement 30 -- Snapshot/capture reproduction of the COMMON WORKSPACE FRAME (CR-NR-115)
+
+**User story:** As a user who copies ANY screen SNAPSHOT (or records a CAPTURE), I
+want the box-drawn rendering to reproduce the SHELL's common workspace frame --
+the window title bar, the live menu bar, the FULL tab bar (all open tabs with
+their tags and close affordance), the centered workspace title, the top
+`Command ===>` line, the content area the workspace owns, the message line when a
+message is present, the status bar (common segments + the active Kind's segment),
+and the function-key bar when `pfshow` is on -- so the snapshot mirrors the whole
+live frame, not a thin box.
+
+### Context (owner-confirmed 2026-11-03, CR-NR-115)
+
+This requirement is the SNAPSHOT-REPRODUCTION half of the common-workspace-frame
+gate. The common frame itself -- the eight shell-owned elements, the message line
+behaviour, the status-bar common+per-Kind model, the `pfshow`-driven key bar, and
+the normative common-vs-unique boundary -- is defined in `workspace-framework`
+Requirement 7 (the backbone). THIS requirement says how the snapshot/capture
+reproduces that frame, EXTENDING and in two places REVISING Requirement 29
+(CR-CH-115):
+
+- REVISES 29.2: the snapshot SHALL reproduce the FULL tab bar (ALL open tabs with
+  their `[XXX]` tags and the close affordance), NOT only the active Context's tag.
+  This supersedes 29.2's active-tag-only rule (owner decision D3).
+- EXTENDS 29.1-29.16 by ADDING the live MENU BAR line (owner decision D4) and the
+  MESSAGE LINE (when a message is present) to the reproduced frame.
+- CONFIRMS the box-drawing grid conventions of 29.5-29.9 as the canonical
+  content-table rendering (owner decision: use box-drawing cell borders /
+  vertical separators for content tables).
+
+All reproduction is from the live LOGICAL state via the shared `ScreenProvider`
+seam and `ff-screen-model` renderer (no egui read), consistent with Req 2.2, 5.4,
+29.13. Unicode box-drawing in the RENDERED output is deliberate runtime product
+content, exempt from the ASCII-only documentation rule (Req 1.1, 5.1).
+
+#### Acceptance Criteria -- the eight common-frame elements in the snapshot
+
+30.1 WHEN any capturable Context's screen model is rendered to box-drawn text THE
+     rendering SHALL reproduce the common workspace frame in this top-to-bottom
+     order: Window_Title_Bar, Menu_Bar, Tab_Bar, Workspace_Title, Primary_Command_
+     Field, [Content_Area], Message_Line (when present), Status_Bar, Function_Key_
+     Bar (when `pfshow` on). This is the `workspace-framework` Requirement 7
+     Common_Frame reproduced faithfully. `[CR-NR-115]`
+30.2 THE Window_Title_Bar line SHALL carry the brand token `FileForge Workbench`
+     (untranslated) followed by the ASCII control glyphs `_ [] X`, as the first
+     in-frame content line (consistent with Req 29.1). `[CR-NR-115]`
+30.3 THE rendering SHALL ADD the live MENU_BAR line (e.g. `Settings | Help |
+     SCRM`) directly under the Window_Title_Bar (owner decision D4 -- previously
+     omitted). The menu text comes from the live menu echo (CR-NR-114), not a
+     hardcoded copy. `[CR-NR-115]`
+30.4 THE rendering SHALL reproduce the FULL TAB_BAR: ALL open Workspace tabs with
+     their `[XXX]` Tab_Header tags (e.g. `[ALIASES]  [CONFIG]`) and each tab's
+     close affordance, NOT only the active Context's tag. This REVISES Req 29.2
+     (active-tag-only) per owner decision D3. `[CR-NR-115]`
+30.5 THE rendering SHALL reproduce the Workspace_Title (the descriptive display
+     title) CENTERED, exactly once (consistent with Req 29.3). `[CR-NR-115]`
+30.6 THE rendering SHALL reproduce the Primary_Command_Field as a TOP line
+     `Command ===> <value>____...` (consistent with Req 29.4). `[CR-NR-115]`
+30.7 THE Content_Area between the Primary_Command_Field and the Message_Line SHALL
+     be reproduced as the active Workspace's own body (its grid / fields /
+     messages); the shared frame reproduction SHALL NOT invent content there
+     (consistent with Req 29.16: a Context with no tabular content still gains the
+     surrounding chrome around whatever body it renders). `[CR-NR-115]`
+
+#### Acceptance Criteria -- the message line in the snapshot
+
+30.8 WHERE a Message_Line message is present AT THE MOMENT a snapshot/capture is
+     taken THE rendering SHALL include the message line(s) directly above the
+     Status_Bar, so a transient message that is on screen is captured. `[CR-NR-115]`
+30.9 WHERE no message is present THE message line SHALL be OMITTED from the
+     rendering (it is not a permanently reserved blank line, distinct from the
+     Status_Bar info line of Req 29.10). `[CR-NR-115]`
+
+#### Acceptance Criteria -- the status bar in the snapshot
+
+30.10 THE reproduced Status_Bar SHALL carry the Common_Status_Segments -- `Last:
+      HH:MM` (last-action time), `Prof: <ActiveProfileName>`, `Ln <n>, Col <n>`,
+      encoding, line count -- PLUS the active Kind's Workspace_Status_Segment
+      where the Kind contributes one. The `RUNNING` segment SHALL NOT appear
+      (superseded by the Message_Line). This REVISES Req 29.10's "mirror the live
+      status text" to the common+per-Kind model of `workspace-framework`
+      Requirement 7.16-7.21. `[CR-NR-115]`
+
+#### Acceptance Criteria -- the function-key bar in the snapshot
+
+30.11 WHERE `pfshow` is ON THE rendering SHALL include the Function_Key_Bar
+      line(s) at the bottom; WHERE `pfshow` is OFF THE rendering SHALL omit it
+      (consistent with Req 29.11 / 3.10). `[CR-NR-115]`
+
+#### Acceptance Criteria -- box-drawing content grid (owner decision, confirms Req 29.5-29.9)
+
+30.12 THE content-table grid SHALL be rendered with BOX-DRAWING characters for
+      cell borders and vertical separators (a header rule, a header/data separator
+      rule, `|`-style vertical separators between cells using box-drawing glyphs,
+      and a bottom rule), rather than ASCII dash/pipe rules, as the canonical
+      faithful rendering (owner decision). The ASCII-only fallback (Req 5.2)
+      remains available where selected. `[CR-NR-115]`
+30.13 THE combo cell convention SHALL remain `[value v]` (empty `[ v]`), an empty
+      editable cell `____`, and a filled cell its value, IDENTICAL in the
+      plain-text and HTML flavors (confirms Req 29.8, 29.9). `[CR-NR-115]`
+30.14 THE grid SHALL keep the fixed-width, full-frame-width, scratch-row, and
+      widen-on-overflow behaviour of Req 29.6, 29.6a, 29.7, 29.7a (unchanged by
+      this requirement -- only the border glyphs become box-drawing per 30.12).
+      `[CR-NR-115]`
+
+#### Acceptance Criteria -- general scope, shared path, and framework conformance
+
+30.15 THE common-frame reproduction SHALL be GENERAL to ALL capturable Contexts,
+      implemented in the SHARED place (the shared chrome helper + the
+      `ff-screen-model` renderer), consistent with Req 29.12 -- no per-Context
+      bespoke chrome. `[CR-NR-115]`
+30.16 THE SAME reproduction SHALL apply to the CAPTURE path as to the SNAPSHOT
+      path, via the one shared `ScreenProvider` seam and renderer (consistent with
+      Req 29.14). `[CR-NR-115]`
+30.17 THIS requirement SHALL introduce NO new clipboard flavor, NO new framework
+      mechanism, and NO reshape of a public `ff-screen-model` / `ff-scrm` type.
+      The menu-bar line and the full tab bar are composed from live logical state
+      into the EXISTING `ScreenModel` slots (`header_lines` / `body_lines` /
+      `status_bar` / `footer_lines`); the message line is reproduced from the
+      shell's additive Message_Line state (defined in `workspace-framework`
+      Requirement 7). `[CR-NR-115]`
+
+#### Investigation note (settled, see design.md Section 13)
+
+- The FULL tab bar (all open tabs + tags + close affordance) is available to the
+  snapshot model from `TabManager` + `BuiltinKind::default_title()`; today's
+  menu/POM chrome builder emitted no tab line at all, and the editor/panel
+  builders emitted at most the active tag. Reproducing the full tab bar is a
+  composition change in the shared chrome helper, not a model reshape.
+- The menu bar text is the live menu echo (CR-NR-114); composing its line is
+  logical-state composition, no egui read.
+- The message line is reproduced from the shell's additive Message_Line state
+  (workspace-framework Requirement 7); when empty it is omitted.
+
+---
+
 ## Out of scope (v1) / future enhancements
 
 Recorded from the SCRM source "Future Enhancements"; NOT gated here, listed so the
@@ -1422,3 +1558,21 @@ POM/menu field width), 29.6/29.8/29.9 (widen-on-overflow, no truncation), and
 29.10 (settled-but-tunable status source; defined-blank info bar when status is
 empty). Req 9.14 was revised to a real window screenshot to align with Req 1.3 /
 23.2.
+
+Requirement 30 (CR-NR-115) is appended after Requirement 29 with the next free
+sequential number (30); it specifies how the snapshot/capture reproduces the
+COMMON WORKSPACE FRAME defined normatively in `workspace-framework` Requirement 7.
+It REVISES Requirement 29.2 (the snapshot reproduces the FULL tab bar -- all open
+tabs + tags + close affordance -- not only the active tag; owner decision D3),
+EXTENDS the reproduced frame with the live menu-bar line (owner decision D4) and
+the message line (when present), REVISES Requirement 29.10's status-bar text to
+the common+per-Kind segment model (last-action time, `Prof:`, no `RUNNING`), and
+CONFIRMS the box-drawing content-grid rendering (owner decision). It introduces no
+new clipboard flavor, no new framework mechanism, and no public-type reshape; the
+menu bar / full tab bar / message line are composed from live logical state into
+the existing `ScreenModel` slots. The owner's discrepancy review D1 (single
+title) is covered by the single-chrome rule; D2 (data rendered twice) by the
+single-representation principle (workspace-framework Req 7.24, with the Alias-
+specific provider fix deferred to the Alias follow-up Kind gate); D5 (Parameters
+value lost) and D6 (status content) are workspace-content / status fidelity
+handled by the per-Kind follow-up gates and the common status model respectively.

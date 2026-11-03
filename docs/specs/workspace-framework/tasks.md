@@ -103,3 +103,51 @@ green and leave `verify.ps1` clean (behaviour-preserving, Requirement 1.5 / 3.1)
       so no arm can silently leave the anchors unset. Steering rule
       `workspace-conformance.md` updated to record the completed migration set.
     - Covers: Requirement 3.3
+
+## Phase CF: The Common Workspace Frame (CR-NR-115, Requirement 7)
+
+TDD-first. Every implementation task is preceded by a failing test. These tasks
+deliver the COMMON frame + its additive shell state; the snapshot REPRODUCTION of
+the frame is tasked in `screen-snapshot-scrm` tasks.md (Phase 2H), and the
+per-Workspace-Kind content/status segments are FOLLOW-UP gates (not tasked here).
+Agents compile-verify (`cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`,
+`cargo fmt -p ff-desktop -- --check`) and run only the SCOPED new unit tests; the
+owner runs the full gate (gate-policy.md).
+
+- [ ] CF.1 Message_Line additive shell state (transient, multi-message, cleared on next action)
+  - [ ] CF.1.1 Write failing unit tests for a `message_line` store on the shell: setting one or more messages makes them readable; dispatching an action CLEARS them before the action runs; with no message the store is empty (Req 7.11-7.14)
+    - Validates: Requirement 7.11, 7.12, 7.13, 7.14
+  - [ ] CF.1.2 Add the additive `message_line` shell state (e.g. `Vec<String>`) and the clear-on-dispatch hook at the shell's per-action dispatch seam; make CF.1.1 pass
+    - Covers: Requirement 7.11, 7.12, 7.13, 7.14, 7.27
+  - [ ] CF.1.3 Render the Message_Line as a new `TopBottomPanel::bottom` panel directly ABOVE the Status_Bar panel; it is absent when empty and may expand for multiple messages
+    - Covers: Requirement 7.8, 7.13, 7.14
+
+- [ ] CF.2 Remove the `RUNNING` phase segment from the Status_Bar (superseded by the Message_Line)
+  - [ ] CF.2.1 Write a failing test asserting the composed Status_Bar does NOT contain the `RUNNING` phase segment
+    - Validates: Requirement 7.15, 7.20
+  - [ ] CF.2.2 Remove the phase-label segment from `render_status_bar`; make CF.2.1 pass
+    - Covers: Requirement 7.15, 7.20
+
+- [ ] CF.3 Last-action time Status_Bar segment (`Last: HH:MM`, replacing `Started`)
+  - [ ] CF.3.1 Write a failing unit test for a `last_action_at` timestamp updated on each action and formatted `Last: HH:MM` (mirroring the existing `format_session_start` test)
+    - Validates: Requirement 7.16, 7.18
+  - [ ] CF.3.2 Add the additive `last_action_at` shell state, update it at the per-action dispatch seam, and replace the `Started: HH:MM` segment with `Last: HH:MM`; make CF.3.1 pass
+    - Covers: Requirement 7.16, 7.18, 7.27
+
+- [ ] CF.4 Shorten the profile segment to `Prof: <ActiveProfileName>`
+  - [ ] CF.4.1 Write a failing test asserting `active_profile_label()` (or its successor) yields `Prof: <name>` / `Prof: default`
+    - Validates: Requirement 7.19
+  - [ ] CF.4.2 Shorten the label from `Profile: <name>` to `Prof: <name>`; make CF.4.1 pass
+    - Covers: Requirement 7.19
+
+- [ ] CF.5 Workspace_Status_Segment hook (existence only; content per-Kind follow-up)
+  - [ ] CF.5.1 Write a failing test proving the Status_Bar composition includes a slot for a Kind-contributed segment alongside the common segments (a stub/empty segment is acceptable; content is per-Kind follow-up)
+    - Validates: Requirement 7.17, 7.21
+  - [ ] CF.5.2 Add the composition point for a Kind-owned Workspace_Status_Segment in `render_status_bar` (empty by default; the per-Kind gate fills it). If this needs an additive Kind-registry method, STOP and surface it to the owner per design.md
+    - Covers: Requirement 7.17, 7.21, 7.27
+
+- [ ] CF.6 Common-frame single-chrome regression guard
+  - [ ] CF.6.1 Write a full-shell egui_kittest test asserting the eight common-frame elements render once (window title/menu/tab/title/command line present; Status_Bar + Message_Line distinct lines; key bar per `pfshow`) and no active Workspace re-draws a frame element in its Content_Area
+    - Validates: Requirement 7.1, 7.5, 7.6, 7.22, 7.23, 7.24
+  - [ ] CF.6.2 Confirm the existing full-shell first-Tab tests remain green (behaviour-preserving around the new Message_Line panel)
+    - Validates: Requirement 7.1, 7.27
