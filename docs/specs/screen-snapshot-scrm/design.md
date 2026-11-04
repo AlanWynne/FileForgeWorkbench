@@ -944,3 +944,97 @@ confirmation required for THIS spec beyond approving the gate.
   status segments, and no `RUNNING`.
 - Capture-path parity test: the capture seam yields the IDENTICAL frame as the
   snapshot seam (Req 30.16), as Section 12.
+- GOLDEN tests (Req 30.18-30.24, see "Refinement" below): the full rendered
+  text is compared line for line against a fixed fixture, not just presence or
+  position, so a ruled-band regression cannot pass unnoticed again.
+
+### Refinement -- ruled bands, cells, and junctions (Req 30.18-30.24, 2026-11-04)
+
+A review of the OWNER's live screenshot against the rendered snapshot found the
+box lacked internal rules between bands (one undivided block), the menu/tab/
+status lines had no cell dividers, the title bar had no dedicated `#` cell or
+right-aligned window controls, the Command line left a trailing gap before the
+border, and a spurious blank row preceded the status bar. This refinement fixes
+`ff-screen-model::render::framed` and the composing strings in
+`shell::common_frame` WITHOUT changing the public `ScreenModel` shape: the cells
+of a band are still carried as one string (menu bar, tab bar, status bar,
+footer), split by the existing ` | ` separator convention the shell already
+used, and the title bar's right-aligned tail uses one additive marker constant
+(`ff_screen_model::RIGHT_ALIGN`, the ASCII TAB character) recognised
+only by the framed renderer.
+
+- `render/framed.rs` now lays the box out as a sequence of `Row::Band` /
+  `Row::Text` / `Row::Centered` / `Row::Command` / `Row::Rule` entries. A `Band`
+  splits its source string on ` | ` into cells; the renderer tracks each
+  divider's LINE COLUMN and threads it into the rule immediately above and
+  below so the junction glyph (tee-down/tee-up/cross) lands exactly where a
+  divider meets a rule, matching the grid's existing junction glyphs (Req
+  30.20).
+- The Command line is composed by the renderer itself (`Row::Command`): the
+  caller's `model.command_line` is treated as the TYPED text only, with any
+  trailing underscore run stripped before layout, so the fill always reaches
+  the border with no double-fill and no gap (Req 30.21).
+- No blank-row spacer is pushed before the bottom chrome; the content's closing
+  rule is pushed, then the message band (with its own rules) only when
+  present, then the status band, then the key-line band only when present (Req
+  30.22).
+- `shell::common_frame` composes the title bar as `# | <title><RIGHT_ALIGN>_ []
+  X` and the tab bar / menu bar / status bar as ` | `-joined cells, unchanged in
+  spirit from the Section 13 chrome but now cell-delimited (Req 30.19, 30.20).
+- OWNER DEFAULTS (Req 30.24), each a single named constant/function: the
+  active-tab marker `ACTIVE_TAB_MARKERS` in `common_frame.rs`; the Command-line
+  "before the triggering command" default via
+  `common_frame_command_field_text()` in `common_frame.rs` (the field is empty
+  during a SNAPSHOT/CAPTURE command's own dispatch, since the live field stays
+  INTACT with the triggering text until `finish_command_line` runs afterwards --
+  returning empty here is therefore the correct "before" value; swap in
+  `self.command_text.clone()` to echo the live field instead); the `Prof:`
+  label, already the status text in `actions.rs::active_profile_label` (Section
+  13), confirmed unchanged by this refinement.
+- No framework change: dispatch, navigation, and `ScreenModel` public fields are
+  untouched; `RIGHT_ALIGN` is an additive constant inside `ff-screen-model`'s
+  rendering layer, consumed only by the renderer that owns the cell convention.
+
+### Second refinement -- message band as one cell, key line as one cell, status split (Req 30.10, 30.25, 30.26, 2026-11-04)
+
+Owner review of 7f1c84c's rendered output against the mock found two remaining
+layout gaps and one content-model gap:
+
+1. **Message band is ONE cell, not absent-by-default-with-junctions.** The
+   message band already used `Row::Text` (a plain row, no dividers) so this was
+   already a single cell; this refinement makes it EXPLICIT (Req 30.25) and
+   keeps the "no band at all when no message" behaviour.
+2. **Key line must be ONE cell.** `common_frame_tab_bar_line`'s cell-splitting
+   convention had been copied onto the footer/key-line composition, which split
+   `Base | F1 Help | ...` into cells with tee-down/tee-up junctions on the rules
+   above and below. The key line is now pushed as `Row::Text` (plain), so its
+   items stay joined by the literal ` | ` separator with NO junctions
+   contributed to either adjacent rule (Req 30.26). The rule immediately above
+   the key line still carries the STATUS band's own junctions (the key line
+   contributes none).
+3. **Status Common vs Workspace split (Req 30.10, workspace-framework Req
+   7.16-7.21).** The shell's live `render_status_bar` and the snapshot's
+   `common_frame_status_bar_text` previously treated `Ln/Col`, encoding and line
+   count as COMMON (shown for every Workspace). Owner revision: ONLY `Last:
+   HH:MM` and `Prof: <name>` are common; everything else is WORKSPACE-OWNED,
+   returned by the new `workspace_status_cells()` (replacing the single-string
+   `workspace_status_segment()`) as zero or more cells. Rationale: the shell UI
+   is always Unicode internally, so "encoding" only means something for the
+   DATA a Workspace displays (a mainframe-dataset editor may be EBCDIC, a local
+   file Latin-1/UTF-16); a settings-type Workspace like Config/Alias (editing
+   UTF-8 TOML through the shell's own widgets) has no document encoding, cursor,
+   or line count of its own. The editor Context (`KindTag::FileEditor` /
+   `Untitled`) is special-cased in `workspace_status_cells()` to keep emitting
+   `Ln <n>, Col <n>`, the encoding, and the line count -- NO REGRESSION for it.
+   Every other Kind returns an empty `Vec`, so Config and Alias show ONLY `Last`
+   + `Prof` until their own per-Kind gate decides a segment. No public-type
+   reshape: `workspace_status_cells` returns `Vec<String>`, an additive
+   signature change to an internal (`pub(super)`) method, not a `ScreenModel`
+   field.
+
+Updated GOLDEN fixtures (`shell/golden/*.txt`): Config and Alias status bands
+now show `Last: 11:02 | Prof: default` only (two cells, one divider); the key
+line in `alias_pfshow_on.txt` is one unbroken row with NO rule junctions from
+it. A new unit test (`editor_context_status_text_keeps_ln_col_encoding_and_line_count`)
+asserts the editor Context's composed status text is unchanged:
+`Last: 11:02 | Prof: default | Ln 1, Col 1 | UTF-8 | 1 lines`.

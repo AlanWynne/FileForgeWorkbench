@@ -56,6 +56,7 @@ mod commands_session;
 mod commands_snapshot;
 mod commands_theme;
 mod commands_theme_save;
+mod common_frame;
 mod configurator;
 mod construct;
 mod construct_commands;
@@ -147,6 +148,16 @@ mod tests_alias_template;
 mod tests_command;
 #[cfg(test)]
 mod tests_common;
+#[cfg(test)]
+mod tests_common_frame;
+#[cfg(test)]
+mod tests_common_frame_golden;
+#[cfg(test)]
+mod tests_common_frame_helper;
+#[cfg(test)]
+mod tests_common_frame_order;
+#[cfg(test)]
+mod tests_common_frame_snapshot;
 #[cfg(test)]
 mod tests_config_save_convention;
 #[cfg(test)]

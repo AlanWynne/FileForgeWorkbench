@@ -240,7 +240,7 @@ confirmation in the design.
 | **Common_Frame** | The set of chrome elements the SHELL owns and renders exactly once around every Workspace, regardless of Kind: the Window_Title_Bar, the Menu_Bar, the Tab_Bar, the Workspace_Title, the Primary_Command_Field, the Message_Line, the Status_Bar, and the Function_Key_Bar. |
 | **Content_Area** | The region between the Primary_Command_Field and the Message_Line that each Workspace / Command Environment owns and fills; the shell frame renders no content here. |
 | **Message_Line** | A transient informational line rendered directly ABOVE the Status_Bar, showing message(s) raised by the last action; cleared when the next action is taken. |
-| **Common_Status_Segment** | A Status_Bar segment the SHELL owns for every Workspace (last-action time, active profile, Ln/Col, encoding, line count). |
+| **Common_Status_Segment** | A Status_Bar segment the SHELL owns for every Workspace: the last-action time and the active profile ONLY (revised 2026-11-04; Ln/Col, encoding and line count moved to the Workspace_Status_Segment below). |
 | **Workspace_Status_Segment** | A Status_Bar segment whose content a specific Workspace Kind owns and contributes (e.g. the Alias Kind's `Aliases: nnn | Rows 1-nnn visible`). |
 
 #### Acceptance Criteria -- the eight common-frame elements (shell-owned, each exactly once)
@@ -296,28 +296,45 @@ confirmation in the design.
     favour of the Message_Line (owner decision).
 
 #### Acceptance Criteria -- the Status_Bar common + per-workspace segment model
+(REVISED 2026-11-04, owner decision: common vs workspace-owned split)
 
-16. THE Status_Bar SHALL contain these Common_Status_Segments, shell-owned for
-    every Workspace: a LAST-ACTION time `Last: HH:MM` (updated on each action, NOT
-    a continuously-ticking clock -- owner picked last-action over started/current),
-    `Prof: <ActiveProfileName>` (the active profile name, abbreviated from the
-    former `Profile: default`), the cursor `Ln <n>, Col <n>`, the encoding (e.g.
-    `UTF-8`), and the line count.
-17. THE Status_Bar SHALL ALSO contain a Workspace_Status_Segment whose content is
-    decided by the ACTIVE Workspace Kind (e.g. the Alias Kind contributes
-    `Aliases: nnn | Rows 1-nnn visible`). The common segments are shell-owned; the
-    per-Kind segment is workspace-owned. So the Status_Bar = Common_Status_Segments
-    + one Workspace_Status_Segment.
+16. THE Status_Bar SHALL contain ONLY these Common_Status_Segments, shell-owned
+    for EVERY Workspace: a LAST-ACTION time `Last: HH:MM` (updated on each
+    action, NOT a continuously-ticking clock -- owner picked last-action over
+    started/current) and `Prof: <ActiveProfileName>` (the active profile name,
+    abbreviated from the former `Profile: default`). `[REVISED 2026-11-04]`
+16a. THE cursor `Ln <n>, Col <n>`, the encoding (e.g. `UTF-8`), and the line
+     count are WORKSPACE-OWNED segments, NOT common: they describe the DATA a
+     Workspace shows (the shell's own UI is always Unicode internally; encoding
+     is only meaningful for the content a document-backed Workspace displays --
+     a mainframe-dataset editor may be EBCDIC, a local file Latin-1/UTF-16 --
+     and Ln/Col/line count describe a document cursor, which a settings-type
+     Workspace such as Config or Alias does not have). They are emitted as part
+     of the Workspace_Status_Segment (criterion 17) by any Kind that has a
+     document cursor. `[NEW 2026-11-04]`
+17. THE Status_Bar SHALL ALSO contain a Workspace_Status_Segment (one or more
+    cells) whose content is decided by the ACTIVE Workspace Kind. THE editor
+    Context (file/untitled buffer) SHALL contribute `Ln <n>, Col <n>`, the
+    encoding, and the line count AS ITS Workspace_Status_Segment (no regression
+    from the pre-split behaviour for the editor). EVERY OTHER Kind contributes
+    an EMPTY Workspace_Status_Segment until its own per-Kind follow-up gate
+    decides its content (e.g. the Alias Kind MAY later contribute
+    `Aliases: nnn | Rows 1-nnn visible`). The common segments are shell-owned;
+    the per-Kind segment is workspace-owned. So the Status_Bar =
+    Common_Status_Segments (Last, Prof) + the active Kind's
+    Workspace_Status_Segment cells (possibly none). `[REVISED 2026-11-04]`
 18. THE former `Started HH:MM` segment SHALL be REPLACED by the `Last: HH:MM`
     last-action time (owner decision Q2: last-action time, not started/current).
 19. THE former `Profile: default` / `Profile Default` segment SHALL be shortened
     to `Prof: <ActiveProfileName>` (owner decision Q3).
 20. THE `RUNNING` phase segment SHALL NOT appear in the Status_Bar (superseded by
     the Message_Line, criterion 15).
-21. THE DEFINITION of each Workspace Kind's Workspace_Status_Segment CONTENT is
-    OUT OF SCOPE for this common-frame requirement and SHALL be decided in the
-    per-Workspace-Kind follow-up gates; this requirement defines only that the
-    segment EXISTS and is Kind-owned.
+21. THE DEFINITION of each Workspace Kind's Workspace_Status_Segment CONTENT
+    (beyond the editor Context's Ln/Col/encoding/line-count default, criterion
+    17) is OUT OF SCOPE for this common-frame requirement and SHALL be decided in
+    the per-Workspace-Kind follow-up gates; this requirement defines only that
+    the segment EXISTS, is Kind-owned, and that Config/Alias/other non-document
+    Kinds show NOTHING there until their own gate.
 
 #### Acceptance Criteria -- the Function_Key_Bar (pfshow-driven)
 

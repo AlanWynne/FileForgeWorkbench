@@ -1417,13 +1417,17 @@ content, exempt from the ASCII-only documentation rule (Req 1.1, 5.1).
 
 #### Acceptance Criteria -- the status bar in the snapshot
 
-30.10 THE reproduced Status_Bar SHALL carry the Common_Status_Segments -- `Last:
-      HH:MM` (last-action time), `Prof: <ActiveProfileName>`, `Ln <n>, Col <n>`,
-      encoding, line count -- PLUS the active Kind's Workspace_Status_Segment
-      where the Kind contributes one. The `RUNNING` segment SHALL NOT appear
-      (superseded by the Message_Line). This REVISES Req 29.10's "mirror the live
-      status text" to the common+per-Kind model of `workspace-framework`
-      Requirement 7.16-7.21. `[CR-NR-115]`
+30.10 THE reproduced Status_Bar SHALL carry ONLY the Common_Status_Segments --
+      `Last: HH:MM` (last-action time) and `Prof: <ActiveProfileName>` -- PLUS
+      the active Kind's Workspace_Status_Segment cells where the Kind
+      contributes any. `Ln <n>, Col <n>`, encoding and line count are NOT
+      common: they are workspace-owned (the editor Context contributes them as
+      its Workspace_Status_Segment; a settings-type Workspace such as Config or
+      Alias shows neither until its own per-Kind gate). The `RUNNING` segment
+      SHALL NOT appear (superseded by the Message_Line). This REVISES Req
+      29.10's "mirror the live status text" to the common+per-Kind model of
+      `workspace-framework` Requirement 7.16-7.21 (revised 2026-11-04).
+      `[CR-NR-115]`
 
 #### Acceptance Criteria -- the function-key bar in the snapshot
 
@@ -1463,6 +1467,93 @@ content, exempt from the ASCII-only documentation rule (Req 1.1, 5.1).
       `status_bar` / `footer_lines`); the message line is reproduced from the
       shell's additive Message_Line state (defined in `workspace-framework`
       Requirement 7). `[CR-NR-115]`
+
+#### Acceptance Criteria -- ruled bands and cells (owner layout, CR-NR-115 refinement)
+
+The snapshot is ONE box made of horizontal BANDS separated by rules. This
+refines 30.1-30.6 and 30.8-30.11 (it supersedes any reading of them that leaves a
+blank row, a missing rule, or an undivided menu/tab/status line). Snapshot
+rendering only: the live egui window keeps its own visuals.
+
+30.18 THE rendering SHALL draw a horizontal RULE between bands: after the title
+      bar, after the menu bar, after the tab bar, after the centered title,
+      DIRECTLY after the last content row, after the message band (when
+      present), and after the status bar when a key line follows. THERE SHALL BE
+      NO rule between the Command line and the first content row, and NO rule
+      between the last band and the bottom border. `[CR-NR-115]`
+30.19 THE title bar SHALL be one band: a dedicated leading `#` cell, a divider,
+      the app title (the single `WINDOW_TITLE` constant), and the window controls
+      `_ [] X` RIGHT-ALIGNED against the right border. The only divider in the
+      title bar is the one after the `#` cell. `[CR-NR-115]`
+30.20 THE menu bar items, the tab bar entries and the status bar segments SHALL
+      each be rendered as separate CELLS divided by the vertical glyph (e.g.
+      `Settings | Help | SCRM`). WHERE a cell divider meets a rule above or below,
+      THE rule SHALL carry the matching junction glyph: a tee-down where the
+      divider continues only below, a tee-up where it continues only above, and a
+      cross where it continues on both sides; the rule at the top border takes
+      tee-down and at the bottom border tee-up. The Unicode glyphs are the ones
+      already used by the content grid. `[CR-NR-115]`
+30.21 THE `Command ===>` line SHALL show the typed field text followed by
+      underscores that fill to the right edge of the content area (no trailing
+      gap beyond the common one-space cell padding); an empty field SHALL show
+      underscores only. `[CR-NR-115]`
+30.22 THERE SHALL be NO blank row before the status bar: the content's closing
+      rule is directly followed by the message band (when present) or the status
+      band. The message band, when present, has its own rules above and below.
+      The key line (only when `pfshow` is on) SHALL be the LAST band inside the
+      box, after the status bar's closing rule, followed by the bottom border.
+      `[CR-NR-115]`
+30.23 THE ASCII fallback (Req 5.2) SHALL produce the equivalent layout using only
+      `+ - |`, with `+` at every corner, tee and junction. `[CR-NR-115]`
+30.24 OWNER DEFAULTS (each a single named place in code, owner may flip before
+      merge): (a) the ACTIVE tab keeps a marker, `>[TAG] x<`
+      (`common_frame.rs::ACTIVE_TAB_MARKERS`); (b) the Command line shows the
+      field as it was BEFORE the triggering snapshot/capture command, so the
+      triggering command (e.g. `ss`) is never echoed and an empty field shows
+      underscores only (`common_frame.rs::common_frame_command_field_text`); (c)
+      the status profile segment stays `Prof: <name>`
+      (`actions.rs::active_profile_label`). `[CR-NR-115]`
+30.25 WHERE no message is present THE message band AND its rules SHALL be
+      OMITTED ENTIRELY: the content's closing rule leads directly into the
+      status band (consistent with 30.9, 30.22). WHERE one or more messages are
+      present THE message band SHALL render between the content and the status
+      band as its OWN band with a rule above and a rule below; the message band
+      is a SINGLE CELL (no internal dividers), so its own rules carry no
+      junctions from it (only the status band below may contribute junctions to
+      the rule between them). Multiple messages render as multiple rows inside
+      that one band. `[CR-NR-115, revised 2026-11-04]`
+30.26 THE function-key band SHALL be rendered as ONE CELL: its items stay
+      joined by the plain text separator ` | ` inside that single cell, so
+      neither the rule above (the status band's closing rule) nor the bottom
+      border carries a key-line junction -- only the status band's own cell
+      dividers may appear on the rule between the status band and the key
+      line. `[CR-NR-115, revised 2026-11-04]`
+
+Rendered fixture (the box-drawing glyphs are runtime product output, exempt from
+the ASCII-only documentation rule):
+
+```
+┌───┬─────────────────────────────────────────────────────────┐
+│ # │ FileForge Workbench                              _ [] X │
+├───┴──────┬──────┬───────────────────────────────────────────┤
+│ Settings │ Help │ SCRM                                      │
+├──────────┴───┬──┴───────────────────────────────────────────┤
+│ >[CONFIG] x< │ [POM] x                                      │
+├──────────────┴──────────────────────────────────────────────┤
+│                        Configuration                        │
+├─────────────────────────────────────────────────────────────┤
+│ Command ===> ______________________________________________ │
+│ (content rows)                                              │
+├─────────────────────────────────────────────────────────────┤
+│ info one                                                    │
+├─────────────┬───────────────────────────────────┤
+│ Last: 11:02 │ Prof: default                     │
+└─────────────┴───────────────────────────────────┘
+```
+
+Verified by the GOLDEN tests (`tests_common_frame_golden.rs` with the
+`shell/golden/*.txt` fixtures, and `render/framed_tests.rs`), which compare the
+full rendered text line for line. `[CR-NR-115]`
 
 #### Investigation note (settled, see design.md Section 13)
 

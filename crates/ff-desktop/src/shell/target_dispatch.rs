@@ -87,6 +87,12 @@ impl WorkbenchShell {
     /// single entry point shared by the menu-option and shortcut seams
     /// (command-framework Requirement 8.5, command-configurator Requirement 4.4).
     pub(super) fn dispatch_bound_command(&mut self, command: &str) {
+        // CR-NR-115 Phase CF: a menu-option click or shortcut is a user action,
+        // so clear the transient Message_Line and stamp last_action_at here. The
+        // key-forward path also runs begin_command_line, so this double-invokes
+        // on that path -- harmless: the clear is idempotent and the restamp lands
+        // on the same action.
+        self.note_action_dispatched();
         match self.resolve_and_dispatch_command(command) {
             ResolveOutcome::Dispatched => {}
             ResolveOutcome::FallThrough => self.dispatch_command_string(command),

@@ -1,0 +1,36 @@
+┌───┬─────────────────────────────────────────────┐
+│ # │ FileForge Workbench                  _ [] X │
+├───┴──────┬──────┬───────────────────────────────┤
+│ Settings │ Help │ SCRM                          │
+├──────────┴───┬──┴───────────────────────────────┤
+│ >[CONFIG] x< │ [POM] x                          │
+├──────────────┴──────────────────────────────────┤
+│                  Configuration                  │
+├─────────────────────────────────────────────────┤
+│ Command ===> __________________________________ │
+│ Filter:                              :          │
+│ Unsaved edits                        : no       │
+│ [Editor]                             : expanded │
+│     editor.indent_style              : space    │
+│     editor.insert_final_newline      : true     │
+│     editor.line_endings              : lf       │
+│     editor.tab_size                  : 4        │
+│     editor.trim_trailing_whitespace  : false    │
+│ [Logging]                            : expanded │
+│     logging.directory                :          │
+│     logging.level                    : info     │
+│     logging.max_file_size_mb         : 10       │
+│     logging.max_retained_files       : 5        │
+│ [Theme]                              : expanded │
+│     theme.active                     : default  │
+│     theme.follow_os                  : false    │
+│     theme.font_size                  : 14       │
+│ [Ui]                                 : expanded │
+│     ui.locale                        : en       │
+│ [Vfs]                                : expanded │
+│     vfs.default_provider             : local    │
+├─────────────────────────────────────────────────┤
+│ info one                                        │
+├─────────────┬───────────────────────────────────┤
+│ Last: 11:02 │ Prof: default                     │
+└─────────────┴───────────────────────────────────┘

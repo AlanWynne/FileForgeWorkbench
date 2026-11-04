@@ -108,6 +108,24 @@ converted -- it should not be needed.
 4. Do NOT add a new bespoke `match` arm that renders a panel and manually
    reports focus ids -- that is the pre-framework pattern the framework replaces.
 
+## Relationship to the Common Workspace Frame (CR-NR-115)
+
+The focus contract is one of two "every workspace MUST ..." obligations; the
+other is the Common Workspace Frame contract. They are complementary:
+
+- The FOCUS contract (this file): every Context reports its interior focus stops
+  through the ONE latch path -- `WorkspaceContext::render -> InteriorFocus`
+  dispatched by `render_workspace_context` (or `apply_interior_focus`).
+- The COMMON-FRAME contract (`framework-conformance.md` mechanism 8): the shell
+  owns the eight frame elements drawn once around every Workspace; a Workspace
+  owns ONLY its content area plus ONE status-bar segment
+  (`workspace_status_segment`), and never draws the title bar, menu bar, tab bar,
+  `Command ===>` line, Message_Line, Status_Bar, or PF-key bar itself (the shell
+  frame -- `apply_common_frame` / `render_status.rs` -- provides those).
+
+Both are satisfied together: a new Context returns its `InteriorFocus` AND fills
+only the content area. See `framework-conformance.md` and `wiring-standard.md`.
+
 ## Legacy manual rule (unmigrated arms only)
 
 Until an unmigrated Context is converted to `WorkspaceContext`, its `render.rs`

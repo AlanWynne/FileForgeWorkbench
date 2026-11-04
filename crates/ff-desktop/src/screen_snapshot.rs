@@ -15,6 +15,14 @@ use ff_screen_model::{RenderOptions, ScreenModel, SnapshotFormat};
 
 use crate::menu_workspace::MenuWorkspaceState;
 
+/// The one live Workbench window title (the brand token). This is the SINGLE
+/// source of the title text: `main.rs` references it for the OS window title and
+/// the common-frame chrome helper (`shell::common_frame`) references it for the
+/// in-frame window title bar, so the two can never drift (CR-NR-115, Req 30.2).
+/// It is a brand name and is deliberately NOT translated (documentation-charset:
+/// ASCII only).
+pub const WINDOW_TITLE: &str = "FileForge Workbench";
+
 /// The full-screen chrome surrounding a Menu_Workspace's option list, built by
 /// the shell from its live logical state (NOT from egui) and folded into the
 /// snapshot so a POM/menu capture matches the LIVE ISPF screen (screen-snapshot
@@ -58,6 +66,18 @@ const MENU_COLUMN_GAP: usize = 3;
 /// The total character width of the `Command ===>` input field (the underscore
 /// run after any typed text), matching the on-screen POM command field.
 const COMMAND_INPUT_WIDTH: usize = 119;
+
+/// The `Command ===>` field value for a non-menu Context: the typed text followed
+/// by the underscore input area, padded to the SAME width the POM/menu command
+/// field uses (screen-snapshot-scrm Req 29.4, 30.6). Always non-empty, so the
+/// common frame always shows its Command line.
+pub(crate) fn command_field_value(typed: &str) -> String {
+    let typed = typed.trim_end();
+    let underscores = COMMAND_INPUT_WIDTH
+        .saturating_sub(typed.chars().count())
+        .max(4);
+    format!("{typed}{}", "_".repeat(underscores))
+}
 
 /// Format one menu option row as the LIVE ISPF screen shows it:
 /// `{key} {shortname} : {description} ({command})`, e.g.

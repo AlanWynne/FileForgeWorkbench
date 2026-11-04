@@ -196,7 +196,7 @@ fn main() -> anyhow::Result<()> {
     // == 7. eframe window =================================================
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("FileForge Workbench")
+            .with_title(screen_snapshot::WINDOW_TITLE)
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([640.0, 480.0])
             .with_resizable(true)
@@ -207,7 +207,7 @@ fn main() -> anyhow::Result<()> {
     // Clone before move into closure so config_shutdown can use the original.
     let config_handle_for_shell = config_handle.clone();
     eframe::run_native(
-        "FileForge Workbench",
+        screen_snapshot::WINDOW_TITLE,
         native_options,
         Box::new(move |_cc| {
             Ok(Box::new(WorkbenchShell::new(

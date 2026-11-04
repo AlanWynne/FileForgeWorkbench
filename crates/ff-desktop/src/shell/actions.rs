@@ -134,22 +134,44 @@ impl WorkbenchShell {
 
     // === Session lifecycle helpers -- Validates: Requirement 20.1, 20.2 ===
 
-    /// Format the session start time as `Started: HH:MM`.
+    /// Mark that a user action has just been dispatched (CR-NR-115,
+    /// workspace-framework Phase CF). This is the ONE per-action hook wired into
+    /// the shared dispatch seams (`begin_command_line`, `dispatch_bound_command`):
+    /// it CLEARS the transient Message_Line (information messages live only until
+    /// the next action, Req 7.14) and STAMPS `last_action_at` so the Status_Bar
+    /// `Last: HH:MM` segment reflects the moment of the action (Req 7.16). An
+    /// action is free to re-populate the Message_Line AFTER this clears it.
     ///
-    /// Validates: Requirement 20.1
-    pub(crate) fn format_session_start(&self) -> String {
-        format!("Started: {}", self.session_start.format("%H:%M"))
+    /// Validates: Requirement 7.12, 7.14, 7.16
+    pub(crate) fn note_action_dispatched(&mut self) {
+        self.message_line.clear();
+        self.last_action_at = Some(chrono::Local::now());
+    }
+
+    /// Format the last-action time as `Last: HH:MM` for the Status_Bar
+    /// (CR-NR-115, workspace-framework Phase CF, Req 7.18). This is NOT a ticking
+    /// clock -- it reflects `last_action_at`, updated only when an action is
+    /// dispatched. Before any action the segment shows the placeholder
+    /// `Last: --:--`.
+    ///
+    /// Validates: Requirement 7.16, 7.18
+    pub(crate) fn format_last_action(&self) -> String {
+        match self.last_action_at {
+            Some(ts) => format!("Last: {}", ts.format("%H:%M")),
+            None => "Last: --:--".to_string(),
+        }
     }
 
     /// The Active_Profile label for the Status_Bar / Title_Line (CR-NR-081,
     /// startup-and-session Requirement 22.8). Shows the running Application_Profile
-    /// name, or `Profile: default` when no `--profile` was given.
+    /// name, or `Prof: default` when no `--profile` was given. Shortened from
+    /// `Profile:` to `Prof:` for the common frame (CR-NR-115, Req 7.19).
     ///
-    /// Validates: startup-and-session Requirement 22.8
+    /// Validates: Requirement 7.19; startup-and-session Requirement 22.8
     pub(crate) fn active_profile_label(&self) -> String {
         match ff_session::active_profile() {
-            Some(name) => format!("Profile: {name}"),
-            None => "Profile: default".to_string(),
+            Some(name) => format!("Prof: {name}"),
+            None => "Prof: default".to_string(),
         }
     }
 

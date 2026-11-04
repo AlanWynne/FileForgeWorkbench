@@ -322,6 +322,11 @@ impl WorkbenchShell {
             automation: ShellAutomationRegistry::new(),
             detach_split: state_groups::DetachSplitState::default(),
             session_start: chrono::Local::now(),
+            // CR-NR-115 Phase CF: additive common-frame shell state. The
+            // Message_Line starts empty (no panel) and last_action_at is None
+            // until the first user action stamps it.
+            message_line: Vec::new(),
+            last_action_at: None,
         }
     }
 }

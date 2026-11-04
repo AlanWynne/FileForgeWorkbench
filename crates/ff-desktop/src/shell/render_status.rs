@@ -6,7 +6,6 @@
 
 use eframe::egui;
 
-use ff_core::LifecyclePhase;
 use ff_keys::{FunctionKey, KeyLabelBarModel};
 
 use super::render::logging_degradation_reason;
@@ -106,56 +105,40 @@ impl WorkbenchShell {
     pub(super) fn render_status_bar(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                let phase_label = match self.app.phase() {
-                    LifecyclePhase::Running => ff_i18n::t("ff-desktop-shell-status-phase-running"),
-                    LifecyclePhase::Initializing => {
-                        ff_i18n::t("ff-desktop-shell-status-phase-starting")
-                    }
-                    LifecyclePhase::ShuttingDown => {
-                        ff_i18n::t("ff-desktop-shell-status-phase-shutting-down")
-                    }
-                    LifecyclePhase::Terminated => {
-                        ff_i18n::t("ff-desktop-shell-status-phase-terminated")
-                    }
-                };
+                // CR-NR-115 Phase CF (Req 7.15, 7.20): the redundant RUNNING
+                // lifecycle-phase segment is removed from the common frame -- the
+                // information message area (the Message_Line panel above) now
+                // carries transient status, and the phase was always "Running"
+                // in practice. The lifecycle phase is still observable via
+                // logging; it is simply no longer a Status_Bar segment.
+                //
                 // Status_Bar segments are non-interactive labels, NOT
                 // SelectableLabel. SelectableLabel uses Sense::click() and is a
                 // focusable egui widget; that made each segment an egui-native
-                // Tab focus stop, so at launch Tab walked all six segments
-                // before reaching the menu/POM (B055). Requirement 16 enumerates
-                // the exclusive shell tab stops and the Status_Bar is not among
-                // them, so the segments must not be focusable.
-                // Validates: Requirement 5 (status bar display); B055 (not a tab stop).
-                ui.label(phase_label);
+                // Tab focus stop, so at launch Tab walked the segments before
+                // reaching the menu/POM (B055). Requirement 16 enumerates the
+                // exclusive shell tab stops and the Status_Bar is not among them,
+                // so the segments must not be focusable.
+                // Validates: Requirement 7.15, 7.20 (CR-NR-115); B055 (not a tab stop).
+
+                // Validates: Requirement 7.16, 7.18 (CR-NR-115) -- `Last: HH:MM`
+                // from last_action_at (NOT a ticking clock), replacing the former
+                // `Started:` session-start segment.
+                ui.label(self.format_last_action());
                 ui.separator();
 
-                // Validates: Requirement 20.1 -- session start timestamp
-                ui.label(self.format_session_start());
-                ui.separator();
-
-                // Validates: startup-and-session Req 22.8 (CR-NR-081) -- the
-                // Active_Profile is shown in the Status_Bar (explicitly "default"
-                // when no --profile was given).
+                // Validates: Requirement 7.19 (CR-NR-115); startup-and-session
+                // Req 22.8 (CR-NR-081) -- the Active_Profile is shown in the
+                // Status_Bar as `Prof: <name>` (explicitly "default" when no
+                // --profile was given).
                 ui.label(self.active_profile_label());
                 ui.separator();
 
-                let tab = self.tabs.active_tab();
-                let line = tab.cursor.cursor_line();
-                let col = tab.cursor.cursor_column();
-                // Requirement 7.1: format "Ln {line}, Col {col}" (1-based).
-                // line/col pre-formatted as TEXT placeables (byte-identical, no
-                // Fluent NUMBER() grouping).
-                ui.label(ff_i18n::t_args(
-                    "ff-desktop-shell-status-line-col",
-                    &ff_i18n::MessageArgs::new()
-                        .set("line", line.to_string())
-                        .set("col", col.to_string()),
-                ));
-                ui.separator();
-                // Requirement 7.3: real encoding from document
-                ui.label(tab.encoding_label());
-                ui.separator();
-                // Requirement 7.1 (view-zoom) -- zoom indicator when non-zero
+                // Requirement 7.1 (view-zoom) -- zoom indicator when non-zero.
+                // Zoom is a VIEW affordance of the live egui chrome, not a
+                // document-content segment, so it stays common (unlike Ln/Col,
+                // encoding and line count, which moved to the per-Kind
+                // Workspace_Status_Segment below, owner revision 2026-11-04).
                 {
                     use ff_zoom::ZoomIndicatorState;
                     if let ZoomIndicatorState::Visible { text, .. } =
@@ -165,12 +148,23 @@ impl WorkbenchShell {
                         ui.separator();
                     }
                 }
-                // Requirement 7.4: real line count (TEXT placeable, byte-identical)
-                ui.label(ff_i18n::t_args(
-                    "ff-desktop-shell-status-line-count",
-                    &ff_i18n::MessageArgs::new().set("count", tab.line_count.to_string()),
-                ));
-                ui.separator();
+
+                // CR-NR-115 Phase CF (Req 7.16-7.21, revised 2026-11-04): the
+                // per-Kind Workspace_Status_Segment composition point. The ONLY
+                // common segments are Last and Prof above; Ln/Col, encoding and
+                // line count are now WORKSPACE-owned (they describe a document
+                // cursor/content, which only a document-backed Kind has -- a
+                // settings-type Workspace like Config/Alias has neither). The
+                // editor Context keeps emitting its own Ln/Col + encoding + line
+                // count here (not as a shared default) so the live bar is
+                // unchanged for it; every other Kind defaults to empty until its
+                // own per-Kind gate. A non-interactive label (never a Tab stop,
+                // B055).
+                for cell in self.workspace_status_cells() {
+                    ui.label(cell);
+                    ui.separator();
+                }
+                let tab = self.tabs.active_tab();
                 // Requirement 6.5: modified indicator
                 if tab.is_modified {
                     ui.colored_label(self.palette.chrome_style.accent_color(), "\u{25cf}");
@@ -242,6 +236,68 @@ impl WorkbenchShell {
                     }
                 });
             });
+        });
+    }
+
+    /// The per-Kind Workspace_Status_Segment CELLS for the active Workspace
+    /// (CR-NR-115, workspace-framework Req 7.16-7.21/7.27, revised 2026-11-04).
+    /// The only COMMON Status_Bar segments are `Last: HH:MM` and `Prof: <name>`;
+    /// EVERYTHING ELSE is workspace-owned and returned here, one string per cell
+    /// (the live bar and the snapshot status band both render exactly these).
+    ///
+    /// Encoding, Ln/Col and line count describe the DATA a workspace shows (the
+    /// shell UI itself is always Unicode), so they belong to a document-backed
+    /// Kind: the editor Context returns its document encoding, Ln/Col and line
+    /// count (same values as before the split). Every other Kind returns an
+    /// empty Vec for now - its content is decided in its own per-Kind gate.
+    ///
+    /// Validates: Requirement 7.17, 7.21, 7.27
+    pub(super) fn workspace_status_cells(&self) -> Vec<String> {
+        use crate::tab_state::KindTag;
+        let tab = self.tabs.active_tab();
+        if !matches!(tab.kind.tag(), KindTag::FileEditor | KindTag::Untitled) {
+            return Vec::new();
+        }
+        // Requirement 7.1: "Ln {line}, Col {col}" (1-based) as TEXT placeables
+        // (byte-identical, no Fluent NUMBER() grouping).
+        let line_col = ff_i18n::t_args(
+            "ff-desktop-shell-status-line-col",
+            &ff_i18n::MessageArgs::new()
+                .set("line", tab.cursor.cursor_line().to_string())
+                .set("col", tab.cursor.cursor_column().to_string()),
+        );
+        let line_count = ff_i18n::t_args(
+            "ff-desktop-shell-status-line-count",
+            &ff_i18n::MessageArgs::new().set("count", tab.line_count.to_string()),
+        );
+        // Requirement 7.3: real encoding from the document.
+        vec![line_col, tab.encoding_label().to_string(), line_count]
+    }
+
+    // === Message line =======================================================
+
+    /// Render the transient Message_Line as a bottom panel directly ABOVE the
+    /// Status_Bar (CR-NR-115, workspace-framework Phase CF, Req 7.8/7.13/7.14).
+    ///
+    /// When the Message_Line store is empty the panel is ABSENT (early return, no
+    /// space reserved). Otherwise it renders one non-interactive label row per
+    /// message, expanding for multiple messages. The rows are display-only: like
+    /// the Status_Bar segments they are plain `ui.label` calls and so are NOT
+    /// egui-native Tab focus stops (B055). This panel is added to the frame AFTER
+    /// the Status_Bar in `update.rs`; egui bottom panels stack upward in call
+    /// order, so it sits directly above the Status_Bar.
+    ///
+    /// Validates: Requirement 7.8, 7.13, 7.14
+    pub(super) fn render_message_line(&mut self, ctx: &egui::Context) {
+        if self.message_line.is_empty() {
+            return;
+        }
+        egui::TopBottomPanel::bottom("message_line").show(ctx, |ui| {
+            for message in &self.message_line {
+                // Non-interactive display row (not a Tab stop, mirroring the
+                // Status_Bar label pattern).
+                ui.label(message);
+            }
         });
     }
 

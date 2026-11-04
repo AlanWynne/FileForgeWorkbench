@@ -534,7 +534,7 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 
 #### Acceptance Criteria
 
-1. WHEN the workbench session starts, THE status bar SHALL display the session start timestamp in the format `Started: HH:MM` (or `Started: HH:MM:SS` if configured). [TSO-1.2]
+1. WHEN the workbench session starts, THE status bar SHALL display the session start timestamp in the format `Started: HH:MM` (or `Started: HH:MM:SS` if configured). [TSO-1.2] (SUPERSEDED FOR THE STATUS BAR by CR-NR-115 Req 7.16 (workspace-framework): the `Started:` session-start Status_Bar segment is REPLACED with `Last: HH:MM` (last-action time). The `session_start` field itself is retained for the logoff message, Req 20.2; only the status-bar segment is retired.)
 2. WHEN the workbench session ends (exit sequence initiated), THE system SHALL record the session end timestamp and display a logoff message in the format `Logoff at HH:MM -- session duration: Xm Ys` in the status area before closing. [TSO-1.3]
 3. WHEN the user types `LOGOFF` in any `Command ===>` field and presses Enter, THE system SHALL initiate the UNCONDITIONAL application exit sequence, identical to `EXIT` or `QUIT`. (REVISED by CR-CH-052: `=X` is NO LONGER equivalent to `EXIT`/`LOGOFF`; `=X` closes the current Workspace and exits only when it is the last -- Req 14.12/14.46, menu-workspace Req 14.14. `LOGOFF`/`EXIT`/`QUIT` remain unconditional application exit.) [TSO-1.4, CR-CH-052]
 4. WHEN the user types `TIME` in any `Command ===>` field and presses Enter, THE system SHALL display the current date and time in the status bar or command response area in the format `Date: YYYY-MM-DD  Time: HH:MM:SS  Day: DDD`. [TSO-2.4]

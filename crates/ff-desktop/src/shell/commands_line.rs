@@ -55,8 +55,13 @@ impl WorkbenchShell {
     /// (`run_command_line`) and the key-forward path (`dispatch_key_command`) so
     /// the outcome is computed from THIS invocation only.
     ///
-    /// Validates: command-framework Requirement 13.1
+    /// Validates: command-framework Requirement 13.1; CR-NR-115 Requirement
+    /// 7.12, 7.14, 7.16
     pub(super) fn begin_command_line(&mut self) {
+        // CR-NR-115 Phase CF: every user action clears the transient Message_Line
+        // and stamps last_action_at. This seam is the shared Enter / key-forward
+        // command-line entry point, so stamping here covers both input paths.
+        self.note_action_dispatched();
         self.pending_command_line_outcome = None;
         self.open_error = None;
     }

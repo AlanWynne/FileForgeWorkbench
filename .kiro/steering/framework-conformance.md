@@ -67,6 +67,40 @@ Treat these as fixed unless a framework change is expressly confirmed:
    registry; the Title_Line uses the descriptive display title; the `[XXX]`
    Tab_Header tag is separate. See `workspace-conformance.md`.
 
+8. **Common Workspace Frame (CR-NR-115).** The shell OWNS the frame -- the eight
+   elements drawn once around every Workspace: the window title bar, the menu
+   bar, the FULL tab bar, the centered workspace title, the `Command ===>` line,
+   the Message_Line, the Status_Bar, and the pfshow PF-key bar. A Workspace owns
+   ONLY its content area plus ONE status-bar segment. DO NOT redraw a frame
+   element inside content; DO NOT draw chrome per-Context.
+   - The live-GUI frame is composed by the shell in `shell/render_status.rs`
+     (`render_status_bar` + `render_message_line`) and the panel order in
+     `shell/update.rs` (`render_key_label_bar` -> `render_status_bar` ->
+     `render_message_line`, so the Message_Line sits directly above the
+     Status_Bar).
+   - The snapshot/capture reproduction of the SAME frame is composed by the ONE
+     shared chrome helper `WorkbenchShell::apply_common_frame`
+     (`crates/ff-desktop/src/shell/common_frame.rs`), called once in
+     `shell/screen_provider.rs::active_screen_capture` so SNAPSHOT and CAPTURE
+     share it.
+   - The transient Message_Line and the last-action timestamp are ADDITIVE shell
+     state: `message_line: Vec<String>` and
+     `last_action_at: Option<chrono::DateTime<chrono::Local>>` on
+     `WorkbenchShell` (`shell/state.rs`). The per-action seam
+     `note_action_dispatched()` (`shell/actions.rs`) clears `message_line` and
+     stamps `last_action_at`; it is invoked at `begin_command_line`
+     (`shell/commands_line.rs`) and `dispatch_bound_command`
+     (`shell/target_dispatch.rs`). The status-bar text comes from
+     `format_last_action()` ('Last: HH:MM') and `active_profile_label()`
+     ('Prof: <name>') with no RUNNING segment.
+   - A Workspace contributes its ONE status-bar segment through the per-Kind
+     seam `workspace_status_segment()` (`shell/render_status.rs`), empty by
+     default; the shell appends it to the common Status_Bar when non-empty.
+   - DO: fill only the content area; return your Kind's tail through
+     `workspace_status_segment`.
+   - DO NOT: redraw the title bar, menu bar, tab bar, `Command ===>` line,
+     Message_Line, Status_Bar, or PF-key bar inside a Context.
+
 ## The rule for every new requirement / change request
 
 During the requirements gate (see `workflow.md`), BEFORE writing criteria:
@@ -108,6 +142,10 @@ During the requirements gate (see `workflow.md`), BEFORE writing criteria:
   host CEs are unchanged, kept object-safe for `dyn BackendEnvironment`) serves
   the mainframe CE over `ff_dscatalog::DatasetAccess`. Any FURTHER reshape of this
   contract still needs express owner confirmation.
+- Reshaping the Common Workspace Frame or the common-vs-unique boundary
+  (CR-NR-115, mechanism 8) -- adding or removing a frame element, moving an
+  element between the shell frame and the Workspace content area, or changing
+  what a Workspace may draw versus what `apply_common_frame` / the shell owns.
 
 ## What is NOT a framework change (proceed normally)
 

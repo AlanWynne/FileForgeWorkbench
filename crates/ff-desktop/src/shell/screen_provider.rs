@@ -86,6 +86,22 @@ impl WorkbenchShell {
     /// Validates: master-screen-directive Requirement 4.1, 4.2, 4.3;
     /// screen-snapshot-scrm Requirement 2.1, 2.2, 2.3.
     pub(super) fn active_screen_capture(&self) -> ScreenCapture {
+        let mut capture = self.active_context_capture();
+        // CR-NR-115 Phase 2H (Req 30.15, 30.16): the ONE place the common frame
+        // is composed, so SNAPSHOT and CAPTURE reproduce the SAME eight-element
+        // frame. A dialog overlay capture is NOT re-framed (it is the frontmost
+        // transient surface, already complete); only a Context model is framed.
+        if let ScreenCapture::Model(model) = &mut capture {
+            self.apply_common_frame(model);
+        }
+        capture
+    }
+
+    /// Resolve the ACTIVE Context's logical screen WITHOUT the common frame. This
+    /// is the per-Context dispatch; `active_screen_capture` wraps it to compose
+    /// the shared common frame onto any Context model. A frontmost dialog overlay
+    /// short-circuits here and is returned unframed.
+    fn active_context_capture(&self) -> ScreenCapture {
         // screen-snapshot-scrm Req 27.2: a transient message/dialog box is the
         // FRONTMOST surface. When one is open, capture ITS logical model (already
         // redacted) instead of the Context behind it. The per-Context KindTag

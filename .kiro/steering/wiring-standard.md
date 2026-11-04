@@ -92,6 +92,14 @@ ladder arm. (Editor-action verbs instead belong to a Command Environment -- FFED
   apply the stashed action.
 - Do NOT hand-write the focus latch. `render_workspace_context` (or
   `apply_interior_focus`) is the ONE latch path (`workspace-conformance.md`).
+- A new workspace fills ONLY its content area and contributes ONE status-bar
+  segment via the per-Kind `workspace_status_segment` seam
+  (`shell/render_status.rs`). It NEVER draws the title bar, menu bar, tab bar,
+  `Command ===>` line, Message_Line, Status_Bar, or PF-key bar itself -- the
+  shell common frame provides those (Common Workspace Frame, CR-NR-115,
+  `framework-conformance.md` mechanism 8; composed live in
+  `render_status.rs`/`update.rs` and for snapshot/capture by
+  `apply_common_frame` in `shell/common_frame.rs`).
 
 ### Testing Requirements
 - Full-shell `egui_kittest` first-Tab test: the first Tab from the command field
@@ -115,7 +123,12 @@ ladder arm. (Editor-action verbs instead belong to a Command Environment -- FFED
 5. Register the command (table entry / Command_Id, or ladder verb until the
    table lands) so typed, menu, and key seams all resolve to it; add the menu
    option in `menus/*.toml`.
-6. Implement `apply_<feature>_action` for the rich shell-side effects.
+6. Implement `apply_<feature>_action` for the rich shell-side effects. Fill ONLY
+   the content area; contribute ONE status-bar segment via `workspace_status_segment`.
+   Do NOT draw the title bar, menu bar, tab bar, `Command ===>` line,
+   Message_Line, Status_Bar, or PF-key bar -- the shell common frame
+   (`apply_common_frame` / `render_status.rs`) owns all seven other frame
+   elements (CR-NR-115).
 7. Write the full-shell first-Tab `egui_kittest` test plus handler/effect unit
    tests; run the SCOPED `cargo check -p ff-desktop`, `cargo test -p ff-desktop`,
    `cargo clippy -p ff-desktop`, and `cargo fmt`.
@@ -131,6 +144,10 @@ ladder arm. (Editor-action verbs instead belong to a Command Environment -- FFED
 - Writing a built-in menu or theme file to disk.
 - Adding a new flat field to `WorkbenchShell` when a grouped sub-struct fits.
 - Pre-wiring a notification channel with no real cross-thread producer.
+- Redrawing any common-frame element (title bar, menu bar, tab bar,
+  `Command ===>` line, Message_Line, Status_Bar, PF-key bar) inside a Context
+  instead of filling only the content area and returning a `workspace_status_segment`
+  (CR-NR-115).
 
 ## Rationale
 

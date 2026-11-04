@@ -318,6 +318,11 @@ impl eframe::App for WorkbenchShell {
         }
         self.render_key_label_bar(ctx);
         self.render_status_bar(ctx);
+        // CR-NR-115 Phase CF (Req 7.8, 7.13): the transient Message_Line sits
+        // directly ABOVE the Status_Bar. egui bottom panels stack upward in call
+        // order, so this MUST be called AFTER render_status_bar. The panel is
+        // absent when the Message_Line store is empty.
+        self.render_message_line(ctx);
 
         // CR-CH-028 (Requirement 12.4/12.5): refresh the Cursor_Context snapshot
         // from live focus/selection BEFORE any dispatch this frame, so the

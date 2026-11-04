@@ -331,12 +331,16 @@ provider dropping its `model.fields` block) is a follow-up Kind gate.
 - Tab `[XXX]` tags: `BuiltinKind::default_title()` per open tab.
 - Workspace_Title: `title_line_text(tab)` -> `active_display_title`.
 - Primary_Command_Field value: `self.command_text`.
-- Status_Bar common segments: last-action time (NEW -- a `last_action_at`
-  timestamp, see below) formatted `Last: HH:MM`; `Prof: <name>` from
-  `ff_session::active_profile()` (shortened label); `Ln/Col` from `tab.cursor`;
-  encoding from `tab.encoding_label()`; line count from `tab.line_count`.
-- Workspace_Status_Segment: contributed by the active Kind (content defined in
-  the per-Kind follow-up gate, not here).
+- Status_Bar common segments (REVISED 2026-11-04): ONLY last-action time (NEW --
+  a `last_action_at` timestamp, see below) formatted `Last: HH:MM` and `Prof:
+  <name>` from `ff_session::active_profile()` (shortened label).
+- Workspace_Status_Segment (REVISED 2026-11-04): contributed by the active Kind,
+  as one or more cells (`workspace_status_cells`). `Ln/Col` from `tab.cursor`,
+  encoding from `tab.encoding_label()`, and line count from `tab.line_count`
+  moved HERE from the common segments -- they describe document content, which
+  only a document-backed Kind has. The editor Context returns them (no
+  regression); every other Kind returns an empty Vec until its own per-Kind
+  follow-up gate decides its content.
 - Function_Key_Bar: `self.key_bar_visible` / `self.key_bar_scope`.
 
 ### The Message_Line mechanism (build-on vs additive shell state) -- OWNER-CONFIRMATION POINT

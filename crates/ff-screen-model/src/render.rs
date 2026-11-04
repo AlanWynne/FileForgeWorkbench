@@ -5,6 +5,9 @@
 //! Validates: screen-snapshot-scrm Requirement 4.2-4.6, 5.1-5.4.
 
 mod ansi;
+mod framed;
+#[cfg(test)]
+mod framed_tests;
 mod html;
 mod markdown;
 mod text;
@@ -17,6 +20,11 @@ use crate::SnapshotFormat;
 /// 28.2): renders ONLY a model's property/value tables as HTML `<table>` markup,
 /// for appending to the CF_HTML clipboard composite after the box-drawn body.
 pub use html::render_tables_html;
+
+/// Re-export the right-align marker of a framed band's last cell (CR-NR-115,
+/// screen-snapshot-scrm Req 30.19): the text after it is right-aligned against
+/// the border (the title bar's window controls).
+pub use framed::RIGHT_ALIGN;
 
 /// Options controlling text rendering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

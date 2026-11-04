@@ -390,6 +390,21 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 20.1, 20.2
     pub(crate) session_start: chrono::DateTime<chrono::Local>,
+    /// Transient Message_Line store (CR-NR-115, workspace-framework Phase CF):
+    /// the common-frame information messages shown in a bottom panel directly
+    /// ABOVE the Status_Bar. ADDITIVE shell state -- messages live only until the
+    /// next user action clears them (`note_action_dispatched`), and the panel is
+    /// absent when the store is empty, expanding one row per message otherwise.
+    ///
+    /// Validates: Requirement 7.11, 7.12, 7.13, 7.14
+    pub(crate) message_line: Vec<String>,
+    /// Timestamp of the last user action dispatched through the shared per-action
+    /// seam (CR-NR-115, workspace-framework Phase CF). `None` until the first
+    /// action; stamped by `note_action_dispatched`. Drives the Status_Bar
+    /// `Last: HH:MM` segment -- NOT a ticking clock, it only updates on an action.
+    ///
+    /// Validates: Requirement 7.16, 7.18
+    pub(crate) last_action_at: Option<chrono::DateTime<chrono::Local>>,
     /// Automation registry -- exposes control state to the FFTest runner.
     ///
     /// Validates: Requirement 2.1, 2.5 (automated-dialog-testing)

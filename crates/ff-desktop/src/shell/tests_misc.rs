@@ -248,18 +248,19 @@ fn format_logoff_message_produces_correct_format() {
     );
 }
 
-/// Validates: startup-and-session Req 22.8 (CR-NR-081) -- the active profile
-/// label shows "Profile: default" when no profile is set and "Profile: <name>"
-/// when one is active. Drives the process-global serially and restores it.
+/// Validates: Requirement 7.19 (CR-NR-115); startup-and-session Req 22.8
+/// (CR-NR-081) -- the Status_Bar Active_Profile label is shortened to
+/// "Prof: default" when no profile is set and "Prof: <name>" when one is active.
+/// Drives the process-global serially and restores it.
 #[test]
 fn active_profile_label_reflects_active_profile() {
     let shell = make_shell();
     // Default (no profile).
     ff_session::set_active_profile(None);
-    assert_eq!(shell.active_profile_label(), "Profile: default");
+    assert_eq!(shell.active_profile_label(), "Prof: default");
     // Named profile.
     ff_session::set_active_profile(Some("ispf"));
-    assert_eq!(shell.active_profile_label(), "Profile: ispf");
+    assert_eq!(shell.active_profile_label(), "Prof: ispf");
     // Restore so no other test sees a stray profile.
     ff_session::set_active_profile(None);
 }

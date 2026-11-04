@@ -209,22 +209,96 @@ fn session_start_time_is_recorded_on_startup() {
     );
 }
 
-/// Validates: Requirement 20.1 -- format_session_start produces Started: HH:MM.
+// === Phase CF (CR-NR-115): Message_Line + last_action_at additive state ====
+
+/// Validates: Requirement 7.11, 7.12 -- the transient Message_Line store is
+/// readable after it is set, and `note_action_dispatched()` clears it before the
+/// next action runs.
 #[test]
-fn format_session_start_produces_started_hhmm() {
-    // Validates: Requirement 20.1
-    let shell = make_shell();
-    let label = shell.format_session_start();
-    assert!(
-        label.starts_with("Started: "),
-        "label must start with 'Started: ', got: {label}"
-    );
-    // HH:MM format: 8 chars total ("Started: " = 9, then HH:MM = 5)
+fn message_line_is_readable_and_cleared_by_note_action_dispatched() {
+    // Validates: Requirement 7.11, 7.12
+    let mut shell = make_shell();
+    // Initially empty.
+    assert!(shell.message_line.is_empty(), "message_line starts empty");
+    // Seed one or more messages: they are readable.
+    shell.message_line = vec!["first".to_string(), "second".to_string()];
     assert_eq!(
-        label.len(),
-        14,
-        "'Started: HH:MM' is 14 chars, got: {label}"
+        shell.message_line,
+        vec!["first".to_string(), "second".to_string()],
+        "messages set into the store are readable"
     );
+    // The per-action hook clears them before the action.
+    shell.note_action_dispatched();
+    assert!(
+        shell.message_line.is_empty(),
+        "note_action_dispatched clears the Message_Line before the action"
+    );
+}
+
+/// Validates: Requirement 7.16 -- last_action_at is None at startup and is
+/// stamped Some after an action is dispatched.
+#[test]
+fn last_action_at_is_none_initially_and_some_after_action() {
+    // Validates: Requirement 7.16
+    use chrono::Local;
+    let mut shell = make_shell();
+    assert!(
+        shell.last_action_at.is_none(),
+        "no action has been dispatched yet at startup"
+    );
+    let before = Local::now();
+    shell.note_action_dispatched();
+    let after = Local::now();
+    let stamped = shell
+        .last_action_at
+        .expect("note_action_dispatched must stamp last_action_at");
+    assert!(
+        stamped >= before && stamped <= after,
+        "last_action_at must be stamped at the moment of the action"
+    );
+}
+
+/// Validates: Requirement 7.12, 7.14 -- running a command through the shared
+/// command-line path clears a previously-seeded Message_Line (the per-action
+/// hook fires at begin_command_line), unless the action itself re-populated it.
+#[test]
+fn message_line_cleared_when_command_dispatched() {
+    // Validates: Requirement 7.12, 7.14
+    let mut shell = make_shell();
+    shell.message_line = vec!["stale message".to_string()];
+    // A benign command through the shared command-line path.
+    shell.run_command_line("TIME");
+    assert!(
+        shell.message_line.is_empty(),
+        "dispatching an action must clear the stale Message_Line (Req 7.14)"
+    );
+    // And the action stamped last_action_at.
+    assert!(
+        shell.last_action_at.is_some(),
+        "dispatching an action stamps last_action_at (Req 7.16)"
+    );
+}
+
+/// Validates: Requirement 7.16, 7.18 -- format_last_action yields `Last: HH:MM`
+/// once an action has been stamped, and a blank placeholder before any action.
+#[test]
+fn format_last_action_produces_last_hhmm() {
+    // Validates: Requirement 7.16, 7.18
+    let mut shell = make_shell();
+    // Before any action: a blank placeholder (no time to show yet).
+    assert_eq!(
+        shell.format_last_action(),
+        "Last: --:--",
+        "before any action the Last segment shows a placeholder"
+    );
+    // After an action: `Last: HH:MM` (14 chars: 'Last: ' = 6 + 'HH:MM' = 5... )
+    shell.note_action_dispatched();
+    let label = shell.format_last_action();
+    assert!(
+        label.starts_with("Last: "),
+        "label must start with 'Last: ', got: {label}"
+    );
+    assert_eq!(label.len(), 11, "'Last: HH:MM' is 11 chars, got: {label}");
 }
 
 /// Validates: workspace-model Requirement 6.2 -- MRU list persists through save/load round-trip.

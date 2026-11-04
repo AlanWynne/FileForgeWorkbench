@@ -258,6 +258,33 @@ mod tests {
 
     use crate::model::{MarkdownSection, Table};
 
+    // Validates: screen-snapshot-scrm Requirement 30.12 -- the HTML renderer
+    // emits each table cell as a `<td>`, carrying the provider cell conventions
+    // `[value v]` and `____` verbatim (escaped as HTML text).
+    #[test]
+    fn html_table_cells_carry_cell_conventions() {
+        let mut m = ScreenModel::new("Alias Editor");
+        m.tables.push(Table {
+            caption: None,
+            headers: vec!["CE".to_string(), "Command".to_string()],
+            rows: vec![
+                vec!["[FFCMD v]".to_string(), "SNAPSHOT".to_string()],
+                vec!["[ v]".to_string(), "____".to_string()],
+            ],
+        });
+        let out = render_html(&m);
+        assert!(
+            out.contains("<td>[FFCMD v]</td>"),
+            "populated dropdown cell:\n{out}"
+        );
+        assert!(out.contains("<td>[ v]</td>"), "empty dropdown cell:\n{out}");
+        assert!(
+            out.contains("<td>____</td>"),
+            "empty editable field cell:\n{out}"
+        );
+        assert!(out.contains("<td>SNAPSHOT</td>"), "a value cell:\n{out}");
+    }
+
     // Validates: screen-snapshot-scrm Requirement 28.2, 28.6 -- the HTML-table
     // emitter renders `markdown_sections` as `<table>`/`<tr>`/`<td>` with the
     // per-group heading as a `<caption>` and a `Property`/`Value` header row.
