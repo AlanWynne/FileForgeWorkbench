@@ -1,0 +1,30 @@
+# Reports
+
+```
+┌───┬───────────────────────────────────────────┐
+│ # │ FileForge Workbench                _ [] X │
+├───┴──────┬──────┬─────────────────────────────┤
+│ Settings │ Help │ SCRM                        │
+├─────────┬┴──────┴─────────────────────────────┤
+│ [POM] x │ >[MENU] x<                          │
+├─────────┴─────────────────────────────────────┤
+│                    Reports                    │
+├───────────────────────────────────────────────┤
+│ Command ===> ________________________________ │
+├───────────────────────────────────────────────┤
+│ Standard                                      │
+│ 1  DAILY         : Daily summary report       │
+│ 22 WEEKLY REPORT : Weekly roll-up | all teams │
+│                                               │
+│ Admin                                         │
+│ A  AUDIT         : Audit trail (disabled)     │
+├─────────────┬───────────────┬─────────────────┤
+│ Last: 11:02 │ Prof: default │ Zoom: 0         │
+└─────────────┴───────────────┴─────────────────┘
+```
+
+| Option | Command | Description |
+|------|------|------|
+| 1 | DAILY | Daily summary report |
+| 22 | WEEKLY REPORT | Weekly roll-up \| all teams |
+| A | AUDIT | Audit trail (disabled) |

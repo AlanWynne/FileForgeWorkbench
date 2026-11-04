@@ -14,6 +14,9 @@
 use ff_screen_model::{RenderOptions, ScreenModel, SnapshotFormat};
 
 use crate::menu_workspace::MenuWorkspaceState;
+use crate::screen_snapshot_menu::{
+    compose_with_calendar, format_menu_rows, menu_table_section, rows_from_menu, MenuRowDisplay,
+};
 
 /// The one live Workbench window title (the brand token). This is the SINGLE
 /// source of the title text: `main.rs` references it for the OS window title and
@@ -51,11 +54,13 @@ pub struct MenuScreenChrome {
     /// hides the calendar (`show_calendar = false`), in which case the body is
     /// a single left column.
     pub right_column: Vec<String>,
+    /// The option rows as the LIVE panel displays them (active-locale key,
+    /// command and description surfaces), filled by the shell. When empty (or
+    /// not one per option) the builder falls back to the stored option values.
+    ///
+    /// Validates: menu-workspace Requirement 23.2 (CR-NR-117).
+    pub rows: Vec<MenuRowDisplay>,
 }
-
-/// The gap, in spaces, between the padded left option column and the right-hand
-/// calendar column in the two-column menu body.
-const MENU_COLUMN_GAP: usize = 3;
 
 /// The total character width of the `Command ===>` input field (the underscore
 /// run after any typed text), matching the on-screen POM command field.
@@ -71,58 +76,6 @@ pub(crate) fn command_field_value(typed: &str) -> String {
         .saturating_sub(typed.chars().count())
         .max(4);
     format!("{typed}{}", "_".repeat(underscores))
-}
-
-/// Format one menu option row as the LIVE ISPF screen shows it:
-/// `{key} {shortname} : {description} ({command})`, e.g.
-/// `0 Settings : FFWB Settings and Client Parameters (Settings)`.
-///
-/// The short name is the option's `command` label (there is no separate
-/// short-name field on `MenuOption`; the command IS the on-screen mnemonic, as
-/// the owner's mock shows -- `0 Settings`, `S SCRM`, `X X`). When an option has
-/// no command the description stands alone with no `(..)` suffix.
-///
-/// Validates: screen-snapshot-scrm Req 3.11, 3.12.
-fn option_row_text(key: &str, command: &str, description: &str) -> String {
-    let command = command.trim();
-    if command.is_empty() {
-        format!("{key} {description}")
-    } else {
-        format!("{key} {command} : {description} ({command})")
-    }
-}
-
-/// Compose the TWO-COLUMN menu body as exact verbatim lines: the option rows on
-/// the LEFT (each padded to a shared column width) and the right-hand block
-/// (calendar + Time + Day of Year) on the RIGHT of the same lines. Rows beyond
-/// the shorter column are padded so both columns stay aligned and never overlap.
-///
-/// `left` is the already-formatted option rows; `right` is the right-column
-/// block. The returned lines carry no command line and no footer -- the caller
-/// frames them with the command line on top and the PF footer at the bottom.
-///
-/// Validates: screen-snapshot-scrm Req 3.11, 3.13.
-fn compose_two_column_body(left: &[String], right: &[String]) -> Vec<String> {
-    if right.is_empty() {
-        // Calendar-less menu (e.g. Settings): a single left column.
-        return left.to_vec();
-    }
-    let left_width = left.iter().map(|l| l.chars().count()).max().unwrap_or(0);
-    let rows = left.len().max(right.len());
-    let mut out = Vec::with_capacity(rows);
-    for i in 0..rows {
-        let l = left.get(i).map(String::as_str).unwrap_or("");
-        let pad = left_width.saturating_sub(l.chars().count()) + MENU_COLUMN_GAP;
-        match right.get(i) {
-            Some(r) if !r.is_empty() => {
-                out.push(format!("{l}{}{r}", " ".repeat(pad)));
-            }
-            // No right-column content on this row: keep only the left text
-            // (trailing spaces trimmed by not padding a bare-left row).
-            _ => out.push(l.to_string()),
-        }
-    }
-    out
 }
 
 /// Build the CONTENT-AREA logical model for a Menu_Workspace (screen-snapshot-scrm
@@ -156,14 +109,18 @@ pub fn menu_workspace_screen_model_full(
 
     match &state.menu {
         Some(menu) => {
-            let left: Vec<String> = menu
-                .options
-                .iter()
-                .map(|o| option_row_text(&o.key, &o.command, &o.description))
-                .collect();
-            for line in compose_two_column_body(&left, &chrome.right_column) {
+            // Rows are built ONCE (the live displayed texts) and drive both the
+            // box body and the clipboard table (CR-NR-117, Req 23.13).
+            let rows = if chrome.rows.len() == menu.options.len() {
+                chrome.rows.clone()
+            } else {
+                rows_from_menu(menu)
+            };
+            let left = format_menu_rows(&rows, menu.group_separator, menu.group_headers);
+            for line in compose_with_calendar(&left, &chrome.right_column) {
                 model = model.with_body_line(line);
             }
+            model.markdown_sections.extend(menu_table_section(&rows));
         }
         None => {
             let msg = state
@@ -320,6 +277,7 @@ description = "Settings"
     fn sample_chrome() -> MenuScreenChrome {
         MenuScreenChrome {
             right_column: sample_right_column(),
+            rows: Vec::new(),
         }
     }
 
@@ -351,12 +309,14 @@ description = "Settings"
             !model.body_lines.iter().any(|l| l.contains("Command ===>")),
             "the menu builder must not fold a Command ===> row into the body"
         );
-        // Option rows use `{key} {shortname} : {desc} ({cmd})`.
+        // Option rows use `{key} {command} : {desc}` with no bracket suffix and
+        // the colon aligned (CR-NR-117, Req 23.2, 23.3).
         let body = model.body_lines.join("\n");
         assert!(
-            body.contains("1 FILES : File Explorer (FILES)"),
-            "option row format must be key shortname : desc (cmd):\n{body}"
+            body.contains("1 FILES    : File Explorer"),
+            "option row format must be key command : desc:\n{body}"
         );
+        assert!(!body.contains("(FILES)"), "no bracket suffix:\n{body}");
         // No superfluous header block leaked into the body.
         assert!(!body.contains("[POM]"), "no tab tag in body:\n{body}");
         let title_line_count = model
@@ -382,7 +342,7 @@ description = "Settings"
         let combined = model
             .body_lines
             .iter()
-            .any(|l| l.contains("File Explorer (FILES)") && l.contains("October 2026"));
+            .any(|l| l.contains("File Explorer") && l.contains("October 2026"));
         assert!(
             combined,
             "an option row and the calendar must share a line (two columns):\n{text}"
@@ -401,16 +361,14 @@ description = "Settings"
 
         // The longest option row drives the shared left-column width; the right
         // column therefore begins at left_width + MENU_COLUMN_GAP on every row.
-        let left: Vec<String> = state
-            .menu
-            .as_ref()
-            .unwrap()
-            .options
-            .iter()
-            .map(|o| option_row_text(&o.key, &o.command, &o.description))
-            .collect();
+        let menu = state.menu.as_ref().unwrap();
+        let left = format_menu_rows(
+            &rows_from_menu(menu),
+            menu.group_separator,
+            menu.group_headers,
+        );
         let left_width = left.iter().map(|l| l.chars().count()).max().unwrap();
-        let right_origin = left_width + MENU_COLUMN_GAP;
+        let right_origin = left_width + crate::screen_snapshot_menu::MENU_COLUMN_GAP;
 
         // Row 1 of the body is the first option row carrying calendar line 0
         // ("October 2026", no leading space) -- it must begin exactly at the
@@ -427,7 +385,9 @@ description = "Settings"
         );
         // And the option text on that line stays within the left column (ends
         // before the right-column origin), so the two columns never collide.
-        let opt_end = month_line.find("(FILES)").map(|i| i + "(FILES)".len());
+        let opt_end = month_line
+            .find("File Explorer")
+            .map(|i| i + "File Explorer".len());
         if let Some(end) = opt_end {
             assert!(
                 end <= right_origin,
@@ -436,22 +396,16 @@ description = "Settings"
         }
     }
 
-    // Validates: screen-snapshot-scrm Req 3.12 -- option row short name and the
-    // (command) suffix for the authoritative POM options (owner mock).
+    // Validates: menu-workspace Req 23.2, 23.3, 23.5 (CR-NR-117) -- the built-in
+    // POM renders as aligned `key command : description` rows, no bracket suffix,
+    // `X X` shows both columns.
     #[test]
-    fn option_row_matches_owner_mock_format() {
-        assert_eq!(
-            option_row_text("0", "Settings", "FFWB Settings and Client Parameters"),
-            "0 Settings : FFWB Settings and Client Parameters (Settings)"
-        );
-        assert_eq!(
-            option_row_text("S", "SCRM", "SCRM : Screen Capture and Recording"),
-            "S SCRM : SCRM : Screen Capture and Recording (SCRM)"
-        );
-        assert_eq!(
-            option_row_text("X", "X", "Collapse to the visual root"),
-            "X X : Collapse to the visual root (X)"
-        );
+    fn built_in_pom_rows_use_aligned_colon_form_without_suffix() {
+        let menu = crate::menu_workspace::defaults::recovery_pom_menu();
+        let lines = format_menu_rows(&rows_from_menu(&menu), menu.group_separator, false);
+        assert_eq!(lines[0], "0 Settings : FFWB Settings and Client Parameters");
+        assert_eq!(lines[2], "S SCRM     : Screen Capture and Recording");
+        assert!(lines[3].starts_with("X X        : Collapse to the visual root"));
     }
 
     // Validates: screen-snapshot-scrm Req 3.9, 3.13 -- the right column carries
@@ -482,10 +436,11 @@ description = "Settings"
         let state = pom_like();
         let chrome = MenuScreenChrome {
             right_column: Vec::new(),
+            rows: Vec::new(),
         };
         let model = menu_workspace_screen_model_full(&state, &chrome);
         let body = model.body_lines.join("\n");
-        assert!(body.contains("1 FILES : File Explorer (FILES)"));
+        assert!(body.contains("1 FILES    : File Explorer"));
         assert!(!body.contains("October 2026"));
     }
 

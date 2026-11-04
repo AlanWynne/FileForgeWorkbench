@@ -177,6 +177,8 @@ mod tests_content_rule;
 #[cfg(test)]
 mod tests_last_transition;
 #[cfg(test)]
+mod tests_menu_kind_snapshot;
+#[cfg(test)]
 mod tests_message_routing;
 #[cfg(test)]
 mod tests_zoom_segment;

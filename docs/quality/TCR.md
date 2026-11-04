@@ -4335,3 +4335,38 @@ suite PASS. -->
 | ❌ FAIL | 0 |
 | 🔲 MANUAL | 0 |
 | 🔴 NOT COVERED | 0 |
+
+### Phase (menu-kind-gate) -- CR-NR-117 Menu Kind snapshot content, clipboard table, status cells (menu-workspace Req 23)
+
+| Crate | Status | Test files | Notes |
+|-------|--------|-----------|-------|
+| `ff-desktop` | ✅ PASS | `tests_menu_kind_snapshot.rs::menu_kind_user_menu_box_and_markdown_match_golden` | Req 23.1: the Menu Kind snapshot content is built generically for every menu (POM, Settings, SCRM, user) through one provider |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_row_has_no_bracketed_command_suffix`; `menu_plain_text_box_has_aligned_rows_without_suffix`; `tests_menu_kind_snapshot.rs::menu_snapshot_rows_use_live_displayed_surfaces` | Req 23.2: rows are the live displayed surfaces (key, command, description); no `(<command>)` suffix |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_rows_align_colon_to_widest_key_and_command` | Req 23.3: the colon column aligns across mixed key/command widths |
+| `ff-desktop` | ✅ PASS | `screen_snapshot.rs::built_in_pom_rows_use_aligned_colon_form_without_suffix` | Req 23.4: the row form is `<key> <command> : <description>` as displayed |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_row_with_key_equal_command_shows_both` | Req 23.5: a key equal to the command still shows both columns (X X) |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_calendar_block_starts_at_widest_row_plus_four`; `menu_without_calendar_has_no_right_padding` | Req 23.6: the calendar column is derived (widest row + 4 cells), not fixed |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_group_line_separator_emits_rule_between_groups_only`; `menu_group_space_and_none_separators`; `menu_group_headers_precede_first_option_of_group` | Req 23.7: group separator rules/headers shown in the box per the live rule |
+| `ff-desktop` | ✅ PASS | `tests_menu_kind_snapshot.rs::menu_kind_pom_snapshot_matches_golden_pfshow_on_with_message` | Req 23.8: the title is not repeated in the body (it stays in the frame border) |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_load_error_and_empty_menu_emit_no_table`; `screen_snapshot.rs::load_error_surfaces_as_message` | Req 23.9: a load error or empty menu emits no table |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_model_has_single_option_command_description_section`; `menu_table_escapes_pipe_in_description`; `menu_markdown_has_box_then_table_and_html_has_option_header` | Req 23.10: one `Option \| Command \| Description` table via `markdown_sections` after the box (plain-text and HTML flavors) |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_command_cell_is_displayed_surface`; `tests_editor_snapshot_tables.rs::menu_screen_model_populates_table_with_real_option_columns` | Req 23.11: the Command cell is the displayed surface (equals live and the box) |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_table_excludes_calendar_and_group_rows` | Req 23.12: the table excludes the calendar, group rules and Time/Day-of-Year |
+| `ff-desktop` | ✅ PASS | `screen_snapshot_menu.rs::menu_model_fields_and_tables_are_empty` | Req 23.13: single representation (rows built once; `fields`/`tables` empty) |
+| `ff-desktop` | ✅ PASS | `tests_menu_kind_snapshot.rs::menu_kind_reports_no_workspace_status_cells` | Req 23.14: Menu status cells are empty (band stays Last \| Prof \| Zoom) |
+| `ff-desktop` | ✅ PASS | `menu_workspace/defaults.rs::bare_pom_scrm_option_is_bar_visible_and_commands_scrm_menu` | Req 23.15: POM `S` description is `Screen Capture and Recording` (D7a) |
+| `ff-desktop` | ✅ PASS | `menu_workspace/defaults.rs::scrm_menu_x_option_is_hidden_from_menu_bar` | Req 23.16: SCRM `X` has `show_in_menu_bar = false` like the POM `X` (D8) |
+| `ff-desktop` | 🔲 DEFERRED | -- | Req 23.17: full description normalisation (Option 2) deferred by owner (D7b Option 1 chosen); only Req 23.15 applied now |
+| `ff-desktop` | ✅ PASS | `menu_workspace/defaults.rs::default_pom_toml_ascii_only`; `default_scrm_menu_toml_is_valid_ascii_toml` | Req 23.18: built-in menu content stays code-only and ASCII |
+| `ff-desktop` | ✅ PASS | `cargo test -p ff-desktop` menu/screen_snapshot/golden/common_frame/snapshot/capture groups (all green) | Req 23.19: non-regression of the menu, snapshot and common-frame suites |
+| `ff-desktop` | ✅ PASS | `git diff --stat` on `crates/ff-screen-model` is empty | Req 23.20: no public `ScreenModel`/`Table`/`WorkspaceContext` type change (additive crate-private items only) |
+| `ff-desktop` | ✅ PASS | `tests_common_frame_menu.rs` + `tests_menu_kind_snapshot.rs` full-text goldens (POM, Settings, SCRM, user menu; box + Markdown) | Req 23.21: full-text goldens pin the content |
+| `ff-desktop` | ✅ PASS | `tests_nav.rs` + `tests_menu_workspace.rs` placement tests unchanged | Req 23.22: placement unchanged (not altered by this gate) |
+| `ff-screen-model` | ✅ PASS | `render/markdown.rs` + `render/html.rs` existing section tests; menu model exercises them unchanged | screen-snapshot-scrm Req 30.31: per-Kind content owned by the Kind spec; per-Kind table headers |
+
+| Summary | Count |
+|---------|-------|
+| ✅ PASS | 21 |
+| ❌ FAIL | 0 |
+| 🔲 DEFERRED | 1 |
+| 🔴 NOT COVERED | 0 |

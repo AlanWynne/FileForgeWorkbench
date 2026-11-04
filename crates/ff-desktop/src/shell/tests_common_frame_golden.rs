@@ -88,6 +88,18 @@ fn fixed_shell(
     h
 }
 
+/// Assert `actual` equals the named golden fixture. With `FFWB_UPDATE_GOLDEN`
+/// set, (re)write the fixture first (then review it by hand before committing).
+pub(super) fn assert_golden(name: &str, actual: &str) {
+    if std::env::var_os("FFWB_UPDATE_GOLDEN").is_some() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/shell/golden")
+            .join(name);
+        std::fs::write(&path, format!("{actual}\n")).expect("write golden");
+    }
+    assert_eq!(actual, fixture(name), "golden {name}");
+}
+
 /// Load a golden fixture, normalising a trailing newline the write tool adds.
 pub(super) fn fixture(name: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

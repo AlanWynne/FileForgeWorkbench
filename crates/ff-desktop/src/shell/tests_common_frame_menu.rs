@@ -6,10 +6,10 @@
 //! These tests compare FULL text so a presence-only pass can never hide that.
 
 use super::tests_common::*;
-use super::tests_common_frame_golden::{fixed_stamp, fixture};
+use super::tests_common_frame_golden::{assert_golden, fixed_stamp};
 use crate::tab_state::KindTag;
 
-const CONFIRMATION: &str = "Snapshot copied to clipboard: picture + Markdown.";
+pub(super) const CONFIRMATION: &str = "Snapshot copied to clipboard: picture + Markdown.";
 
 /// Pin the menu calendar clock so the POM calendar/Time block is reproducible.
 fn pin_menu_clock() {
@@ -18,7 +18,7 @@ fn pin_menu_clock() {
 
 /// A deterministic shell whose ONLY tab is a seeded POM, with the triggering
 /// command `ss` still in the command field (as it is during real dispatch).
-fn pom_shell(pfshow: bool, message: Option<&str>) -> super::WorkbenchShell {
+pub(super) fn pom_shell(pfshow: bool, message: Option<&str>) -> super::WorkbenchShell {
     super::i18n_bootstrap::install_catalogue_for_tests();
     ff_session::set_active_profile(None);
     pin_menu_clock();
@@ -37,7 +37,7 @@ fn pom_shell(pfshow: bool, message: Option<&str>) -> super::WorkbenchShell {
     shell
 }
 
-fn capture(shell: &super::WorkbenchShell) -> String {
+pub(super) fn capture(shell: &super::WorkbenchShell) -> String {
     shell
         .snapshot_text_for_active("")
         .expect("menu Context must be capturable")
@@ -47,7 +47,7 @@ fn capture(shell: &super::WorkbenchShell) -> String {
 }
 
 /// Structural frame assertions shared by every Menu Kind (no name branch).
-fn assert_menu_frame_shape(text: &str, pfshow: bool, message: Option<&str>) {
+pub(super) fn assert_menu_frame_shape(text: &str, pfshow: bool, message: Option<&str>) {
     let lines: Vec<&str> = text.lines().collect();
     let n = lines.len();
     assert!(lines[n - 1].starts_with('\u{2514}'), "bottom border last");
@@ -110,7 +110,7 @@ fn menu_kind_pom_snapshot_matches_golden_pfshow_on_with_message() {
     let shell = pom_shell(true, Some(CONFIRMATION));
     let text = capture(&shell);
     assert_menu_frame_shape(&text, true, Some(CONFIRMATION));
-    assert_eq!(text, fixture("menu_pom_message_pfshow_on.txt"));
+    assert_golden("menu_pom_message_pfshow_on.txt", &text);
 }
 
 // Validates: screen-snapshot-scrm Requirement 30.27 -- the SAME frame behaviour
@@ -128,7 +128,7 @@ fn menu_kind_settings_snapshot_matches_golden_pfshow_off() {
     assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
     let text = capture(&shell);
     assert_menu_frame_shape(&text, false, None);
-    assert_eq!(text, fixture("menu_settings_pfshow_off.txt"));
+    assert_golden("menu_settings_pfshow_off.txt", &text);
 }
 
 // Validates: screen-snapshot-scrm Requirement 30.16, 30.27 -- SNAPSHOT equals

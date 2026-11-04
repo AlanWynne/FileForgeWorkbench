@@ -2073,6 +2073,319 @@ Notes:
 
 ---
 
+## Menu Kind snapshot content (Requirement 23, CR-NR-117)
+
+Design for the FIRST per-Workspace-Kind gate of the alignment walk. It builds ON
+the Common Workspace Frame (CR-NR-115, main 8ff3e3b; workspace-framework design
+Section 11; screen-snapshot-scrm design Section 13): the shell owns the eight
+frame elements; the Menu Kind owns ONLY its Content_Area and its
+`workspace_status_cells`. Frame defects the owner found on the POM snapshot (key
+line position, command line text and underscores, Zoom, `Last:`, confirmation
+message) are already fixed on main and are NOT re-specified.
+
+### Investigation verdict (read against the code, not assumed)
+
+| Item | Where it originates | Verdict |
+|------|---------------------|---------|
+| 1 Redundant `(<command>)` | `crates/ff-desktop/src/screen_snapshot.rs::option_row_text` formats `{key} {command} : {description} ({command})`; the unit test `option_row_matches_owner_mock_format` and `calendar_less_menu_renders_single_column` (asserts `1 FILES : File Explorer (FILES)`) encode it. The live renderer (`menu_workspace/render.rs` + `render_layout.rs::option_prefix_job`) draws key (`{:<4}`), two spaces, command (padded), two spaces, then the description label; there is NO bracket and NO ` : ` on the live screen. | RENDERING defect, snapshot-only. Remove the suffix. |
+| 2 Alignment | `option_row_text` pads nothing (`0 Settings : ...`, `3 Help : ...` do not align). Live aligns via `command_column_width` (widest command, clamped 4..24) and `{:<4}` keys. | RENDERING. Pad key to widest key and command to widest command in the snapshot builder. |
+| 3 Calendar column | `compose_two_column_body` pads the left block to its widest line plus `MENU_COLUMN_GAP = 3`. Live: option column of natural width, then `CALENDAR_GAP = 32 px` (about 4 monospace cells at 14 px), then the calendar. | RENDERING. Gap 3 -> 4 and derive the column from the padded rows (recommend D3). |
+| 4 Clipboard table | `menu_workspace_screen_model_full` sets only `body_lines`/`messages`; `markdown_sections`, `fields` and `tables` are empty, so the Markdown flavor is the fenced box only. | MISSING. Add one `markdown_sections` entry (CR-CH-079). |
+| 5 Single representation | Today the only copy is the box rows. After item 4 the rows exist twice by design (box + table); they must derive from ONE list. | DESIGN rule (Req 23.13). |
+| 6 Status cells | `shell/render_status.rs::workspace_status_cells` returns `Vec::new()` for every Kind except FileEditor/Untitled, so Menu already returns none. | Already empty; decide to keep (D6). |
+| 7a `S SCRM : SCRM : Screen...` | `defaults.rs::DEFAULT_POM_TOML` option `S`: `description = "SCRM : Screen Capture and Recording"`. There is no catalogue key `menu-pom-opt-scrm-desc`, so the TOML text is what is shown live too. | CONTENT. Edit the TOML (Req 23.15). On the LIVE screen the description column also reads `SCRM : Screen Capture...`, so the live panel has the same oddity. |
+| 7b `X X : ...` | `DEFAULT_POM_TOML` option `X`: `key = "X"`, `command = "X"`. Live shows `X     X         Collapse...` (key column then command column). | CONTENT is correct (key and command are two distinct fields). Not a defect; keep (D5). |
+| 7c Mixed description styles | POM plain phrases, `Help -- ...`, `SCRM : ...`; Settings and SCRM `<Name> -- <phrase>` where the name sometimes differs from the command (`Alias editor` vs `Aliases`, `Reset to barebones` vs `Reset bare`). The `en` catalogue (`ff-i18n/i18n/en/menus.ftl`) overrides the POM `0`, `3`, `X` and the legacy `1`, `2` descriptions at render time. | CONTENT. Decision D7a/D7b. |
+
+The X command value: the owner's example showed `Settings` in the X row; the code
+(`DEFAULT_POM_TOML`, option `X`: `command = "X"`) confirms the command is `X`.
+
+### Shared versus Kind-specific split (everything is generic)
+
+There is ONE snapshot provider for every Menu Kind: `TabKind::MenuWorkspace` ->
+`shell/screen_provider.rs::active_context_capture` ->
+`screen_snapshot::menu_workspace_screen_model_full(state, chrome)`. POM, Settings,
+SCRM and user menus differ only by DATA (`MenuFile`: `title`, `options`,
+`show_calendar`, `group_separator`, `group_headers`). The only existing
+shape-dependent branch is `show_calendar` (`menu_screen_chrome` returns an empty
+right column for Settings), which is data-driven, not name-driven. Nothing in the
+builder, the table or the status cells may test `is_home`, the menu name `pom`,
+`settings` or `scrm`.
+
+### Row model (single representation)
+
+Add a crate-private value type in `screen_snapshot.rs` (NOT a public framework
+type):
+
+```rust
+/// One option row as the LIVE panel displays it (CR-NR-117).
+pub(crate) struct MenuRowDisplay {
+    pub key: String,          // active-locale mnemonic surface
+    pub command: String,      // active-locale command surface
+    pub description: String,  // localised description
+    pub group: Option<String>,
+}
+```
+
+`MenuScreenChrome` (already crate-private to `ff-desktop`) gains
+`rows: Vec<MenuRowDisplay>`. The shell fills it in `menu_screen_chrome` from the
+SAME three sources the live render uses: `menu_option_mnemonic_surfaces()`,
+`menu_option_command_surfaces()` (both `shell/locale_resolver.rs`, positionally
+aligned with `menu.options`) and `i18n_keys::localised_option_description`. So the
+snapshot cannot drift from the live text (Req 23.2) and en output equals the
+stored values. `menu_workspace_screen_model_full` then:
+
+1. computes `key_w = max key chars`, `cmd_w = max command chars`;
+2. formats each row `"{key:<key_w} {command:<cmd_w} : {description}"` (trailing
+   spaces trimmed on the last cell only; the description is last so none occur);
+3. inserts group header / separator rows between groups from
+   `menu.group_separator` and `menu.group_headers` (`line` -> a row of `-` as wide
+   as the widest option row; `space` -> an empty row; `none` -> nothing), applying
+   the live rule "only between two different non-empty groups";
+4. composes the right-hand calendar block when `chrome.right_column` is non-empty
+   at column `block_width + 4` (`MENU_COLUMN_GAP = 4`), where `block_width` is the
+   widest line of step 3, padding shorter lines; rows below the options continue
+   the calendar at the same column;
+5. builds ONE `MarkdownSection { heading: None, table: Table { caption: None,
+   headers: [Option, Command, Description], rows } }` from the SAME `rows` (not
+   the formatted strings), and assigns `model.markdown_sections = vec![section]`
+   only when there is at least one row;
+6. leaves `fields` and `tables` empty (so `render_markdown`'s generic path and
+   `render_tables_html`'s fallback never emit a second copy).
+
+`option_row_text` and `compose_two_column_body` are replaced by the above (they
+stay private to `screen_snapshot.rs`; their tests are rewritten, see tasks).
+`screen_snapshot.rs` is 600+ lines with tests; the new code moves to a sibling
+`screen_snapshot_menu.rs` so each file stays under 400 non-test lines.
+
+### Calendar column (Req 23.6; decision D3)
+
+Options: (a) a FIXED absolute column (for example column 80); (b) MIRROR the live
+layout: calendar at `widest option row + gap`. Recommend (b): a fixed column
+breaks as soon as a user menu has longer descriptions (overlap or a huge gap) and
+cannot match the live option-column-then-gap-then-calendar layout; (b) is what the
+code already does with gap 3, and the owner's expected POM sample has the gap of 4
+cells (`...(exit when last)` + 4 spaces + the right-aligned day cell). Note the
+snapshot is the LOGICAL screen: it always includes the calendar when
+`show_calendar` is true, even when the live window is too narrow to show it
+(Req 16 tiers); this is the existing, unchanged behaviour (D10).
+
+### Illustrative content-area fixtures (generated; the golden files are authoritative)
+
+Plain-text box content rows (frame omitted). POM, `November 2026`, today = 4,
+12:55, day of year 308:
+
+```
+0 Settings : FFWB Settings and Client Parameters                               November 2026
+3 Help     : Help -- workbench help and topics                                  Su  Mo  Tu  We  Th  Fr  Sa
+S SCRM     : Screen Capture and Recording                                        1   2   3 * 4   5   6   7
+X X        : Collapse to the visual root / close workspace (exit when last)      8   9  10  11  12  13  14
+                                                                                15  16  17  18  19  20  21
+                                                                                22  23  24  25  26  27  28
+                                                                                29  30
+                                                                               Time              : 12:55
+                                                                               Day of Year       : 308
+```
+
+Settings (`show_calendar = false`, `group_separator = "line"`, no right padding):
+
+```
+C Config     : All settings -- browse every configuration key
+A Aliases    : Alias editor -- create, edit and save command aliases
+T Theme      : Theme editor -- copy, edit, save and select themes
+M Menus      : Menus editor -- create, change and save menus
+K Keys       : Keys -- edit and save per-workspace key assignments
+W Kinds      : Workspace kinds -- configure title, menu bar, key list, profile
+------------------------------------------------------------------------------
+R Reset bare : Reset to barebones -- archive config and start fresh
+```
+
+SCRM menu (mixed 1-2 letter keys; the colon aligns to the widest key AND command):
+
+```
+S  SNAPSHOT       : Snapshot -- copy the current screen to the clipboard
+CS CAPTURE START  : Capture start -- begin recording a capture session
+CT CAPTURE STOP   : Capture stop -- stop and save the capture session
+CR CAPTURE REPLAY : Capture replay -- open a saved capture session
+H  HELP SCRM      : SCRM Help -- screen capture and recording help
+X  X              : Exit -- close this menu (collapse to the visual root)
+```
+
+Clipboard tables after the box (the plain-text flavor shows the fenced box FIRST,
+then a blank line, then the table; the existing renderer writes the separator row
+as `|------|------|------|`):
+
+```
+| Option | Command | Description |
+|------|------|------|
+| 0 | Settings | FFWB Settings and Client Parameters |
+| 3 | Help | Help -- workbench help and topics |
+| S | SCRM | Screen Capture and Recording |
+| X | X | Collapse to the visual root / close workspace (exit when last) |
+```
+
+The POM sample above already applies criterion 15 (`S` description fixed) and
+keeps the owner-expected `Help -- ...` text (D7b option 1). The SCRM and Settings
+tables are the same shape with their own rows. The box is shown fenced in the
+Markdown flavor with Unicode box-drawing; the table contains no calendar, no
+group rule and no Time / Day of Year (Req 23.12).
+
+### Frame-owned Content_Area top rule (main db5e80a; screen-snapshot-scrm 30.29, workspace-framework 7.30)
+
+Main now draws a frame-owned RULE directly between the `Command ===>` line and the
+first Content_Area row, on the live screen and in the snapshot (owner Option 1,
+2026-11-04). It is composed by the shared framed renderer for EVERY Kind with no
+name-specific branch, so the Menu Kind builder does NOT draw it and its content
+area starts with the first option row (or the first calendar-block row). A Menu
+Kind has no grid, so it always gets the single frame rule (no top/bottom merge,
+30.29/30.30). The content-area fixtures above are therefore the rows BELOW this
+rule. Full target layout for the POM (ASCII `+ - |` here for safe diffing; the
+runtime product uses Unicode box drawing):
+
+```
++----------------------------------------------------------------------------------+
+| #  FileForge Workbench                                              _ [] X        |
++----------------------------------------------------------------------------------+
+| Settings | Help | SCRM                                                            |
++----------------------------------------------------------------------------------+
+| [POM] x                                                                           |
++----------------------------------------------------------------------------------+
+|                                  Primary Option Menu                              |
++----------------------------------------------------------------------------------+
+| Command ===> ____________________________________________________________        |
++----------------------------------------------------------------------------------+
+| 0 Settings : FFWB Settings and Client Parameters             November 2026        |
+| 3 Help     : Help -- workbench help and topics               Su Mo Tu We Th Fr Sa |
+| S SCRM     : Screen Capture and Recording                     1  2  3 * 4  5  6  7 |
+| X X        : Collapse to the visual root / close workspace   (calendar continues) |
++----------------------------------------------------------------------------------+
+| Last: 12:55 | Prof: default | Zoom 100%                                          |
++----------------------------------------------------------------------------------+
+| Base | F1 Help | F3 Exit | F7 Up | F8 Down                                        |
++----------------------------------------------------------------------------------+
+```
+
+The golden fixtures (task 52, `shell/golden/menu_*.txt`) must therefore contain the
+frame rule between the `Command ===>` row and the first option row, and the Menu
+Kind tests assert the builder output (content area only) separately from the
+framed output. The `0 Settings` row is the first row below the rule, which is the
+spacing the owner approved (Option 1) in place of a blank row.
+
+### Status cells (Req 23.14; decision D6)
+
+`workspace_status_cells` already returns an empty `Vec` for MenuWorkspace, so every
+menu shows `Last | Prof | Zoom` only. Candidates: the menu name (already in the
+tab tag and the title), an option count (`4 options`: noise, not actionable), or
+`Cal: on/off` (an internal setting). Recommend NONE: nothing about a menu is
+workspace data worth a cell, and an empty segment keeps the golden stable. A test
+pins it (`menu_kind_reports_no_workspace_status_cells`).
+
+### Description style (decision D7a / D7b) -- built-in content only
+
+The `Command` column already shows the verb, so a description that begins with the
+same word shows it twice (`SCRM : SCRM : ...`, `Help  Help -- ...`). Two options:
+
+- OPTION 1 (minimal, recommended now): change ONLY the POM `S` description to
+  `Screen Capture and Recording`. Everything else keeps today's text, which is
+  exactly the text the owner's expected sample shows.
+- OPTION 2 (full normalisation): ONE style for all built-in options -- a plain
+  phrase that does not start with its own command or label, no `Label --` prefix,
+  no `LABEL :` prefix, sentence-fragment case, no trailing period. Proposed text
+  for every option:
+
+| Menu | Key | Command | Today | Option 2 text |
+|------|-----|---------|-------|---------------|
+| POM | 0 | Settings | FFWB Settings and Client Parameters | (unchanged) FFWB Settings and Client Parameters |
+| POM | 3 | Help | Help -- workbench help and topics | Workbench help and topics |
+| POM | S | SCRM | SCRM : Screen Capture and Recording | Screen Capture and Recording |
+| POM | X | X | Collapse to the visual root / close workspace (exit when last) | (unchanged) |
+| Settings | C | Config | All settings -- browse every configuration key | Browse and edit every configuration key |
+| Settings | A | Aliases | Alias editor -- create, edit and save command aliases | Create, edit and save command aliases |
+| Settings | T | Theme | Theme editor -- copy, edit, save and select themes | Copy, edit, save and select themes |
+| Settings | M | Menus | Menus editor -- create, change and save menus | Create, change and save menus |
+| Settings | K | Keys | Keys -- edit and save per-workspace key assignments | Edit and save per-workspace key assignments |
+| Settings | W | Kinds | Workspace kinds -- configure title, menu bar, key list, profile | Configure title, menu bar, key list and profile per workspace kind |
+| Settings | R | Reset bare | Reset to barebones -- archive config and start fresh | Archive the configuration and start fresh (barebones) |
+| SCRM | S | SNAPSHOT | Snapshot -- copy the current screen to the clipboard | Copy the current screen to the clipboard |
+| SCRM | CS | CAPTURE START | Capture start -- begin recording a capture session | Begin recording a capture session |
+| SCRM | CT | CAPTURE STOP | Capture stop -- stop and save the capture session | Stop and save the capture session |
+| SCRM | CR | CAPTURE REPLAY | Capture replay -- open a saved capture session | Open a saved capture session |
+| SCRM | H | HELP SCRM | SCRM Help -- screen capture and recording help | Screen capture and recording help |
+| SCRM | X | X | Exit -- close this menu (collapse to the visual root) | Close this menu (collapse to the visual root) |
+
+Why Option 1 is recommended now: it matches the owner's expected sample, it
+touches one TOML line, and Option 2 reaches the `ff-i18n` catalogues
+(`menu-pom-opt-help-desc` in en/fr/de/af) and the Settings/SCRM tests that assert
+the current prose. Option 2 is a pure content edit (no framework change) and can
+land later as one small change; the goldens differ only in their description
+cells. The mnemonics are NOT changed in either option (Settings keeps `W` for
+Kinds because `K` is taken by Keys; SCRM keeps 1-2 letter keys; the colon
+alignment absorbs the width).
+
+SCRM `X` row (D8): the SCRM menu `X` lacks `show_in_menu_bar = false` while the
+POM `X` has it, so `X Exit` appears in the SCRM dropdown of the menu bar. `X` in a
+dropdown collapses the ACTIVE workspace, not the dropdown, so recommend setting
+`show_in_menu_bar = false` (one TOML line, consistent with the POM).
+
+### Placement note (decision D9, NOT changed by this gate)
+
+Settings opens IN PLACE through the per-tab Navigation_Stack (END returns to the
+POM); the SCRM menu and user menus open in a NEW TAB through
+`commands_menu.rs::open_menu_by_name`. Trade-off: in place matches framework
+mechanism 3 (navigation transforms the current tab; only `START` creates a tab)
+and gives a consistent END/`X` walk down the tree, but replaces the POM view and
+makes the SCRM menu (which doubles as the menu-bar dropdown source) a
+stack entry; new tab keeps the POM visible and matches how the SCRM bar item
+works today, but fills the tab bar and lets END close a tab instead of walking up.
+Recommend: keep this gate content-only; if the owner wants consistency, make ALL
+sub-menus open in place through `navigate_to` in a separate CR (a behavioural
+change to `open_menu_by_name` and its tests, not a snapshot change).
+
+### Framework verdict (framework-conformance.md)
+
+NO framework change. Mechanisms used as-is: the single `ScreenProvider` seam
+(`menu_workspace_screen_model_full` via `active_screen_capture`), the common frame
+(mechanism 8: the builder returns the content area only; `apply_common_frame` is
+untouched), `ScreenModel::markdown_sections` + `Table` (CR-CH-079; the HTML
+emitter `render_tables_html` and the Markdown renderer already render arbitrary
+`headers`/`rows`, not a fixed Property | Value header), code-only built-in menus
+(mechanism 4: only the content of `DEFAULT_POM_TOML` / `DEFAULT_SCRM_MENU_TOML`
+changes, never written to disk), and `workspace_status_cells`. No public
+`ScreenModel`, `Table` or `WorkspaceContext` type changes.
+
+ADDITIVE items called out (none needs owner framework confirmation): a
+crate-private `MenuRowDisplay` and a `rows` field on the crate-private
+`MenuScreenChrome`; a sibling module `screen_snapshot_menu.rs`; the shell fills
+`rows` from existing surface helpers. The live render path is untouched.
+
+### Decision points (owner)
+
+| Id | Decision | Recommendation |
+|----|----------|----------------|
+| D1 | Snapshot row form: keep the owner's `key command : description` text form (live has column gutters, no colon) | Keep the colon form (owner mock) |
+| D2 | Clipboard table header wording: `Description` or `Description Value` | `Description` (three columns Option, Command, Description) |
+| D3 | Calendar column: fixed column or derived from the rows | Derived: widest padded row + 4 cells (mirrors live) |
+| D4 | Reproduce group boundaries (rule / blank row / header) in the box | Yes, mirror live; not in the table |
+| D5 | `X X :` row (key equals command): show both or collapse | Show both (distinct live columns; not a defect) |
+| D6 | Menu status cells | None (empty) |
+| D7a | POM `S` description `SCRM : Screen Capture...` | Change to `Screen Capture and Recording` |
+| D7b | Full description-style normalisation (table above) | Option 1 now (D7a only); Option 2 later if desired |
+| D8 | SCRM `X` `show_in_menu_bar` | Set `false`, like the POM `X` |
+| D9 | Sub-menu placement (in place versus new tab) | Not in this gate; separate CR to make all in place |
+| D10 | Snapshot shows the calendar whenever `show_calendar` is true, regardless of window width | Keep (logical screen) |
+| D11 | Table `Command` cell: displayed (localised) surface or stored root | Displayed surface (equals live and the box) |
+
+### Tests (TDD, scoped; owner runs the full gate)
+
+- Pure builder unit tests in `screen_snapshot_menu.rs` for rows, alignment, group
+  rows, calendar column, table and the empty / load-error cases.
+- FULL-TEXT golden tests in `shell/tests_common_frame_menu.rs` (box, plain) and a
+  sibling markdown-flavor golden for POM, Settings, SCRM and one user menu.
+- Guard tests: no `fields`/`tables` on a Menu model; status cells empty; built-in
+  descriptions per D7; SCRM `X` flag per D8; ASCII-only descriptions.
+
+---
+
 ## CR-CH-073 -- Trim the core default POM: remove Catalogs and Files (reconsidered trimmed core set)
 
 ### Overview

@@ -133,6 +133,36 @@ fn isolate_user_alias_base_once() {
     }
 }
 
+/// A process-global, guaranteed-EMPTY directory used as the default
+/// `dir_overrides.menus` for every test shell, so the Menu Kinds (POM, Settings,
+/// SCRM) reconstruct from their CODE-ONLY Recovery_Baseline defaults rather than
+/// from whatever `menus/<name>.toml` happens to exist in the developer's real
+/// User_Data_Dir.
+///
+/// WHY: `menus_dir()` falls back to the live `<config>/ffworkbench/menus` when no
+/// per-shell override is set. A stray on-disk `settings.toml` there that omits
+/// `show_calendar` (which the loader defaults to `true`) made the Settings
+/// snapshot wrongly render the calendar, and a changed `pom.toml` dropped
+/// "Settings" from the menu-bar echo -- environment-dependent golden/menu-bar
+/// failures that pass on a clean machine but fail on a developer box. An ABSENT
+/// menu file is handled silently by the loader (fallback to the compiled
+/// baseline), so pointing every test shell at one empty dir makes every Menu Kind
+/// deterministic regardless of ambient on-disk state. This mirrors the set-once
+/// `isolate_user_alias_base_once` discipline used for the alias base.
+///
+/// Tests needing specific menu content still set their own
+/// `dir_overrides.menus` TempDir AFTER `make_shell()`, which overrides this.
+fn isolated_menus_dir() -> std::path::PathBuf {
+    use std::sync::OnceLock;
+    // Hold the TempDir for the whole process so the empty dir is not deleted out
+    // from under a later-constructed shell. Created once across all threads.
+    static MENUS_DIR: OnceLock<tempfile::TempDir> = OnceLock::new();
+    MENUS_DIR
+        .get_or_init(|| tempfile::TempDir::new().expect("isolated menus tempdir"))
+        .path()
+        .join("menus")
+}
+
 /// Construct a minimal WorkbenchShell for command-dispatch unit tests.
 pub(crate) fn make_shell() -> super::WorkbenchShell {
     use ff_config::init;
@@ -176,14 +206,18 @@ pub(crate) fn make_shell() -> super::WorkbenchShell {
     let app =
         WorkbenchApp::new(Box::new(config_handle.clone()), LoggingStatus::Fallback).expect("app");
     let palette = dark_palette();
-    super::WorkbenchShell::new_with_history_store(
+    let mut shell = super::WorkbenchShell::new_with_history_store(
         app,
         runtime,
         palette,
         vec![],
         config_handle,
         Some(HistoryStore::new(hist_path)),
-    )
+    );
+    // Isolate the menu resolver from the developer's real `menus/` dir so Menu
+    // Kinds fall back to their code-only Recovery_Baseline (see isolated_menus_dir).
+    shell.dir_overrides.menus = Some(isolated_menus_dir());
+    shell
 }
 
 /// Build a unique temp file name (`<prefix>_<pid>_<nanos>.toml`) for per-call

@@ -736,7 +736,8 @@ no new navigation stack.
      SUBMENU TOML (the submenu menu screen the option opens), so the dropdown
      content is the submenu's options. `[forward-plan]`
 22.3 THE bare-core POM (`DEFAULT_POM_TOML`) SHALL CONTAIN an SCRM option
-     (label/description "SCRM : Screen Capture and Recording"), in ADDITION to the
+     (command `SCRM`, description "Screen Capture and Recording"; the description
+     was shortened from "SCRM : ..." by CR-NR-117 D7a), in ADDITION to the
      existing `0` Settings / `3` Help / `X` terminate options. This DELIBERATELY
      changes the CR-CH-073 bare-POM invariant (owner-confirmed framework change
      (b)); the bare POM is NO LONGER exactly 0/3/X. `[forward-plan]`
@@ -962,8 +963,9 @@ adjust them at implementation).
 #### Acceptance Criteria
 25.1 THE SCRM menu screen SHALL have the title "FileForge Workbench -- Screen
      Capture and Recording". `[forward-plan]`
-25.2 THE SCRM POM option (Req 22.3) SHALL have the label/description
-     "SCRM : Screen Capture and Recording". `[forward-plan]`
+25.2 THE SCRM POM option (Req 22.3) SHALL have the command `SCRM` and the
+     description "Screen Capture and Recording" (shortened from "SCRM : ..." by
+     CR-NR-117 D7a). `[forward-plan]`
 25.3 THE SCRM menu screen SHALL list these options with these mnemonic keys
      (owner-confirmed, tunable): Snapshot = `S`; Capture start = `CS`; Capture
      stop = `CT`; Capture replay = `CR`; SCRM Help = `H`; Exit = `X`.
@@ -1567,6 +1569,16 @@ rendering only: the live egui window keeps its own visuals.
       rules at the content bottom. WHEN the Content_Area ends with no rule of
       its own, THE single frame rule is drawn as in 30.18. The merge is
       generic in the framed renderer. `[CR-NR-115, NEW 2026-11-04, owner Option 1]`
+30.31 PER-KIND CONTENT is owned by each Kind's spec, not by the frame: the
+      Menu Kind content area (option rows, calendar block, group rules, the
+      Option | Command | Description clipboard table and its empty status
+      cells) is specified in `menu-workspace` Requirement 23 (CR-NR-117). A
+      per-Kind clipboard table SHALL be supplied through `markdown_sections`
+      with that Kind's own column headers (it is NOT limited to Property |
+      Value), and SHALL show the same displayed texts as the box rows (a
+      snapshot never adds text that is not on the live screen). No change to
+      the frame criteria 30.1-30.30 or to the `ScreenModel` / `Table` types is
+      implied. `[CR-NR-117]`
 
 Rendered fixture (the box-drawing glyphs are runtime product output, exempt from
 the ASCII-only documentation rule):

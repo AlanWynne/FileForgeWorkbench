@@ -233,7 +233,42 @@ impl WorkbenchShell {
         };
 
         // The PF-key line is supplied by the shared common frame (Req 30.27).
-        MenuScreenChrome { right_column }
+        MenuScreenChrome {
+            right_column,
+            rows: self.menu_row_displays(mw),
+        }
+    }
+
+    /// The option rows as the LIVE panel displays them (CR-NR-117, menu-workspace
+    /// Req 23.2): the active-locale mnemonic and command surfaces and the
+    /// localised description, from the SAME sources the renderer reads. Generic
+    /// for every Menu Kind. Empty when the surfaces cannot be computed (the
+    /// builder then falls back to the stored values).
+    pub(super) fn menu_row_displays(
+        &self,
+        mw: &crate::menu_workspace::MenuWorkspaceState,
+    ) -> Vec<crate::screen_snapshot_menu::MenuRowDisplay> {
+        let Some(menu) = mw.menu.as_ref() else {
+            return Vec::new();
+        };
+        let menu_name = mw.menu_name_label().unwrap_or_default();
+        let keys = self.menu_option_mnemonic_surfaces();
+        let commands = self.menu_option_command_surfaces();
+        menu.options
+            .iter()
+            .enumerate()
+            .map(|(i, option)| crate::screen_snapshot_menu::MenuRowDisplay {
+                key: keys.get(i).cloned().unwrap_or_else(|| option.key.clone()),
+                command: commands
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| option.command.clone()),
+                description: crate::menu_workspace::i18n_keys::localised_option_description(
+                    &menu_name, option,
+                ),
+                group: option.group.clone(),
+            })
+            .collect()
     }
 }
 

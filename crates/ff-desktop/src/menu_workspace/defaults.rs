@@ -30,7 +30,7 @@ use std::path::Path;
 ///
 /// CR-NR-114 / screen-snapshot-scrm Req 22.3 (OWNER-CONFIRMED FRAMEWORK CHANGE
 /// (b)): the bare-core POM now ALSO carries an `SCRM` option
-/// ("SCRM : Screen Capture and Recording"), in ADDITION to `0` Settings /
+/// ("Screen Capture and Recording"), in ADDITION to `0` Settings /
 /// `3` Help / `X` terminate. This DELIBERATELY changes the former CR-CH-073
 /// invariant (bare POM was EXACTLY `0`/`3`/`X`): because the menu bar is now a
 /// RUNTIME ECHO of the POM (Req 22.1), SCRM-in-the-POM is what surfaces SCRM on
@@ -61,7 +61,7 @@ group = "Core"
 [[options]]
 key = "S"
 command = "SCRM"
-description = "SCRM : Screen Capture and Recording"
+description = "Screen Capture and Recording"
 group = "Core"
 
 [[options]]
@@ -212,6 +212,7 @@ key = "X"
 command = "X"
 description = "Exit -- close this menu (collapse to the visual root)"
 group = "Core"
+show_in_menu_bar = false
 "#;
 
 /// Build the compiled Recovery_Baseline SCRM `MenuFile` (screen-snapshot-scrm
@@ -384,7 +385,7 @@ mod tests {
             "the SCRM option must be bar-visible so it echoes onto the menu bar"
         );
         assert_eq!(
-            scrm.description, "SCRM : Screen Capture and Recording",
+            scrm.description, "Screen Capture and Recording",
             "the SCRM option label/description must match Req 25.2"
         );
         // The terminate option (key X) stays hidden from the bar.
@@ -427,6 +428,21 @@ mod tests {
             ],
             "SCRM menu keys/commands must match Req 25.3/25.4"
         );
+    }
+
+    // Validates: menu-workspace Requirement 23.16 (CR-NR-117) -- the SCRM menu
+    // X option is hidden from the menu bar, like the POM X; the others stay.
+    #[test]
+    fn scrm_menu_x_option_is_hidden_from_menu_bar() {
+        let menu = recovery_scrm_menu();
+        for option in &menu.options {
+            assert_eq!(
+                option.show_in_menu_bar,
+                option.key != "X",
+                "bar visibility of {}",
+                option.key
+            );
+        }
     }
 
     // Validates: screen-snapshot-scrm Req 25 (CR-NR-114) -- DEFAULT_SCRM_MENU_TOML

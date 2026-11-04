@@ -1805,3 +1805,171 @@ verb). Refines Requirement 12 criterion 12.3 for the Settings menu.
    no existing users), NOT a regression; the compiled Recovery_Baseline
    (Requirement 12.3) SHALL be the single source of this option list, with no
    duplicate hardcoded list elsewhere (Requirement 12.7).
+
+---
+
+### Requirement 23: Menu Kind content area, clipboard table and status cells in the snapshot/capture (CR-NR-117)
+
+**User Story:** As an operator who snapshots or captures a menu screen (the POM,
+Settings, the SCRM menu, or any `menus/<name>.toml`), I want the pasted text to
+show exactly the rows I see on the live screen, aligned, without invented
+decoration, and I want the same options available as an Option | Command |
+Description table in the clipboard, so that the snapshot is a faithful and
+reusable record of the menu.
+
+**Source:** [CR-NR-117]; owner POM snapshot review 2026-11-04
+(`.agents/tasks/pom-snapshot-review/findings.md`, "Menu Kind items") and the
+menu-tree worklist (`.agents/tasks/workspace-alignment-worklist/findings.md`,
+sections 1, 3, 5). Builds ON the Common Workspace Frame (CR-NR-115, merged at
+8ff3e3b; workspace-framework Requirement 7; screen-snapshot-scrm Requirement 30),
+the dual-representation clipboard text flavors (CR-CH-079, screen-snapshot-scrm
+Requirement 28, `markdown_sections`), Requirement 21 (per-locale display
+surfaces) and Requirement 20 (the single title). This is the FIRST per-Workspace
+-Kind gate of the owner's alignment walk.
+
+**Scope and genericity:** every criterion below applies to EVERY Menu Kind
+workspace through the one shared menu path (`menu_workspace_screen_model_full`):
+the compiled POM, Settings and SCRM menus and every user `menus/<name>.toml`
+(including a user file that overrides a built-in). There SHALL be NO POM-specific,
+Settings-specific, SCRM-specific or `is_home` branch in the snapshot content
+builder. The frame elements (title bar, menu bar, tab bar, centered title,
+`Command ===>` line, message band, `Last | Prof | Zoom` status band, key line)
+are owned by the shell and are NOT re-specified here (CR-NR-115; screen-snapshot
+-scrm Requirement 30.27).
+
+**Note (investigation, see design.md "Menu Kind snapshot content (CR-NR-117)"):**
+the live panel draws a key column, a command column and a description column
+with no separator glyph; the snapshot uses the owner's ISPF text form
+`<key> <command> : <description>`. The bracketed `(<command>)` suffix on the
+snapshot row exists ONLY in the snapshot builder (`option_row_text`) and is not on
+the live screen.
+
+#### Acceptance Criteria -- content-area rows
+
+1. THE Menu Kind snapshot builder SHALL return the CONTENT AREA only (the option
+   rows, the optional calendar block, and a load-error message when the menu did
+   not load); it SHALL NOT draw any frame element (Requirement 20.1; screen
+   -snapshot-scrm Requirement 30.27; framework-conformance mechanism 8).
+2. EACH enabled or disabled option of the loaded menu SHALL appear as exactly one
+   row of the form `<key> <command> : <description>` in menu order, where `<key>`,
+   `<command>` and `<description>` are the SAME DISPLAYED texts the live panel
+   paints for that option: the active-locale mnemonic surface, the active-locale
+   command surface, and the localised description (Requirement 21.1-21.3; the
+   shell-computed `menu_option_mnemonic_surfaces`, `menu_option_command_surfaces`
+   and `localised_option_description`), falling back per part to the stored value
+   (Requirement 21.6). At `en` with no overlay the texts equal the stored
+   `key`, `command` and `description`.
+3. THE snapshot row SHALL NOT append the command in brackets (no `(<command>)`
+   suffix) nor add any other text that is not on the live screen; the
+   description SHALL be shown exactly as displayed live.
+4. THE ` : ` separator SHALL fall in the SAME column on every option row of the
+   menu: `<key>` SHALL be right-padded with spaces to the width of the widest
+   displayed key and `<command>` SHALL be right-padded to the width of the widest
+   displayed command (widths in characters), so mixed 1-2 letter keys (SCRM: `S`,
+   `CS`, `CT`, `CR`, `H`, `X`) and short and long commands align. Alignment SHALL
+   hold across group boundaries (criterion 7).
+5. WHERE an option's displayed key equals its displayed command (the POM
+   terminate row `X` / `X`), THE row SHALL still show both columns (`X X     :
+   ...`), because the key and command are distinct live columns; the snapshot
+   SHALL NOT collapse them. [OWNER DECISION D5 -- recommended]
+6. WHERE the menu has `show_calendar = true`, THE snapshot SHALL place the
+   calendar block (month and year header, weekday header, week rows, then the
+   `Time` and `Day of Year` lines) on the RIGHT of the same lines, starting at the
+   column `widest-padded-option-row-width + 4`, the same column on every line of
+   the block, so the block is derived from the rows and mirrors the live layout
+   (option column of natural width, then a fixed gap, then the calendar) instead
+   of a hard-coded absolute column. Calendar lines beyond the last option row
+   SHALL continue below at the same column. WHERE `show_calendar = false`
+   (Settings) THE body SHALL be the single option column with no right padding.
+   [OWNER DECISION D3 -- recommended]
+7. THE group boundary SHALL be reproduced as the live panel draws it, between two
+   DIFFERENT non-empty groups only (never before the first option, never for
+   ungrouped options): `group_separator = "line"` SHALL emit one rule row across
+   the option block width, `"space"` SHALL emit one blank row, `"none"` SHALL emit
+   nothing; WHERE `group_headers = true` a header row carrying the group name
+   SHALL precede the first option of each non-empty group. (Settings: a rule row
+   between the `Core` options and `R` Reset bare.) The separator and header rows
+   are display-only and SHALL NOT appear in the clipboard table. [OWNER DECISION
+   D4 -- recommended]
+8. THE title SHALL appear only in the frame (the centered title band /
+   `ScreenModel::title`) and SHALL NOT be repeated in the body (Requirement 20.1).
+9. WHEN the menu failed to load, THE snapshot SHALL show the load-error text as a
+   message (as today) and SHALL emit neither option rows nor a clipboard table;
+   WHEN the menu loaded with zero options it SHALL emit no option rows and no
+   table.
+
+#### Acceptance Criteria -- clipboard table (CR-CH-079 dual representation)
+
+10. FOR EVERY Menu Kind snapshot THE model SHALL carry exactly ONE
+    `markdown_sections` entry with NO heading, whose table has the headers
+    `Option`, `Command`, `Description` and one data row per option in menu order,
+    with the same displayed texts as the box rows (criterion 2). [OWNER DECISION
+    D2 -- header `Description`, recommended]
+11. THE plain-text clipboard flavor (the Markdown render) SHALL contain the
+    fenced box-drawn layout FIRST and THEN the Option | Command | Description
+    table; THE composite rich flavor (CF_HTML) SHALL contain the picture, the box
+    paragraphs and THEN the same table as an HTML `<table>`, both derived from the
+    SAME `markdown_sections` source (screen-snapshot-scrm Requirement 28.1-28.4,
+    28.6). THE PNG picture flavor SHALL be unchanged.
+12. THE calendar, the `Time` and `Day of Year` lines, the group separator rows and
+    the group header rows SHALL NOT appear in the table (the table is the option
+    set only). Cells SHALL be escaped by the existing renderer (a literal `|` in a
+    description is escaped).
+13. THE snapshot SHALL have a SINGLE representation of the menu data: the option
+    rows SHALL be built ONCE from one ordered list of displayed rows, from which
+    BOTH the box rows and the table rows are derived; `ScreenModel::fields` and
+    `ScreenModel::tables` SHALL be empty for a Menu Kind (so the generic Markdown
+    path cannot emit a second Property | Value copy), and the title and the
+    calendar SHALL each appear once.
+
+#### Acceptance Criteria -- status cells
+
+14. THE Menu Kind's `workspace_status_cells` SHALL be EMPTY, so the status band
+    of every Menu Kind is the common `Last | Prof | Zoom` only (workspace-framework
+    Requirement 7.17, 7.27). [OWNER DECISION D6 -- recommended: none]
+
+#### Acceptance Criteria -- built-in menu content (code-only TOML; content, not mechanism)
+
+15. THE compiled POM option `S` (SCRM) description SHALL be `Screen Capture and
+    Recording`, WITHOUT the leading `SCRM : ` (the label is already the command
+    column), so the row reads `S SCRM : Screen Capture and Recording`. The
+    related assertions (the `defaults.rs` SCRM description test and
+    screen-snapshot-scrm Requirement 25.2 / 22.3 wording) SHALL be updated in
+    lock-step. Because the POM descriptions for `Settings`, `Help` and `X` are
+    also catalogue keys (`menu-pom-opt-*-desc` in `ff-i18n`), any POM description
+    change SHALL update the `en` catalogue in lock-step (the `S` option has no
+    catalogue key today, so none is needed for criterion 15).
+16. THE `X` option of the compiled SCRM menu SHOULD carry `show_in_menu_bar =
+    false`, matching the POM `X`, so the terminate row does not appear as a
+    dropdown entry of the menu bar. [OWNER DECISION D8 -- recommended: set false]
+17. WHERE the owner selects the full description-style normalisation, EVERY
+    built-in menu option description SHALL be a plain phrase that does NOT begin
+    with its own command or label (no `Label -- phrase`, no `LABEL : phrase`),
+    with the proposed texts of design.md "Description style (D7b)". [OWNER
+    DECISION D7b -- conditional; the minimal alternative is criterion 15 only]
+18. EDITING the compiled `DEFAULT_*_TOML` content (criteria 15-17) SHALL keep the
+    built-in menus CODE-ONLY and never written to disk (Requirement 4.1, 12.7;
+    CR-CH-021) and SHALL change no mnemonic, command, group or option order.
+
+#### Acceptance Criteria -- non-regression and verification
+
+19. THE live panel render (`render_menu_workspace`), option selection (Requirement
+    19), the focus contract and first-Tab behaviour (Requirement 15), the calendar
+    fit tiers (Requirement 16) and menu placement (new tab versus in place,
+    Requirement 19.5) SHALL be UNCHANGED by this requirement.
+20. THIS requirement SHALL add NO public framework type or reshape: it SHALL reuse
+    `ScreenModel::markdown_sections`, `ff_screen_model::Table` and the shell
+    `ScreenProvider` seam, and any new type SHALL be crate-private to
+    `ff-desktop`. (Flagged additive items: design.md "Framework verdict".)
+21. THE verification SHALL include FULL-TEXT golden tests (byte-for-byte) for the
+    POM (calendar, with a message), Settings (no calendar, group separator) and
+    SCRM (mixed-width keys) snapshots, each in BOTH the box (plain) flavor and the
+    Markdown clipboard flavor (box + table), plus a user-menu golden built from a
+    `menus/<name>.toml` fixture; the existing `menu_pom_message_pfshow_on.txt` and
+    `menu_settings_pfshow_off.txt` fixtures SHALL be regenerated for the content
+    area only and the frame assertions of `tests_common_frame_menu.rs` SHALL stay
+    green.
+22. THE placement of sub-menus (Settings opens IN PLACE through the
+    Navigation_Stack; the SCRM menu and user menus open in a NEW TAB through
+    `open_menu_by_name`) is NOT changed by this requirement; whether to unify it is
+    a separate owner decision (D9) and, if chosen, a separate change request.

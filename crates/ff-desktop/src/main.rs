@@ -32,6 +32,7 @@ mod notification;
 mod plugin_manager_panel;
 mod primary_option_menu;
 mod screen_snapshot;
+mod screen_snapshot_menu;
 mod screenshot;
 mod scrm_save_as_dialog;
 mod scrm_session;

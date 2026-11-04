@@ -1013,3 +1013,128 @@ the OWNER runs the full gate.
           option-set shorthand and add a NOT-COVERED row per new/edited criterion
           (menu-workspace Req 12.2, 2.1h; Req 17.2a; startup Req 14.3). (Project standards)
   - [ ] 51.9 Append the CR-CH-073 entry to `docs/status/change-log.md`. (Project standards)
+
+## Phase (menu-kind-gate) -- CR-NR-117: Menu Kind snapshot content, clipboard table, status cells
+
+First per-Workspace-Kind gate (docs only until approved). Do NOT start until the
+owner approves the gate and answers decision points D1-D11 (design.md "Menu Kind
+snapshot content"). Every task is Menu-Kind generic (POM, Settings, SCRM, user
+menus); no name-specific branch. Builds ON CR-NR-115 (merged 8ff3e3b, plus the frame-owned Content_Area top rule
+on main db5e80a, screen-snapshot-scrm 30.29: the goldens in 52.6 and 52.7 include
+the frame rule between the `Command ===>` row and the first content row); frame items
+are NOT touched. TDD: write the failing test first. AGENT verification is
+COMPILE-ONLY plus scoped new tests (scoped `cargo check`, `cargo clippy -p
+ff-desktop -- -D warnings`, `cargo fmt -- --check`); the OWNER runs the full gate.
+
+- [x] 52. Write the failing tests and golden fixtures first (red)
+  - [x] 52.1 Add a pure-builder test module for the new row model in
+          `crates/ff-desktop/src/screen_snapshot_menu.rs` (tests in a sibling
+          `screen_snapshot_menu_tests.rs` if over ~200 lines): rows use the
+          `<key> <command> : <description>` form with NO `(<command>)` suffix
+          (`menu_row_has_no_bracketed_command_suffix`), the colon aligns across
+          mixed 1-2 letter keys and short/long commands
+          (`menu_rows_align_colon_to_widest_key_and_command`), a key equal to the
+          command still shows both columns (`menu_row_with_key_equal_command_shows_both`).
+    - Validates: menu-workspace Requirement 23.2, 23.3, 23.4, 23.5
+  - [x] 52.2 Add builder tests for the calendar column and group rows:
+          `menu_calendar_block_starts_at_widest_row_plus_four`,
+          `menu_without_calendar_has_no_right_padding`,
+          `menu_group_line_separator_emits_rule_between_groups_only`,
+          `menu_group_space_and_none_separators`, `menu_group_headers_precede_first_option_of_group`.
+    - Validates: menu-workspace Requirement 23.6, 23.7
+  - [x] 52.3 Add builder tests for the clipboard table:
+          `menu_model_has_single_option_command_description_section` (one
+          `markdown_sections` entry, no heading, headers `Option`/`Command`/
+          `Description`, one row per option in order), `menu_table_excludes_calendar_and_group_rows`,
+          `menu_model_fields_and_tables_are_empty`, `menu_table_escapes_pipe_in_description`,
+          `menu_load_error_and_empty_menu_emit_no_table`; plus a ff-screen-model-level
+          check (render Markdown and HTML of that model) that the table follows the
+          fenced box and the HTML contains `<th>Option</th>`.
+    - Validates: menu-workspace Requirement 23.9, 23.10, 23.11, 23.12, 23.13;
+      screen-snapshot-scrm Requirement 28.1, 28.4, 28.6, 30.31
+  - [x] 52.4 Add shell tests for displayed-surface fidelity:
+          `menu_snapshot_rows_use_localised_command_mnemonic_and_description` (a
+          non-`en` catalogue/alias fixture reusing the `tests_locale_menu_full.rs`
+          setup: the snapshot row and the table row equal the live surfaces).
+    - Validates: menu-workspace Requirement 23.2 (Requirement 21)
+  - [x] 52.5 Add `menu_kind_reports_no_workspace_status_cells` (POM, Settings,
+          SCRM, user menu: `workspace_status_cells()` is empty and the captured
+          status band is exactly `Last | Prof | Zoom`).
+    - Validates: menu-workspace Requirement 23.14
+  - [x] 52.6 Author the FULL-TEXT golden fixtures under
+          `crates/ff-desktop/src/shell/golden/`: regenerate
+          `menu_pom_message_pfshow_on.txt` and `menu_settings_pfshow_off.txt`
+          (content area only changes), add `menu_scrm_pfshow_off.txt`, and add the
+          Markdown-flavor goldens `menu_pom_clipboard_markdown.md`,
+          `menu_settings_clipboard_markdown.md`, `menu_scrm_clipboard_markdown.md`
+          (fenced box + Option | Command | Description table). Mirror the existing
+          pinned clock helpers (`pin_menu_clock`, `fixed_stamp`). Confirm each new
+          golden test FAILS first.
+    - Validates: menu-workspace Requirement 23.21
+  - [x] 52.7 Add a user-menu golden (cheap): seed a `menus/reports.toml` fixture
+          (mixed groups, `show_calendar = false`, a disabled option) in a temp
+          menus dir and assert `menu_user_reports_pfshow_off.txt` plus its Markdown
+          flavor. If the temp-menus seam proves costly, record NOT-COVERED with the
+          reason and keep the builder-level user-menu test of 52.2.
+    - Validates: menu-workspace Requirement 23.1, 23.21 (genericity)
+
+- [x] 53. Implement the Menu Kind snapshot builder (green)
+  - [x] 53.1 Create `crates/ff-desktop/src/screen_snapshot_menu.rs` (crate-private
+          `MenuRowDisplay`, `format_menu_rows`, group-row insertion, calendar
+          composition with `MENU_COLUMN_GAP = 4`, `menu_table_section`); register
+          it in `main.rs`/`lib` module list. Keep every file under 400 non-test lines.
+    - Validates: menu-workspace Requirement 23.1, 23.2, 23.4, 23.6, 23.7
+  - [x] 53.2 Rewire `menu_workspace_screen_model_full` to build rows ONCE and derive
+          both `body_lines` and `markdown_sections` from them; leave `fields` and
+          `tables` empty; remove `option_row_text` and `compose_two_column_body`.
+          No `is_home` / menu-name branch.
+    - Validates: menu-workspace Requirement 23.3, 23.9, 23.10, 23.13
+  - [x] 53.3 Extend `MenuScreenChrome` with `rows: Vec<MenuRowDisplay>` and fill it
+          in `shell/screen_provider.rs::menu_screen_chrome` from
+          `menu_option_mnemonic_surfaces()`, `menu_option_command_surfaces()` and
+          `i18n_keys::localised_option_description` (the same sources as the live
+          render); update `calendar_less_menu_renders_single_column`,
+          `option_row_matches_owner_mock_format` and the other tests in
+          `screen_snapshot.rs` that encode the bracketed suffix
+          (`1 FILES : File Explorer (FILES)`, `S SCRM : SCRM : ...`) to the new form.
+    - Validates: menu-workspace Requirement 23.2, 23.3
+  - [x] 53.4 Confirm `workspace_status_cells` stays empty for MenuWorkspace; add the
+          documenting comment only if the match arm is touched.
+    - Validates: menu-workspace Requirement 23.14
+
+- [x] 54. Built-in menu content edits (code-only TOML; each depends on the owner decision)
+  - [x] 54.1 (D7a, recommended YES) Change the POM `S` description in
+          `DEFAULT_POM_TOML` to `Screen Capture and Recording`; update the
+          `defaults.rs` SCRM-option description test and the doc comment, and the
+          screen-snapshot-scrm Requirement 22.3 / 25.2 wording that quotes
+          `SCRM : Screen Capture and Recording`.
+    - Validates: menu-workspace Requirement 23.15, 23.18
+  - [x] 54.2 (D8, recommended YES) Add `show_in_menu_bar = false` to the SCRM `X`
+          option in `DEFAULT_SCRM_MENU_TOML`; add a test that the menu-bar echo and
+          the SCRM dropdown no longer list `X`, and that typing/selecting `X` still
+          closes (Requirement 17.2a unchanged).
+    - Validates: menu-workspace Requirement 23.16
+  - [ ] 54.3 (D7b, ONLY if the owner selects Option 2) Apply the proposed
+          descriptions of design.md "Description style" to the three constants; add
+          `built_in_descriptions_do_not_repeat_their_label` over all three; update
+          `en` (and fr/de/af fallback) `menus.ftl` entries that override POM
+          descriptions; regenerate only the description cells of the goldens.
+    - Validates: menu-workspace Requirement 23.17, 23.18
+    - NOTE: SKIPPED -- owner chose D7b Option 1 (2026-11-04); Option 2 deferred to a later content change.
+
+- [x] 55. Verification, coverage and close-out
+  - [x] 55.1 Compile-verify SCOPED to the touched crate: `cargo check -p ff-desktop`,
+          `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop --
+          --check`, logs read back; run only the new scoped tests that are quick.
+    - Validates: menu-workspace Requirement 23.19, 23.20
+  - [x] 55.2 Confirm non-regression: `tests_common_frame_menu.rs` frame-shape
+          assertions, the first-Tab menu tests, the B060/CR-CH-032 calendar tier
+          tests and the selection tests stay unchanged; confirm no public
+          `ff-screen-model` type changed (`git diff --stat` on that crate is empty).
+    - Validates: menu-workspace Requirement 23.19, 23.20
+  - [x] 55.3 Update `docs/quality/TCR.md`: a NOT-COVERED row per criterion 23.1-23.22
+          at the gate, flipped as tests land; update the screen-snapshot-scrm
+          Requirement 30.31 row. (Project standards)
+  - [ ] 55.4 Hand off to the owner for the full `cargo gate` before any merge to
+          main (gate-policy.md); do not merge or push from the agent.
+    - Validates: menu-workspace Requirement 23.21, 23.22
