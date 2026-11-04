@@ -160,3 +160,9 @@ owner runs the full gate (gate-policy.md).
     - Validates: Requirement 7.28
   - [x] CF.7.3 Capture the pre-action Message_Line and `Last:` through the one capture seam (tests_capture_timing.rs)
     - Validates: Requirement 7.29
+
+- [x] CF.8 Content_Area top-boundary rule on the live screen (owner Option 1, 2026-11-04)
+  - [x] CF.8.1 Write a failing full-shell egui_kittest test asserting a frame-owned rule is drawn between the `Command ===>` line and the Content_Area for at least two Kinds (a menu Kind and a grid Kind) and that the first-Tab focus order is unchanged
+    - Validates: Requirement 7.30, 7.31
+  - [x] CF.8.2 Draw the rule in the shell central-panel composition (not in any Workspace) and keep the snapshot rule in step (see screen-snapshot-scrm 2H.8)
+    - Covers: Requirement 7.30, 7.31, 7.32

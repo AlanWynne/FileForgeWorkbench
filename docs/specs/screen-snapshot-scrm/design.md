@@ -866,6 +866,24 @@ all composition within that one shared place (Req 30.15):
    row, the full-frame width, and the widen-on-overflow rule from Section 12
    (Req 30.13, 30.14). The ASCII fallback (Req 5.2) still uses `+ - |`.
 
+### Content_Area boundary rule and the generic merge (Req 30.29, 30.30, NEW 2026-11-04, owner Option 1)
+
+The framed renderer (`ff-screen-model::render::framed`) emits a frame-owned rule
+directly after the `Command ===>` line, before the first content row, for every
+Workspace (no name-specific branch). It mirrors the live-screen rule
+(workspace-framework Req 7.30, 7.31). The merge is a generic post-composition
+step in the same renderer: when the first content line is itself a rule (a grid
+top rule), the frame rule and that rule are combined into ONE line whose column
+junctions are the grid's top-tees (left/right tees and horizontals from the
+frame rule); at the bottom, when the last content line is a grid bottom rule, it
+is combined with the frame rule that precedes the message band (or status band)
+into ONE line carrying bottom-tee junctions. The merge works on rule lines
+generically (junction positions taken from whichever rule carries them), so it
+holds for any grid and never yields two consecutive rules. The ASCII fallback
+uses `+ - +` with `+` at the junctions. Golden fixtures (`shell/golden/*.txt`)
+gain the boundary rule and the merged rules; new goldens cover a grid Kind (merge
+top and bottom) and a non-grid Kind (single frame rule, e.g. POM/Settings).
+
 ### Rendered-frame FIXTURE (box-drawing; runtime product content, exempt from the ASCII-only doc rule)
 
 ```

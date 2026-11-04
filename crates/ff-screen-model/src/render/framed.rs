@@ -6,13 +6,15 @@
 //!
 //! 1. each `header_lines` entry as a band (title bar, menu bar, tab bar)
 //! 2. the workspace title, CENTERED, as a single-cell band
-//! 3. the `Command ===>` line (underscores fill to the right border), with NO
-//!    rule between it and the content
-//! 4. the CONTENT (body lines, fields, table grids, buttons)
-//! 5. a rule DIRECTLY after the last content row (no blank row)
-//! 6. the message band, only when a message is present
-//! 7. the status bar band
-//! 8. the function-key band (`footer_lines`), the LAST band, only when present,
+//! 3. the `Command ===>` line (underscores fill to the right border)
+//! 4. the frame-owned boundary RULE between the Command line and the content
+//!    (merged with the content's own grid top rule when it begins with one, and
+//!    likewise at the content bottom: never two consecutive rules)
+//! 5. the CONTENT (body lines, fields, table grids, buttons)
+//! 6. a rule DIRECTLY after the last content row (no blank row)
+//! 7. the message band, only when a message is present
+//! 8. the status bar band
+//! 9. the function-key band (`footer_lines`), the LAST band, only when present,
 //!    drawn as ONE cell (its ` | ` separators are plain text, no junctions)
 //!
 //! BAND CELLS. A band line whose cells are joined by ` | ` is drawn as separate
@@ -28,7 +30,8 @@
 //! `header_lines`.
 //!
 //! Validates: screen-snapshot-scrm Requirement 30.1-30.11, 30.15, 30.16,
-//! 30.18-30.24; workspace-framework Requirement 7.1-7.10.
+//! 30.18-30.24, 30.29, 30.30; workspace-framework Requirement 7.1-7.10,
+//! 7.30-7.32.
 
 use crate::model::ScreenModel;
 use crate::render::text::{push_content, render_table_grid, Glyphs};
@@ -61,6 +64,57 @@ enum Row {
     Band(Vec<String>),
     /// A horizontal rule between bands.
     Rule,
+    /// A frame rule MERGED with the Content_Area's own grid TOP rule: carries
+    /// the grid's column junctions (line columns) as tee-down (Req 7.32).
+    GridTop(Vec<usize>),
+    /// A frame rule MERGED with the Content_Area's own grid BOTTOM rule: carries
+    /// the grid's column junctions (line columns) as tee-up (Req 7.32).
+    GridBottom(Vec<usize>),
+}
+
+/// Line column at which band/content text starts: `vertical`, then a pad space.
+const CONTENT_START: usize = 2;
+
+/// Whether `row` is any kind of horizontal rule.
+fn is_rule_row(row: &Row) -> bool {
+    matches!(row, Row::Rule | Row::GridTop(_) | Row::GridBottom(_))
+}
+
+/// The junction line columns of a content row that is a GRID rule (made only of
+/// the horizontal glyph and at least one tee/cross junction), else `None`.
+fn grid_rule_cuts(text: &str, g: &Glyphs) -> Option<Vec<usize>> {
+    let is_junction = |c: char| c == g.tee_down || c == g.tee_up || c == g.cross;
+    if text.is_empty() || !text.chars().all(|c| c == g.horizontal || is_junction(c)) {
+        return None;
+    }
+    // A frame-ruled grid rule has NO corner of its own: the frame border is its
+    // edge, so it starts and ends with the horizontal glyph. A self-boxed grid
+    // (corner at either end, `+` in the ASCII fallback) is ordinary content.
+    if !text.starts_with(g.horizontal) || !text.ends_with(g.horizontal) {
+        return None;
+    }
+    let cuts: Vec<usize> = text
+        .chars()
+        .enumerate()
+        .filter(|(_, c)| is_junction(*c))
+        .map(|(i, _)| i + CONTENT_START)
+        .collect();
+    (!cuts.is_empty()).then_some(cuts)
+}
+
+/// Merge a Content_Area that BEGINS with a grid top rule into the frame rule
+/// pushed just before it (`start` is the index of the first content row).
+fn merge_top_rule(rows: &mut Vec<Row>, start: usize, g: &Glyphs) {
+    let Some(Row::Text(first)) = rows.get(start) else {
+        return;
+    };
+    let Some(cuts) = grid_rule_cuts(first, g) else {
+        return;
+    };
+    if start > 0 && matches!(rows.get(start - 1), Some(Row::Rule)) {
+        rows[start - 1] = Row::GridTop(cuts);
+        rows.remove(start);
+    }
 }
 
 /// Split a band line into its cells.
@@ -83,6 +137,12 @@ fn collect_rows(model: &ScreenModel, g: &Glyphs) -> Vec<Row> {
             model.command_line.trim_end_matches('_').to_string(),
         ));
     }
+    // The frame-owned boundary rule between the shell area and the Content_Area
+    // (Req 7.30), never doubled against a rule that is already last.
+    if !rows.last().is_some_and(is_rule_row) {
+        rows.push(Row::Rule);
+    }
+    let content_start = rows.len();
     rows.extend(model.body_lines.iter().cloned().map(Row::Text));
     if !model.fields.is_empty() {
         rows.push(Row::Text(String::new()));
@@ -108,20 +168,32 @@ fn collect_rows(model: &ScreenModel, g: &Glyphs) -> Vec<Row> {
         rows.push(Row::Text(String::new()));
         rows.push(Row::Text(line.collect::<Vec<_>>().join(" ")));
     }
-    push_bottom_bands(model, &mut rows);
+    merge_top_rule(&mut rows, content_start, g);
+    push_bottom_bands(model, &mut rows, g);
     rows
 }
 
 /// Bottom chrome: a rule DIRECTLY after the content, then the message band
 /// (when present), the status band, and the key-line band (when present).
-fn push_bottom_bands(model: &ScreenModel, rows: &mut Vec<Row>) {
+/// A Content_Area ending in a grid bottom rule MERGES with that rule (Req 7.32).
+fn push_bottom_bands(model: &ScreenModel, rows: &mut Vec<Row>, g: &Glyphs) {
     let has_messages = !model.messages.is_empty();
     let has_status = !model.status_bar.text.is_empty();
     let has_footer = !model.footer_lines.is_empty();
     if !(has_messages || has_status || has_footer) {
         return;
     }
-    rows.push(Row::Rule);
+    let grid_cuts = match rows.last() {
+        Some(Row::Text(t)) => grid_rule_cuts(t, g),
+        _ => None,
+    };
+    if grid_cuts.is_some() {
+        rows.pop();
+    }
+    // Never two consecutive rules at the content bottom.
+    if !rows.last().is_some_and(is_rule_row) {
+        rows.push(grid_cuts.map_or(Row::Rule, Row::GridBottom));
+    }
     rows.extend(model.messages.iter().cloned().map(Row::Text));
     if has_messages && (has_status || has_footer) {
         rows.push(Row::Rule);
@@ -199,19 +271,17 @@ fn natural_width(row: &Row) -> usize {
         Row::Text(t) | Row::Centered(t) => t.chars().count(),
         Row::Command(t) => COMMAND_PROMPT.len() + t.chars().count() + COMMAND_MIN_FILL,
         Row::Band(cells) => band_width(cells),
-        Row::Rule => 0,
+        Row::Rule | Row::GridTop(_) | Row::GridBottom(_) => 0,
     }
 }
 
 /// Lay one non-rule row out as a full line plus the LINE columns of its cell
 /// dividers (empty for a plain row). Returns `None` for a rule.
 fn lay_row(row: &Row, g: &Glyphs, inner_width: usize) -> Option<(String, Vec<usize>)> {
-    // A full line is `vertical`, a pad space, the content, a pad space, `vertical`.
-    const CONTENT_START: usize = 2;
     let mut out = String::new();
     let mut cuts = Vec::new();
     match row {
-        Row::Rule => return None,
+        Row::Rule | Row::GridTop(_) | Row::GridBottom(_) => return None,
         Row::Text(t) => push_content(&mut out, g.vertical, t, inner_width),
         Row::Centered(t) => {
             let left = inner_width.saturating_sub(t.chars().count()) / 2;
@@ -276,13 +346,21 @@ pub(super) fn render_framed(model: &ScreenModel, options: RenderOptions) -> Stri
     for (i, line) in laid.iter().enumerate() {
         match line {
             Some((text, _)) => out.push_str(text),
-            None => push_rule(
-                &mut out,
-                (g.tee_left, g.tee_right),
-                &g,
-                (cuts_at(i.checked_sub(1)), cuts_at(Some(i + 1))),
-                inner_width,
-            ),
+            None => {
+                // Junctions from the neighbouring bands, plus a merged grid
+                // rule's own column junctions on the side it faces.
+                let (mut above, mut below) = (
+                    cuts_at(i.checked_sub(1)).to_vec(),
+                    cuts_at(Some(i + 1)).to_vec(),
+                );
+                match &rows[i] {
+                    Row::GridTop(c) => below.extend(c),
+                    Row::GridBottom(c) => above.extend(c),
+                    _ => {}
+                }
+                let ends = (g.tee_left, g.tee_right);
+                push_rule(&mut out, ends, &g, (&above, &below), inner_width);
+            }
         }
     }
     let bottom_ends = (g.bottom_left, g.bottom_right);

@@ -8,6 +8,7 @@
 │                                     Settings                                      │
 ├───────────────────────────────────────────────────────────────────────────────────┤
 │ Command ===> ____________________________________________________________________ │
+├───────────────────────────────────────────────────────────────────────────────────┤
 │ C Config : All settings -- browse every configuration key (Config)                │
 │ A Aliases : Alias editor -- create, edit and save command aliases (Aliases)       │
 │ T Theme : Theme editor -- copy, edit, save and select themes (Theme)              │

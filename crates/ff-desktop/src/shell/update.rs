@@ -274,6 +274,15 @@ impl eframe::App for WorkbenchShell {
         // behaviour is byte-identical to before.
         if !self.tabs.is_split() {
             self.render_command_field(ctx);
+            // Common-frame boundary rule between the Command line and the
+            // Content_Area (workspace-framework Req 7.30, 7.31). Non-focusable.
+            let at_top = self.command_line_position_for(self.tabs.active_index())
+                == crate::workspace_kind::CommandLinePosition::Top;
+            super::render_content_rule::render_content_rule(
+                ctx,
+                super::render_content_rule::primary_content_rule_panel_id(),
+                at_top,
+            );
         }
         self.render_key_label_bar(ctx);
         self.render_status_bar(ctx);

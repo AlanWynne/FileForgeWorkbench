@@ -89,6 +89,7 @@ mod render_body;
 mod render_body_arms;
 mod render_chrome;
 mod render_command_line;
+mod render_content_rule;
 mod render_menu_bar;
 mod render_split;
 mod render_split_region;
@@ -171,6 +172,8 @@ mod tests_config_save_convention;
 mod tests_config_snapshot_fidelity;
 #[cfg(test)]
 mod tests_configurator_save_convention;
+#[cfg(test)]
+mod tests_content_rule;
 #[cfg(test)]
 mod tests_last_transition;
 #[cfg(test)]

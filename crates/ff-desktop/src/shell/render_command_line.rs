@@ -216,6 +216,12 @@ impl WorkbenchShell {
                 )
             })
             .inner;
+        // Common-frame boundary rule below the detached Command line (Req 7.30).
+        super::render_content_rule::render_content_rule(
+            ctx,
+            panel_id.with("content_rule"),
+            position == CommandLinePosition::Top,
+        );
         self.command_text = command_text;
         self.focus.command_field_focus_requested = focus_requested;
         if let Some(cmd) = signal.submitted {

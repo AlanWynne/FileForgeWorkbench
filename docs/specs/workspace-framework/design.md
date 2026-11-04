@@ -367,6 +367,23 @@ provider dropping its `model.fields` block) is a follow-up Kind gate.
   regression); every other Kind returns an empty Vec until its own per-Kind
   follow-up gate decides its content.
 - Function_Key_Bar: `self.key_bar_visible` / `self.key_bar_scope`.
+- Content_Area top-boundary rule (Req 7.30-7.32, NEW 2026-11-04, owner Option 1):
+  the shell draws ONE horizontal rule between the `Command ===>` line and the
+  Content_Area on the LIVE screen (a frame-owned separator in the central-panel
+  composition, after `render_command_line.rs` and before the active
+  `WorkspaceContext` body) and in the snapshot/capture (the shared framed
+  renderer, see screen-snapshot-scrm design Section 13). It belongs to the
+  COMMON FRAME, not to any Workspace: it is identical for every Kind, no
+  Workspace draws or suppresses it, and it is the visible boundary where the
+  shell area ends and the workspace-owned Content_Area begins. A rule was chosen
+  over a blank line (owner Option 1 vs Option 2). MERGE RULE: when the content
+  starts with its own top rule (a table grid) the two rules collapse to ONE line
+  with the grid's column top-tee junctions; at the bottom, a grid bottom rule
+  and the frame rule before the message/status band collapse to ONE line with
+  bottom-tee junctions; two consecutive rules never occur. The merge lives
+  generically in the framed renderer, so no Workspace needs to know about it.
+  Additive composition inside the existing frame: no new dispatch path, no
+  public-type reshape, no change to the Content_Area ownership boundary.
 
 ### The Message_Line mechanism (build-on vs additive shell state) -- OWNER-CONFIRMATION POINT
 

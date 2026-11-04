@@ -56,7 +56,7 @@ fn lines(out: &str) -> Vec<String> {
 }
 
 // Validates: screen-snapshot-scrm Requirement 30.18, 30.19, 30.20, 30.21, 30.22,
-// 30.23 -- ASCII fallback golden: ruled bands, '#' cell + right-aligned
+// 30.23, 30.29 -- ASCII fallback golden: ruled bands, '#' cell + right-aligned
 // controls, cell dividers, Command line filled with underscores to the border,
 // NO blank row before the status bar, message band, key line last.
 #[test]
@@ -75,6 +75,7 @@ fn ascii_golden_full_frame_with_message_and_key_line() {
         "|               Configuration               |".into(),
         plain.clone(),
         "| Command ===> ____________________________ |".into(),
+        plain.clone(),
         "| content one                               |".into(),
         "| content two                               |".into(),
         plain,
@@ -137,6 +138,7 @@ fn unicode_golden_full_frame_with_message_and_key_line() {
         "\u{2502}               Configuration               \u{2502}".into(),
         rule(el, h, er, &[]),
         "\u{2502} Command ===> ____________________________ \u{2502}".into(),
+        rule(el, h, er, &[]),
         "\u{2502} content one                               \u{2502}".into(),
         "\u{2502} content two                               \u{2502}".into(),
         rule(el, h, er, &[]),

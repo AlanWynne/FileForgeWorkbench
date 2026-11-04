@@ -1483,8 +1483,10 @@ rendering only: the live egui window keeps its own visuals.
       bar, after the menu bar, after the tab bar, after the centered title,
       DIRECTLY after the last content row, after the message band (when
       present), and after the status bar when a key line follows. THERE SHALL BE
-      NO rule between the Command line and the first content row, and NO rule
-      between the last band and the bottom border. `[CR-NR-115]`
+      NO rule between the last band and the bottom border. THE rule BETWEEN the
+      Command line and the first content row IS REQUIRED (the Content_Area
+      top-boundary rule, 30.29), replacing the earlier "no rule" wording.
+      `[CR-NR-115, revised 2026-11-04, owner Option 1]`
 30.19 THE title bar SHALL be one band: a dedicated leading `#` cell, a divider,
       the app title (the single `WINDOW_TITLE` constant), and the window controls
       `_ [] X` RIGHT-ALIGNED against the right border. The only divider in the
@@ -1545,6 +1547,26 @@ rendering only: the live egui window keeps its own visuals.
       and the command field as it was before that command (see
       `workspace-framework` Requirement 7.29). The PNG picture is the live
       window grab and is unchanged. `[CR-NR-115 follow-up, 2026-11-04]`
+30.29 THE rendering SHALL draw a frame-owned horizontal RULE directly BETWEEN the
+      `Command ===>` line and the first Content_Area row (a box-drawing junction
+      row: left tee, horizontals, right tee; `+ - +` in the ASCII fallback). THE
+      rule is composed by the shared framed renderer / common frame, is
+      IDENTICAL for EVERY Workspace Kind with no name-specific branch, and marks
+      the boundary between the shell area and the workspace-owned Content_Area.
+      It is a rule, NOT a blank row. WHEN the Content_Area begins with its own
+      top rule (e.g. a table grid), THE frame rule and the grid's top rule SHALL
+      MERGE into ONE rule line carrying the grid's column junctions (top-tee) on
+      that single line, and THERE SHALL NEVER be two consecutive rules. The merge
+      is specified generically in the framed renderer (not per workspace). The
+      same rule appears on the LIVE screen (workspace-framework Requirement
+      7.30). `[CR-NR-115, NEW 2026-11-04, owner Option 1]`
+30.30 WHEN the Content_Area ends with a grid bottom rule, THAT rule and the
+      frame rule that precedes the message band (or the status band when no
+      message is present) SHALL MERGE into ONE rule line carrying the grid's
+      column junctions (bottom-tee), and THERE SHALL NEVER be two consecutive
+      rules at the content bottom. WHEN the Content_Area ends with no rule of
+      its own, THE single frame rule is drawn as in 30.18. The merge is
+      generic in the framed renderer. `[CR-NR-115, NEW 2026-11-04, owner Option 1]`
 
 Rendered fixture (the box-drawing glyphs are runtime product output, exempt from
 the ASCII-only documentation rule):
@@ -1560,6 +1582,7 @@ the ASCII-only documentation rule):
 │                        Configuration                        │
 ├─────────────────────────────────────────────────────────────┤
 │ Command ===> ______________________________________________ │
+├─────────────────────────────────────────────────────────────┤
 │ (content rows)                                              │
 ├─────────────────────────────────────────────────────────────┤
 │ info one                                                    │

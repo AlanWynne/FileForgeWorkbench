@@ -7,6 +7,8 @@
 mod ansi;
 mod framed;
 #[cfg(test)]
+mod framed_rule_tests;
+#[cfg(test)]
 mod framed_tests;
 mod html;
 mod markdown;

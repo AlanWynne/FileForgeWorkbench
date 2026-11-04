@@ -566,6 +566,14 @@ reproduction gracefully omits the message line.
   - [x] 2H.7.3 Capture shows the pre-action message band and `Last:` (tests_capture_timing.rs)
     - Validates: Requirement 30.28
 
+- [x] 2H.8 Content_Area boundary rule and top/bottom merge in the framed renderer (owner Option 1, 2026-11-04)
+  - [x] 2H.8.1 Write failing golden and unit tests: a frame rule between the Command line and the first content row for a non-grid Kind (POM/Settings), and ONE merged rule with top-tee junctions for a grid Kind (Config/Alias), never two consecutive rules
+    - Validates: Requirement 30.29
+  - [x] 2H.8.2 Write failing tests for the bottom merge: a grid bottom rule plus the frame rule before the message/status band yield ONE rule with bottom-tee junctions; the ASCII fallback uses `+ - +`
+    - Validates: Requirement 30.30, 30.23
+  - [x] 2H.8.3 Implement the boundary rule and the generic merge in `ff-screen-model::render::framed` and regenerate the affected goldens
+    - Covers: Requirement 30.18, 30.29, 30.30
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

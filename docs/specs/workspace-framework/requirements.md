@@ -271,7 +271,8 @@ confirmation in the design.
    <value>____...`), rendered once near the top under the Workspace_Title.
 7. THE Content_Area between the Primary_Command_Field and the Message_Line SHALL
    be owned and filled by the active Workspace / Command Environment; the shell
-   Common_Frame SHALL NOT render any content into it. For the purpose of this
+   Common_Frame SHALL NOT render any content into it (the frame-owned top
+   boundary rule of criterion 30 is a frame element, not content). For the purpose of this
    backbone the Content_Area is an OPAQUE region the Workspace fills.
 8. THE Message_Line SHALL be rendered by the shell directly ABOVE the Status_Bar
    (see Requirement 7 message-line criteria below).
@@ -416,3 +417,24 @@ confirmation in the design.
     that confirmation in its message band, and after snapshot 2 the live band
     shows snapshot 2's own confirmation. A capture taken outside an action uses
     the live state. SNAPSHOT and CAPTURE share the one capture seam. `[NEW 2026-11-04]`
+
+#### Acceptance Criteria -- the Content_Area top-boundary rule (owner Option 1, 2026-11-04)
+
+30. THE Common_Frame SHALL include a horizontal RULE between the
+    Primary_Command_Field and the first Content_Area row. THE rule is
+    FRAME-OWNED (drawn by the shell, never by a Workspace), IDENTICAL for EVERY
+    Workspace Kind, and marks the boundary between the shell area and the
+    workspace-owned Content_Area. It is a rule, NOT a blank line. A Workspace
+    SHALL NOT draw or suppress this rule. `[NEW 2026-11-04, owner Option 1]`
+31. THE rule of criterion 30 SHALL appear on the LIVE screen (a visible rule
+    between the `Command ===>` line and the Content_Area) AND in the
+    snapshot/capture reproduction (screen-snapshot-scrm Requirement 30.29), so
+    the live window and its text representation agree. `[NEW 2026-11-04]`
+32. WHEN the Content_Area begins with its own top rule (e.g. a table grid), THE
+    frame rule and the grid's top rule SHALL MERGE into ONE rule carrying the
+    grid's column junctions (top-tee), and WHEN the Content_Area ends with a
+    grid bottom rule THAT rule and the frame rule preceding the Message_Line (or
+    Status_Bar) SHALL MERGE into ONE rule carrying bottom-tee junctions. THERE
+    SHALL NEVER be two consecutive rules at either boundary. The merge is
+    specified generically in the framed renderer, not per Workspace
+    (screen-snapshot-scrm Requirement 30.29, 30.30). `[NEW 2026-11-04]`
