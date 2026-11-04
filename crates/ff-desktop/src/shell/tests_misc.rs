@@ -271,7 +271,8 @@ fn status_with_jobname_routes_with_filter() {
     // Validates: Requirement 20.6
     let mut shell = make_shell();
     shell.handle_command("STATUS MYJOB");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    // Req 7.28: the routing report is informational (Message_Line), so read both slots.
+    let msg = reported_text(&shell);
     assert!(
         !msg.to_uppercase().contains("UNKNOWN"),
         "STATUS jobname must not produce unknown-command error, got: {msg}"

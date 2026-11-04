@@ -11,7 +11,7 @@ The feature provides four interaction methods:
 1. **Keyboard shortcuts** -- Ctrl+= zoom in, Ctrl+- zoom out, Ctrl+0 reset.
 2. **Mouse wheel** -- Ctrl+Scroll to zoom in/out by one step.
 3. **ZOOM primary command** -- `ZOOM n`, `ZOOM IN`, `ZOOM OUT`, `ZOOM RESET`.
-4. **Status bar indicator** -- displays current offset when non-zero; clickable for quick access.
+4. **Status bar indicator** -- always displays the signed current offset (`Zoom: 0` at default) as a common status segment after `Prof:` (revised 2026-11-04, workspace-framework Req 7.16b); hover tooltip for help.
 
 The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] where `SCI_SETZOOM` applies a point offset. FileForgeEditor's percentage-based zoom model [FFE-ZOOM] is reinterpreted: the integer offset approach provides finer control at typical editing sizes without floating-point rounding in font metrics.
 
@@ -40,7 +40,7 @@ The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] w
 - **Zoom_Step**: The number of points added or removed per zoom in/out operation. Default: 1 point. Configurable. [FFE-ZOOM]
 - **Minimum_Offset**: The lowest permitted Zoom_Offset value. Default: -10. [SCI-VS-ZOOM]
 - **Maximum_Offset**: The highest permitted Zoom_Offset value. Default: +60. [SCI-VS-ZOOM, extended from Scintilla's +20 to accommodate large-display use cases]
-- **Zoom_Indicator**: The status bar element displaying the current Zoom_Offset when it differs from zero (e.g., `+3`, `-2`). [FFE-ZOOM]
+- **Zoom_Indicator**: The status bar element always displaying the current signed Zoom_Offset (e.g., `Zoom: 0`, `Zoom: +3`, `Zoom: -2`; revised 2026-11-04). [FFE-ZOOM]
 - **Editor_Instance**: A single editor pane associated with one open document/tab. Each instance has its own independent Zoom_Offset. [WB]
 
 ---
@@ -156,16 +156,16 @@ The zoom model is adapted from Scintilla's integer-offset design [SCI-VS-ZOOM] w
 
 ### Requirement 7: Status Bar Zoom Indicator
 
-**User Story:** As an editor user, I want to see the current zoom offset in the status bar when it differs from zero, so that I always know whether the view is scaled.
+**User Story:** As an editor user, I want to always see the current zoom offset in the status bar (`Zoom: 0` at the default), so that I always know whether the view is scaled.
 
 **Source:** [FFE-ZOOM] Requirement 5 (zoom indicator, adapted to offset display).
 
 #### Acceptance Criteria
 
-1. WHEN the active Editor_Instance has a Zoom_Offset that is not zero, THE status bar SHALL display a Zoom_Indicator showing the current offset with sign (e.g., `Zoom: +3`, `Zoom: -2`).
-2. WHEN the active Editor_Instance has a Zoom_Offset of zero, THE status bar SHALL NOT display the Zoom_Indicator -- it is omitted to reduce clutter at the default state.
-3. THE Zoom_Indicator SHALL be positioned in the status bar after the encoding display and before the line/column display.
-4. WHEN the user clicks the Zoom_Indicator in the status bar, THE Editor SHALL display a zoom popup or dropdown allowing quick selection of common offsets (e.g., -5, -2, 0, +2, +5, +10) and a "Reset to 0" action.
+1. THE status bar SHALL ALWAYS display a Zoom_Indicator showing the current offset with sign (e.g., `Zoom: +3`, `Zoom: -2`, `Zoom: 0`). [REVISED 2026-11-04: now a COMMON status segment, see workspace-framework Requirement 7.16 / 7.16b]
+2. WHEN the Zoom_Offset is zero, THE Zoom_Indicator SHALL read `Zoom: 0` (it is no longer omitted). [REVISED 2026-11-04, supersedes the former "hidden at zero" rule]
+3. THE Zoom_Indicator SHALL be positioned in the status bar directly after the `Prof:` segment, before any Workspace_Status_Segment (Ln/Col, encoding, line count). [REVISED 2026-11-04, supersedes "after the encoding display"]
+4. [NOTE 2026-11-04: the common Zoom segment is a non-focusable label with a hover tooltip only (workspace-framework Req 7.16b, B055); the click popup below is NOT implemented on it and remains a future affordance.] WHEN the user clicks the Zoom_Indicator in the status bar, THE Editor SHALL display a zoom popup or dropdown allowing quick selection of common offsets (e.g., -5, -2, 0, +2, +5, +10) and a "Reset to 0" action.
 5. THE Zoom_Indicator text SHALL use the format `Zoom: +N` for positive offsets and `Zoom: -N` for negative offsets, where N is the absolute integer value.
 
 ---

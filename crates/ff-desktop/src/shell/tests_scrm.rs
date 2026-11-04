@@ -47,7 +47,8 @@ fn capture_start_then_status_reports_active_collection() {
     shell.ensure_pom_menu_loaded();
     shell.handle_command("CAPTURE START Repro");
     shell.handle_command("CAPTURE STATUS");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(
         msg.contains("Repro"),
         "STATUS must name the collection; got: {msg:?}"
@@ -63,10 +64,12 @@ fn capture_screen_appends_capture() {
     shell.ensure_pom_menu_loaded();
     shell.handle_command("CAPTURE START C");
     shell.handle_command("CAPTURE SCREEN");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("Captured screen 1"), "got: {msg:?}");
     shell.handle_command("CAPTURE LIST");
-    let listing = shell.open_error.as_deref().unwrap_or("");
+    let listing = reported_text(&shell);
+    let listing = listing.as_str();
     assert!(
         listing.contains("1."),
         "LIST enumerates the capture; got: {listing:?}"
@@ -86,7 +89,8 @@ fn auto_capture_records_on_navigation() {
     // Navigate the POM to another Context: the transition hook fires a capture.
     shell.dispatch_command_string("FILES");
     shell.handle_command("CAPTURE STATUS");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     // At least one capture was recorded automatically on the transition.
     assert!(
         msg.contains("capture(s)") && !msg.contains("0 capture(s)"),
@@ -248,7 +252,8 @@ fn capture_replay_missing_file_reports_error_no_viewer() {
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
     shell.handle_command("CAPTURE REPLAY does-not-exist.ffscrm");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("CAPTURE LOAD failed"), "got: {msg:?}");
     assert_ne!(
         shell.tabs.active_tab().kind.tag(),
@@ -321,7 +326,8 @@ fn saved_session_exports_to_pdf_with_selectable_text() {
     shell.handle_command(&format!("CAPTURE LOAD {}", archive.display()));
     assert!(shell.scrm.is_active(), "saved session loaded");
     shell.handle_command("CAPTURE EXPORT PDF saved.pdf");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("exported"), "got: {msg:?}");
     let path = dir.path().join("saved.pdf");
     assert!(path.exists(), "PDF written at {}", path.display());
@@ -341,7 +347,8 @@ fn saved_session_exports_to_pdf_with_selectable_text() {
 fn capture_export_text_writes_file() {
     let (mut shell, dir) = make_shell_with_scrm_dir();
     shell.handle_command("CAPTURE EXPORT TEXT flow.txt");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("exported"), "got: {msg:?}");
     let path = dir.path().join("flow.txt");
     assert!(
@@ -382,7 +389,8 @@ fn capture_save_then_load_round_trips_collection() {
     shell.handle_command("CAPTURE PURGE");
     assert!(!shell.scrm.is_active(), "purged");
     shell.handle_command("CAPTURE LOAD repro.ffscrm");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("Loaded collection"), "got: {msg:?}");
     assert!(
         shell.scrm.is_active(),
@@ -397,7 +405,8 @@ fn capture_save_then_load_round_trips_collection() {
 fn capture_export_pdf_writes_selectable_pdf() {
     let (mut shell, dir) = make_shell_with_scrm_dir();
     shell.handle_command("CAPTURE EXPORT PDF out.pdf");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("exported"), "got: {msg:?}");
     let path = dir.path().join("out.pdf");
     assert!(path.exists(), "PDF file must exist at {}", path.display());
@@ -419,7 +428,8 @@ fn capture_export_without_collection_reports_empty() {
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
     shell.handle_command("CAPTURE EXPORT TEXT");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("No active screen collection"), "got: {msg:?}");
 }
 
@@ -430,7 +440,8 @@ fn capture_export_without_collection_reports_empty() {
 fn capture_evidence_writes_package_with_hash() {
     let (mut shell, dir) = make_shell_with_scrm_dir();
     shell.handle_command("CAPTURE EVIDENCE TC-42 PASS ev.json");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("Evidence package written"), "got: {msg:?}");
     let path = dir.path().join("ev.json");
     assert!(
@@ -455,7 +466,8 @@ fn capture_evidence_without_collection_reports_empty() {
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
     shell.handle_command("CAPTURE EVIDENCE");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("No active screen collection"), "got: {msg:?}");
 }
 
@@ -465,7 +477,8 @@ fn capture_evidence_without_collection_reports_empty() {
 fn capture_export_pdf_protected_writes_encrypted_pdf() {
     let (mut shell, dir) = make_shell_with_scrm_dir();
     shell.handle_command("CAPTURE EXPORT PDF PROTECTED my-owner-pw locked.pdf");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("Protected PDF written"), "got: {msg:?}");
     let path = dir.path().join("locked.pdf");
     assert!(
@@ -489,7 +502,8 @@ fn capture_export_pdf_protected_writes_encrypted_pdf() {
 fn capture_export_pdf_protected_default_owner_password() {
     let (mut shell, dir) = make_shell_with_scrm_dir();
     shell.handle_command("CAPTURE EXPORT PDF PROTECTED");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("Protected PDF written"), "got: {msg:?}");
     // Default file name is <stem>-protected.pdf under the scrm dir.
     let entries: Vec<_> = std::fs::read_dir(dir.path())
@@ -521,7 +535,8 @@ fn capture_stop_with_collection_opens_save_as_modal() {
         dir.path().to_string_lossy(),
         "directory defaults to scrm_dir()"
     );
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(
         msg.contains("stopped"),
         "STOP still reports stopped: {msg:?}"
@@ -541,7 +556,8 @@ fn capture_stop_without_collection_opens_no_modal() {
         shell.scrm_ui.save_as.is_none(),
         "STOP with no collection opens no modal"
     );
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("No active screen collection"), "got: {msg:?}");
 }
 

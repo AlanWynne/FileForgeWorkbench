@@ -296,7 +296,7 @@ Read: `crates/ff-desktop/src/main.rs`,
 | Workspace_Title | `shell/render_command_line.rs` (the centered, strong monospace Title_Line, CR-CH-045). | `shell/mod_helpers.rs::title_line_text(tab)` -> `screen_providers::active_display_title`. |
 | Primary_Command_Field | `shell/render_command_line.rs` (the `Command ===>` field; detached variant too). | `self.command_text` (the live command field buffer). |
 | Content_Area | The central panel body, drawn by `render_body.rs::render_active_tab_body` -> `render_workspace_context` (the active `WorkspaceContext`). | Owned by each Workspace / Command Environment. |
-| Message_Line | NOT rendered today as a dedicated line. The closest existing mechanism is `self.open_error` (a one-shot error shown inside the Status_Bar) and the `NotificationQueue` (the Event Log store). | NEW shell state (see below). |
+| Message_Line | `message_line` rendered by `render_message_line` (informational messages, via `post_info`; errors stay on `self.open_error` in the Status_Bar, Req 7.28). | NEW shell state (see below). |
 | Status_Bar | `shell/render_status.rs::render_status_bar`. Today's segments: phase (`RUNNING`), `format_session_start()` (`Started: HH:MM`), `active_profile_label()` (`Profile: default`), `Ln n, Col n`, encoding, zoom-when-nonzero, line count, modified dot, CAPS, `open_error`. | `self.app.phase()`, `self.session_start`, `ff_session::active_profile()`, `tab.cursor`, `tab.encoding_label()`, `tab.line_count`. |
 | Function_Key_Bar | `shell/render_status.rs::render_key_label_bar`; returns early WHEN `!self.key_bar_visible`. | `self.key_bar_visible` + `self.key_bar_scope` (driven by the `PFSHOW` command, `commands_pfshow.rs`). |
 
@@ -332,8 +332,33 @@ provider dropping its `model.fields` block) is a follow-up Kind gate.
 - Workspace_Title: `title_line_text(tab)` -> `active_display_title`.
 - Primary_Command_Field value: `self.command_text`.
 - Status_Bar common segments (REVISED 2026-11-04): ONLY last-action time (NEW --
-  a `last_action_at` timestamp, see below) formatted `Last: HH:MM` and `Prof:
-  <name>` from `ff_session::active_profile()` (shortened label).
+  a `last_action_at` timestamp, see below) formatted `Last: HH:MM`, `Prof:
+  <name>` from `ff_session::active_profile()` (shortened label), and `Zoom: <n>`
+  (Req 7.16b): the signed offset from `self.zoom.offset()`, ALWAYS shown directly
+  after Prof, produced by the ONE formatter `format_zoom_label()` (it reuses the
+  `ff-zoom` indicator for the sign and adds the `Zoom: 0` case the indicator
+  hides; `ff-zoom` is untouched). Negative zoom is supported (default
+  `min_offset` -10, `max_offset` +60). The live label is a plain `ui.label` with
+  a hover tooltip (`ff-desktop-shell-status-zoom-help`), never focusable (B055).
+- Message routing (Req 7.28): `post_info()` (`shell/message_routing.rs`) pushes
+  INFORMATIONAL / confirmation messages to `message_line`; ERRORS stay on
+  `open_error` (red, Status_Bar, drives the Command_Line_Outcome Restore). The
+  snapshot confirmation is posted by the async frame-loop placement AFTER the
+  action's clear, so it survives until the next action. Decision D1: errors
+  stay in the Status_Bar error slot so nothing is dropped; moving errors to the
+  band too is a possible later change.
+- Capture timing (Req 7.29): `note_action_dispatched` stashes a `PreActionFrame`
+  (`message_line` + `last_action_at`) BEFORE it clears/restamps, idempotently
+  per action (the key-forward path invokes it twice). The outermost action entry
+  (`run_command_line`, `dispatch_key_command`, an outermost `dispatch_bound_
+  command`) drops the stash at its end, and `update()` drops it at the top of each
+  frame as a safety net. `apply_common_frame` reads the band and `Last:` through
+  `frame_message_lines()` / `frame_last_action_at()`. This is additive state
+  inside the existing per-action seam: no new dispatch path, no public type
+  reshape, `active_screen_capture` stays the one capture seam. The PNG picture
+  is the live window grab and is unchanged.
+- Menu Kinds (Req 30.27): the menu builder returns the content area only; the
+  command line and key line come from `apply_common_frame` like every Context.
 - Workspace_Status_Segment (REVISED 2026-11-04): contributed by the active Kind,
   as one or more cells (`workspace_status_cells`). `Ln/Col` from `tab.cursor`,
   encoding from `tab.encoding_label()`, and line count from `tab.line_count`
@@ -379,8 +404,15 @@ owner's sketch.
 Today the Status_Bar shows `Started: HH:MM` from `session_start`. The owner picked
 LAST-ACTION time (updated on each action, not a ticking clock). CHOSEN design: add
 a `last_action_at` timestamp on the shell, set to `chrono::Local::now()` on each
-dispatched action, formatted `Last: HH:MM`. This replaces the `Started` segment
-(Requirement 7.18). It is additive shell state, no type reshape. `active_profile_
+dispatched action AND each screen transition, formatted `Last: HH:MM`. This
+replaces the `Started` segment (Requirement 7.18). It is additive shell state, no
+type reshape. `last_action_at` is a non-optional `DateTime<Local>` initialised to
+the startup instant (the same value as `session_start`), so `--:--` cannot occur
+(Requirement 7.16). Transition stamps use two shared seams: `reconstruct_context`
+(all navigate_to push/pop, END, RETURN, menu and CustomWorkspace opens) and
+`sync_active_tab_transition` (active-tab identity change, once per frame in
+`update`). The pre-action stash is taken before either restamp, so a snapshot
+shows the previous action or transition time. `active_profile_
 label()` is shortened from `Profile: <name>` to `Prof: <name>` (Requirement 7.19).
 
 ### Framework-change verdict (framework-conformance.md)

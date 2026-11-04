@@ -519,7 +519,8 @@ fn time_command_displays_date_time_day() {
     // Validates: Requirement 20.4
     let mut shell = make_shell();
     shell.handle_command("TIME");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = super::tests_common::reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("Date:"), "must contain 'Date:', got: {msg}");
     assert!(msg.contains("Time:"), "must contain 'Time:', got: {msg}");
     assert!(msg.contains("Day:"), "must contain 'Day:', got: {msg}");
@@ -531,7 +532,8 @@ fn status_command_routes_to_jes() {
     // Validates: Requirement 20.5
     let mut shell = make_shell();
     shell.handle_command("STATUS");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    // Req 7.28: the routing report is informational (Message_Line), so read both slots.
+    let msg = reported_text(&shell);
     // STATUS routes to JES (stub); must not be an "unknown command" error
     assert!(
         !msg.to_uppercase().contains("UNKNOWN"),

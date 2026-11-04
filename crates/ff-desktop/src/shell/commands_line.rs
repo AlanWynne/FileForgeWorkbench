@@ -28,6 +28,11 @@ impl WorkbenchShell {
     pub(super) fn run_command_line(&mut self, cmd: &str) {
         let original = cmd.trim().to_string();
         self.begin_command_line();
+        // The typed line IS the triggering command, so the field "before" it was
+        // empty for capture purposes (screen-snapshot-scrm Req 30.24(b)).
+        if let Some(pre) = self.pre_action_frame.as_mut() {
+            pre.command_text.clear();
+        }
         // CR-CH-077 single-chrome: the shared ISPF Table_Editor no longer draws
         // its own `Command ===>` line, so the shell's app-level command field IS
         // the one command line for a table-editor Context. When the Alias Editor
@@ -48,6 +53,9 @@ impl WorkbenchShell {
             self.dispatch_command_string(&original);
         }
         self.finish_command_line(&original);
+        // The action is over: a capture from here on uses the live state again
+        // (workspace-framework Req 7.29).
+        self.pre_action_frame = None;
     }
 
     /// Reset the per-dispatch Command_Line_Outcome state before a command-line

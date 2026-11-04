@@ -35,3 +35,8 @@ ff-desktop-shell-status-line-col = Ln { $line }, Col { $col }
 ff-desktop-shell-status-line-count = { $count } lines
 ff-desktop-shell-status-caps = CAPS
 ff-desktop-shell-status-log-degraded-hover = Logging degraded: { $reason }
+
+# --- Zoom common status segment (CR-NR-115 follow-up, Req 7.16b) ---
+# Hover help for the always-shown `Zoom: <n>` segment. The segment itself
+# (`Zoom: 0`, `Zoom: +14`, `Zoom: -3`) is built from the ff-zoom formatter.
+ff-desktop-shell-status-zoom-help = Zoom offset from the default size. Use ZOOM IN, ZOOM OUT or ZOOM RESET, Ctrl+= / Ctrl+- to change it and Ctrl+0 to reset.

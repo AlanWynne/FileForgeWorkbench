@@ -49,7 +49,8 @@ fn bare_snapshot_sets_pending_request_not_synchronous_place() {
     );
     // The command phase does not touch the clipboard, so it reports no error and
     // in particular not an "unknown format" / "cannot be captured" error.
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(
         !msg.contains("unknown format"),
         "bare SNAPSHOT is not an unknown-format error, got: {msg:?}"
@@ -72,7 +73,8 @@ fn explicit_text_format_writes_single_format_file() {
 
     shell.handle_command("SNAPSHOT MARKDOWN");
 
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("written to"), "got: {msg:?}");
     // A .md file was written and carries the Markdown fence (Req 23.4 shape).
     let md = std::fs::read_dir(dir.path())
@@ -98,7 +100,8 @@ fn explicit_ansi_writes_file_and_is_not_clipboard() {
 
     shell.handle_command("SNAPSHOT ANSI");
 
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(
         msg.contains("written to"),
         "ANSI is a file output, got: {msg:?}"
@@ -129,7 +132,8 @@ fn unknown_format_is_error() {
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
     shell.handle_command("SNAPSHOT BOGUS");
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("unknown format"), "got: {msg:?}");
 }
 
@@ -146,7 +150,8 @@ fn snapshot_pdf_writes_single_screen_pdf_via_command_path() {
 
     shell.dispatch_command_string("SNAPSHOT PDF");
 
-    let msg = shell.open_error.as_deref().unwrap_or("");
+    let msg = reported_text(&shell);
+    let msg = msg.as_str();
     assert!(msg.contains("PDF written to"), "got: {msg:?}");
     // A .pdf file exists under the override dir and is a real PDF.
     let pdf = std::fs::read_dir(dir.path())

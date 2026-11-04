@@ -64,6 +64,24 @@ impl ScreenCapture {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Test-only clock override for the menu calendar block, so a POM golden is
+    /// reproducible (the calendar and Time lines otherwise read the real clock).
+    pub(super) static TEST_MENU_NOW: std::cell::Cell<Option<chrono::DateTime<chrono::Local>>> =
+        const { std::cell::Cell::new(None) };
+}
+
+/// The clock the menu calendar block reads: the real local time, except under
+/// test where a thread-local override may pin it.
+fn menu_clock_now() -> chrono::DateTime<chrono::Local> {
+    #[cfg(test)]
+    if let Some(pinned) = TEST_MENU_NOW.with(|c| c.get()) {
+        return pinned;
+    }
+    chrono::Local::now()
+}
+
 /// The documented opt-out reason for the editor Context (FileEditor / Untitled).
 /// After Stream SCRM C.2/C.3 every other core Context has a provider, so the
 /// editor -- PARKED by the core-001 strip -- is the sole remaining documented
@@ -122,11 +140,7 @@ impl WorkbenchShell {
                     // shell's logical state (screen-snapshot-scrm Req 3.9-3.13).
                     let chrome = self.menu_screen_chrome(mw);
                     ScreenCapture::Model(Box::new(
-                        crate::screen_snapshot::menu_workspace_screen_model_full(
-                            mw,
-                            &self.command_text,
-                            &chrome,
-                        ),
+                        crate::screen_snapshot::menu_workspace_screen_model_full(mw, &chrome),
                     ))
                 }
                 None => ScreenCapture::OptOut("Menu_Workspace not yet seeded (no loaded menu)"),
@@ -181,8 +195,7 @@ impl WorkbenchShell {
 
     /// Build the menu snapshot chrome for a Menu_Workspace from the shell's
     /// LOGICAL state (never egui): the RIGHT-column block (calendar + Time +
-    /// Day of Year, only when the menu shows the calendar) and the PF-key
-    /// footer (only when the Key_Label_Bar is shown, pfshow on).
+    /// Day of Year, only when the menu shows the calendar).
     ///
     /// The window title / menu-bar echo / `[POM]` tag / duplicated title line
     /// are deliberately NOT built here any more: the owner's authoritative ISPF
@@ -203,7 +216,7 @@ impl WorkbenchShell {
         let right_column = match &mw.menu {
             Some(menu) if menu.show_calendar => {
                 use chrono::{Datelike, Timelike};
-                let now = chrono::Local::now();
+                let now = menu_clock_now();
                 let date = now.date_naive();
                 let doy =
                     crate::primary_option_menu::day_of_year(date.year(), date.month(), date.day());
@@ -219,21 +232,8 @@ impl WorkbenchShell {
             _ => Vec::new(),
         };
 
-        // PF-key footer: present ONLY when the Key_Label_Bar is shown (Req 3.10).
-        let key_bar_lines = if self.key_bar_visible {
-            vec![crate::screen_snapshot::key_bar_line(
-                self.key_map_resolver.active_key_map(),
-                self.key_bar_scope.segment_label(),
-                self.key_bar_scope.to_modifier(),
-            )]
-        } else {
-            Vec::new()
-        };
-
-        MenuScreenChrome {
-            right_column,
-            key_bar_lines,
-        }
+        // The PF-key line is supplied by the shared common frame (Req 30.27).
+        MenuScreenChrome { right_column }
     }
 }
 

@@ -1,14 +1,8 @@
 //! # WorkbenchShell State
 //!
-//! The `WorkbenchShell` struct definition -- the egui/eframe application shell's
-//! fields. Moved out of `mod.rs` verbatim as part of the Phase 2 task 2.2
-//! file-size split (per the ff-desktop layout in `rust-standards.md`, which puts
-//! the struct's fields in `shell/state.rs`). Field types, doc comments, and
-//! visibility are unchanged except where a sibling module's direct access
-//! requires the minimum necessary widening (private -> `pub(crate)`), which is
-//! crate-internal and behaviour-preserving. The struct is re-exported from
-//! `mod.rs` so `super::WorkbenchShell` / `crate::shell::WorkbenchShell` resolve
-//! unchanged.
+//! The `WorkbenchShell` struct definition (the application shell's fields),
+//! re-exported from `mod.rs`. The deferred-open channel types live in
+//! `pending_open.rs`.
 
 use std::sync::{Arc, Mutex};
 
@@ -33,27 +27,8 @@ use crate::session_manager::SessionManager;
 use crate::tab_manager::TabManager;
 use crate::toolchain_panel::ToolchainPanelState;
 
+use super::pending_open::PendingOpen;
 use super::{command_line_outcome, reset_bare, state_groups, KeyBarScope};
-
-/// The deferred-open channel payload: the resource `path` and the optional
-/// Owning_Environment NAME (`owning_env`; `None` -> host FS default).
-///
-/// core-001 strip: the mainframe-dataset open fields (`identity` /
-/// `recfm_lrecl`, which carried `ff_vfs::RecordFormatKind` for the record-aware
-/// SAVE seam) are removed with the catalog/VFS domains. The editor Context is
-/// parked, so the pending open no longer sets a record format on a document.
-#[derive(Debug, Clone, PartialEq)]
-pub(super) struct PendingOpenReq {
-    /// The resource path the open reads from.
-    pub(super) path: String,
-    /// The Owning_Environment NAME; `None` -> host FS default.
-    pub(super) owning_env: Option<String>,
-}
-
-/// The deferred-open channel: when `Some`, open the [`PendingOpenReq`] at the
-/// start of the next frame. A `type` alias to keep the nested
-/// `Arc<Mutex<Option<..>>>` readable (and satisfy clippy::type_complexity).
-pub(super) type PendingOpen = Arc<Mutex<Option<PendingOpenReq>>>;
 
 /// The egui/eframe application shell.
 pub struct WorkbenchShell {
@@ -197,7 +172,6 @@ pub struct WorkbenchShell {
     ///
     /// Validates: command-configurator Requirement 2.1, 2.3
     pub(crate) command_configurator_panel: crate::command_config::render::CommandConfiguratorState,
-
     /// Theme Editor Context state (CR-NR-074).
     ///
     /// Validates: theme-and-appearance Requirement 20.1
@@ -249,7 +223,6 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 14.42
     pub(super) pom_calendar_offset: i32,
-
     /// The active theme's backing file path and its last-seen modification time,
     /// used to hot-reload the palette when the file changes on disk (CR-NR-074).
     /// `None` when the active theme is not file-backed (e.g. a compiled built-in
@@ -398,13 +371,19 @@ pub struct WorkbenchShell {
     ///
     /// Validates: Requirement 7.11, 7.12, 7.13, 7.14
     pub(crate) message_line: Vec<String>,
-    /// Timestamp of the last user action dispatched through the shared per-action
-    /// seam (CR-NR-115, workspace-framework Phase CF). `None` until the first
-    /// action; stamped by `note_action_dispatched`. Drives the Status_Bar
-    /// `Last: HH:MM` segment -- NOT a ticking clock, it only updates on an action.
+    /// Time of the most recent user action OR screen transition (CR-NR-115,
+    /// Req 7.16). Starts at the startup instant, so it is never absent; stamped
+    /// by `note_action_dispatched` and `note_screen_transition`. Drives the
+    /// Status_Bar `Last: HH:MM` segment -- NOT a ticking clock.
     ///
     /// Validates: Requirement 7.16, 7.18
-    pub(crate) last_action_at: Option<chrono::DateTime<chrono::Local>>,
+    pub(crate) last_action_at: chrono::DateTime<chrono::Local>,
+
+    /// The Message_Line and `Last:` stamp as they were BEFORE the action in
+    /// flight ran (CR-NR-115 follow-up, workspace-framework Req 7.29). `Some`
+    /// only for the duration of one action; a SNAPSHOT/CAPTURE reads it so it
+    /// reproduces the frame as it was when the command was issued.
+    pub(crate) pre_action_frame: Option<super::message_routing::PreActionFrame>,
     /// Automation registry -- exposes control state to the FFTest runner.
     ///
     /// Validates: Requirement 2.1, 2.5 (automated-dialog-testing)

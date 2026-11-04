@@ -235,23 +235,21 @@ fn message_line_is_readable_and_cleared_by_note_action_dispatched() {
     );
 }
 
-/// Validates: Requirement 7.16 -- last_action_at is None at startup and is
-/// stamped Some after an action is dispatched.
+/// Validates: Requirement 7.16 -- last_action_at starts at the startup instant
+/// (== session_start) and is restamped when an action is dispatched.
 #[test]
-fn last_action_at_is_none_initially_and_some_after_action() {
+fn last_action_at_starts_at_startup_and_is_restamped_by_action() {
     // Validates: Requirement 7.16
     use chrono::Local;
     let mut shell = make_shell();
-    assert!(
-        shell.last_action_at.is_none(),
-        "no action has been dispatched yet at startup"
+    assert_eq!(
+        shell.last_action_at, shell.session_start,
+        "no action yet: Last: is the startup instant"
     );
     let before = Local::now();
     shell.note_action_dispatched();
     let after = Local::now();
-    let stamped = shell
-        .last_action_at
-        .expect("note_action_dispatched must stamp last_action_at");
+    let stamped = shell.last_action_at;
     assert!(
         stamped >= before && stamped <= after,
         "last_action_at must be stamped at the moment of the action"
@@ -266,32 +264,31 @@ fn message_line_cleared_when_command_dispatched() {
     // Validates: Requirement 7.12, 7.14
     let mut shell = make_shell();
     shell.message_line = vec!["stale message".to_string()];
-    // A benign command through the shared command-line path.
-    shell.run_command_line("TIME");
+    // A benign command through the shared command-line path that reports
+    // nothing (TIME now posts its own info report, Req 7.28).
+    shell.run_command_line("PFSHOW ON");
     assert!(
         shell.message_line.is_empty(),
         "dispatching an action must clear the stale Message_Line (Req 7.14)"
     );
     // And the action stamped last_action_at.
     assert!(
-        shell.last_action_at.is_some(),
+        shell.last_action_at >= shell.session_start,
         "dispatching an action stamps last_action_at (Req 7.16)"
     );
 }
 
 /// Validates: Requirement 7.16, 7.18 -- format_last_action yields `Last: HH:MM`
-/// once an action has been stamped, and a blank placeholder before any action.
+/// at startup (the startup time, never a placeholder) and after an action.
 #[test]
 fn format_last_action_produces_last_hhmm() {
     // Validates: Requirement 7.16, 7.18
     let mut shell = make_shell();
-    // Before any action: a blank placeholder (no time to show yet).
-    assert_eq!(
-        shell.format_last_action(),
-        "Last: --:--",
-        "before any action the Last segment shows a placeholder"
-    );
-    // After an action: `Last: HH:MM` (14 chars: 'Last: ' = 6 + 'HH:MM' = 5... )
+    // Before any action: the startup time, never `--:--`.
+    let startup = format!("Last: {}", shell.session_start.format("%H:%M"));
+    assert_eq!(shell.format_last_action(), startup);
+    assert_ne!(shell.format_last_action(), "Last: --:--");
+    // After an action: `Last: HH:MM` (11 chars: 'Last: ' = 6 + 'HH:MM' = 5).
     shell.note_action_dispatched();
     let label = shell.format_last_action();
     assert!(

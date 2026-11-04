@@ -240,7 +240,7 @@ confirmation in the design.
 | **Common_Frame** | The set of chrome elements the SHELL owns and renders exactly once around every Workspace, regardless of Kind: the Window_Title_Bar, the Menu_Bar, the Tab_Bar, the Workspace_Title, the Primary_Command_Field, the Message_Line, the Status_Bar, and the Function_Key_Bar. |
 | **Content_Area** | The region between the Primary_Command_Field and the Message_Line that each Workspace / Command Environment owns and fills; the shell frame renders no content here. |
 | **Message_Line** | A transient informational line rendered directly ABOVE the Status_Bar, showing message(s) raised by the last action; cleared when the next action is taken. |
-| **Common_Status_Segment** | A Status_Bar segment the SHELL owns for every Workspace: the last-action time and the active profile ONLY (revised 2026-11-04; Ln/Col, encoding and line count moved to the Workspace_Status_Segment below). |
+| **Common_Status_Segment** | A Status_Bar segment the SHELL owns for every Workspace: the last-action time, the active profile and the signed zoom offset ONLY (revised 2026-11-04; Ln/Col, encoding and line count moved to the Workspace_Status_Segment below; Zoom added). |
 | **Workspace_Status_Segment** | A Status_Bar segment whose content a specific Workspace Kind owns and contributes (e.g. the Alias Kind's `Aliases: nnn | Rows 1-nnn visible`). |
 
 #### Acceptance Criteria -- the eight common-frame elements (shell-owned, each exactly once)
@@ -299,10 +299,27 @@ confirmation in the design.
 (REVISED 2026-11-04, owner decision: common vs workspace-owned split)
 
 16. THE Status_Bar SHALL contain ONLY these Common_Status_Segments, shell-owned
-    for EVERY Workspace: a LAST-ACTION time `Last: HH:MM` (updated on each
-    action, NOT a continuously-ticking clock -- owner picked last-action over
-    started/current) and `Prof: <ActiveProfileName>` (the active profile name,
-    abbreviated from the former `Profile: default`). `[REVISED 2026-11-04]`
+    for EVERY Workspace, in this order: a LAST-ACTION time `Last: HH:MM`
+    (the time of the most recent action OR screen transition, NOT a
+    continuously-ticking clock -- owner picked last-action over
+    started/current), `Prof: <ActiveProfileName>` (the active
+    profile name, abbreviated from the former `Profile: default`) and
+    `Zoom: <signed offset>`. `[REVISED 2026-11-04, Zoom added]`
+    WHEN the shell starts, THE `Last:` time SHALL be initialised to the startup
+    time, so the segment SHALL NEVER show `--:--`. A screen transition is any
+    change of the visible Context or active tab: tab activation by any means
+    (keyboard, mouse, a tab close moving focus), a navigate_to push or pop
+    (including END and RETURN), opening a Workspace or menu, START creating a
+    tab, and session restore at startup. `[REVISED 2026-11-04, owner]`
+16b. THE Zoom segment SHALL be ALWAYS shown, directly after Prof, as the signed
+     offset from the default zoom: `Zoom: 0`, `Zoom: +14`, `Zoom: -3`. Negative
+     zoom IS supported (the default minimum offset is -10, the maximum +60). The
+     live Status_Bar and the snapshot/capture status band SHALL use ONE formatter
+     so they always show the same label. Context help for the segment SHALL be a
+     HOVER TOOLTIP on the live label only: status segments are deliberately
+     NON-focusable (B055), so the Zoom segment SHALL NOT be focusable and SHALL
+     NOT be a Tab stop. This supersedes the view-zoom "hidden at zero" indicator
+     rule. `[NEW 2026-11-04, owner-requested, owner may revert before merge]`
 16a. THE cursor `Ln <n>, Col <n>`, the encoding (e.g. `UTF-8`), and the line
      count are WORKSPACE-OWNED segments, NOT common: they describe the DATA a
      Workspace shows (the shell's own UI is always Unicode internally; encoding
@@ -321,10 +338,12 @@ confirmation in the design.
     decides its content (e.g. the Alias Kind MAY later contribute
     `Aliases: nnn | Rows 1-nnn visible`). The common segments are shell-owned;
     the per-Kind segment is workspace-owned. So the Status_Bar =
-    Common_Status_Segments (Last, Prof) + the active Kind's
+    Common_Status_Segments (Last, Prof, Zoom) + the active Kind's
     Workspace_Status_Segment cells (possibly none). `[REVISED 2026-11-04]`
 18. THE former `Started HH:MM` segment SHALL be REPLACED by the `Last: HH:MM`
     last-action time (owner decision Q2: last-action time, not started/current).
+    The value is defined by Requirement 7.16: the most recent action or screen
+    transition, initialised to the startup time, never `--:--`.
 19. THE former `Profile: default` / `Profile Default` segment SHALL be shortened
     to `Prof: <ActiveProfileName>` (owner decision Q3).
 20. THE `RUNNING` phase segment SHALL NOT appear in the Status_Bar (superseded by
@@ -377,3 +396,23 @@ confirmation in the design.
     `WorkspaceDescriptor`, `ScreenModel`). The Message_Line is ADDITIVE shell
     state (a new shell field/area), which is NOT a framework-type reshape; it is
     flagged for explicit owner confirmation in design.md.
+
+#### Acceptance Criteria -- message routing and capture timing (2026-11-04 follow-up)
+
+28. INFORMATIONAL and CONFIRMATION messages (a command succeeded and reports a
+    result, e.g. `Snapshot copied to clipboard: picture + Markdown.`, the TIME
+    report, a replace summary) SHALL be posted to the Message_Line (the message
+    band above the Status_Bar), NOT to the Status_Bar. ERRORS (bad argument,
+    refusal, stub/not-available, failure) SHALL stay on the Status_Bar error slot
+    (`open_error`, red, cleared on the next action) so a failed command still
+    restores the Command ===> field for correction (command-framework 13.2/13.3)
+    and nothing is dropped. The Status_Bar therefore shows status segments plus,
+    only while a command has failed, its error. `[NEW 2026-11-04]`
+29. A SNAPSHOT / CAPTURE SHALL reproduce the frame AS IT WAS WHEN THE COMMAND WAS
+    ISSUED: the Message_Line contents and the `Last:` time that were present
+    BEFORE the triggering command ran, and the Command ===> field WITHOUT the
+    triggering command. The live Message_Line still clears on the action, so
+    snapshot 1 shows its confirmation live after capture, snapshot 2 captures
+    that confirmation in its message band, and after snapshot 2 the live band
+    shows snapshot 2's own confirmation. A capture taken outside an action uses
+    the live state. SNAPSHOT and CAPTURE share the one capture seam. `[NEW 2026-11-04]`

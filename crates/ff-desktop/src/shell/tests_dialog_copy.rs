@@ -67,7 +67,7 @@ fn ctrl_c_while_dialog_open_copies_composite_and_leaves_open() {
     // single copy path executed. The compose-and-arm contract is proven in the
     // `dialog_capture.rs` unit tests, which do not run the frame loop.
     assert!(
-        harness.state().open_error.is_some(),
+        !super::tests_common::reported_text(harness.state()).is_empty(),
         "Ctrl+C routes to the single copy path and reports a status (27.3)"
     );
 }

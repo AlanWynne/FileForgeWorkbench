@@ -20,6 +20,7 @@
 use eframe::egui;
 
 use super::helpers::*;
+use super::message_routing::SnapshotPlaceOutcome;
 use super::WorkbenchShell;
 
 impl WorkbenchShell {
@@ -219,22 +220,18 @@ impl WorkbenchShell {
         ));
         let fmt = snapshot_format_label(ff_screen_model::SnapshotFormat::Markdown);
         let mut backend = crate::clipboard_backend::OsClipboard;
-        self.open_error = Some(match backend.place(&payload) {
-            Ok(offered) if offered.both() => ff_i18n::t_args(
-                "ff-desktop-shell-msg-scrm-snapshot-both-copied",
-                &ff_i18n::MessageArgs::new().set("format", fmt),
-            ),
+        let outcome = match backend.place(&payload) {
+            Ok(offered) if offered.both() => SnapshotPlaceOutcome::Both,
             // Only one flavor made it (e.g. a backend that could not offer the
             // image): still report success for the flavor that landed.
-            Ok(_) => ff_i18n::t_args(
-                "ff-desktop-shell-msg-scrm-snapshot-copied",
-                &ff_i18n::MessageArgs::new().set("format", fmt),
-            ),
-            Err(_) => ff_i18n::t_args(
-                "ff-desktop-shell-msg-scrm-snapshot-no-clipboard",
-                &ff_i18n::MessageArgs::new().set("format", fmt),
-            ),
-        });
+            Ok(_) => SnapshotPlaceOutcome::Partial,
+            Err(_) => SnapshotPlaceOutcome::Failed,
+        };
+        // Req 7.28: the confirmation goes to the Message_Line band (live, and
+        // captured by the NEXT snapshot); only a clipboard failure is an error.
+        // This runs on the async frame-loop path AFTER the action's clear, so it
+        // survives until the next action.
+        self.post_snapshot_place_outcome(outcome, fmt);
     }
 
     /// Crop `raster` (the full-window screenshot) to the frontmost dialog's
@@ -300,18 +297,21 @@ impl WorkbenchShell {
             let _ = std::fs::create_dir_all(parent);
         }
         let fmt = snapshot_format_label(format);
-        self.open_error = Some(match std::fs::write(&path, bytes) {
-            Ok(()) => ff_i18n::t_args(
+        // Req 7.28: success is informational (Message_Line), failure an error.
+        match std::fs::write(&path, bytes) {
+            Ok(()) => self.post_info(ff_i18n::t_args(
                 "ff-desktop-shell-msg-scrm-snapshot-written",
                 &ff_i18n::MessageArgs::new()
                     .set("format", fmt)
                     .set("path", path.display().to_string()),
-            ),
-            Err(e) => ff_i18n::t_args(
-                "ff-desktop-shell-msg-scrm-snapshot-pdf-failed",
-                &ff_i18n::MessageArgs::new().set("error", e.to_string()),
-            ),
-        });
+            )),
+            Err(e) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-scrm-snapshot-pdf-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
+            }
+        }
     }
 
     /// Write a single-screen SNAPSHOT PDF of the active Context, reusing the
@@ -337,16 +337,19 @@ impl WorkbenchShell {
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        self.open_error = Some(match std::fs::write(&path, bytes) {
-            Ok(()) => ff_i18n::t_args(
+        // Req 7.28: success is informational (Message_Line), failure an error.
+        match std::fs::write(&path, bytes) {
+            Ok(()) => self.post_info(ff_i18n::t_args(
                 "ff-desktop-shell-msg-scrm-snapshot-pdf-written",
                 &ff_i18n::MessageArgs::new().set("path", path.display().to_string()),
-            ),
-            Err(e) => ff_i18n::t_args(
-                "ff-desktop-shell-msg-scrm-snapshot-pdf-failed",
-                &ff_i18n::MessageArgs::new().set("error", e.to_string()),
-            ),
-        });
+            )),
+            Err(e) => {
+                self.open_error = Some(ff_i18n::t_args(
+                    "ff-desktop-shell-msg-scrm-snapshot-pdf-failed",
+                    &ff_i18n::MessageArgs::new().set("error", e.to_string()),
+                ));
+            }
+        }
     }
 }
 

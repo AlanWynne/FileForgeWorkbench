@@ -92,10 +92,18 @@ impl WorkbenchShell {
         // key-forward path also runs begin_command_line, so this double-invokes
         // on that path -- harmless: the clear is idempotent and the restamp lands
         // on the same action.
+        //
+        // Req 7.29: only the OUTERMOST entry drops the pre-action stash when the
+        // action ends (the key-forward path has already stashed in
+        // begin_command_line and ends the action itself).
+        let outermost = self.pre_action_frame.is_none();
         self.note_action_dispatched();
         match self.resolve_and_dispatch_command(command) {
             ResolveOutcome::Dispatched => {}
             ResolveOutcome::FallThrough => self.dispatch_command_string(command),
+        }
+        if outermost {
+            self.pre_action_frame = None;
         }
     }
 
@@ -131,6 +139,7 @@ impl WorkbenchShell {
             self.dispatch_bound_command(&merged);
         }
         self.finish_command_line(&original);
+        self.pre_action_frame = None;
     }
 
     /// Run a user Command_Definition by its id.

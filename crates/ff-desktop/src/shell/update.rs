@@ -53,6 +53,11 @@ pub(super) fn ensure_pom_tab_present(
 
 impl eframe::App for WorkbenchShell {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Safety net (workspace-framework Req 7.29): an action is synchronous
+        // within one frame, so a pre-action stash never legitimately outlives
+        // it. Dropping it here guarantees any capture outside an action reads
+        // the live state.
+        self.pre_action_frame = None;
         // One-shot startup (CLI files / session restore / default catalog / POM /
         // menus dir). Extracted to `update_startup.rs` (Phase 2 task 2.2).
         self.run_startup();
@@ -80,6 +85,8 @@ impl eframe::App for WorkbenchShell {
             self.focus.last_active_tab = active_now;
             self.focus.command_field_focus_requested = true;
         }
+        // Req 7.16: an active-tab change is a screen transition -> stamp `Last:`.
+        self.sync_active_tab_transition();
 
         let pending = self.pending_open.lock().expect("pending lock").take();
         if let Some(req) = pending {
@@ -214,57 +221,9 @@ impl eframe::App for WorkbenchShell {
         self.detach_split
             .floating_tabs
             .retain(|ft| self.tabs.index_of_id(ft.tab_id).is_some());
-        // File-backed active theme + hot-reload (CR-NR-074 Req 19.6). Resolve the
-        // active theme file, and reload the palette when the file changes on disk
-        // or when the configured active theme changes. This keeps the palette
-        // driven by the theme file (not just the compiled mode default).
-        {
-            let themes_dir = self.themes_dir();
-            // Determine the active theme's file path: prefer theme.active_name,
-            // else the built-in for the current theme.active mode.
-            let active_name = self
-                .config_handle
-                .get_string(ff_config::keys::theme::ACTIVE_NAME)
-                .unwrap_or_default();
-            let active_name = active_name.trim();
-            let theme_path = if !active_name.is_empty() {
-                Some(themes_dir.join(format!(
-                    "{}.toml",
-                    crate::theme_defaults::theme_slug(active_name)
-                )))
-            } else {
-                self.config_handle
-                    .get_string(ff_config::keys::theme::ACTIVE)
-                    .ok()
-                    .and_then(|m| ff_theme::mode::VisualMode::from_str_loose(&m))
-                    .map(|mode| {
-                        let name = ff_theme::defaults::default_palette_for_mode(mode).name;
-                        themes_dir
-                            .join(format!("{}.toml", crate::theme_defaults::theme_slug(&name)))
-                    })
-            };
-
-            if let Some(path) = theme_path {
-                let disk_mtime = std::fs::metadata(&path)
-                    .ok()
-                    .and_then(|m| m.modified().ok());
-                let tracked = self.active_theme_file.as_ref();
-                let path_changed = tracked.map(|(p, _)| p != &path).unwrap_or(true);
-                let mtime_changed = match (tracked, disk_mtime) {
-                    (Some((p, t)), Some(dm)) => p == &path && *t != dm,
-                    _ => false,
-                };
-                if path_changed || mtime_changed {
-                    // Reload from the resolver so a missing/invalid file falls
-                    // back to Default Legacy (Req 19.5) without crashing.
-                    self.palette = crate::theme_defaults::resolve_startup_palette(
-                        &self.config_handle,
-                        &themes_dir,
-                    );
-                    self.active_theme_file = disk_mtime.map(|dm| (path, dm));
-                }
-            }
-        }
+        // File-backed active theme + hot-reload (CR-NR-074 Req 19.6). Extracted
+        // verbatim to `update_theme.rs` (400-line rule).
+        self.reload_active_theme_file();
 
         // OS dark/light mode follow -- Validates: theme-and-appearance Requirement 16.1-16.4
         // When theme.follow_os is true, read the OS dark/light preference from the egui

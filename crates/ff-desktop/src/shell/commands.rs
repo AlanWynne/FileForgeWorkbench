@@ -322,6 +322,9 @@ impl WorkbenchShell {
         let status = self.cmd_engine.execute_command_line(cmd);
         match status.kind {
             StatusKind::Info => {
+                // Never posted to the Status_Bar (so nothing to move, Req 7.28):
+                // the engine's Info texts are bare acknowledgements ("OK",
+                // "No command") that stay silent as before.
                 self.open_error = None;
             }
             StatusKind::SyntaxError | StatusKind::StructureError | StatusKind::RuntimeError => {

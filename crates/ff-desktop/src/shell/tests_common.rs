@@ -379,6 +379,18 @@ pub(crate) fn harness_shell<'a>() -> egui_kittest::Harness<'a, super::WorkbenchS
     harness
 }
 
+/// What the last command REPORTED to the user: the Message_Line (informational
+/// results, workspace-framework Req 7.28) joined with the Status_Bar error slot
+/// (errors). Lets a test assert a command's report without caring which of the
+/// two stores the message class routes to.
+pub(crate) fn reported_text(shell: &super::WorkbenchShell) -> String {
+    let mut parts: Vec<String> = shell.message_line.clone();
+    if let Some(err) = &shell.open_error {
+        parts.push(err.clone());
+    }
+    parts.join("\n")
+}
+
 pub(crate) fn cmd_field_id() -> egui::Id {
     egui::Id::new("command_field_input")
 }

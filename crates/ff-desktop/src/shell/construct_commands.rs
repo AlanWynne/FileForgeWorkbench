@@ -11,7 +11,7 @@ use std::sync::Arc;
 use ff_command::{CommandId, CommandMetadata, CommandRegistry};
 
 use super::handlers::{ConfigOpenHandler, FileExitHandler, FileOpenHandler, MenuOpenHandler};
-use super::state::PendingOpen;
+use super::pending_open::PendingOpen;
 
 /// Register the shell's built-in registry commands on `registry`: file.open,
 /// file.exit, menu.open, and config.open. The `pending_open` and `should_close`

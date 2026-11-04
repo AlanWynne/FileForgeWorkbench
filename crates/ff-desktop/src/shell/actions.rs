@@ -112,7 +112,8 @@ impl WorkbenchShell {
                         &unsaved,
                     ) {
                         Ok((summary, _conflicts)) => {
-                            self.open_error = Some(ff_i18n::t_args(
+                            // Req 7.28: a result summary is informational.
+                            self.post_info(ff_i18n::t_args(
                                 "ff-desktop-shell-msg-replace-summary",
                                 &ff_i18n::MessageArgs::new()
                                     .set("count", summary.replacements.to_string())
@@ -144,22 +145,54 @@ impl WorkbenchShell {
     ///
     /// Validates: Requirement 7.12, 7.14, 7.16
     pub(crate) fn note_action_dispatched(&mut self) {
+        // Req 7.29: remember the frame as it was BEFORE this action so a
+        // SNAPSHOT/CAPTURE issued by it reproduces that state. Idempotent per
+        // action (the key-forward path invokes this seam twice).
+        self.stash_pre_action_frame();
         self.message_line.clear();
-        self.last_action_at = Some(chrono::Local::now());
+        self.last_action_at = chrono::Local::now();
+    }
+
+    /// Stamp `last_action_at` for a SCREEN TRANSITION (Req 7.16): any change of
+    /// the visible Context or active tab. Unlike an action it does not clear
+    /// the Message_Line nor stash a pre-action frame, so a capture issued by an
+    /// in-flight action still shows the time BEFORE that action.
+    ///
+    /// Shared seams: `reconstruct_context` (every `navigate_to` push/pop, END,
+    /// RETURN, menu and CustomWorkspace open) and `sync_active_tab_transition`
+    /// (every active-tab change, run once per frame from `update`).
+    pub(crate) fn note_screen_transition(&mut self) {
+        self.last_action_at = chrono::Local::now();
+    }
+
+    /// Stamp a transition when the ACTIVE TAB IDENTITY differs from the one seen
+    /// last time (tab click, keyboard switch, START, close moving focus, session
+    /// restore). Identity (not index) is compared so a close that leaves the
+    /// index unchanged still registers. Returns true when a transition fired.
+    pub(crate) fn sync_active_tab_transition(&mut self) -> bool {
+        let id = self.tabs.active_tab().id;
+        if self.focus.last_active_tab_id == Some(id) {
+            return false;
+        }
+        self.focus.last_active_tab_id = Some(id);
+        self.note_screen_transition();
+        true
     }
 
     /// Format the last-action time as `Last: HH:MM` for the Status_Bar
     /// (CR-NR-115, workspace-framework Phase CF, Req 7.18). This is NOT a ticking
-    /// clock -- it reflects `last_action_at`, updated only when an action is
-    /// dispatched. Before any action the segment shows the placeholder
-    /// `Last: --:--`.
+    /// clock -- it reflects `last_action_at`: the most recent action or screen
+    /// transition, initialised to the startup time, so it is never `--:--`.
     ///
     /// Validates: Requirement 7.16, 7.18
     pub(crate) fn format_last_action(&self) -> String {
-        match self.last_action_at {
-            Some(ts) => format!("Last: {}", ts.format("%H:%M")),
-            None => "Last: --:--".to_string(),
-        }
+        Self::last_action_label(self.last_action_at)
+    }
+
+    /// Format a last-action stamp as `Last: HH:MM`. Shared by the live bar and
+    /// the pre-action capture band.
+    pub(crate) fn last_action_label(stamp: chrono::DateTime<chrono::Local>) -> String {
+        format!("Last: {}", stamp.format("%H:%M"))
     }
 
     /// The Active_Profile label for the Status_Bar / Title_Line (CR-NR-081,
@@ -172,6 +205,20 @@ impl WorkbenchShell {
         match ff_session::active_profile() {
             Some(name) => format!("Prof: {name}"),
             None => "Prof: default".to_string(),
+        }
+    }
+
+    /// The Zoom common status segment label: the signed offset from the default
+    /// zoom, ALWAYS shown (`Zoom: 0`, `Zoom: +14`, `Zoom: -3`). The ONE formatter
+    /// behind both the live Status_Bar and the snapshot status band. Reuses the
+    /// `ff-zoom` indicator for the sign, adding the zero case it hides.
+    ///
+    /// Validates: Requirement 7.16, 7.16b; screen-snapshot-scrm Requirement 30.10
+    pub(crate) fn format_zoom_label(&self) -> String {
+        use ff_zoom::ZoomIndicatorState;
+        match ZoomIndicatorState::from_offset(self.zoom.offset()) {
+            ZoomIndicatorState::Visible { text, .. } => text,
+            ZoomIndicatorState::Hidden => "Zoom: 0".to_string(),
         }
     }
 

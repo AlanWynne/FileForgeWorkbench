@@ -232,7 +232,8 @@ impl WorkbenchShell {
         // placed on the Event::Screenshot frame (shell/update.rs), identical to
         // bare SNAPSHOT.
         self.stash_composite_request(&model);
-        self.open_error = Some(ff_i18n::t("ff-desktop-shell-msg-copy-copied"));
+        // Req 7.28: the copy confirmation is informational (Message_Line).
+        self.post_info(ff_i18n::t("ff-desktop-shell-msg-copy-copied"));
     }
 }
 

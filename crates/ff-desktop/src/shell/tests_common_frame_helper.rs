@@ -194,19 +194,17 @@ fn common_frame_key_bar_follows_pfshow_for_table_context() {
 // own command line + PF footer), so the key-bar footer_lines stays empty for a
 // MenuWorkspace Context even with pfshow ON.
 #[test]
-fn common_frame_does_not_double_frame_menu_pf_footer() {
+fn common_frame_gives_menu_path_its_key_line_and_command_field() {
     let mut shell = make_shell();
     shell.tabs.insert_pom_tab(&shell.runtime);
     shell.ensure_pom_menu_loaded();
     shell.handle_pfshow("ON");
     assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::MenuWorkspace);
 
-    // The menu path folds its own command line + PF footer into body_lines, so
-    // the helper must NOT add a second footer for a MenuWorkspace Context. Model
-    // the menu case: a non-empty body (what the menu builder produces) and an
-    // empty footer the helper must leave empty.
+    // CR-NR-115 follow-up (Req 30.27): the menu builder returns the CONTENT AREA
+    // only, so the helper supplies the key line and command field for a
+    // MenuWorkspace exactly as for every other Context.
     let mut model = ScreenModel::new("Primary Option Menu")
-        .with_body_line("Command ===> ____")
         .with_body_line("0 Settings : FFWB Settings (Settings)");
     shell.apply_common_frame(&mut model);
 
@@ -219,10 +217,16 @@ fn common_frame_does_not_double_frame_menu_pf_footer() {
         "menu path still gets the shared window title chrome; got {:?}",
         model.header_lines
     );
-    // But NO second PF footer is added by the helper (the menu body owns it).
-    assert!(
-        model.footer_lines.is_empty(),
-        "the menu path must not get a second PF footer from the helper; got {:?}",
+    // ONE key line is added (pfshow ON) and the command field is set.
+    assert_eq!(
+        model.footer_lines.len(),
+        1,
+        "the menu path gets exactly one key line from the helper; got {:?}",
         model.footer_lines
+    );
+    assert!(
+        model.command_line.chars().all(|c| c == '_') && !model.command_line.is_empty(),
+        "the menu path gets the empty command field; got {:?}",
+        model.command_line
     );
 }

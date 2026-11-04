@@ -341,6 +341,8 @@ pub(crate) struct FocusState {
     pub menu_dropdown_owner_index: Option<usize>,
     /// Active tab index observed on the previous frame (focus re-arm trigger).
     pub last_active_tab: usize,
+    /// Active tab IDENTITY seen last (screen-transition stamp trigger, Req 7.16).
+    pub last_active_tab_id: Option<crate::tab_state::TabId>,
     /// One-shot latch: focus the active Workspace's FIRST interior this frame.
     pub focus_first_interior_requested: bool,
     /// One-shot latch (reverse Shift+Tab): focus the LAST interior this frame.

@@ -40,7 +40,8 @@ impl WorkbenchShell {
             // Validates: Requirement 20.3 -- LOGOFF is an alias for EXIT
             if upper == "LOGOFF" {
                 let msg = self.format_logoff_message();
-                self.open_error = Some(msg);
+                // Req 7.28: the logoff report is informational (Message_Line).
+                self.post_info(msg);
             }
             let result = self
                 .dispatch

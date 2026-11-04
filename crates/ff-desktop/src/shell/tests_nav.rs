@@ -1239,7 +1239,8 @@ fn full_shell_snapshot_on_pom_captures_selectable_text() {
         "full-shell SNAPSHOT must capture the POM title as selectable text; got: {text}"
     );
     // And the command reported a confirmation.
-    let msg = harness.state().open_error.as_deref().unwrap_or("");
+    let msg = super::tests_common::reported_text(harness.state());
+    let msg = msg.as_str();
     assert!(
         msg.contains("Snapshot"),
         "SNAPSHOT must set a confirmation status; got: {msg:?}"

@@ -1418,7 +1418,11 @@ content, exempt from the ASCII-only documentation rule (Req 1.1, 5.1).
 #### Acceptance Criteria -- the status bar in the snapshot
 
 30.10 THE reproduced Status_Bar SHALL carry ONLY the Common_Status_Segments --
-      `Last: HH:MM` (last-action time) and `Prof: <ActiveProfileName>` -- PLUS
+      `Last: HH:MM` (time of the last action or screen transition, initialised
+      to the startup time, never `--:--`), `Prof: <ActiveProfileName>` and
+      `Zoom: <signed offset>` (always shown, e.g. `Zoom: 0`, `Zoom: +14`,
+      `Zoom: -3`, formatted by the SAME formatter as the live bar; revised
+      2026-11-04, owner-requested) -- PLUS
       the active Kind's Workspace_Status_Segment cells where the Kind
       contributes any. `Ln <n>, Col <n>`, encoding and line count are NOT
       common: they are workspace-owned (the editor Context contributes them as
@@ -1528,6 +1532,19 @@ rendering only: the live egui window keeps its own visuals.
       border carries a key-line junction -- only the status band's own cell
       dividers may appear on the rule between the status band and the key
       line. `[CR-NR-115, revised 2026-11-04]`
+30.27 THE frame rules above (30.6, 30.11, 30.21-30.26) SHALL hold for EVERY
+      Context INCLUDING every Menu Kind (POM, Settings, any `menus/<name>.toml`),
+      with no name-specific branch: the menu builder returns the CONTENT AREA
+      only (option rows plus calendar), and the shared common frame supplies the
+      `Command ===>` line (empty field, underscores filling to the right border,
+      never the triggering command), the message band above the status band, the
+      status band `Last | Prof | Zoom`, and the key line as the LAST band, one
+      cell, with no blank spacer rows. `[CR-NR-115 follow-up, 2026-11-04]`
+30.28 A SNAPSHOT / CAPTURE SHALL be taken from the PRE-ACTION state: the message
+      band contents and `Last:` time present before the triggering command ran,
+      and the command field as it was before that command (see
+      `workspace-framework` Requirement 7.29). The PNG picture is the live
+      window grab and is unchanged. `[CR-NR-115 follow-up, 2026-11-04]`
 
 Rendered fixture (the box-drawing glyphs are runtime product output, exempt from
 the ASCII-only documentation rule):

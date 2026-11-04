@@ -79,9 +79,11 @@ mod kinds_editor;
 mod locale_resolver;
 mod menu_bar_accel;
 mod menus_editor;
+mod message_routing;
 mod mod_helpers;
 mod nav_reconstruct;
 mod nav_stack;
+mod pending_open;
 mod render;
 mod render_body;
 mod render_body_arms;
@@ -111,6 +113,7 @@ mod update_floating;
 mod update_input;
 mod update_keys;
 mod update_startup;
+mod update_theme;
 pub(crate) mod user_aliases;
 pub(crate) mod workspace_context;
 mod workspace_io;
@@ -145,6 +148,8 @@ mod tests_alias_editor;
 #[cfg(test)]
 mod tests_alias_template;
 #[cfg(test)]
+mod tests_capture_timing;
+#[cfg(test)]
 mod tests_command;
 #[cfg(test)]
 mod tests_common;
@@ -155,6 +160,8 @@ mod tests_common_frame_golden;
 #[cfg(test)]
 mod tests_common_frame_helper;
 #[cfg(test)]
+mod tests_common_frame_menu;
+#[cfg(test)]
 mod tests_common_frame_order;
 #[cfg(test)]
 mod tests_common_frame_snapshot;
@@ -164,6 +171,12 @@ mod tests_config_save_convention;
 mod tests_config_snapshot_fidelity;
 #[cfg(test)]
 mod tests_configurator_save_convention;
+#[cfg(test)]
+mod tests_last_transition;
+#[cfg(test)]
+mod tests_message_routing;
+#[cfg(test)]
+mod tests_zoom_segment;
 // core-001 strip: tests_crch061 (mainframe catalog-backed SAVE routing) and
 // tests_crch071 (FFEDIT/FFCMD editor verb seam) validated now-parked domains
 // (catalog, mainframe CE, FFEDIT) and were removed with those features.

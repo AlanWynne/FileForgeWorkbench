@@ -134,24 +134,19 @@ impl WorkbenchShell {
                 ui.label(self.active_profile_label());
                 ui.separator();
 
-                // Requirement 7.1 (view-zoom) -- zoom indicator when non-zero.
-                // Zoom is a VIEW affordance of the live egui chrome, not a
-                // document-content segment, so it stays common (unlike Ln/Col,
-                // encoding and line count, which moved to the per-Kind
-                // Workspace_Status_Segment below, owner revision 2026-11-04).
-                {
-                    use ff_zoom::ZoomIndicatorState;
-                    if let ZoomIndicatorState::Visible { text, .. } =
-                        ZoomIndicatorState::from_offset(self.zoom.offset())
-                    {
-                        ui.colored_label(self.palette.chrome_style.accent_color(), text);
-                        ui.separator();
-                    }
-                }
+                // Validates: Requirement 7.16, 7.16b (CR-NR-115, revised
+                // 2026-11-04) -- Zoom is a COMMON segment, ALWAYS shown directly
+                // after Prof (`Zoom: 0`, `Zoom: +14`, `Zoom: -3`), from the ONE
+                // formatter the snapshot band also uses. Context help is a HOVER
+                // TOOLTIP only: a plain `ui.label` (never a SelectableLabel or a
+                // click Sense) so it is NOT focusable and NOT a Tab stop (B055).
+                ui.label(self.format_zoom_label())
+                    .on_hover_text(ff_i18n::t("ff-desktop-shell-status-zoom-help"));
+                ui.separator();
 
                 // CR-NR-115 Phase CF (Req 7.16-7.21, revised 2026-11-04): the
                 // per-Kind Workspace_Status_Segment composition point. The ONLY
-                // common segments are Last and Prof above; Ln/Col, encoding and
+                // common segments are Last, Prof and Zoom above; Ln/Col, encoding and
                 // line count are now WORKSPACE-owned (they describe a document
                 // cursor/content, which only a document-backed Kind has -- a
                 // settings-type Workspace like Config/Alias has neither). The
@@ -241,7 +236,7 @@ impl WorkbenchShell {
 
     /// The per-Kind Workspace_Status_Segment CELLS for the active Workspace
     /// (CR-NR-115, workspace-framework Req 7.16-7.21/7.27, revised 2026-11-04).
-    /// The only COMMON Status_Bar segments are `Last: HH:MM` and `Prof: <name>`;
+    /// The only COMMON Status_Bar segments are `Last: HH:MM`, `Prof: <name>` and `Zoom: <n>`;
     /// EVERYTHING ELSE is workspace-owned and returned here, one string per cell
     /// (the live bar and the snapshot status band both render exactly these).
     ///
@@ -321,10 +316,11 @@ impl WorkbenchShell {
                 // The native file dialog opens a host-filesystem file -> host FS
                 // Owning_Environment (None -> default, CR-CH-053 Task 19 Req 15.3);
                 // no dataset identity / record format (RC.B.8 (c)).
-                *pending.lock().expect("pending lock") = Some(super::state::PendingOpenReq {
-                    path,
-                    owning_env: None,
-                });
+                *pending.lock().expect("pending lock") =
+                    Some(super::pending_open::PendingOpenReq {
+                        path,
+                        owning_env: None,
+                    });
             }
         });
     }

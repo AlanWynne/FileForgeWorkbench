@@ -149,7 +149,8 @@ impl WorkbenchShell {
                     active_file,
                 ) {
                     Ok(_handle) => {
-                        self.open_error = Some(ff_i18n::t_args(
+                        // Req 7.28: a successful launch is informational.
+                        self.post_info(ff_i18n::t_args(
                             "ff-desktop-shell-msg-external-started-detached",
                             &ff_i18n::MessageArgs::new().set("program", pending.program.clone()),
                         ));
@@ -177,7 +178,8 @@ impl WorkbenchShell {
                             .code
                             .map(|c| c.to_string())
                             .unwrap_or_else(|| "signal".to_string());
-                        self.open_error = Some(ff_i18n::t_args(
+                        // Req 7.28: a finished run report is informational.
+                        self.post_info(ff_i18n::t_args(
                             "ff-desktop-shell-msg-external-finished",
                             &ff_i18n::MessageArgs::new()
                                 .set("program", pending.program.clone())

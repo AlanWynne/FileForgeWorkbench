@@ -28,23 +28,20 @@ pub const WINDOW_TITLE: &str = "FileForge Workbench";
 /// snapshot so a POM/menu capture matches the LIVE ISPF screen (screen-snapshot
 /// -scrm Requirement 3.8-3.13).
 ///
-/// The menu snapshot is a TWO-COLUMN ISPF body: the option rows on the LEFT and
-/// the right-hand block (calendar + Time + Day of Year) on the RIGHT of the same
-/// lines, the `Command ===>` line at the top, and the PF-key footer at the
-/// bottom.
+/// The menu snapshot CONTENT is a TWO-COLUMN ISPF body: the option rows on the
+/// LEFT and the right-hand block (calendar + Time + Day of Year) on the RIGHT of
+/// the same lines. The command line and the PF-key line are supplied by the
+/// shared common frame, not by this struct (CR-NR-115 follow-up, Req 30.27); the
+/// former `key_bar_lines` field was REMOVED with them.
 ///
 /// The former window-title / menu-bar / tab-header / title-line "header chrome"
-/// fields were REMOVED: the owner's authoritative ISPF mock has NONE of that
-/// block -- just the title in the frame border, the command line, then the
-/// options. The title is already carried in `ScreenModel::title` (rendered in
+/// fields were REMOVED earlier: the owner's authoritative ISPF mock has NONE of
+/// that block. The title is already carried in `ScreenModel::title` (rendered in
 /// the top border), so it is never repeated in the body (Bug 2, owner
 /// correction 2026-11-01; supersedes the Phase 2A Req 3.9 header-chrome model
 /// FOR MENUS).
 ///
-/// Every entry is plain, already-rendered selectable text. The PF-key footer is
-/// carried in `key_bar_lines`, which the shell leaves EMPTY when the
-/// Key_Label_Bar is hidden (pfshow off), so the capture reflects the live pfshow
-/// state (Requirement 3.10).
+/// Every entry is plain, already-rendered selectable text.
 #[derive(Debug, Default, Clone)]
 pub struct MenuScreenChrome {
     /// The RIGHT-column block, top-to-bottom: the calendar lines (month/year
@@ -54,9 +51,6 @@ pub struct MenuScreenChrome {
     /// hides the calendar (`show_calendar = false`), in which case the body is
     /// a single left column.
     pub right_column: Vec<String>,
-    /// The PF-key footer line(s), present ONLY when the Key_Label_Bar is shown
-    /// (pfshow on). Empty when pfshow is off (Requirement 3.10).
-    pub key_bar_lines: Vec<String>,
 }
 
 /// The gap, in spaces, between the padded left option column and the right-hand
@@ -131,12 +125,15 @@ fn compose_two_column_body(left: &[String], right: &[String]) -> Vec<String> {
     out
 }
 
-/// Build the FULL-screen logical model for a Menu_Workspace, matching the LIVE
-/// ISPF screen (screen-snapshot-scrm Req 3.8-3.13): the title in the frame
-/// border (from [`ScreenModel::title`]), then as verbatim body lines -- the
-/// `Command ===>` line, the TWO-COLUMN body (option rows on the LEFT, the
-/// calendar + Time + Day of Year on the RIGHT), blank spacer rows, and the
-/// PF-key footer at the bottom (present only when pfshow is on).
+/// Build the CONTENT-AREA logical model for a Menu_Workspace (screen-snapshot-scrm
+/// Req 3.8-3.13, 30.27): the title in the frame border (from
+/// [`ScreenModel::title`]), then as verbatim body lines the TWO-COLUMN body
+/// (option rows on the LEFT, the calendar + Time + Day of Year on the RIGHT).
+///
+/// The `Command ===>` line, the message band, the status band and the PF-key
+/// line are NOT built here any more: the shared common frame supplies them for
+/// every Context, so the Menu Kinds (POM, Settings, user menus) behave exactly
+/// like the Config/Alias Contexts (key line LAST, empty command field).
 ///
 /// There is NO superfluous header block (window title / menu-bar echo / `[POM]`
 /// tag / duplicated title) -- the owner's authoritative mock has none, and the
@@ -149,22 +146,13 @@ fn compose_two_column_body(left: &[String], right: &[String]) -> Vec<String> {
 /// Validates: screen-snapshot-scrm Req 3.8, 3.9, 3.10, 3.11, 3.12, 3.13.
 pub fn menu_workspace_screen_model_full(
     state: &MenuWorkspaceState,
-    command_line: &str,
     chrome: &MenuScreenChrome,
 ) -> ScreenModel {
     let title = state.menu_title().unwrap_or_else(|| "Menu".to_string());
+    // CONTENT AREA ONLY (CR-NR-115 follow-up, Req 30.27): the `Command ===>`
+    // line, the message band, the status band and the key line are supplied by
+    // the shared common frame (`apply_common_frame`) for every Context.
     let mut model = ScreenModel::new(title);
-    // The command line is now rendered INSIDE the frame as the first body row;
-    // keep ScreenModel::command_line empty so the generic renderer does not ALSO
-    // echo it outside the frame.
-    model.command_line = String::new();
-
-    // Command ===> row (Bug 1): the first body row, mirroring the live POM's
-    // command field. The typed value is followed by an underscore input area so
-    // the row shows the on-screen `Command ===> ____...` field.
-    let typed = command_line.trim_end();
-    let underscores = COMMAND_INPUT_WIDTH.saturating_sub(typed.chars().count());
-    model = model.with_body_line(format!("Command ===> {typed}{}", "_".repeat(underscores)));
 
     match &state.menu {
         Some(menu) => {
@@ -186,15 +174,6 @@ pub fn menu_workspace_screen_model_full(
         }
     }
 
-    // Two blank spacer rows then the PF-key footer at the bottom of the frame
-    // (present only when pfshow is on, Req 3.10).
-    if !chrome.key_bar_lines.is_empty() {
-        model = model.with_body_line(String::new());
-        model = model.with_body_line(String::new());
-        for line in &chrome.key_bar_lines {
-            model = model.with_body_line(line.clone());
-        }
-    }
     model
 }
 
@@ -327,7 +306,7 @@ description = "Settings"
     #[test]
     fn load_error_surfaces_as_message() {
         let state = MenuWorkspaceState::load("/nonexistent/menu.toml");
-        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
+        let model = menu_workspace_screen_model_full(&state, &sample_chrome());
         assert!(!model.messages.is_empty());
     }
 
@@ -338,14 +317,9 @@ description = "Settings"
         calendar_right_column(2026, 10, 25, 12, 58, 298)
     }
 
-    fn sample_chrome(with_keys: bool) -> MenuScreenChrome {
+    fn sample_chrome() -> MenuScreenChrome {
         MenuScreenChrome {
             right_column: sample_right_column(),
-            key_bar_lines: if with_keys {
-                vec!["Base | F1 Help | F3 Exit".to_string()]
-            } else {
-                Vec::new()
-            },
         }
     }
 
@@ -359,7 +333,7 @@ description = "Settings"
     #[test]
     fn full_model_is_two_column_body_without_header_chrome() {
         let state = pom_like();
-        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
+        let model = menu_workspace_screen_model_full(&state, &sample_chrome());
 
         // Title lives in the border (model.title), never repeated in the body.
         assert_eq!(model.title, "Primary Option Menu");
@@ -370,14 +344,12 @@ description = "Settings"
             model.fields.is_empty(),
             "menu body is body_lines, not fields"
         );
-        // command_line is folded into the body, not echoed outside the frame.
+        // CONTENT ONLY (Req 30.27): no command row folded into the body, and
+        // the model's own command line is left for the shared common frame.
         assert!(model.command_line.is_empty());
-
-        // First body row is the command line.
         assert!(
-            model.body_lines[0].starts_with("Command ===> "),
-            "first body row must be the command line: {:?}",
-            model.body_lines[0]
+            !model.body_lines.iter().any(|l| l.contains("Command ===>")),
+            "the menu builder must not fold a Command ===> row into the body"
         );
         // Option rows use `{key} {shortname} : {desc} ({cmd})`.
         let body = model.body_lines.join("\n");
@@ -401,7 +373,7 @@ description = "Settings"
     #[test]
     fn full_snapshot_is_two_column_options_left_calendar_right() {
         let state = pom_like();
-        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
+        let model = menu_workspace_screen_model_full(&state, &sample_chrome());
         let text = render_snapshot(&model, SnapshotFormat::PlainText);
         assert!(text.contains("October 2026"), "calendar month must appear");
         assert!(text.contains("Time"), "Time line must appear");
@@ -425,7 +397,7 @@ description = "Settings"
     #[test]
     fn two_column_calendar_right_edge_is_aligned() {
         let state = pom_like();
-        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
+        let model = menu_workspace_screen_model_full(&state, &sample_chrome());
 
         // The longest option row drives the shared left-column width; the right
         // column therefore begins at left_width + MENU_COLUMN_GAP on every row.
@@ -510,9 +482,8 @@ description = "Settings"
         let state = pom_like();
         let chrome = MenuScreenChrome {
             right_column: Vec::new(),
-            key_bar_lines: Vec::new(),
         };
-        let model = menu_workspace_screen_model_full(&state, "", &chrome);
+        let model = menu_workspace_screen_model_full(&state, &chrome);
         let body = model.body_lines.join("\n");
         assert!(body.contains("1 FILES : File Explorer (FILES)"));
         assert!(!body.contains("October 2026"));
@@ -570,49 +541,21 @@ description = "Settings"
         }
     }
 
-    // Validates: Requirement 3.10 -- the PF-key footer line is present when
-    // pfshow is on and ABSENT when pfshow is off.
+    // Validates: screen-snapshot-scrm Req 30.27 (supersedes Req 3.8 Bug 1 and
+    // Req 3.10 for the menu BUILDER) -- the menu builder returns the CONTENT
+    // AREA only: no folded `Command ===>` row and no PF-key footer or blank
+    // spacer rows. The shared common frame supplies both (see the full-text
+    // goldens in `shell::tests_common_frame_menu`).
     #[test]
-    fn full_snapshot_pfkey_footer_follows_pfshow_state() {
+    fn menu_builder_is_content_only_without_command_or_key_rows() {
         let state = pom_like();
-
-        let on = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
-        let on_text = render_snapshot(&on, SnapshotFormat::PlainText);
-        assert!(
-            on_text.contains("F1 Help"),
-            "pfshow ON must include the PF-key footer"
-        );
-
-        let off = menu_workspace_screen_model_full(&state, "", &sample_chrome(false));
-        let off_text = render_snapshot(&off, SnapshotFormat::PlainText);
-        assert!(
-            !off_text.contains("F1 Help"),
-            "pfshow OFF must omit the PF-key footer"
-        );
-    }
-
-    // Validates: screen-snapshot-scrm Req 3.8 (Bug 1) -- the rendered menu
-    // snapshot contains a `Command ===>` row as the FIRST body row (directly
-    // under the title border), with an underscore input area, and the typed
-    // value when present.
-    #[test]
-    fn rendered_menu_has_command_line_as_first_body_row() {
-        let state = pom_like();
-
-        // Empty command line: the row is still present with the input area.
-        let model = menu_workspace_screen_model_full(&state, "", &sample_chrome(true));
+        let model = menu_workspace_screen_model_full(&state, &sample_chrome());
         let text = render_snapshot(&model, SnapshotFormat::PlainText);
-        let rows: Vec<&str> = text.lines().collect();
-        // rows: [top border, title, separator, FIRST body row, ...]
+        assert!(!text.contains("Command ===>"), "{text}");
+        assert!(!text.contains("F1 Help"), "{text}");
         assert!(
-            rows[3].contains("Command ===> "),
-            "first body row must be `Command ===>`:\n{text}"
+            model.body_lines.iter().all(|l| !l.is_empty()),
+            "no blank spacer rows before a key line"
         );
-        assert!(rows[3].contains('_'), "command field shows an input area");
-
-        // A typed value is shown before the underscores.
-        let typed = menu_workspace_screen_model_full(&state, "SNAPSHOT", &sample_chrome(true));
-        let typed_text = render_snapshot(&typed, SnapshotFormat::PlainText);
-        assert!(typed_text.contains("Command ===> SNAPSHOT"));
     }
 }

@@ -17,7 +17,7 @@ use ff_command::{CommandParams, CommandResult, ExecutionContext};
 /// Handler for `file.open` -- sets `pending_open` via a shared channel.
 /// The shell reads `pending_open` at the top of each frame.
 ///
-/// The pending payload is a [`super::state::PendingOpenReq`] (RC.B.8 (c) widened
+/// The pending payload is a [`super::pending_open::PendingOpenReq`] (RC.B.8 (c) widened
 /// it from the former `(path, owning_env)` tuple). The OPTIONAL `owning_env`
 /// param carries the Owning_Environment NAME captured from the originating
 /// catalog/provider (CR-CH-053 Task 19, Req 15.2); when absent -- every host-path
@@ -30,7 +30,7 @@ use ff_command::{CommandParams, CommandResult, ExecutionContext};
 /// Req 11.2) and the BRC.3 record-save selection fires. All four are absent for a
 /// host-path open, which stays byte-identical.
 pub(super) struct FileOpenHandler {
-    pub(super) pending: super::state::PendingOpen,
+    pub(super) pending: super::pending_open::PendingOpen,
 }
 
 impl CommandHandler for FileOpenHandler {
@@ -48,10 +48,11 @@ impl CommandHandler for FileOpenHandler {
                 // core-001 strip: the mainframe dataset identity (dsn/catalog) and
                 // record format (recfm/lrecl) params are parked with the
                 // catalog/VFS domains; the pending open carries only path + env.
-                *self.pending.lock().expect("pending lock") = Some(super::state::PendingOpenReq {
-                    path: path.to_string(),
-                    owning_env,
-                });
+                *self.pending.lock().expect("pending lock") =
+                    Some(super::pending_open::PendingOpenReq {
+                        path: path.to_string(),
+                        owning_env,
+                    });
                 CommandResult::Ok
             }
             _ => CommandResult::Err(ff_command::CommandError::ExecutionFailed {

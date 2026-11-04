@@ -558,6 +558,14 @@ reproduction gracefully omits the message line.
         IDENTICAL reproduced frame as the snapshot seam
     - Validates: Requirement 30.16
 
+- [x] 2H.7 Menu Kinds on the common frame, Zoom in the status band, pre-action capture (2026-11-04, branch common-frame-fixes)
+  - [x] 2H.7.1 Menu builder returns the content area only: key line LAST, command field empty with underscores to the border, message band above the status band, for POM and Settings (tests_common_frame_menu.rs, golden menu_*.txt)
+    - Validates: Requirement 30.27
+  - [x] 2H.7.2 Status band `Last | Prof | Zoom` (Config/Alias goldens regenerated)
+    - Validates: Requirement 30.10
+  - [x] 2H.7.3 Capture shows the pre-action message band and `Last:` (tests_capture_timing.rs)
+    - Validates: Requirement 30.28
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

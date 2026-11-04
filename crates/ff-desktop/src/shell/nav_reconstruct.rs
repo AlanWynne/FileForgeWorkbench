@@ -18,6 +18,9 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 14.4, 14.6
     pub(super) fn reconstruct_context(&mut self, descriptor: &WorkspaceDescriptor) {
+        // Req 7.16: the shared choke point of every in-place Context change
+        // (navigate_to push/pop, END, RETURN, menu/CustomWorkspace open).
+        self.note_screen_transition();
         match descriptor {
             WorkspaceDescriptor::Menu { name } => {
                 // POM is the Home Context; any other name is a Menu_Workspace.

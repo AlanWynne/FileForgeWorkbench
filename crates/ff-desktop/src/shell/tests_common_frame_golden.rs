@@ -13,7 +13,7 @@ use super::tests_common::*;
 use crate::tab_state::KindTag;
 
 /// Fixed local timestamp so the `Last: HH:MM` status segment is deterministic.
-fn fixed_stamp() -> chrono::DateTime<chrono::Local> {
+pub(super) fn fixed_stamp() -> chrono::DateTime<chrono::Local> {
     use chrono::TimeZone;
     chrono::Local
         .with_ymd_and_hms(2026, 11, 4, 11, 2, 0)
@@ -75,7 +75,13 @@ fn fixed_shell(
             description: String::new(),
         }];
     }
-    h.state_mut().last_action_at = Some(fixed_stamp());
+    // Settle the tab-change transition stamp (Req 7.16) BEFORE pinning `Last:`,
+    // so the final frame does not restamp it with the wall clock.
+    h.state_mut().sync_active_tab_transition();
+    h.state_mut().last_action_at = fixed_stamp();
+    // The harness restores the machine's persisted session, which can carry a
+    // non-default zoom; pin it so the `Zoom:` segment of the golden is stable.
+    h.state_mut().zoom.set_offset(0);
     h.state_mut().key_bar_visible = pfshow;
     h.state_mut().message_line = message.map(|m| vec![m.to_string()]).unwrap_or_default();
     h.run();
@@ -83,7 +89,7 @@ fn fixed_shell(
 }
 
 /// Load a golden fixture, normalising a trailing newline the write tool adds.
-fn fixture(name: &str) -> String {
+pub(super) fn fixture(name: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src/shell/golden")
         .join(name);
@@ -172,10 +178,10 @@ fn alias_snapshot_ascii_fallback_matches_golden_fixture() {
 
 // Validates: screen-snapshot-scrm Requirement 30.10, 30.26 and
 // workspace-framework Requirement 7.16-7.21 -- the status band of a settings-type
-// Workspace (Config, Alias) carries ONLY the two shell-common segments, Last and
-// Prof. Encoding, Ln/Col and line count are workspace-owned and absent here.
+// Workspace (Config, Alias) carries ONLY the three shell-common segments, Last,
+// Prof and Zoom. Encoding, Ln/Col and line count are workspace-owned and absent.
 #[test]
-fn config_and_alias_status_band_is_last_and_prof_only() {
+fn config_and_alias_status_band_is_last_prof_and_zoom_only() {
     for cmd in ["CONFIG", "ALIASES"] {
         let h = fixed_shell(cmd, false, None);
         let text = snapshot_text(&h);
@@ -184,6 +190,7 @@ fn config_and_alias_status_band_is_last_and_prof_only() {
             .find(|l| l.contains("Last:"))
             .expect("status band row");
         assert!(status.contains("Prof: default"), "{cmd}: {status}");
+        assert!(status.contains("Zoom: 0"), "{cmd}: {status}");
         for gone in ["Ln ", "Col ", "UTF-8", "Lines "] {
             assert!(
                 !status.contains(gone),
@@ -205,12 +212,12 @@ fn editor_context_status_text_keeps_ln_col_encoding_and_line_count() {
     let mut shell = make_shell();
     shell.shell_new_untitled();
     assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::Untitled);
-    shell.last_action_at = Some(fixed_stamp());
+    shell.last_action_at = fixed_stamp();
     let mut model = ff_screen_model::ScreenModel::new("Untitled");
     shell.apply_common_frame(&mut model);
     assert_eq!(
         model.status_bar.text,
-        "Last: 11:02 | Prof: default | Ln 1, Col 1 | UTF-8 | 1 lines"
+        "Last: 11:02 | Prof: default | Zoom: 0 | Ln 1, Col 1 | UTF-8 | 1 lines"
     );
 }
 

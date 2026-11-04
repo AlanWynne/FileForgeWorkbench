@@ -89,7 +89,7 @@ impl WorkbenchShell {
         let welcome = "Welcome to FileForge Workbench\n\nUse File > Open to open a file.\n";
         let tabs = TabManager::new(&runtime, welcome);
 
-        let pending_open: super::state::PendingOpen = Arc::new(std::sync::Mutex::new(None));
+        let pending_open: super::pending_open::PendingOpen = Arc::new(std::sync::Mutex::new(None));
         let should_close: Arc<std::sync::Mutex<bool>> = Arc::new(std::sync::Mutex::new(false));
 
         let registry = Arc::new(CommandRegistry::new());
@@ -223,6 +223,10 @@ impl WorkbenchShell {
             command_line_history.load_command_strings(ring.to_command_strings());
         }
 
+        // Req 7.16: `session_start` and the initial `last_action_at` share ONE
+        // startup instant so `Last:` shows the startup time before any action.
+        let started_at = chrono::Local::now();
+
         Self {
             app,
             runtime,
@@ -321,12 +325,13 @@ impl WorkbenchShell {
             },
             automation: ShellAutomationRegistry::new(),
             detach_split: state_groups::DetachSplitState::default(),
-            session_start: chrono::Local::now(),
+            session_start: started_at,
             // CR-NR-115 Phase CF: additive common-frame shell state. The
-            // Message_Line starts empty (no panel) and last_action_at is None
-            // until the first user action stamps it.
+            // Message_Line starts empty (no panel) and last_action_at starts at
+            // the startup instant (never absent, Req 7.16).
             message_line: Vec::new(),
-            last_action_at: None,
+            last_action_at: started_at,
+            pre_action_frame: None,
         }
     }
 }

@@ -46,7 +46,21 @@ impl WorkbenchShell {
             .split_once(char::is_whitespace)
             .map(|(v, a)| (v, a.trim()))
             .unwrap_or((rest, ""));
-        let msg = match verb.to_ascii_uppercase().as_str() {
+        // Req 7.28: a RESULT/confirmation goes to the Message_Line, a failure goes
+        // to the Status_Bar error slot. EXPORT/EVIDENCE/SAVE/LOAD return a
+        // `Result` (Ok = confirmation, Err = failure) so each outcome is routed
+        // on its own; nothing is dropped.
+        let upper = verb.to_ascii_uppercase();
+        let mut is_info = match upper.as_str() {
+            "START" | "STATUS" | "LIST" | "PURGE" | "" => true,
+            "SCREEN" => self.active_screen_model().is_some(),
+            _ => false,
+        };
+        let mut routed = |outcome: Result<String, String>| {
+            is_info = outcome.is_ok();
+            outcome.unwrap_or_else(|e| e)
+        };
+        let msg = match upper.as_str() {
             "START" => {
                 let m = self.scrm.start(arg, "user");
                 // START also enables automatic capture for the session.
@@ -69,17 +83,21 @@ impl WorkbenchShell {
             "LIST" => self.scrm.list(),
             "PURGE" => self.scrm.purge(),
             "REPLAY" => return self.handle_capture_replay(arg),
-            "EXPORT" => self.handle_capture_export(arg),
-            "EVIDENCE" => self.handle_capture_evidence(arg),
-            "SAVE" => self.handle_capture_save(arg),
-            "LOAD" | "OPEN" => self.handle_capture_load(arg),
+            "EXPORT" => routed(self.handle_capture_export(arg)),
+            "EVIDENCE" => routed(self.handle_capture_evidence(arg)),
+            "SAVE" => routed(self.handle_capture_save(arg)),
+            "LOAD" | "OPEN" => routed(self.handle_capture_load(arg)),
             "" => self.scrm.status(),
             other => ff_i18n::t_args(
                 "ff-desktop-shell-msg-scrm-unknown-subcommand",
                 &ff_i18n::MessageArgs::new().set("subcommand", other.to_string()),
             ),
         };
-        self.open_error = Some(msg);
+        if is_info {
+            self.post_info(msg);
+        } else {
+            self.open_error = Some(msg);
+        }
     }
 
     /// Handle `CAPTURE STOP` (Stream SCRM Phase 2C FEAT-002): stop the session
@@ -103,7 +121,8 @@ impl WorkbenchShell {
             let dir = self.scrm_dir();
             self.scrm_ui.save_as = Some(crate::scrm_save_as_dialog::SaveAsState::new(name, dir));
         }
-        self.open_error = Some(msg);
+        // Req 7.28: the stop report is informational (Message_Line).
+        self.post_info(msg);
     }
 
     /// Handle `CAPTURE EXPORT <FORMAT> [file]`: render the active Collection to
@@ -111,10 +130,10 @@ impl WorkbenchShell {
     /// absolute path). Returns a status string.
     ///
     /// Validates: screen-snapshot-scrm Requirement 12.1, 12.2, 12.3, 11.1.
-    fn handle_capture_export(&self, arg: &str) -> String {
+    fn handle_capture_export(&self, arg: &str) -> Result<String, String> {
         use ff_scrm::{export_html, export_markdown, export_text, Masking, MaskingRules};
         let Some(collection) = self.scrm.active_collection() else {
-            return "No active screen collection to export.".to_string();
+            return Err("No active screen collection to export.".to_string());
         };
         let (fmt, file_arg) = arg
             .split_once(char::is_whitespace)
@@ -149,15 +168,15 @@ impl WorkbenchShell {
                 "html",
             ),
             "PDF" => (ff_scrm::export_pdf(collection, Masking::Off, &rules), "pdf"),
-            other => return format!("CAPTURE EXPORT: unknown format '{other}'."),
+            other => return Err(format!("CAPTURE EXPORT: unknown format '{other}'.")),
         };
         let path = self.resolve_scrm_path(file_arg, &stem, ext);
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
         match std::fs::write(&path, bytes) {
-            Ok(()) => format!("Collection exported to {}.", path.display()),
-            Err(e) => format!("CAPTURE EXPORT failed: {e}"),
+            Ok(()) => Ok(format!("Collection exported to {}.", path.display())),
+            Err(e) => Err(format!("CAPTURE EXPORT failed: {e}")),
         }
     }
 
@@ -168,10 +187,10 @@ impl WorkbenchShell {
     /// permissions later.
     ///
     /// Validates: screen-snapshot-scrm Requirement 20.1, 20.2, 20.4, 20.5.
-    fn handle_capture_export_pdf_protected(&self, arg: &str) -> String {
+    fn handle_capture_export_pdf_protected(&self, arg: &str) -> Result<String, String> {
         use ff_scrm::{export_pdf_protected, Masking, MaskingRules, ProtectionOptions};
         let Some(collection) = self.scrm.active_collection() else {
-            return "No active screen collection to export.".to_string();
+            return Err("No active screen collection to export.".to_string());
         };
         let (owner_pw, file_arg) = arg
             .split_once(char::is_whitespace)
@@ -189,7 +208,7 @@ impl WorkbenchShell {
         let rules = MaskingRules::default();
         let bytes = match export_pdf_protected(collection, Masking::Off, &rules, &options) {
             Ok(b) => b,
-            Err(e) => return format!("CAPTURE EXPORT PDF PROTECTED failed: {e}"),
+            Err(e) => return Err(format!("CAPTURE EXPORT PDF PROTECTED failed: {e}")),
         };
         let stem = format!("{}-protected", sanitise_stem(&collection.name));
         let path = self.resolve_scrm_path(file_arg, &stem, "pdf");
@@ -197,11 +216,11 @@ impl WorkbenchShell {
             let _ = std::fs::create_dir_all(parent);
         }
         match std::fs::write(&path, bytes) {
-            Ok(()) => format!(
+            Ok(()) => Ok(format!(
                 "Protected PDF written to {} (copy-enabled, edit-locked).",
                 path.display()
-            ),
-            Err(e) => format!("CAPTURE EXPORT PDF PROTECTED failed: {e}"),
+            )),
+            Err(e) => Err(format!("CAPTURE EXPORT PDF PROTECTED failed: {e}")),
         }
     }
 
@@ -210,10 +229,10 @@ impl WorkbenchShell {
     /// optional test-case id + pass/fail + content hash) and write it as JSON.
     ///
     /// Validates: screen-snapshot-scrm Requirement 14.1-14.4, 20.4, 20.5.
-    fn handle_capture_evidence(&self, arg: &str) -> String {
+    fn handle_capture_evidence(&self, arg: &str) -> Result<String, String> {
         use ff_scrm::{EvidencePackage, EvidenceStatus};
         let Some(collection) = self.scrm.active_collection() else {
-            return "No active screen collection for an evidence package.".to_string();
+            return Err("No active screen collection for an evidence package.".to_string());
         };
         // Parse optional tokens: <test-case-id> <PASS|FAIL> <file>. Any may be
         // omitted; a bare EVIDENCE records NotAssessed with a default file name.
@@ -231,7 +250,7 @@ impl WorkbenchShell {
         let package = EvidencePackage::build(collection, "user", test_case_id, status);
         let json = match package.to_json() {
             Ok(j) => j,
-            Err(e) => return format!("CAPTURE EVIDENCE failed to serialise: {e}"),
+            Err(e) => return Err(format!("CAPTURE EVIDENCE failed to serialise: {e}")),
         };
         let stem = format!("{}-evidence", sanitise_stem(&collection.name));
         let path = self.resolve_scrm_path(file_arg, &stem, "json");
@@ -239,8 +258,8 @@ impl WorkbenchShell {
             let _ = std::fs::create_dir_all(parent);
         }
         match std::fs::write(&path, json) {
-            Ok(()) => format!("Evidence package written to {}.", path.display()),
-            Err(e) => format!("CAPTURE EVIDENCE failed: {e}"),
+            Ok(()) => Ok(format!("Evidence package written to {}.", path.display())),
+            Err(e) => Err(format!("CAPTURE EVIDENCE failed: {e}")),
         }
     }
 
@@ -248,9 +267,9 @@ impl WorkbenchShell {
     /// zip archive under `scrm_dir()` (or an absolute path).
     ///
     /// Validates: screen-snapshot-scrm Requirement 11.1, 12.5.
-    fn handle_capture_save(&self, arg: &str) -> String {
+    fn handle_capture_save(&self, arg: &str) -> Result<String, String> {
         let Some(collection) = self.scrm.active_collection() else {
-            return "No active screen collection to save.".to_string();
+            return Err("No active screen collection to save.".to_string());
         };
         let stem = sanitise_stem(&collection.name);
         let path = self.resolve_scrm_path(arg, &stem, "ffscrm");
@@ -258,8 +277,8 @@ impl WorkbenchShell {
             let _ = std::fs::create_dir_all(parent);
         }
         match ff_scrm::save_archive(collection, &path) {
-            Ok(()) => format!("Collection saved to {}.", path.display()),
-            Err(e) => format!("CAPTURE SAVE failed: {e}"),
+            Ok(()) => Ok(format!("Collection saved to {}.", path.display())),
+            Err(e) => Err(format!("CAPTURE SAVE failed: {e}")),
         }
     }
 
@@ -267,18 +286,21 @@ impl WorkbenchShell {
     /// active session, replacing any active Collection.
     ///
     /// Validates: screen-snapshot-scrm Requirement 11.1, 12.5.
-    fn handle_capture_load(&mut self, arg: &str) -> String {
+    fn handle_capture_load(&mut self, arg: &str) -> Result<String, String> {
         if arg.trim().is_empty() {
-            return "CAPTURE LOAD requires a file name.".to_string();
+            return Err("CAPTURE LOAD requires a file name.".to_string());
         }
         let path = self.resolve_scrm_path(arg, "collection", "ffscrm");
         match ff_scrm::load_archive(&path) {
             Ok(collection) => {
                 let n = collection.len();
                 self.scrm.load(collection);
-                format!("Loaded collection from {} ({n} captures).", path.display())
+                Ok(format!(
+                    "Loaded collection from {} ({n} captures).",
+                    path.display()
+                ))
             }
-            Err(e) => format!("CAPTURE LOAD failed: {e}"),
+            Err(e) => Err(format!("CAPTURE LOAD failed: {e}")),
         }
     }
 
@@ -307,14 +329,12 @@ impl WorkbenchShell {
             self.open_error = None;
             return;
         }
-        let msg = self.handle_capture_load(arg);
-        if msg.starts_with("Loaded collection") {
+        match self.handle_capture_load(arg) {
             // Load succeeded: open the viewer on the freshly loaded Collection.
-            self.open_scrm_viewer();
-        } else {
+            Ok(_) => self.open_scrm_viewer(),
             // Load failed: surface the error and do NOT open the viewer (which
             // could otherwise show a stale previously-active Collection).
-            self.open_error = Some(msg);
+            Err(msg) => self.open_error = Some(msg),
         }
     }
 

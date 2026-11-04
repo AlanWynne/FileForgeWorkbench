@@ -153,7 +153,8 @@ impl WorkbenchShell {
                     .set("time", now.format("%H:%M:%S").to_string())
                     .set("day", now.format("%j").to_string()),
             );
-            self.open_error = Some(msg);
+            // Req 7.28: the date/time report is informational (Message_Line).
+            self.post_info(msg);
             return true;
         }
 
@@ -171,7 +172,8 @@ impl WorkbenchShell {
                 ),
                 None => ff_i18n::t("ff-desktop-shell-msg-status-routing"),
             };
-            self.open_error = Some(msg);
+            // Req 7.28: the status-routing report is informational.
+            self.post_info(msg);
             return true;
         }
 

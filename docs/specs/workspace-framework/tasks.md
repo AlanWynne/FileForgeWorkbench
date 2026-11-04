@@ -151,3 +151,12 @@ owner runs the full gate (gate-policy.md).
     - Validates: Requirement 7.1, 7.5, 7.6, 7.22, 7.23, 7.24
   - [ ] CF.6.2 Confirm the existing full-shell first-Tab tests remain green (behaviour-preserving around the new Message_Line panel)
     - Validates: Requirement 7.1, 7.27
+
+- [x] CF.7 Common-frame follow-up: Zoom segment, message routing, capture timing (2026-11-04, branch common-frame-fixes)
+  - [x] CF.7.1 Zoom common segment: one `format_zoom_label()` for the live bar and the snapshot band, always shown after Prof, hover tooltip only (tests_zoom_segment.rs)
+    - Validates: Requirement 7.16, 7.16b
+    - Test status: automated PASS pending owner full gate. The hover tooltip TEXT is MANUAL (kittest cannot read hover popups headlessly); the not-a-Tab-stop assertion is automated.
+  - [x] CF.7.2 Route informational messages to the Message_Line via `post_info`, errors stay on `open_error` (tests_message_routing.rs)
+    - Validates: Requirement 7.28
+  - [x] CF.7.3 Capture the pre-action Message_Line and `Last:` through the one capture seam (tests_capture_timing.rs)
+    - Validates: Requirement 7.29

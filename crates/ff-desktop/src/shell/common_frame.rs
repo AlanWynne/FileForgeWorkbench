@@ -17,21 +17,20 @@
 //! The eight elements (Req 30.1): the window title bar, the menu bar, the FULL
 //! tab bar (every open tab's `[XXX]` Kind tag + an ASCII close marker), the
 //! centered title (already carried in [`ScreenModel::title`]), the `Command ===>`
-//! line (already set by each per-Context builder / folded into the menu body),
-//! the Message_Line when present (omitted when empty), the common + per-Kind
-//! Status_Bar (NO RUNNING), and the pfshow key bar (only when visible).
+//! line (set HERE for every Context, empty field), the Message_Line when present
+//! (omitted when empty), the common + per-Kind Status_Bar (NO RUNNING), and the
+//! pfshow key bar (only when visible, the LAST band).
 //!
-//! Phase 2G's shared chrome helper is not present on this branch, so this is the
-//! first shared composer; it is scoped to exactly the Req 30 common frame and
-//! does NOT re-derive the menu/POM two-column body (which owns its own command
-//! line + PF footer -- see the MenuWorkspace reconciliation below).
+//! The Menu Kinds (POM, Settings, `menus/<name>.toml`) go through this SAME path:
+//! the menu builder returns the CONTENT AREA only, so there is no menu-specific
+//! branch and no folded command row or PF footer (Req 30.27).
 //!
-//! Validates: screen-snapshot-scrm Requirement 30.1-30.11, 30.15, 30.16, 30.17.
+//! Validates: screen-snapshot-scrm Requirement 30.1-30.11, 30.15, 30.16, 30.17,
+//! 30.27, 30.28.
 
 use ff_screen_model::ScreenModel;
 
 use super::WorkbenchShell;
-use crate::tab_state::KindTag;
 
 /// The ASCII window-control glyphs shown at the right of the window title bar
 /// (documentation-charset: ASCII only -- a minimise underscore, a maximise `[]`,
@@ -61,15 +60,13 @@ impl WorkbenchShell {
     /// prepended before any header chrome the Context already carried. The shared
     /// and per-Kind Status_Bar text is set (no RUNNING). The Message_Line entries
     /// are added above the status bar (omitted when empty). The pfshow key-bar
-    /// line is appended to `footer_lines` ONLY when the Key_Label_Bar is visible
-    /// and the Context is not the menu/POM (which folds its own PF footer into the
-    /// body -- Req 30.15/30.16, no double-framing).
+    /// line is appended to `footer_lines` when the Key_Label_Bar is visible, for
+    /// every Context (Req 30.11, 30.27).
     ///
-    /// The centered title is left in `model.title` and the `Command ===>` line is
-    /// left as each per-Context builder set it (the menu builder folds it into the
-    /// body), so this helper never adds a second title or command line.
+    /// The centered title is left in `model.title`; the `Command ===>` field is
+    /// set here for every Context.
     ///
-    /// Validates: screen-snapshot-scrm Requirement 30.1-30.11, 30.15, 30.16.
+    /// Validates: screen-snapshot-scrm Requirement 30.1-30.11, 30.15, 30.16, 30.27.
     pub(super) fn apply_common_frame(&self, model: &mut ScreenModel) {
         // Element 1-3: window title bar, menu-bar echo, FULL tab bar. Prepend so
         // the common chrome sits ABOVE any Context-specific header lines.
@@ -85,22 +82,20 @@ impl WorkbenchShell {
         model.status_bar.text = self.common_frame_status_bar_text();
 
         // Element 6: the Message_Line, above the status bar, omitted when empty.
-        for message in &self.message_line {
+        // Read through the pre-action seam so a capture shows the band as it was
+        // when the triggering command was issued (Req 7.29, 30.28).
+        for message in self.frame_message_lines() {
             model.messages.push(message.clone());
         }
 
-        // Element 5: the Command line. The menu body folds its own `Command ===>`
-        // row, so only a non-menu Context gets it here (Req 30.6).
-        let is_menu = self.tabs.active_tab().kind.tag() == KindTag::MenuWorkspace;
-        if !is_menu {
-            model.command_line = crate::screen_snapshot::command_field_value(
-                &self.common_frame_command_field_text(),
-            );
-        }
+        // Element 5: the Command line, for EVERY Context including the Menu
+        // Kinds (Req 30.6, 30.27): the empty field, underscores to the border.
+        model.command_line =
+            crate::screen_snapshot::command_field_value(&self.common_frame_command_field_text());
 
-        // Element 8: the pfshow key bar, only when visible and not the menu path
-        // (the menu body already folds its own PF footer, Req 30.15/30.16).
-        if self.key_bar_visible && !is_menu {
+        // Element 8: the pfshow key bar, the LAST band, only when visible, for
+        // EVERY Context including the Menu Kinds (Req 30.11, 30.27).
+        if self.key_bar_visible {
             model
                 .footer_lines
                 .push(crate::screen_snapshot::key_bar_line(
@@ -111,14 +106,13 @@ impl WorkbenchShell {
         }
     }
 
-    /// OWNER DEFAULT 2 (CR-NR-115 Req 30.24): the text the snapshot's Command
-    /// line shows. A snapshot/capture is produced BY a command, and the field is
-    /// left holding that triggering command (e.g. `ss`) during dispatch, so the
-    /// field "as it was before the triggering command" is empty. An empty field
-    /// renders as underscores only. To echo the live field instead, return
-    /// `self.command_text.clone()` here.
+    /// OWNER DEFAULT 2 (CR-NR-115 Req 30.24(b)): the text the snapshot's Command
+    /// line shows -- the field as it was BEFORE the triggering command, read
+    /// through the pre-action stash. A typed command line clears it (the field
+    /// held the triggering command, e.g. `ss`); a key-forward action keeps the
+    /// text the user typed first. An empty field renders as underscores only.
     fn common_frame_command_field_text(&self) -> String {
-        String::new()
+        self.frame_command_text()
     }
 
     /// The window title bar band: a dedicated `#` cell, the ONE shared
@@ -173,15 +167,21 @@ impl WorkbenchShell {
     }
 
     /// The Status_Bar text (Req 30.10, revised 2026-11-04): `Last: HH:MM |
-    /// Prof: <name>` plus the active Kind's Workspace_Status_Segment cells, each
-    /// its own cell. Last and Prof are the ONLY shell-common segments. Ln/Col,
-    /// encoding and line count are workspace-owned (the editor Context returns
-    /// them), so Config and Alias show only Last and Prof until their per-Kind
-    /// gates. There is NO RUNNING segment. Values come from the SAME state the
-    /// live bar reads (`format_last_action`, `active_profile_label`,
-    /// `workspace_status_cells`), so the captured band equals the live bar.
+    /// Prof: <name> | Zoom: <n>` plus the active Kind's Workspace_Status_Segment
+    /// cells, each its own cell. Last, Prof and Zoom are the ONLY shell-common
+    /// segments. Ln/Col, encoding and line count are workspace-owned (the editor
+    /// Context returns them), so Config and Alias show only the three common
+    /// segments until their per-Kind gates. There is NO RUNNING segment. Values
+    /// come from the SAME state the live bar reads (`format_zoom_label`,
+    /// `active_profile_label`, `workspace_status_cells`), so the captured band
+    /// equals the live bar. `Last:` reads the pre-action stamp while an action is
+    /// in flight (Req 7.29).
     fn common_frame_status_bar_text(&self) -> String {
-        let mut segments = vec![self.format_last_action(), self.active_profile_label()];
+        let mut segments = vec![
+            Self::last_action_label(self.frame_last_action_at()),
+            self.active_profile_label(),
+            self.format_zoom_label(),
+        ];
         segments.extend(self.workspace_status_cells());
         segments.join(CELL_SEPARATOR)
     }

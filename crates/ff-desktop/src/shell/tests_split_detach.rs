@@ -120,7 +120,8 @@ fn external_enabled_detached_runs_immediately() {
         shell.pending_external.is_none(),
         "enabled mode must not stage a confirmation"
     );
-    let msg = shell.open_error.as_deref().unwrap_or_default();
+    // Req 7.28: the started confirmation is informational -> Message_Line.
+    let msg = shell.message_line.join(" ");
     assert!(
         msg.contains("detached"),
         "a detached run should report a started-status, got: {msg}"
