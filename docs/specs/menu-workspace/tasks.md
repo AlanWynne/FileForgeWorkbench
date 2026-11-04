@@ -1138,3 +1138,19 @@ ff-desktop -- -D warnings`, `cargo fmt -- --check`); the OWNER runs the full gat
   - [ ] 55.4 Hand off to the owner for the full `cargo gate` before any merge to
           main (gate-policy.md); do not merge or push from the agent.
     - Validates: menu-workspace Requirement 23.21, 23.22
+
+- [ ] 56. Write-through built-in menus + SCRM editor fix + END/RETURN/EXIT model (CR-CH-116)
+  - [ ] 56.1 Change the POM X option command `X` -> `EXIT` in `DEFAULT_POM_TOML` (and confirm SCRM X -> `EXIT` in `DEFAULT_SCRM_MENU_TOML`); update the `defaults.rs` X-option tests and the `en` `menu-pom-opt-x-desc` catalogue in lock-step; the POM X self-reference guard no longer applies
+    - Covers: Requirement 2.1g, 12.2
+  - [ ] 56.2 Menus Editor SCRM fix: `refresh_menus_editor_list` built-in set = `[POM, Settings, SCRM]` unioned with the on-disk scan (de-duplicated); `load_menu_for_editor` maps `SCRM -> recovery_scrm_menu()`; unit-test list membership and the SCRM->recovery mapping
+    - Covers: Requirement 13.2, 13.3
+  - [ ] 56.3 Confirm the eight reroute sites keep their "prefer on-disk file, recover from constant" shape (only the first-run write makes the file reliably present); no edit needed beyond site 6 (the Menus editor, 56.2) and the X-option command (56.1)
+    - Covers: Requirement 4.1, 4.2, 12.1
+  - [ ] 56.4 Retire `nav_x`: remove the `upper == "X"` arm in `commands_ladder_a.rs` and `shell/nav_stack.rs::nav_x`; `X` now resolves via the FFCMD `X -> EXIT` alias through the existing pre-pass; reference-search to confirm no other caller is orphaned (re-point to END/RETURN if any); retain `close_workspace_or_exit` for END/RETURN at the Tab_Visual_Root
+    - Covers: Requirement 14.13, 14.15, navigation-commands Requirement 21.6
+  - [ ] 56.5 Confirm END (PF3) pops one level unchanged; RETURN collapses to the Tab_Visual_Root (primary panel) unchanged in behaviour (only reclassified); EXIT/`=X` unchanged except `=X` now exits via the alias; remove the stale "RETURN converges with X" note
+    - Covers: Requirement 14.10, 14.14, 14.16, navigation-commands Requirement 21.1-21.3
+  - [ ] 56.6 Full-shell egui_kittest: first run writes pom/settings/scrm into the temp `menus_dir()`; bare `X` on the POM terminates (via the exit-path seam, not a live kill); bare `X` in an FFEDIT editor EXCLUDEs; the Menus editor lists and loads SCRM
+    - Covers: Requirement 2.1g, 13.2, 13.3, 14.13
+  - [ ] 56.7 Scoped compile-verify (agent COMPILE-ONLY): `cargo check/clippy/fmt -p ff-desktop` + the named menu/nav tests where quick; logs read back; owner runs the authoritative full gate before any merge to main
+    - Covers: Requirement 14 (verification)

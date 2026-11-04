@@ -491,6 +491,33 @@ known-good baseline while keeping my old configuration safe for recovery.
     profile names (DEFAULT_PROFILE plus each named profile) for a subset or ALL.
     Confirm resets exactly the listed profiles (criteria 19.11, 19.13); Cancel
     leaves all profiles untouched (criterion 19.3 applies).
+
+<!-- CR-CH-116: write-through config model. Reset bare now ARCHIVES the alias
+     store too and REBUILDS the built-in menu files and the alias seed file from
+     the Recovery_Source, rather than merely archiving the menu directory and
+     resetting in-memory state (which it did under CR-CH-021). The rebuild uses
+     the SAME Config_Rebuild_Helper as the First_Run_Write (Requirement 23.6). -->
+
+16. (CR-CH-116) THE archive set (criterion 19.4) SHALL ADD the `aliases/`
+    directory to the items moved into `config-archive/<timestamp>/` when present,
+    so a user's alias overrides (e.g. `aliases/<locale>/FFCMD.toml`) are moved
+    aside before the seed is rebuilt. (Under CR-CH-021 Reset bare did not touch
+    aliases; this closes that gap.) Files that do not exist are skipped without
+    error, consistent with criterion 19.4/19.5.
+17. (CR-CH-116) AFTER archiving (criterion 19.4) and for each profile whose
+    on-disk configuration is being reset, THE shell SHALL REBUILD, from the
+    Recovery_Source via the shared Config_Rebuild_Helper (Requirement 23.6): the
+    built-in menu files `menus/pom.toml`, `menus/settings.toml`, `menus/scrm.toml`
+    (each a Complete_Config_File, Requirement 23.4) AND the FFCMD alias seed file
+    `aliases/<locale>/FFCMD.toml` containing the single seed alias `X -> EXIT`
+    (command-configurator Requirement 8). (Under CR-CH-021 Reset bare rebuilt no
+    files; the barebones state came from the code-only fallback.) All rebuild
+    writes SHALL honour the directory seams of Requirement 23.5.
+18. (CR-CH-116) WHEN the reset targets the running (Active) profile, THE in-memory
+    reset SHALL continue to reopen the Recovery_Baseline POM (criterion 19.6); with
+    the files now rebuilt on disk, the reopened menus and the reloaded alias store
+    SHALL read from the just-written files (Requirement 23.1), so the live state
+    after Reset bare matches the on-disk files exactly.
 ---
 
 ### Requirement 20: The CONFIG Command
@@ -841,3 +868,121 @@ are unchanged.
 6. The in-panel Save affordance enqueues the SAVE command, so it gates
    persistence through the SAME single dispatch seam as the typed/keyed SAVE
    verb -- no divergent save path. (Req 11.7, 11.8)
+
+---
+
+### Requirement 23: Write-Through Config Model for Built-in Menus and the Command Alias Seed (CR-CH-116)
+
+> **FRAMEWORK CHANGE (owner-confirmed 2026-11-04).** This requirement SUPERSEDES
+> the CODE-ONLY model of CR-CH-021 (framework-conformance.md mechanism 4) for the
+> built-in menus (POM, Settings, SCRM) and the command alias seed. Under
+> CR-CH-021 the compiled `DEFAULT_*_TOML` constants were the authoritative runtime
+> source and were NEVER written to disk; a user file only OVERRODE them when
+> present. Under this requirement the compiled defaults become the RECOVERY source
+> only: the application WRITES complete config files on first run and RUNS FROM the
+> files thereafter. The owner expressly confirmed the reversal (decision
+> 2026-11-04). The affected "never materialised" criteria elsewhere are revised in
+> lock-step: menu-workspace Requirement 4.1, 11.1, 12.1 and screen-snapshot-scrm
+> Requirement 22.8.
+
+**User Story:** As an operator, I want every built-in menu and command alias to
+exist as a visible, editable TOML file that the application actually runs from, so
+that nothing is hidden in compiled constants, while a corrupted or deleted file
+can always be rebuilt from a known-good baseline in code.
+
+**Source:** [CR-CH-116] owner decision (`.agents/tasks/config-model-change/decision.md`);
+supersedes [CR-CH-021]. Investigation `.agents/tasks/config-model-change/investigation.md`.
+
+#### Glossary additions
+
+- **Recovery_Source**: The compiled Rust defaults (`DEFAULT_POM_TOML`,
+  `DEFAULT_SETTINGS_TOML`, `DEFAULT_SCRM_MENU_TOML`, and the FFCMD alias seed) kept
+  in code SOLELY to rebuild config files. The Recovery_Source is consumed on
+  exactly two paths -- First_Run write and Reset-bare rebuild -- plus a last-ditch
+  graceful fallback when an expected file is missing or unparseable at runtime. It
+  is NO LONGER the normal runtime source.
+- **First_Run_Write**: The one-time, per-file write of a complete default config
+  file when that file is absent, performed during startup so the subsequent load
+  reads the just-written file.
+- **Config_Rebuild_Helper**: The single helper that serialises the Recovery_Source
+  into complete config files through the configured directory seams. First_Run_Write
+  and Reset-bare rebuild (Requirement 19) BOTH call it, so they cannot diverge.
+- **Complete_Config_File**: A serialised config file in which EVERY loader-defaulted
+  flag is written EXPLICITLY (for a menu: `show_calendar`, `group_separator`,
+  `group_headers`, and each option's `enabled`), so the file fully determines
+  behaviour with no reliance on a silent loader default.
+
+#### Acceptance Criteria
+
+1. THE workbench SHALL treat the compiled `DEFAULT_POM_TOML`, `DEFAULT_SETTINGS_TOML`,
+   `DEFAULT_SCRM_MENU_TOML`, and the FFCMD alias seed as the Recovery_Source ONLY;
+   at startup and during running the authoritative source of a built-in menu and of
+   the command alias seed SHALL be the on-disk config file, not the compiled
+   constant.
+2. WHEN the workbench starts AND a built-in menu file (`menus/pom.toml`,
+   `menus/settings.toml`, `menus/scrm.toml`) is ABSENT, THE workbench SHALL perform
+   a First_Run_Write of that file from the Recovery_Source BEFORE loading it, so the
+   subsequent load reads the just-written file. First_Run detection SHALL be
+   PER-FILE: an absent file is written even when its siblings already exist (a hole
+   is never left).
+3. WHEN the workbench starts AND the FFCMD alias seed file for the active locale
+   (`aliases/<locale>/FFCMD.toml`, Requirement from command-configurator Requirement 8)
+   is ABSENT, THE workbench SHALL perform a First_Run_Write of it from the
+   Recovery_Source (the single seed alias `X -> EXIT`) BEFORE the resolver seeds, so
+   the resolver reads the just-written file.
+4. EACH file written by a First_Run_Write SHALL be a Complete_Config_File: every
+   loader-defaulted flag SHALL be emitted explicitly. In particular the Settings
+   file SHALL contain `show_calendar = false` explicitly and the POM file SHALL
+   state its `show_calendar` explicitly, so the reliance on the loader's silent
+   `show_calendar = true` default (menu-workspace loader) is removed for written
+   files. The menu serialiser SHALL support a COMPLETE mode (or the writer SHALL
+   post-fill defaults before serialising) so a plain write of a Recovery_Source menu
+   emits every flag.
+5. ALL First_Run_Write and Reset-bare rebuild writes SHALL go through the SAME
+   directory seams the loaders read (`menus_dir()` honouring `dir_overrides.menus`,
+   `scrm_dir()` honouring `dir_overrides.scrm`, and the alias base honouring
+   `dir_overrides.user_aliases` / the `FFWB_USER_ALIASES_DIR` env seam), so the
+   shell test suite can continue to isolate all writes to a temporary directory. No
+   write SHALL bypass these seams.
+6. First_Run_Write and Reset-bare rebuild (Requirement 19) SHALL share ONE
+   Config_Rebuild_Helper, so the content a fresh install gets and the content a
+   Reset-bare restores are produced by the same code path and cannot diverge.
+7. WHEN an expected built-in menu or alias file is present but fails to parse at
+   runtime (invalid TOML, missing required field, or over the option limit), THE
+   workbench SHALL fall back to the corresponding Recovery_Source for that render
+   AND surface a non-blocking notice identifying the file and the error (menu
+   fallback, menu-workspace Requirement 12.5), WITHOUT overwriting the user's file.
+   A parse failure SHALL NOT be treated as "absent" and SHALL NOT trigger a
+   First_Run_Write over the broken file; recovery of a broken file is the operator's
+   explicit Reset-bare action.
+8. THE workbench SHALL NOT perform a First_Run_Write while the application is in
+   Degraded_Mode due to a User_Data_Dir write failure (startup-and-session
+   Requirement 3.3/3.5); in that case it SHALL fall back to the Recovery_Source for
+   the session (graceful degradation) and SHALL NOT loop attempting to write.
+9. EACH Complete_Config_File written SHALL carry a config VERSION STAMP field (e.g.
+   a top-level `config_version` integer) recording the Recovery_Source schema
+   version it was written from, so a future UPGRADE command (deferred, see below)
+   can detect a file older than the current default. The workbench SHALL NOT act on
+   the version stamp in this change: a file whose version is older than the current
+   default SHALL still load and run as-is (files remain authoritative). The stamp
+   LEAVES ROOM for a future merge/upgrade; it does not implement one.
+10. THE deferred UPGRADE behaviour (merging newly-added default options/aliases
+    into an existing authoritative user file on a software update) SHALL NOT be
+    implemented by this change. It is recorded as a follow-up only (an UPGRADE
+    command that rebuilds the Reset-bare defaults and merges the existing user
+    configuration into them). Until then, a user who already has a config file does
+    NOT automatically receive a newly-added default option/alias -- an accepted
+    consequence of the write-through model.
+
+#### Out of scope (Requirement 23)
+
+- Implementing the UPGRADE/merge command (criterion 10 -- follow-up only).
+- Changing the `ff-config` layered-store engine (Requirements 1-14): `config.toml`
+  already materialises on first write via `set_user_value` and is unchanged by this
+  requirement. This requirement governs the built-in MENU files and the ALIAS seed
+  file only.
+- Writing themes, keymaps, or workspace-kinds on first run (those remain on their
+  current model; this change is scoped to menus + the alias seed).
+- Any change to the X / END / RETURN / EXIT command model (that is menu-workspace
+  Requirement 14 and navigation-commands Requirement 21, revised separately under
+  the same CR).

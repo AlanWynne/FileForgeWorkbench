@@ -287,8 +287,8 @@ The startup-and-session subsystem bridges platform-core initialisation, plugin l
 5. WHEN Layout_State restoration fails (corrupt layout data, missing panel types), THE Workbench SHALL fall back to the default layout and log a WARN-level record.
 6. WHEN the workbench has started in Degraded_Mode and the underlying issue is resolved (e.g., User_Data_Dir becomes writable, a plugin is manually reloaded), THE Workbench SHALL clear the degraded indicator for that subsystem.
 7. WHEN a file is opened during or after startup, the full file-open pipeline SHALL execute regardless of Degraded_Mode: VFS resolution, encoding detection, language detection, Recovery_File check, and plugin hooks (for loaded plugins). Degraded_Mode does NOT skip file-processing steps -- it only affects session-level persistence and failed subsystems.
-8. WHEN a user Menu_File (`menus/pom.toml` or `menus/settings.toml`) is missing or fails to parse, THE Workbench SHALL fall back to the compiled Recovery_Baseline for that menu (menu-workspace Requirement 12) so the Home Context and Settings always have their options. A parse failure SHALL surface a deferred, non-blocking notice (per criterion 3) identifying the file and reason; a missing file SHALL NOT produce a notice. (CR-CH-021.)
-9. THE built-in menus SHALL NOT be materialised to disk on first launch (menu-workspace Requirement 4.1); the barebones Recovery_Baseline is compiled-only, so a fresh install with no `menus/` files still opens to a fully usable Home Context. (CR-CH-021.)
+8. WHEN a Menu_File (`menus/pom.toml` or `menus/settings.toml`) is missing or fails to parse at runtime, THE Workbench SHALL fall back to the compiled Recovery_Source for that menu (menu-workspace Requirement 12) so the Home Context and Settings always have their options. A parse failure SHALL surface a deferred, non-blocking notice (per criterion 3) identifying the file and reason; a missing file SHALL NOT produce a notice. (REVISED by CR-CH-116: the compiled default is the Recovery_Source, consumed only for first-run write, Reset-bare rebuild, and this last-ditch runtime fallback.)
+9. (REVISED by CR-CH-116 -- supersedes the CR-CH-021 "compiled-only, never materialised" clause.) THE built-in menus SHALL be WRITTEN to disk on first launch (Requirement 23.1-23.2; menu-workspace Requirement 4.1); the compiled Recovery_Source is consumed only to perform that first-run write, to rebuild on Reset bare, and as a last-ditch fallback when a file is missing or unparseable at runtime (criterion 8). A fresh install still opens to a fully usable Home Context because the first-run write produces the menu files before the POM loads.
 
 ---
 
@@ -650,3 +650,49 @@ concept is deferred to CR-NR-082.)
 10. THE `RESET BARE` archive operation (configuration-system Requirement 19)
     SHALL operate on the ACTIVE profile's User_Data_Dir, archiving and resetting
     only that profile, leaving other profiles untouched.
+
+---
+
+### Requirement 23: First-Run Write of Built-in Menus and the Alias Seed (Write-Through Model, CR-CH-116)
+
+**User Story:** As a first-time user (or a user launching a fresh profile), I want
+the built-in menus and the command alias seed to be written into my profile's
+config directory during startup, so that the application runs from visible,
+editable files rather than hidden compiled constants.
+
+**Source:** [CR-CH-116] owner decision; realises configuration-system Requirement 23
+and command-configurator Requirement 8 within the Startup_Sequence. Builds ON
+Requirement 3 (User Data Directory Initialisation) and Requirement 22 (Application
+Profiles).
+
+#### Acceptance Criteria
+
+1. DURING the Startup_Sequence, AFTER User_Data_Dir initialisation (Phase 4,
+   Requirement 1) and BEFORE the POM is first rendered and the alias resolver
+   seeds, THE Workbench SHALL perform the First_Run_Write for any ABSENT built-in
+   config file: `menus/pom.toml`, `menus/settings.toml`, `menus/scrm.toml`, and
+   `aliases/<locale>/FFCMD.toml` (configuration-system Requirement 23.2/23.3,
+   command-configurator Requirement 8.2). The write is per-file and idempotent: a
+   file already present is left untouched (its on-disk content is authoritative).
+2. THE First_Run_Write SHALL resolve the active profile's User_Data_Dir
+   (Requirement 22.3/22.5) so that a profile launched for the first time gets its
+   own complete built-in config written into `profiles/<slug>/`, isolated from
+   every other profile (Requirement 22.9).
+3. THE First_Run_Write SHALL be performed through the SAME directory seams the
+   loaders read (configuration-system Requirement 23.5), so startup under a test
+   harness that redirects those seams writes only into the harness's temporary
+   directory.
+4. WHEN the Workbench is operating in Degraded_Mode because the User_Data_Dir is
+   not writable (Requirement 3.3/3.5), THE First_Run_Write SHALL be skipped and the
+   session SHALL fall back to the Recovery_Source for the built-in menus and alias
+   seed (configuration-system Requirement 23.8); the Workbench SHALL remain usable
+   and SHALL NOT loop attempting to write.
+5. THE First_Run_Write and the Reset-bare rebuild (configuration-system
+   Requirement 19.17) SHALL share ONE Config_Rebuild_Helper (configuration-system
+   Requirement 23.6), so the content written at first run and the content restored
+   by Reset bare are identical.
+6. THE existing `menus/` directory auto-creation (menu-workspace Requirement 4.6,
+   Requirement 3 of this spec) SHALL continue to create the directory; the
+   First_Run_Write then populates it with the built-in menu files. The `aliases/`
+   directory SHALL likewise be created as needed by the First_Run_Write of the
+   alias seed.

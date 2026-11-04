@@ -188,20 +188,24 @@ and a `Command ===>` field -- so that the pattern is immediately familiar.
     Option_Command exactly as a mouse click does (per Requirement 2.1e).
     (CR-CH-018.)
 1g. THE terminate action SHALL be an ordinary data-driven `menus/pom.toml`
-    option (default Option_Key `X`, Option_Command `X`) -- NOT a bespoke exit
-    line. (REVISED by CR-CH-052: the default POM option command changes from
-    `RETURN` to `X`.) Selecting it dispatches the uniform `X` command (Req
-    14.13), which collapses the current tab to its Tab_Visual_Root when the
-    Navigation_Stack is non-empty and CLOSES the Workspace when already at the
-    Tab_Visual_Root, terminating the application only when it is the LAST open
-    Workspace. The POM SHALL NOT be special-cased: bare `X` on the POM behaves
-    exactly as bare `X` on any other Workspace Context (it is NOT a "return to
-    Home" no-op). The default `menus/pom.toml` is a code-only compiled default
-    (`DEFAULT_POM_TOML` / Recovery_Baseline) that is NEVER written to disk
-    (CR-CH-021 preserved); only its compiled `X` option command changes. The
-    previous bespoke "Enter X to Terminate" line, `PomAction::Exit`, and
-    `FocusStop::PomExit` special-casing SHALL remain removed. (CR-CH-018,
-    CR-CH-052.)
+    option (default Option_Key `X`, Option_Command `EXIT`) -- NOT a bespoke exit
+    line. (REVISED by CR-CH-052: the default POM option command changed from
+    `RETURN` to `X`. REVISED again by CR-CH-116: it changes from `X` to `EXIT`.)
+    Selecting it dispatches the `EXIT` command, which UNCONDITIONALLY terminates
+    FileForge Workbench (file.exit, startup-and-session Requirement 20.3) -- it no
+    longer collapses the Navigation_Stack or closes-when-last. X is a SEED alias of
+    EXIT (command-configurator Requirement 8), so typing bare `X` on the POM
+    resolves through FFCMD to `EXIT` with the identical effect (Requirement 14.13,
+    REVISED). The POM SHALL NOT be special-cased: bare `X` on the POM behaves
+    exactly as bare `X` on any other NON-editor Context (resolves to EXIT). The
+    prior `nav_x` collapse/close/exit-when-last verb is RETIRED (its step-back
+    behaviour is covered by RETURN and END, Requirement 14). The POM X option no
+    longer self-references `X`, so the self-reference guard no longer applies to
+    it. Under CR-CH-116 the default `menus/pom.toml` is written to disk on first
+    run (Requirement 4.1) and run from there; the compiled default is the
+    Recovery_Source. The previous bespoke "Enter X to Terminate" line,
+    `PomAction::Exit`, and `FocusStop::PomExit` special-casing SHALL remain
+    removed. (CR-CH-018, CR-CH-052, CR-CH-116.)
 1h. EVERY Option_Command in the default `menus/pom.toml` SHALL resolve through
     the shell command pipeline by command NAME (independent of any key). WHERE a
     needed command name does not already resolve, the command dispatcher SHALL be
@@ -302,16 +306,26 @@ file I create to take effect immediately without restarting.
 
 #### Acceptance Criteria
 
-1. THE workbench SHALL NOT materialise the built-in menus (`pom.toml`,
-   `settings.toml`) to `<User_Data_Dir>/menus/` on first launch or at any other
-   time. The built-in POM and Settings content are COMPILED-ONLY (the
-   Recovery_Baseline, Requirement 12). (REVISED by CR-CH-021 -- this supersedes
-   the earlier requirement to write `pom.toml`/`settings.toml` on first launch;
-   it mirrors the themes code-only rule, theme-and-appearance Req 18.2/19.2.)
-2. THE `menus/` directory SHALL contain ONLY user-authored Menu_Files. It MAY be
-   empty. When a user Menu_File exists at a well-known path (`menus/pom.toml`,
-   `menus/settings.toml`, or `menus/<name>.toml`) and parses successfully, it
-   OVERRIDES the compiled built-in for that menu. (REVISED by CR-CH-021.)
+1. (REVISED by CR-CH-116 -- write-through model; SUPERSEDES the CR-CH-021 wording
+   below.) THE workbench SHALL, on first run, WRITE the built-in menu files
+   `menus/pom.toml`, `menus/settings.toml`, and `menus/scrm.toml` to
+   `<User_Data_Dir>/menus/` from the compiled Recovery_Source, as
+   Complete_Config_Files (every flag explicit; configuration-system Requirement
+   23.2/23.4), and SHALL RUN FROM those files thereafter. The compiled
+   `DEFAULT_*_TOML` constants (the Recovery_Baseline, Requirement 12) become the
+   RECOVERY source only, consumed by the First_Run_Write, by Reset bare
+   (configuration-system Requirement 19.17), and as a last-ditch graceful fallback
+   when a file is missing or unparseable at runtime (Requirement 12.5,
+   configuration-system Requirement 23.7). (The earlier CR-CH-021 rule -- "SHALL
+   NOT materialise the built-in menus ... COMPILED-ONLY" -- is RETIRED; see
+   framework-conformance.md mechanism 4 as superseded by CR-CH-116.)
+2. (REVISED by CR-CH-116.) THE `menus/` directory SHALL contain the built-in
+   Menu_Files (written on first run) PLUS any additional user-authored Menu_Files.
+   An on-disk Menu_File at a well-known path (`menus/pom.toml`,
+   `menus/settings.toml`, `menus/scrm.toml`, or `menus/<name>.toml`) that parses
+   successfully is AUTHORITATIVE for that menu; the compiled Recovery_Source is
+   used only when the file is absent (triggering a First_Run_Write) or fails to
+   parse (graceful fallback). (REVISED by CR-CH-021, then CR-CH-116.)
 3. WHEN a Menu_File is written or modified on disk while the workbench is
    running, THE Menu_Workspace backed by that file SHALL reload its option list
    within one egui frame of the modification being detected.
@@ -597,9 +611,14 @@ core now.)
 
 #### Acceptance Criteria
 
-1. THE workbench SHALL define a compiled Recovery_Baseline for the POM and for
-   the Settings menu. These are the code-only built-in menus (Requirement 4.1)
-   and are never written to disk.
+1. THE workbench SHALL define a compiled Recovery_Baseline for the POM, the
+   Settings menu, and the SCRM menu. (REVISED by CR-CH-116.) These compiled
+   defaults are the Recovery_Source (configuration-system Requirement 23): they
+   are WRITTEN to disk on first run (Requirement 4.1) and rebuilt by Reset bare
+   (configuration-system Requirement 19.17), and the application RUNS FROM the
+   on-disk files; the constants are consumed only by the First_Run_Write, the
+   Reset-bare rebuild, and as a last-ditch runtime fallback (Requirement 12.5).
+   (The CR-CH-021 clause "never written to disk" is RETIRED by CR-CH-116.)
 2. THE Recovery_Baseline POM SHALL contain EXACTLY the following reconsidered
    trimmed core option set, in order (REVISED by CR-NR-080; REVISED again by
    CR-CH-073 -- the `1` -> `CATALOGS` and `2` -> `FILES` options are REMOVED from
@@ -610,10 +629,13 @@ core now.)
      / Keys / Theme / Kinds editors and Reset-bare recovery.
    - `3` -> `HELP` (description `Help -- workbench help and topics`), group
      `Core` -- workbench help and orientation.
-   - `X` -> `X` (description `Collapse to the visual root / close workspace (exit
-     when last)`), group `Core`, marked `show_in_menu_bar = false` so it is
-     hidden from the horizontal Menu_Bar (Requirement 17.2a) -- the uniform
-     terminate / close verb (Req 2.1g).
+   - `X` -> `EXIT` (description `Exit -- terminate FileForge Workbench`), group
+     `Core`, marked `show_in_menu_bar = false` so it is hidden from the horizontal
+     Menu_Bar (Requirement 17.2a) -- displayed as `X EXIT`. (REVISED by CR-CH-116:
+     the X option command changes from the self-referential `X` to `EXIT`; X is
+     now a SEED alias of EXIT, not a command, and selecting it unconditionally
+     terminates the application. This removes the POM X self-reference and its
+     guard. See Req 2.1g, Req 14, command-configurator Requirement 8.)
 
    These THREE options are the complete bare POM; there SHALL be no other default
    POM option. All are in a single group `Core` (no stray group boundary). The
@@ -695,11 +717,23 @@ open a Workspace to create, change and save Menus"); reserved by Requirement 12.
    returns to the POM); otherwise it opens or activates a dedicated tab. This
    replaces the "not yet available" placeholder of Requirement 12.6.
 2. THE Menus Editor SHALL present a menu SELECTOR listing the editable menus:
-   the built-in names `POM` and `Settings`, plus every user `menus/<name>.toml`
-   discovered on disk. Selecting an entry loads it as the working copy.
-3. WHEN a selected built-in menu (`POM` / `Settings`) has NO user file on disk,
-   THE editor SHALL load the compiled Recovery_Baseline (Requirement 12) as the
-   working copy, so the user starts from the current built-in content.
+   the built-in names `POM`, `Settings`, and `SCRM`, UNIONED with every
+   `menus/<name>.toml` discovered on disk (de-duplicated, so a built-in that also
+   has an on-disk file appears once). Selecting an entry loads it as the working
+   copy. (REVISED by CR-CH-116: `SCRM` is added to the built-in selector set --
+   previously the list was hardcoded `[POM, Settings]` plus the on-disk scan, so
+   SCRM never appeared; under the write-through model `scrm.toml` also exists on
+   disk after first run, so it lists naturally, but the built-in set SHALL
+   include `SCRM` so it is offered even if the on-disk scan is momentarily empty.)
+3. WHEN a selected built-in menu (`POM` / `Settings` / `SCRM`) has NO user file on
+   disk, THE editor SHALL load the corresponding compiled Recovery_Baseline
+   (Requirement 12) as the working copy: `POM` -> `recovery_pom_menu()`,
+   `Settings` -> `recovery_settings_menu()`, `SCRM` -> `recovery_scrm_menu()`
+   (screen-snapshot-scrm Requirement 25). (REVISED by CR-CH-116: the editor load
+   fallback SHALL map `SCRM` to the SCRM recovery baseline; the prior behaviour
+   fell back to `recovery_pom_menu()` for any non-Settings name, so selecting SCRM
+   wrongly loaded the POM. Under the write-through model `scrm.toml` normally
+   exists on disk, so this fallback is reached only when the file is absent.)
 4. THE Menus Editor SHALL display the working menu's options in an ORDERED,
    editable list; for each option THE editor SHALL allow editing the Option_Key,
    Option_Command, Option_Description, the `enabled` flag, and the `group` label.
@@ -836,7 +870,7 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
 |------|-----------|
 | **Navigation_Stack** | An ordered, per-tab list of `WorkspaceDescriptor` entries recording the Contexts traversed to reach the current one. The current Context is NOT on the stack; the stack holds only the ancestors, most-recent last. The BOTTOM of the Navigation_Stack is the Tab_Visual_Root. |
 | **Navigate_Here** | The single operation that changes a tab's Context: it pushes the current Context's descriptor onto that tab's Navigation_Stack and transforms the tab in place to the new Context. |
-| **Tab_Visual_Root** | The Context a tab was STARTed at and the BOTTOM of that tab's Navigation_Stack: the POM by default (`START` bare), or the named Context when the tab was created via `START <context>`. END pops one rung down toward it; the uniform `X` command and RETURN collapse the tab to it. DISTINCT from the FFCMD_Root (command-framework Req 10): the FFCMD_Root is the global POM targeted by the `=` family, whereas the Tab_Visual_Root is this tab's own starting Context. For a tab started at the POM the two coincide; for a tab created by `START <context>` they differ. Terminology: navigation CLIMBS (pushes a Context on top); END descends ONE rung toward the Tab_Visual_Root; a collapse (`X`/RETURN) drops to the Tab_Visual_Root; `=` drops to the FFCMD_Root. [CR-CH-052] |
+| **Tab_Visual_Root** | The Context a tab was STARTed at and the BOTTOM of that tab's Navigation_Stack: the POM by default (`START` bare), or the named Context when the tab was created via `START <context>`. It is the tab's PRIMARY PANEL for RETURN. END pops one rung down toward it; RETURN unwinds the whole stack to it in one step. (REVISED by CR-CH-116: `X` no longer collapses to the Tab_Visual_Root -- `X` is now an alias of EXIT and terminates the application; only RETURN collapses to the primary panel.) DISTINCT from the FFCMD_Root (command-framework Req 10): the FFCMD_Root is the global POM targeted by the `=` family, whereas the Tab_Visual_Root is this tab's own starting Context. For a tab started at the POM the two coincide; for a tab created by `START <context>` they differ. Terminology: navigation CLIMBS (pushes a Context on top); END descends ONE rung toward the Tab_Visual_Root; RETURN drops to the Tab_Visual_Root (primary panel); `=` drops to the FFCMD_Root; `X`/EXIT terminates the app. [CR-CH-052, CR-CH-116] |
 
 #### Acceptance Criteria
 
@@ -893,26 +927,36 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
    command routing) and root the new tab there. WHEN `<arg>` cannot be resolved,
    THE shell SHALL open the new tab at the POM and report the unresolved argument
    in the status area.
-10. THE RETURN command SHALL remain distinct from END, and (REVISED by CR-CH-052,
-    superseding the CR-CH-038 POM-targeted rule) SHALL target the active tab's
-    Tab_Visual_Root rather than the POM. This removes the last POM special-case:
-    RETURN is NO LONGER POM-targeted; it converges with the uniform `X` command
-    (criterion 14.13) when the Navigation_Stack is non-empty.
+10. (REVISED by CR-CH-116 -- ISPF END / RETURN / EXIT model.) THE RETURN command
+    SHALL remain distinct from END and from EXIT, and SHALL implement the ISPF
+    "back out to the PRIMARY PANEL" semantics: it unwinds the active tab's
+    Navigation_Stack all the way to that tab's PRIMARY PANEL -- defined as the
+    tab's Tab_Visual_Root (the Context the tab was STARTed at; the POM for a
+    default tab, or the named Context for a `START <context>` tab). This is the
+    per-tab primary panel, reconciled with the per-tab Navigation_Stack (framework
+    mechanism 3). (REVISED by CR-CH-052 which already targeted the Tab_Visual_Root;
+    CR-CH-116 confirms this IS the ISPF RETURN-to-primary-panel behaviour and keeps
+    it, formalising the three-command model below. The CR-CH-052 phrase "converges
+    with the uniform `X` command" is RETIRED because `X` now means EXIT, not
+    collapse.)
     - WHEN RETURN is issued AND the active tab's Navigation_Stack is NON-EMPTY,
-      THE shell SHALL collapse that tab to its Tab_Visual_Root in one step
-      (clearing the Navigation_Stack and reconstructing the root Context in
-      place), REGARDLESS of the stack depth. The Workspace stays open, now
-      showing its Tab_Visual_Root.
+      THE shell SHALL collapse that tab to its Tab_Visual_Root (primary panel) in
+      one step (clearing the Navigation_Stack and reconstructing the root Context
+      in place), REGARDLESS of the stack depth. The Workspace stays open, now
+      showing its primary panel.
     - WHEN RETURN is issued AND the active tab is ALREADY at its Tab_Visual_Root
       (empty Navigation_Stack), THE shell SHALL close that ONE Workspace; when it
       is the last open Workspace the application terminates (one Workspace closed
       per RETURN, NOT a recursive tear-down), preserving Requirement 17.3/17.4
-      (CR-CH-016).
-    END is unchanged: it pops ONE Navigation_Stack level, and at a Tab_Visual_Root
-    closes that one Workspace (walk-back one step at a time). This RETURN
-    behaviour is IDENTICAL in a docked Workspace and a Detached_Workspace
-    (menu-and-statusbar Requirement 18.3/18.11). (REVISES CR-CH-038, which made
-    RETURN collapse to the POM; the POM is no longer the universal return target.)
+      (CR-CH-016). (RETURN at the primary panel is the only RETURN path that can
+      terminate; an intermediate-screen RETURN only unwinds to the primary panel.)
+    END is unchanged: END (PF3) pops ONE Navigation_Stack level, and at a
+    Tab_Visual_Root closes that one Workspace (walk-back one step at a time). PF3
+    SHALL remain bound to END and SHALL NOT be remapped to EXIT (authentic ISPF
+    feel). This RETURN behaviour is IDENTICAL in a docked Workspace and a
+    Detached_Workspace (menu-and-statusbar Requirement 18.3/18.11). (REVISES
+    CR-CH-038, which made RETURN collapse to the POM; the primary panel is per-tab,
+    not universally the POM.)
 11. THE three former ad-hoc END mechanisms -- the global `pending_return_to_pom`
     flag, the `settings_panel.namespace_filter`-based END branch, and the
     `menus_editor_panel.opened_from_settings` boolean (B053) -- SHALL be removed
@@ -920,48 +964,61 @@ is created is if we type start"); reconciles Requirement 5 (Chained Navigation).
 12. THE tab Title_Line and tab-header title SHALL reflect the current Context
     after every Navigate_Here and every END pop, so the header never goes stale
     (consistent with menu-and-statusbar Req 17; related to B050).
-13. (NEW, CR-CH-052 -- the uniform bare `X` command.) WHEN the `X` command is
-    issued against the FFCMD command environment AND the active tab's
-    Navigation_Stack is NON-EMPTY, THE shell SHALL collapse the tab to its
-    Tab_Visual_Root in a single action (clear the Navigation_Stack and
-    reconstruct the root Context in place). WHEN the Navigation_Stack is EMPTY
-    (the tab is already at its Tab_Visual_Root), THE shell SHALL CLOSE the
-    Workspace; WHEN the closed Workspace is the LAST open Workspace, THE shell
-    SHALL terminate the application (reusing the close-workspace-or-exit path, so
-    the application exits ONLY on the last close). This behaviour SHALL be
-    IDENTICAL for EVERY Workspace Context, including the Home Context (POM): no
-    Context carries a bespoke `X` rule. EXCEPTION (deliberate environment
-    ownership, NOT a POM-style special-case): WHERE the Active_Environment OWNS
-    bare `X` as its own verb -- specifically FFEDIT, in which bare `X` is EXCLUDE
-    (command-environments Req 5.1, CR-CH-053 E8) -- the Active_Environment claims
-    bare `X` first and this uniform FFCMD `X` is NOT reached; `=X` (criterion
-    14.14) remains the uniform escape that reinitialises to the POM and closes
-    via FFCMD. On every NON-editor Context bare `X` reaches this uniform FFCMD
-    `X`.
-14. (NEW, CR-CH-052 -- the `=X` command.) WHEN the `=X` command is issued, THE
-    shell SHALL FIRST reinitialise the active tab's Navigation_Stack to the POM
-    (FFCMD_Root, command-framework Req 10.2), THEN run `X` against the FFCMD
-    command environment; being at the FFCMD_Root with an empty Navigation_Stack,
-    `X` CLOSES the Workspace, and the application terminates ONLY WHEN it is the
-    last open Workspace. `=X` SHALL NOT initiate an unconditional application
-    exit, and SHALL behave identically whether or not the Active_Environment owns
-    bare `X` (because `=` addresses FFCMD and the Active_Environment never
-    receives a `=`-prefixed string, command-framework Req 10.2 / command-
-    environments Req 3.2a). `=X` is therefore the uniform escape from an editor
-    Context whose bare `X` is EXCLUDE.
-15. (NEW, CR-CH-052 -- no POM special-casing.) THE `X` / `=X` / END / RETURN
-    model SHALL be identical for every Workspace Context, including the Home
-    Context (POM). No Context SHALL carry a bespoke exit, return, or close rule,
-    with the SOLE documented exception of criterion 14.13 (an Active_Environment
-    that OWNS bare `X`, e.g. FFEDIT EXCLUDE). The verbs target roots as follows:
-    `=`/`=X` target the FFCMD_Root (the global POM); bare `X`, END, and RETURN
-    target the active tab's own Tab_Visual_Root.
-16. (NEW, CR-CH-052 -- Detached_Workspace parity.) WHEN `X`-at-Tab_Visual_Root or
-    `=X` closes a Detached_Workspace, THE shell SHALL close it via the SAME
-    close-workspace-or-exit path used for a docked Workspace, preserving the
-    docked == detached guarantee (menu-and-statusbar Req 18.3/18.11); when the
-    closed Detached_Workspace is the last open Workspace the application
-    terminates.
+13. (REVISED by CR-CH-116 -- X = EXIT everywhere; the nav_x collapse/close verb is
+    RETIRED.) THE bare `X` command SHALL resolve, through the standard resolution
+    order, to the `EXIT` command on every NON-editor Context: the Active_Environment
+    interpreter is consulted FIRST, then FFCMD resolves `X` via the SEED alias
+    `X -> EXIT` (command-configurator Requirement 8). WHEN `X` resolves to `EXIT`,
+    THE shell SHALL UNCONDITIONALLY terminate FileForge Workbench (file.exit,
+    startup-and-session Requirement 20.3), including from an intermediate screen --
+    it SHALL NOT collapse the Navigation_Stack, close only the current Workspace, or
+    terminate only when last. This behaviour SHALL be IDENTICAL for EVERY non-editor
+    Workspace Context, including the Home Context (POM): no Context carries a bespoke
+    `X` rule. EXCEPTION (deliberate environment ownership, preserved from CR-CH-053
+    E8, NOT a POM-style special-case): WHERE the Active_Environment OWNS bare `X` as
+    its own verb -- specifically FFEDIT, in which bare `X` is EXCLUDE
+    (command-environments Req 5.1) -- the Active_Environment claims bare `X` first
+    (active-wins resolution), so an editor still EXCLUDEs on `X` and does NOT exit.
+    The former `nav_x` behaviour (collapse to Tab_Visual_Root / close workspace /
+    exit only when last) is RETIRED: its step-back semantics are now provided by
+    RETURN (to the primary panel) and END (one level), and the terminate-when-last
+    nuance is gone -- `X` simply exits. (SUPERSEDES the CR-CH-052 uniform-`X`
+    collapse/close verb.)
+14. (REVISED by CR-CH-116.) THE `=X` form SHALL behave as `=` (reinitialise the
+    active tab to the FFCMD_Root / POM, command-framework Req 10.2) FOLLOWED BY the
+    `X` command against FFCMD. Because FFCMD resolves `X -> EXIT` (criterion 13),
+    `=X` therefore terminates the application. `=X` SHALL behave identically whether
+    or not the Active_Environment owns bare `X` (a `=`-prefixed string always
+    addresses FFCMD and the Active_Environment never receives it, command-framework
+    Req 10.2 / command-environments Req 3.2a), so `=X` is the uniform way to EXIT
+    even from an editor Context whose bare `X` is EXCLUDE. (SUPERSEDES the CR-CH-052
+    `=X` close-current-workspace-and-exit-when-last behaviour; `=X` is now an
+    unconditional exit via the X -> EXIT alias. This also RECONCILES with
+    startup-and-session Req 20.3, which previously noted `=X` was NOT equivalent to
+    EXIT -- under CR-CH-116 it is, because X is an alias of EXIT.)
+15. (REVISED by CR-CH-116 -- the ISPF END / RETURN / EXIT model, no POM
+    special-casing.) THE END / RETURN / EXIT (and `X` = EXIT) model SHALL be
+    identical for every Workspace Context, including the Home Context (POM), with
+    the SOLE documented exception of the Active_Environment that OWNS bare `X`
+    (FFEDIT EXCLUDE, criterion 13). The three distinct verbs are:
+    - END (PF3): pop ONE Navigation_Stack level toward the Tab_Visual_Root;
+      at the Tab_Visual_Root it closes that one Workspace (exit when last).
+    - RETURN: unwind the Navigation_Stack to the tab's PRIMARY PANEL
+      (Tab_Visual_Root) in one step (criterion 10).
+    - EXIT (and `X`, its FFCMD alias): unconditionally terminate FileForge
+      Workbench on every non-editor Context (criterion 13).
+    The verbs target roots as follows: `=` targets the FFCMD_Root (the global POM);
+    END and RETURN target the active tab's own Tab_Visual_Root; `X`/`=X`/`EXIT`
+    terminate the application. PF3 SHALL stay bound to END and SHALL NOT be remapped
+    to EXIT.
+16. (REVISED by CR-CH-116 -- Detached_Workspace parity.) WHEN END-at-Tab_Visual_Root
+    or RETURN-at-Tab_Visual_Root closes a Detached_Workspace, THE shell SHALL close
+    it via the SAME close-workspace-or-exit path used for a docked Workspace,
+    preserving the docked == detached guarantee (menu-and-statusbar Req 18.3/18.11);
+    when the closed Detached_Workspace is the last open Workspace the application
+    terminates. `X`/`=X`/`EXIT` in a Detached_Workspace terminate the whole
+    application unconditionally (criterion 13), identically to a docked Workspace --
+    there is no close-only-this-detached-window `X` path under CR-CH-116.
 
 ---
 

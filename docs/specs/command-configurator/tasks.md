@@ -305,3 +305,23 @@ quick; the authoritative full suite/gate is the owner's manual run.
 3. v1 primary-command set = SAVE, CANCEL/END, FILTER, RESET (locale switch OUT of v1) (Req 5.14).
 4. Per-environment no-shadow reconciliation DEFERRED; the current `builtin_ffcmd_roots()` guard is retained (design 9.10.10b).
 5. v1 CE dropdown membership = `AliasEnvironment::ALL` (`ffcmd` / `ffedit`); full-registry enumeration is a deferred additive follow-up (Req 5.18).
+
+---
+
+## Tasks -- FFCMD `X -> EXIT` seed alias (Requirement 8, CR-CH-116)
+
+- [ ] 8. FFCMD seed alias `X -> EXIT`, written first run + rebuilt by Reset bare
+  - [ ] 8.1 Add the seed-row builder producing exactly one FFCMD row `X -> EXIT`; unit-test it produces that single row and that `serialise_user_aliases` round-trips it
+    - Covers: Requirement 8.1
+  - [ ] 8.2 First-run write: via the shared Config_Rebuild_Helper (configuration-system Task 47.3/47.4), write `aliases/<locale>/FFCMD.toml` (locale = active `ui.locale`, default `en`) with the `X -> EXIT` row if absent, BEFORE `seed_and_overlay_for_locale`, through `user_alias_override_base()` seams
+    - Covers: Requirement 8.2, 8.3
+  - [ ] 8.3 Reset-bare rebuild: via the helper (configuration-system Task 47.5), after `aliases/` is archived, rewrite the FFCMD seed file with `X -> EXIT`
+    - Covers: Requirement 8.4
+  - [ ] 8.4 Confirm coexistence: `X -> EXIT` (FFCMD) and `X -> EXCLUDE` (FFEDIT base) resolve independently; active-wins order gives the editor EXCLUDE and every non-editor Context EXIT; no change to `ffedit_english()`
+    - Covers: Requirement 8.5, 8.7
+  - [ ] 8.5 Confirm the seed row appears in the Alias Editor FFCMD view and is editable/removable like any user row (no hidden logic)
+    - Covers: Requirement 8.6
+  - [ ] 8.6 Full-shell egui_kittest: first run writes `aliases/en/FFCMD.toml` with `X -> EXIT`; bare `X` (non-editor) resolves to EXIT; bare `X` in FFEDIT resolves to EXCLUDE; Reset bare rebuilds the seed after archiving a user-edited aliases dir
+    - Covers: Requirement 8.2, 8.4, 8.5
+  - [ ] 8.7 Scoped compile-verify (agent COMPILE-ONLY): `cargo check/clippy/fmt -p ff-desktop` + named alias tests where quick; logs read back; owner runs the full gate before merge
+    - Covers: Requirement 8 (verification)

@@ -539,3 +539,71 @@ live. Criteria 7.2 / 7.3 are therefore SETTLED on option (a); option (b)
    unchanged; the arrow walk is additive (ispf-table-editor Requirement 11.4). The
    focused `Command ===>` field keeps its CR-NR-096 Up/Down history gesture
    (ispf-table-editor Requirement 11.5).
+
+---
+
+### Requirement 8: FFCMD seed alias `X -> EXIT`, written on first run and rebuilt by Reset bare (CR-CH-116)
+
+> **FRAMEWORK CHANGE (owner-confirmed 2026-11-04).** Part of the write-through
+> config model (configuration-system Requirement 23). Today the FFCMD alias layer
+> starts from an IDENTITY seed (every root maps to itself) assembled in memory and
+> never written; the FFEDIT base carries the genuine aliases `X -> EXCLUDE` and
+> `INCLUDE -> SHOW`. Under CR-CH-116 a single genuine SEED alias `X -> EXIT` is
+> added to FFCMD and is MATERIALISED to disk on first run (so it is visible and
+> editable like any user alias) and rebuilt by Reset bare. No OTHER verb becomes a
+> seed alias in this change (owner decision 2026-11-04).
+
+**User Story:** As a user, I want `X` to act as EXIT everywhere by default, defined
+as a visible, editable command alias rather than hidden logic, so that I can see it
+in the Alias Editor and it is restored when I reset to barebones.
+
+**Source:** [CR-CH-116] owner decision; builds on Requirement 5 (the alias store
+and resolver) and the write-through model (configuration-system Requirement 23).
+
+#### Acceptance Criteria
+
+1. THE FFCMD seed alias set SHALL include exactly one genuine seed alias in
+   addition to the identity mappings: `X -> EXIT` (surface `X`, canonical `EXIT`,
+   environment `ffcmd`). No other built-in verb SHALL be turned into a seed alias
+   by this change.
+2. WHEN the workbench starts AND the FFCMD seed alias file for the active locale is
+   ABSENT, THE workbench SHALL perform a First_Run_Write (configuration-system
+   Requirement 23.3) of `aliases/<locale>/FFCMD.toml` containing the `X -> EXIT`
+   row (plus any identity rows the writer emits), BEFORE the resolver seeds, so the
+   resolver reads the just-written file. The locale `<locale>` SHALL be the active
+   `ui.locale` (default `en`).
+3. THE seed alias write SHALL go through the SAME alias base seam the resolver and
+   the Alias Editor use (`dir_overrides.user_aliases` / the `FFWB_USER_ALIASES_DIR`
+   env seam, configuration-system Requirement 23.5), so the shell test suite can
+   isolate it to a temporary directory.
+4. WHEN Reset bare runs (configuration-system Requirement 19.16/19.17), THE shell
+   SHALL archive the existing `aliases/` directory and then REBUILD the
+   `aliases/<locale>/FFCMD.toml` seed file (containing `X -> EXIT`) from the
+   Recovery_Source via the shared Config_Rebuild_Helper, so a barebones reset
+   always restores `X -> EXIT`.
+5. THE `X -> EXIT` FFCMD seed SHALL COEXIST with the FFEDIT base alias
+   `X -> EXCLUDE` (Requirement 5): the two live in DIFFERENT Command Environments
+   (ENV encoded in the file name / the row's environment), and the active-wins
+   resolution order (the Active_Environment interpreter first, then FFCMD) SHALL
+   ensure that bare `X` in an editor (FFEDIT) resolves to EXCLUDE while bare `X` on
+   every non-editor Context resolves through FFCMD to EXIT (menu-workspace
+   Requirement 14.13). This requirement SHALL NOT alter the FFEDIT `X -> EXCLUDE`
+   base alias.
+6. THE `X -> EXIT` row SHALL appear in the Alias Editor's FFCMD view (Requirement 5
+   / 6) like any other alias, and SHALL be editable/removable by the user exactly
+   like a user-authored row (the write-through model exposes it; it is not hidden
+   logic). Removing it is the user's prerogative; Reset bare restores it
+   (criterion 4).
+7. THE resolver SHALL load the seed `X -> EXIT` through the EXISTING overlay path
+   (Requirement 5.7 -- the User_Alias_Store overlay routed into the FFCMD
+   AliasTable), introducing NO new resolution mechanism, dispatcher, or intercept.
+   `X` remains NOT a registered command (there is no command named `X`); it resolves
+   as an alias of the existing `EXIT` command (startup-and-session Requirement 20.3).
+
+#### Out of scope (Requirement 8)
+
+- Turning any verb other than `X` into a seed alias.
+- Changing the FFEDIT `X -> EXCLUDE` base alias or any other existing alias.
+- The X / END / RETURN / EXIT command semantics themselves (menu-workspace
+  Requirement 14, navigation-commands Requirement 21) -- this requirement only
+  defines the SEED alias row and its first-run/Reset-bare lifecycle.

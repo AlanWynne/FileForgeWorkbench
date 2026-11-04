@@ -212,3 +212,17 @@ separate implementation instruction is given.
   - [ ] 36.2 Update `docs/quality/TCR.md`: set the CR-CH-052 startup-and-session rows
           to their correct status.
     - Covers: Req 14.12 (revised), 14.40 (revised), 14.46 (new), 20.3 (revised)
+
+- [ ] 37. First-run write of built-in menus + alias seed in the Startup_Sequence (Requirement 23, CR-CH-116)
+  - [ ] 37.1 Invoke the shared Config_Rebuild_Helper (configuration-system Task 47.3/47.4) in `construct.rs` after Phase 4 User_Data_Dir init and before the POM render / alias seed, FirstRunMissingOnly, per-file idempotent
+    - Covers: Requirement 23.1
+  - [ ] 37.2 Resolve the ACTIVE profile's User_Data_Dir for the write so a fresh profile gets its own complete built-in config in `profiles/<slug>/`, isolated from other profiles
+    - Covers: Requirement 23.2
+  - [ ] 37.3 Route all writes through the loader dir seams so a test harness redirects them to a temp dir; Degraded_Mode (unwritable dir) skips the write and falls back to the Recovery_Source without looping
+    - Covers: Requirement 23.3, 23.4
+  - [ ] 37.4 Confirm `menus/` and `aliases/` directory auto-creation still happens, then the first-run write populates them
+    - Covers: Requirement 23.6
+  - [ ] 37.5 Full-shell egui_kittest: a fresh temp User_Data_Dir yields pom/settings/scrm + `aliases/en/FFCMD.toml` on disk after startup; a pre-existing file is left untouched; Degraded_Mode writes nothing
+    - Covers: Requirement 23.1, 23.4
+  - [ ] 37.6 Update `docs/quality/TCR.md` with a NOT-COVERED row per criterion 23.1-23.6, flipped as tests land
+    - Covers: Requirement 23 (tracking)

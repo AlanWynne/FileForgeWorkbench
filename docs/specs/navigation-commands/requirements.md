@@ -638,3 +638,81 @@ SHALL scroll to the respective horizontal extreme (`horizontal_offset = 0` for
 Requirement 9.8 (the amount typed in the command field), THE scroll command
 SHALL clear the `Command ===>` field after consuming the amount, so it applies
 once and does not persist to the next key press.
+
+---
+
+### Requirement 21: ISPF END / RETURN / EXIT Command Model (CR-CH-116)
+
+**User Story:** As an ISPF-familiar operator, I want three distinct navigation
+verbs -- END to back out one level, RETURN to back out to the primary panel, and
+EXIT to leave the application -- with X acting as EXIT everywhere, so that moving
+around the workbench matches authentic ISPF behaviour.
+
+**Source:** [CR-CH-116] owner decision (`.agents/tasks/config-model-change/decision.md`,
+the ISPF END/RETURN/EXIT clarification). This is the SHELL-level navigation command
+model; it builds ON the per-tab Navigation_Stack (framework mechanism 3,
+menu-workspace Requirement 14) and the single command-dispatch front door
+(framework mechanism 1). It introduces NO new dispatcher and NO new navigation
+stack. It is distinct from Requirement 11 (the editor-session SAVE/CANCEL/END
+delegation): this requirement governs the application-navigation semantics of END,
+RETURN, and EXIT across every Context.
+
+#### Acceptance Criteria
+
+21.1. THE `END` command (also bound to PF3) SHALL pop exactly ONE level of the
+active tab's Navigation_Stack and reconstruct the parent Context in place; WHEN the
+stack is empty (the tab is at its primary panel / Tab_Visual_Root) it SHALL close
+that one Workspace, terminating the application only when it is the last open
+Workspace. PF3 SHALL remain bound to END and SHALL NOT be remapped to EXIT.
+(Restates menu-workspace Requirement 14.4/14.5; confirms current behaviour is kept.)
+
+21.2. THE `RETURN` command SHALL unwind the active tab's Navigation_Stack to that
+tab's PRIMARY PANEL (its Tab_Visual_Root -- the Context the tab was STARTed at, the
+POM for a default tab) in a SINGLE step, regardless of stack depth, leaving the
+Workspace open at its primary panel; WHEN the tab is already at its primary panel,
+RETURN SHALL close that one Workspace (terminating only when last). RETURN SHALL be
+distinct from END (one level) and from EXIT (whole application). (Builds on
+menu-workspace Requirement 14.10, the per-tab Navigation_Stack.)
+
+21.3. THE `EXIT` command SHALL UNCONDITIONALLY terminate FileForge Workbench on
+every Context, identical to `QUIT` / `LOGOFF` (startup-and-session Requirement 20.3),
+regardless of how many Workspaces are open or the current Navigation_Stack depth.
+EXIT already exists (`file.exit`); this requirement adds no new terminate command.
+
+21.4. `X` SHALL NOT be a registered command. On every NON-editor Context, bare `X`
+SHALL resolve -- the Active_Environment interpreter FIRST, then FFCMD via the SEED
+alias `X -> EXIT` (command-configurator Requirement 8) -- to the `EXIT` command and
+thereby terminate the application, including from intermediate screens. (X = EXIT
+everywhere; owner confirmed.)
+
+21.5. WHERE the Active_Environment OWNS bare `X` as its own verb -- specifically
+FFEDIT, where bare `X` is EXCLUDE -- the Active_Environment SHALL claim bare `X`
+first (active-wins), so an editor EXCLUDEs on `X` and does NOT exit; `=X` (which
+addresses FFCMD) SHALL still resolve `X -> EXIT` and terminate. The FFEDIT
+`X -> EXCLUDE` alias SHALL NOT be shadowed by the FFCMD `X -> EXIT` seed.
+
+21.6. THE former `nav_x` verb (collapse to the Tab_Visual_Root / close workspace /
+exit only when last) SHALL be RETIRED: its step-back semantics are now covered by
+RETURN (to the primary panel) and END (one level), and the terminate-when-last
+nuance is removed (X simply exits). No Context SHALL retain a bespoke `X`
+collapse/close rule (the sole exception is the FFEDIT EXCLUDE ownership of
+criterion 21.5). Any other current caller of the retired `nav_x` path SHALL be
+re-pointed to END or RETURN as appropriate; retiring it SHALL NOT orphan a caller.
+
+21.7. THE END / RETURN / EXIT / `X` model SHALL be identical for every Workspace
+Context, including the Home Context (POM) and a Detached_Workspace, with the sole
+documented exception of the Active_Environment that owns bare `X` (criterion 21.5).
+No Context SHALL carry a bespoke exit, return, or close rule.
+
+21.8. ALL three verbs SHALL dispatch through the single command front door
+(framework mechanism 1; `resolve_target` / `dispatch_command_target`), reachable
+identically from the typed command line, a menu option, and a key binding. No
+bespoke intercept outside that seam SHALL be added.
+
+#### Out of scope (Requirement 21)
+
+- The seed alias row and its first-run/Reset-bare lifecycle (command-configurator
+  Requirement 8).
+- The write-through config model (configuration-system Requirement 23).
+- Editor-session SAVE/CANCEL/END delegation semantics (Requirement 11), which are
+  unchanged.

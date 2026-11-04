@@ -2548,3 +2548,155 @@ gate is docs-only.
 - No GUI-harness-only behaviour is introduced; the first-Tab focus-ring tests for
   the POM are driven by the loaded option list (Req 2.1f) and simply observe one
   fewer / fewer option stops.
+
+---
+
+## Design Delta: Write-through built-in menus + SCRM editor fix + END/RETURN/EXIT model (CR-CH-116)
+
+This delta covers the menu-side wiring of the write-through config model
+(Requirement 4.1/11/12, mirrors configuration-system Requirement 23), the Menus
+Editor SCRM list/fallback fix (Requirement 13.2/13.3), and the ISPF END/RETURN/EXIT
+command model with the `nav_x` retirement (Requirement 14, navigation-commands
+Requirement 21). It REVISES the "Code-only menus + Recovery Baseline" delta
+(CR-CH-021) and the "Per-Tab Navigation_Stack" delta (CR-CH-022/052). No new module,
+Workspace kind, dispatcher, or navigation stack is introduced; everything builds on
+the existing seams. The shared first-run/rebuild helper and the complete-serialiser
+live in configuration-system design; this section covers the eight reroute sites,
+the SCRM editor, and the X/END/RETURN/EXIT shell wiring.
+
+### Technology stack (locked)
+
+Rust + egui/eframe + the existing `ff-desktop` shell. Existing types only:
+`menu_workspace::{loader, serialiser, defaults}`, `shell/commands_*.rs`,
+`shell/nav_stack.rs`, `shell/commands_ladder_a.rs`, `ff_command::resolve_target`.
+No new dependency.
+
+### 1. Defaults become the Recovery_Source; run from the files (Requirement 4.1/12.1)
+
+`DEFAULT_POM_TOML`, `DEFAULT_SETTINGS_TOML`, `DEFAULT_SCRM_MENU_TOML` and the
+`recovery_*_menu()` functions are UNCHANGED in content except for the POM/SCRM X
+option command (section 4). They are now the Recovery_Source: consumed by the
+first-run write and Reset-bare rebuild (configuration-system design) and as a
+last-ditch runtime fallback. The authoritative runtime source is the on-disk file.
+
+### 2. The eight reroute sites (investigation Q7)
+
+Each production site that today reads the constant/`recovery_*` fn directly keeps
+the EXISTING "load user file; fall back to recovery" shape. Under write-through the
+file is normally present (written at first run), so the recovery arm becomes the
+rare fallback. Only two sites need an actual edit beyond "the file now usually
+exists"; the rest are confirmed to already prefer the on-disk file and need no
+behaviour change (only the first-run write makes the file reliably present):
+
+1. `commands_fastpath.rs::ensure_pom_menu_loaded` -- already falls back to
+   `recovery_pom_menu()`; keeps the shape. The `resolve_pom_option_key` last-resort
+   parse of `DEFAULT_POM_TOML` is retained as recovery. NO edit beyond first-run.
+2. `commands_menu.rs::open_menu_by_name` (SCRM) -- `recovery_scrm_menu()` fallback
+   retained. NO edit beyond first-run.
+3. `nav_reconstruct.rs` -- `recovery_settings_menu()` fallback retained. NO edit.
+4. `render_menu_bar.rs::active_pom_menu` / `menu_bar_dropdown_options` -- already
+   prefer a loaded POM tab, then on-disk `pom.toml`, then recovery. NO edit.
+5. `render_chrome.rs::active_pom_menu` -- same ordering. NO edit.
+6. `menus_editor.rs::load_menu_for_editor` + `refresh_menus_editor_list` -- EDIT
+   (section 3): the built-in list gains SCRM and the load fallback maps SCRM ->
+   `recovery_scrm_menu()`.
+7. `alias_reader.rs::builtin_ffcmd_roots` -- derives FFCMD identity-seed roots from
+   `recovery_pom_menu()` + `recovery_settings_menu()`. UNCHANGED: it reads the
+   recovery fns deliberately to compute the root set (the root set is a code fact,
+   not user config). Confirm it still includes `EXIT` among the roots (it does, via
+   the ladder verb roots) so `X -> EXIT` resolves to a real root.
+8. `command_config/mod.rs::BUILTIN_MENU_NAMES = ["pom","settings","scrm"]` --
+   UNCHANGED: these names already classify as Menu targets; write-through does not
+   change the classification.
+
+Conclusion: the write-through switch itself is driven by the first-run write (which
+makes the files reliably present) plus the Reset-bare rebuild; the read sites are
+left on their existing "prefer file, recover from constant" shape, so the blast
+radius is the first-run hook, the Reset-bare hook, the serialiser complete-mode, and
+the ONE Menus-editor edit (site 6).
+
+### 3. Menus Editor SCRM fix (Requirement 13.2/13.3)
+
+`menus_editor.rs`:
+- `refresh_menus_editor_list` builds `available` from the built-in name set
+  `["POM","Settings","SCRM"]` UNIONED with the on-disk `*.toml` scan, de-duplicated.
+  (Was hardcoded `["POM","Settings"]` + scan.)
+- `load_menu_for_editor` maps the selected built-in name to its recovery baseline
+  when no user file exists: `POM -> recovery_pom_menu()`,
+  `SETTINGS -> recovery_settings_menu()`, `SCRM -> recovery_scrm_menu()`. (Was a
+  `_ => recovery_pom_menu()` catch-all that wrongly loaded the POM for SCRM.)
+Under write-through `scrm.toml` normally exists so the on-disk path is taken; the
+recovery mapping is the absent-file fallback. Unit-test both the list membership
+(SCRM present, de-duplicated) and the SCRM->recovery_scrm mapping.
+
+### 4. POM / SCRM X option command -> EXIT (Requirement 2.1g, 12.2)
+
+In `DEFAULT_POM_TOML` the X option `command` changes from `"X"` to `"EXIT"`
+(description `Exit -- terminate FileForge Workbench`, still `show_in_menu_bar =
+false`). In `DEFAULT_SCRM_MENU_TOML` the X option `command` is likewise `EXIT`
+(screen-snapshot-scrm Requirement 22.5/22.6 already describe the SCRM Exit option).
+Because the option command is now `EXIT` (not the self-referential `X`), the
+self-reference guard in `commands_menu.rs::try_current_menu_option` no longer
+triggers for it; selecting the option dispatches `EXIT` through the normal pipeline.
+Update the `defaults.rs` POM/SCRM X-option tests and the `en` catalogue
+(`menu-pom-opt-x-desc`) in lock-step.
+
+### 5. The ISPF END / RETURN / EXIT model and nav_x retirement (Requirement 14, nav Req 21)
+
+The reconciliation, grounded in the existing per-tab Navigation_Stack
+(`shell/nav_stack.rs`) and the single dispatch front door:
+
+- END (PF3): UNCHANGED. `commands` END handler pops one Navigation_Stack level; at
+  the Tab_Visual_Root it closes the Workspace via `close_workspace_or_exit`. PF3
+  stays bound to END (confirm the keymap binding is END, not EXIT).
+- RETURN: the existing CR-CH-052 RETURN already collapses to the Tab_Visual_Root
+  (the per-tab primary panel) in one step; this IS the ISPF RETURN-to-primary-panel
+  behaviour, so RETURN needs NO behaviour change -- the delta only reclassifies it
+  as the ISPF primary-panel verb and removes the stale "converges with X" note.
+  Confirm: current `RETURN` handler clears the stack and reconstructs the root; keep.
+- EXIT: UNCHANGED. `try_exit_family` in `commands_ladder_a.rs` matches
+  EXIT/QUIT/LOGOFF -> `file.exit` (unconditional). No new command.
+- X: the `upper == "X"` arm in `commands_ladder_a.rs` that calls `self.nav_x()` is
+  REMOVED. `X` is no longer a shell-handled verb; it resolves as the FFCMD alias
+  `X -> EXIT` (command-configurator design) through the existing
+  `rewrite_verb_to_root` -> `resolve_target` pre-pass, so bare `X` on a non-editor
+  Context dispatches `EXIT`. The active-wins gate (prelude, `commands.rs`) still
+  lets FFEDIT claim bare `X` as EXCLUDE first on an editor Context (unchanged).
+- `=X`: `=` reinitialises the tab to the FFCMD_Root then runs `X` against FFCMD;
+  because FFCMD now resolves `X -> EXIT`, `=X` exits. The existing `=X` handling is
+  adjusted to route `X` through the alias resolver rather than the removed `nav_x`
+  arm (it naturally does once the `X` arm is gone and the alias seed is loaded).
+- `nav_x` RETIREMENT (Requirement 14, nav Req 21.6): `shell/nav_stack.rs::nav_x`
+  and its single caller (the removed `commands_ladder_a.rs` `X` arm) are removed.
+  Audit for any OTHER caller of `nav_x` / `close_workspace_or_exit`-via-X: the
+  investigation found the ONLY caller is the `X` arm; `close_workspace_or_exit`
+  itself is still used by END and RETURN at the Tab_Visual_Root and is RETAINED.
+  Removing `nav_x` therefore orphans no caller (confirm during implementation with a
+  reference search; if a second caller surfaces, re-point it to END or RETURN).
+
+Resolution order and self-reference guard: the POM X option now targets `EXIT`, so
+the self-reference guard path for the POM X is gone (section 4). On every non-editor
+Context bare `X` resolves via FFCMD to EXIT; the editor keeps EXCLUDE via active-wins.
+
+### 6. Error handling
+
+- Missing built-in file at runtime: first-run write creates it; if the write failed
+  (Degraded_Mode) the loader's existing recovery fallback renders the baseline with
+  a non-blocking notice. Recoverable, non-fatal.
+- Corrupt built-in file: existing parse-error fallback to recovery + non-blocking
+  notice (Requirement 12.5); the file is NOT overwritten. Recoverable, non-fatal.
+- `X` typed while no `X -> EXIT` alias is loaded (e.g. user deleted the seed and has
+  not Reset bare): `X` would resolve to the identity root `X`, which is not a
+  registered command, so it reports an unknown-command notice (the user removed
+  their own exit alias; Reset bare restores it). Non-fatal; documented consequence
+  of the editable write-through seed.
+
+### 7. Testability
+
+- Unit: `serialise_complete` round-trip (config design); Menus-editor list
+  membership + SCRM->recovery mapping; the POM/SCRM X-option-command == EXIT.
+- Integration (egui_kittest, full-shell): first-run writes the three menu files +
+  seed into the temp seams; bare `X` on the POM terminates (asserted via the exit
+  path seam, not a live process kill); bare `X` in an FFEDIT editor EXCLUDEs; END
+  pops one level; RETURN collapses to the primary panel; the Menus editor lists and
+  loads SCRM. Agent COMPILE-verifies scoped; owner runs the full gate.

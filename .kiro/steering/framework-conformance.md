@@ -41,13 +41,40 @@ Treat these as fixed unless a framework change is expressly confirmed:
    - DO: route navigation through `navigate_to`; use its `push` flag for
      STOP (`push=false`) vs PUSH (`push=true`) semantics.
    - DO NOT: introduce a second navigation stack, or spawn a tab for navigation.
+   - **ISPF END / RETURN / EXIT model (CR-CH-116).** Three distinct verbs ride on
+     this one stack: END (PF3) pops ONE level toward the Tab_Visual_Root (closing
+     the Workspace, exit when last, at the root); RETURN unwinds the stack to the
+     tab's PRIMARY PANEL (its Tab_Visual_Root) in one step; EXIT (and `X`, its
+     FFCMD seed alias) UNCONDITIONALLY terminates the app on every non-editor
+     Context. PF3 stays END (never remapped to EXIT). The old `nav_x`
+     collapse/close/exit-when-last verb is RETIRED (RETURN + END cover its
+     step-back; `X` now simply exits). The sole exception is FFEDIT, where the
+     Active_Environment owns bare `X` as EXCLUDE (active-wins). Specs:
+     navigation-commands Requirement 21; menu-workspace Requirement 14.
 
-4. **Code-only built-in menus (CR-CH-021).** Built-in menus (`pom`, `settings`)
-   live as compiled `DEFAULT_*_TOML` Recovery_Baseline constants and are NEVER
-   written to disk. A user `menus/<name>.toml` OVERRIDES the compiled default; an
-   absent/invalid user file falls back to the compiled baseline (or the
-   load-error state for a named menu).
-   - DO NOT: write a default menu file on first launch.
+4. **Write-through built-in menus + alias seed (CR-CH-116, SUPERSEDES CR-CH-021).**
+   The built-in menus (`pom`, `settings`, `scrm`) and the FFCMD alias seed
+   (`X -> EXIT`) are WRITE-THROUGH config. The compiled `DEFAULT_*_TOML` /
+   alias-seed constants are the RECOVERY SOURCE only (kept in code so a corrupt or
+   deleted config can be rebuilt); the application WRITES complete config files on
+   first run and RUNS FROM the on-disk files at startup and during running. First
+   run writes any ABSENT file (per-file detection), as a Complete_Config_File
+   (every flag explicit, incl. `show_calendar`). Reset bare archives the old files
+   (now including `aliases/`) and REBUILDS the menu files and the alias seed from
+   the Recovery_Source; first-run write and Reset-bare rebuild SHARE ONE helper so
+   they cannot diverge. All writes honour the `dir_overrides` / `FFWB_USER_ALIASES_DIR`
+   test seams. A missing-or-corrupt file at runtime falls back to the
+   Recovery_Source (graceful degradation) without overwriting a corrupt file.
+   - DO: write the built-in menu/alias files on first run and run from them.
+   - DO NOT: treat the compiled constants as the normal runtime source; DO NOT
+     bypass the dir seams; DO NOT implement the deferred UPGRADE/merge (a
+     `config_version` stamp LEAVES ROOM for it but it is not built).
+   - Specs: configuration-system Requirement 23 + Requirement 19.16-19.18;
+     menu-workspace Requirement 4/11/12; command-configurator Requirement 8;
+     startup-and-session Requirement 23; screen-snapshot-scrm Requirement 22.8.
+     (The PRIOR CR-CH-021 rule -- "built-in menus are code-only and NEVER written
+     to disk; a user file only overrides" -- is RETIRED. The themes code-only rule,
+     theme-and-appearance Req 18.2/19.2, is NOT affected by CR-CH-116.)
 
 5. **WorkspaceContext single focus-latch path (CR-NR-078, CR-CH-023).** Every
    Workspace Context reports its interior focus through ONE path -- the

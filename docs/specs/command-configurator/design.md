@@ -952,3 +952,75 @@ were ADDRESSED docs-only; none required a framework change.
 - Finding 4 (NIT -- Tab-order prose): ADDRESSED. Req 5.21(c) reworded to separate
   the FILTER row field set (filter CE -> filter Root) from each data row's field set
   (Act -> CE -> Root -> L18N -> ALIAS -> Parameters).
+
+---
+
+## Design Delta: FFCMD `X -> EXIT` seed alias, written first run + rebuilt by Reset bare (Requirement 8, CR-CH-116)
+
+This delta adds ONE genuine seed alias, `X -> EXIT`, to the FFCMD alias layer and
+materialises it to disk under the write-through config model (configuration-system
+Requirement 23, startup-and-session Requirement 23). It builds on Requirement 5 (the
+User_Alias_Store, its serialiser, and the three-layer resolver) and introduces NO
+new alias mechanism, dispatcher, or resolution path.
+
+### Technology stack (locked)
+
+Rust + the existing `shell/alias_reader.rs` (seed + overlay), `shell/user_aliases.rs`
+(the `[[alias]]` TOML serialiser and the `user_alias_override_base()` seam),
+`shell/environment.rs` (`AliasTable`), and the shared Config_Rebuild_Helper
+(configuration-system design). `toml` + `serde`. No new dependency.
+
+### What is written and where
+
+The seed file is `aliases/<locale>/FFCMD.toml` (ENV in the filename, per the
+existing model), `<locale>` = the active `ui.locale` (default `en`). It contains the
+single genuine row `surface = "X", canonical = "EXIT"` (environment `ffcmd` implied
+by the filename). The writer reuses `user_aliases::serialise_user_aliases(&rows)`
+exactly as the Alias Editor's save path does, so the on-disk shape is identical to a
+user-authored FFCMD override and the row shows up in the Alias Editor's FFCMD view
+(Requirement 8.6). The write goes through `user_alias_override_base()`, which honours
+`dir_overrides.user_aliases` / `FFWB_USER_ALIASES_DIR` (Requirement 8.3), so tests
+isolate it.
+
+Design choice -- seed the USER override file (not a new shipped read-only seed
+layer): the owner wants `X -> EXIT` VISIBLE and EDITABLE like any alias and restored
+by Reset bare. Writing it into the user override store (the third resolver layer,
+Requirement 5.7) achieves exactly that with the existing serialiser and reload path;
+a new shipped `i18n/<locale>/aliases/FFCMD.toml` read-only seed would NOT be editable
+and would not match "expose everything in config files". So the seed is a
+first-run-written USER override row, rebuilt by Reset bare.
+
+### First-run and Reset-bare hooks
+
+Both call the shared Config_Rebuild_Helper (configuration-system design):
+- First run (`construct.rs`, `Mode::FirstRunMissingOnly`): if
+  `aliases/<locale>/FFCMD.toml` is ABSENT, write it with the `X -> EXIT` row BEFORE
+  `seed_and_overlay_for_locale` runs, so the resolver's user-overlay layer reads it.
+- Reset bare (`reset_bare.rs`, `Mode::RebuildOverwrite`): after `aliases/` is
+  archived (configuration-system Requirement 19.16), rewrite the seed file.
+
+### Resolution / coexistence (Requirement 8.5)
+
+`X -> EXIT` lands in the FFCMD `AliasTable` via the EXISTING user-overlay layer
+(Requirement 5.7). FFEDIT's base `X -> EXCLUDE` is a different `AliasTable` keyed by
+a different ENV, so the two coexist (the overlay already permits the same surface in
+different ENVs). The active-wins order (prelude in `commands.rs`: Active_Environment
+first, then FFCMD) ensures an editor EXCLUDEs on `X` and every non-editor Context
+EXITs on `X`. No change to `ffedit_english()` or any existing alias.
+
+### Error handling
+
+- Seed write failure at first run (Degraded_Mode / unwritable dir): skipped;
+  resolver falls back to identity (`X -> X`), so bare `X` would report unknown-command
+  until the dir is writable or Reset bare succeeds. Non-fatal, logged.
+- User deletes the seed row via the Alias Editor: allowed (it is a normal row);
+  `X` reverts to identity until Reset bare restores the seed. Documented consequence.
+
+### Testability
+
+- Unit: the seed-row builder produces exactly one `X -> EXIT` FFCMD row; the
+  serialised file round-trips through the loader to that row.
+- Integration (full-shell, temp seams): first run writes `aliases/en/FFCMD.toml`
+  with `X -> EXIT`; the resolver resolves bare `X` (non-editor) to `EXIT`; an FFEDIT
+  editor resolves bare `X` to `EXCLUDE`; Reset bare rebuilds the seed after
+  archiving a user-edited aliases dir. Agent compile-verifies scoped; owner full gate.

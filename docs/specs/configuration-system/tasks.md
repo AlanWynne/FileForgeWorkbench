@@ -760,3 +760,19 @@ dot-leaders. Design delta D13/D14; requirements 22.1a, 22.3-22.6, 22.12 re-revis
     - Covers: Requirement 22.10
   - [x] 46.4 Scoped compile-verify (agent COMPILE-ONLY): `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, `cargo test -p ff-desktop layout` (+ the config focus tests by name); logs under `_ignore/logs/` read back; owner runs the authoritative full gate + visual check (pixel-exact `:` alignment is the justified manual exception)
     - Covers: Requirement 22 (verification)
+
+- [ ] 47. Write-through config model -- shared helper, first-run write, version stamp, Reset-bare rebuild (CR-CH-116)
+  - [ ] 47.1 Add the complete-mode menu serialiser `serialise_complete(menu)` to `menu_workspace::serialiser` emitting every flag explicitly (show_calendar, group_separator, group_headers, option enabled); unit-test round-trip to the identical MenuFile and that Settings emits `show_calendar = false`
+    - Covers: Requirement 23.4
+  - [ ] 47.2 Add the optional `config_version` field (`#[serde(default)]`) to `RawMenuFile` and the alias seed file; loader reads it but takes no action; writer stamps `CURRENT_CONFIG_VERSION` (additive, backward compatible)
+    - Covers: Requirement 23.9
+  - [ ] 47.3 Add the ONE shared `Config_Rebuild_Helper` (`shell/config_bootstrap.rs::write_builtin_defaults(seams, mode)`) writing pom/settings/scrm (complete) + `aliases/<locale>/FFCMD.toml` through the dir seams; modes FirstRunMissingOnly (per-file, write-if-absent) and RebuildOverwrite; best-effort per-item
+    - Covers: Requirement 23.5, 23.6, 23.2, 23.3
+  - [ ] 47.4 Wire first-run detection into `shell/construct.rs::new_with_history_store` (FirstRunMissingOnly, before the menu/alias loads), guarded by the Degraded_Mode check so an unwritable User_Data_Dir skips the write and falls back to the Recovery_Source
+    - Covers: Requirement 23.1, 23.8
+  - [ ] 47.5 Reset bare: ADD `"aliases"` to `ARCHIVED_ITEMS`; after archive (+ in-memory reset for the active profile) call the helper in RebuildOverwrite against the reset profile's seams to rebuild the three menu files + the FFCMD seed
+    - Covers: Requirement 19.16, 19.17, 19.18
+  - [ ] 47.6 Invert the `ensure_menus_dir_does_not_materialise_built_in_menus` tests to assert first-run DOES write complete pom/settings/scrm and leaves a pre-existing file untouched; update the reset_bare archive tests for the `aliases` entry + the rebuild assertion
+    - Covers: Requirement 23.2, 23.4, 19.16, 19.17
+  - [ ] 47.7 Scoped compile-verify (agent COMPILE-ONLY): `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, plus the named first-run/reset-bare tests where quick; logs under `_ignore/logs/` read back; owner runs the authoritative full gate (gate-policy.md)
+    - Covers: Requirement 23 (verification)

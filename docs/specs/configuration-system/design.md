@@ -2227,3 +2227,141 @@ like the mock -- is the owner's visual gate. The behaviour (single render,
 global-column computation, flush-left state-labelled headers, one-level indent,
 collapse behaviour, focus contract) is covered by the pure unit tests and the
 full-shell egui_kittest tests above.
+
+---
+
+## Design Delta: Write-Through Config Model -- first-run write + Reset-bare rebuild (Requirement 23, Requirement 19.16-19.18, CR-CH-116)
+
+This delta implements the owner-confirmed FRAMEWORK CHANGE from CODE-ONLY-WITH-
+OVERRIDES to WRITE-THROUGH-CONFIG for the built-in menus (POM, Settings, SCRM) and
+the FFCMD alias seed. The compiled Rust defaults are RETAINED as the Recovery_Source
+only. It supersedes framework-conformance.md mechanism 4 / CR-CH-021. It is
+contained within `ff-desktop`; `ff-config`'s layered store engine (`config.toml`,
+already materialised on first write via `set_user_value`) is unchanged. NO public
+cross-crate type is reshaped. The menu-side wiring (the eight reroute sites, the
+SCRM editor fix, the serialiser complete-mode) is detailed in
+`docs/specs/menu-workspace/design.md` (Design Delta: Write-through built-in menus +
+SCRM editor + END/RETURN/EXIT, CR-CH-116); the alias-side wiring in
+`docs/specs/command-configurator/design.md`. This section owns the shared helper,
+the first-run detection, the version stamp, and the Reset-bare rebuild.
+
+### Technology stack (locked)
+
+Rust + egui/eframe, the existing `ff-desktop` shell, the existing
+`menu_workspace::serialiser` / `menu_workspace::loader`, the existing
+`shell/user_aliases.rs` serialiser, and the existing `shell/reset_bare.rs` archive
+helper. `toml` + `serde` for (de)serialisation. No new crate, no new dependency.
+
+### The one shared helper: `Config_Rebuild_Helper`
+
+A single function (recommended `shell/config_bootstrap.rs::write_builtin_defaults(
+seams, mode)` or similar) is the ONE place that serialises the Recovery_Source into
+complete config files. It takes the resolved directory seams (the `menus_dir()`,
+`scrm_dir()`, and alias-base paths already resolved by the shell) and a mode flag:
+
+- `Mode::FirstRunMissingOnly` -- write each target file ONLY if absent (per-file
+  detection via `Path::exists`). Used at startup.
+- `Mode::RebuildOverwrite` -- write each target file unconditionally (the archive
+  step in Reset bare has already moved the old files aside, so there is nothing to
+  clobber). Used by Reset bare.
+
+The targets it writes, in both modes, are: `menus/pom.toml`, `menus/settings.toml`,
+`menus/scrm.toml` (each serialised COMPLETE, see below), and
+`aliases/<locale>/FFCMD.toml` (the `X -> EXIT` seed, see command-configurator
+design). Because First_Run_Write and Reset-bare rebuild call the SAME helper,
+Requirement 23.6 / 19.17 "cannot diverge" holds by construction.
+
+The helper writes through the seams the loaders read -- it NEVER resolves a path
+itself -- so the shell test suite keeps isolating writes to a TempDir via
+`dir_overrides.menus` / `dir_overrides.scrm` / `dir_overrides.user_aliases` /
+`FFWB_USER_ALIASES_DIR` (Requirement 23.5). A write failure on any single target is
+logged and the helper proceeds with the rest (best-effort, matching the Reset-bare
+archive behaviour); in `FirstRunMissingOnly` mode a failure falls back to the
+Recovery_Source for that item for the session (Requirement 23.8) and is not retried.
+
+### Complete-mode menu serialisation (Requirement 23.4)
+
+`menu_workspace::serialiser::serialise` currently OMITS fields equal to their
+loader default (e.g. `show_calendar = true`, `group_separator = "space"`,
+`group_headers = false`, option `enabled = true`), which is incompatible with the
+"every flag explicit" rule. Design decision: add a COMPLETE mode to the serialiser
+rather than post-filling in the writer, because the serialiser already owns the TOML
+field mapping and a single `serialise_complete(menu)` keeps the "every flag
+explicit" invariant in one testable place. `serialise_complete` emits
+`show_calendar`, `group_separator`, `group_headers`, and each option's `enabled`
+unconditionally. The existing default-omitting `serialise` is retained for the Menus
+Editor's user-save path (unchanged). Unit-test `serialise_complete` round-trips
+through `loader::parse_menu_str` to the identical `MenuFile`, and that the emitted
+text contains `show_calendar = false` for the Settings recovery baseline.
+
+Rationale for choosing complete-serialiser over writer-post-fill: post-filling would
+duplicate knowledge of every loader default in the writer, and a new default added
+later would be silently missed. A complete serialiser co-located with the loader is
+the single source of the "explicit flags" contract.
+
+### Version stamp (Requirement 23.9)
+
+Each complete file carries a top-level `config_version` integer (a new OPTIONAL
+field on `RawMenuFile` with `#[serde(default)]`, and an analogous field in the alias
+seed file). The loader reads it but takes NO action on it in this change (an older
+or absent version still loads and runs as-is). It is written by the
+Config_Rebuild_Helper from a `const CURRENT_CONFIG_VERSION`. This LEAVES ROOM for
+the deferred UPGRADE command (Requirement 23.10) to detect a stale file without
+forcing an on-disk format change later. Adding an optional defaulted field is
+backward compatible: existing files without it parse fine.
+
+Public-type note: `config_version` is an ADDITIVE optional field on the existing
+`RawMenuFile` (de)serialisation struct inside `menu_workspace`; it is NOT a public
+cross-crate type and does not reshape `MenuFile`. This is the ONLY data-shape change
+the model strictly needs, and it is purely additive.
+
+### First-run detection hook point (Requirement 23.1/23.2)
+
+The hook is `shell/construct.rs::new_with_history_store`, where each config category
+is already loaded with its resolved dir/store in scope. The helper runs in
+`Mode::FirstRunMissingOnly` there, BEFORE the menu/alias loads, so the subsequent
+loads read the just-written files. The POM is loaded lazily on first render by
+`ensure_pom_menu_loaded`; to keep ONE hook, the first-run write of all three menu
+files happens in `construct` (not split into `ensure_pom_menu_loaded`), so a single
+code path owns first-run writing. The Degraded_Mode guard (Requirement 23.8 /
+startup Requirement 3.3) is checked before the helper runs: if the User_Data_Dir is
+not writable, the helper is skipped and the session uses the Recovery_Source.
+
+### Reset-bare rebuild hook point (Requirement 19.16-19.18)
+
+`shell/reset_bare.rs`: (1) ADD `"aliases"` to `ARCHIVED_ITEMS` so the alias overrides
+are moved aside (Requirement 19.16); the existing `archive_config` move logic needs
+no change beyond the new entry. (2) AFTER `archive_config` and (for the active
+profile) `reset_in_memory_to_baseline`, call the Config_Rebuild_Helper in
+`Mode::RebuildOverwrite` against the reset profile's resolved seams to rebuild the
+three menu files and the FFCMD alias seed (Requirement 19.17). (3) The in-memory
+reopen of the Recovery_Baseline POM then reads the just-written files
+(Requirement 19.18). For a NON-active targeted profile (targeted RESET BARE,
+CR-NR-083), the rebuild writes that profile's files on disk without touching the
+running in-memory state, consistent with the existing per-profile archive loop.
+
+### Test seam honouring and the inverted tests
+
+Every write goes through the seams, so the existing isolation holds. The existing
+`menu_workspace/defaults.rs` tests `ensure_menus_dir_does_not_materialise_built_in_menus`
+INVERT under this model: they are rewritten to assert that first-run DOES write
+pom/settings/scrm into the (temp) `menus_dir()` as complete files, and that a
+pre-existing file is left untouched (per-file detection). The reset_bare tests
+`archive_config_moves_present_items_and_removes_originals` and
+`archived_items_includes_workspace_kinds` gain an `aliases`-present case and a
+"rebuild wrote the three menu files + the FFCMD seed" assertion. These are
+compile-verified by the agent (scoped `cargo check/clippy/fmt -p ff-desktop` +
+scoped named tests); the owner runs the authoritative full gate (gate-policy.md).
+
+### Edge cases
+
+- Partially present config dir (only some built-in files): per-file
+  `FirstRunMissingOnly` writes exactly the missing ones; no hole is left and no
+  present file is clobbered.
+- A present-but-corrupt file: NOT treated as absent (Requirement 23.7); the loader's
+  existing parse-fallback-to-recovery + non-blocking notice handles it, the file is
+  not overwritten, and no first-run write fires over it. Explicit recovery is the
+  user's Reset-bare action.
+- Authoritative user file shadowing a newer default (the deferred UPGRADE problem):
+  accepted; the version stamp records the gap but nothing acts on it now
+  (Requirement 23.10).

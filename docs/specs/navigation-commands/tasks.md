@@ -408,3 +408,19 @@ state). TDD; behaviour-additive; default PAGE preserves current behaviour.
   - Validates: Requirement 3.18, 3.19, 3.21
 - [x] SAU.6 Close: verify.ps1 CLEAN FULL nextest; rebuild ffwb.exe; TCR Req 3.17-3.23 PASS; project-master phase DONE; change-log CR-NR-087 DONE; core-acceptance-test-plan row 7.3a -> retest.
   - Covers: Requirement 3.17-3.23
+
+## Tasks -- ISPF END / RETURN / EXIT command model (Requirement 21, CR-CH-116)
+
+- [ ] 21. ISPF END / RETURN / EXIT model (X = EXIT everywhere; nav_x retired)
+  - [ ] 21.1 Confirm END (PF3) pops one Navigation_Stack level and closes-when-last at the Tab_Visual_Root (unchanged); confirm PF3 is bound to END and not remapped to EXIT
+    - Validates: Requirement 21.1
+  - [ ] 21.2 Confirm RETURN unwinds the stack to the tab's primary panel (Tab_Visual_Root) in one step and closes-when-already-there (reclassified from CR-CH-052, behaviour unchanged)
+    - Validates: Requirement 21.2
+  - [ ] 21.3 Confirm EXIT/QUIT/LOGOFF are unconditional app-exit (`file.exit`), unchanged; no new terminate command
+    - Validates: Requirement 21.3
+  - [ ] 21.4 Make bare `X` resolve to EXIT on non-editor Contexts via the FFCMD `X -> EXIT` seed (command-configurator Req 8), active-env-first; retire `nav_x` (menu-workspace Task 56.4); `=X` exits via the alias
+    - Validates: Requirement 21.4, 21.5, 21.6
+  - [ ] 21.5 Confirm the model is identical across every Context incl. POM and Detached_Workspace, sole exception FFEDIT EXCLUDE; all three verbs dispatch through the single front door
+    - Validates: Requirement 21.7, 21.8
+  - [ ] 21.6 Scoped compile-verify (agent COMPILE-ONLY) + named tests; owner runs the full gate before merge; update `docs/quality/TCR.md` rows for Req 21.1-21.8
+    - Validates: Requirement 21 (verification)
