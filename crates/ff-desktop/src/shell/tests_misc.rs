@@ -908,6 +908,67 @@ fn execute_reset_bare_reopens_home_context() {
     );
 }
 
+// Validates: configuration-system Req 19.16, 19.17, 19.18; command-configurator
+// Req 8.4 (CR-CH-116) -- RESET BARE on the active profile rebuilds the FFCMD
+// X -> EXIT seed and the built-in menus from the Recovery_Source, and the live
+// alias store picks up X -> EXIT while a prior user alias (SS -> SNAPSHOT) is
+// gone. The target points at a TEMP udd (safe archive); the active-profile
+// rebuild writes through the shell's isolated menus/alias seams.
+#[test]
+fn reset_bare_active_profile_rebuilds_menus_and_x_exit_seed() {
+    use super::reset_bare::ResetBareTarget;
+    use super::user_aliases;
+
+    let menus = tempfile::TempDir::new().expect("menus");
+    let aliases = tempfile::TempDir::new().expect("aliases");
+    let udd = tempfile::TempDir::new().expect("udd");
+
+    let mut shell = make_shell();
+    shell.dir_overrides.menus = Some(menus.path().to_path_buf());
+    shell.dir_overrides.user_aliases = Some(aliases.path().to_path_buf());
+
+    // A user alias SS -> SNAPSHOT present before the reset, in the active locale.
+    let seed_rows = vec![user_aliases::UserAliasRowToml {
+        surface: "SS".to_string(),
+        canonical: "SNAPSHOT".to_string(),
+        environment: user_aliases::AliasEnvironment::Ffcmd,
+        command_template: String::new(),
+        description: String::new(),
+    }];
+    let ffcmd_file = user_aliases::user_alias_override_file(aliases.path(), "en", "FFCMD");
+    std::fs::create_dir_all(ffcmd_file.parent().unwrap()).expect("mkdir");
+    std::fs::write(
+        &ffcmd_file,
+        user_aliases::serialise_user_aliases(&seed_rows).expect("serialise"),
+    )
+    .expect("seed SS");
+
+    // Reset bare targeting the active profile (temp udd so the archive is safe).
+    let target = ResetBareTarget::single("(default)".to_string(), udd.path().to_path_buf(), true);
+    shell.execute_reset_bare(&target);
+
+    // The rebuilt FFCMD override now carries X -> EXIT and NOT SS -> SNAPSHOT.
+    let rebuilt = std::fs::read_to_string(&ffcmd_file).expect("read rebuilt FFCMD");
+    let rows = user_aliases::parse_user_alias_toml(&rebuilt).expect("parse rebuilt");
+    assert!(
+        rows.iter()
+            .any(|r| r.surface == "X" && r.canonical == "EXIT"),
+        "rebuilt FFCMD seed carries X -> EXIT: {rows:?}"
+    );
+    assert!(
+        !rows.iter().any(|r| r.surface == "SS"),
+        "the prior SS -> SNAPSHOT user alias is gone after rebuild: {rows:?}"
+    );
+
+    // The built-in menus were rebuilt on disk (Complete content).
+    assert!(menus.path().join("pom.toml").exists(), "pom.toml rebuilt");
+    assert!(
+        menus.path().join("settings.toml").exists(),
+        "settings.toml rebuilt"
+    );
+    assert!(menus.path().join("scrm.toml").exists(), "scrm.toml rebuilt");
+}
+
 // Validates: Req 14.4 -- A -> B -> C, then END walks back C -> B -> A one level
 // per press (per-tab Navigation_Stack).
 #[test]

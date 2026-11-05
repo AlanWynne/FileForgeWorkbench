@@ -22,6 +22,13 @@ use crate::tab_state::KindTag;
 fn point_user_aliases_at_temp(shell: &mut WorkbenchShell) -> tempfile::TempDir {
     let dir = tempfile::TempDir::new().expect("tempdir");
     shell.dir_overrides.user_aliases = Some(dir.path().join("aliases"));
+    // CR-CH-116: construction seeds the live alias store from the SHARED isolated
+    // base (which the first-run write populated with the X -> EXIT seed). After
+    // repointing the override base to this empty temp dir, refresh the live store
+    // so it reflects the repointed (empty) base -- otherwise the editor would
+    // still show the shared base's X -> EXIT seed row. Production keeps the store
+    // and the base consistent; this mirrors that for the test's fresh base.
+    shell.refresh_alias_store_in_place();
     dir
 }
 
@@ -74,6 +81,30 @@ fn aliases_verb_opens_the_alias_editor_context() {
         "ALIASES opens the Alias Editor Context"
     );
     assert_eq!(shell.tabs.active_tab().title, "[ALIASES]");
+}
+
+// Validates: command-configurator Requirement 8.6 (CR-CH-116) -- the FFCMD
+// X -> EXIT seed is an editable user-override row, visible in the Alias Editor.
+// make_shell's first-run write seeds it into the shared isolated alias base, so
+// opening the editor WITHOUT repointing the base shows the X -> EXIT row.
+#[test]
+fn x_to_exit_seed_row_is_visible_in_the_alias_editor() {
+    let mut shell = make_shell();
+    shell.dispatch_command_string("ALIASES");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::AliasEditor,
+        "ALIASES opens the Alias Editor Context"
+    );
+    assert!(
+        shell.alias_editor_panel.rows.iter().any(|r| {
+            r.surface.eq_ignore_ascii_case("X")
+                && r.canonical.eq_ignore_ascii_case("EXIT")
+                && r.environment == AliasEnvironment::Ffcmd
+        }),
+        "the FFCMD X -> EXIT seed row must be visible/editable in the Alias Editor (Req 8.6): {:?}",
+        shell.alias_editor_panel.rows
+    );
 }
 
 // Validates: menu-workspace Requirement 22.2 (CR-CH-066) -- selecting the

@@ -173,6 +173,13 @@ pub(crate) fn make_shell() -> super::WorkbenchShell {
     // so no ambient machine-global `aliases/<locale>/<ENV>.toml` leaks rows.
     isolate_user_alias_base_once();
 
+    // CR-CH-116: the first-run write runs DURING construction, before the
+    // per-shell `dir_overrides.menus` below is set. Point the construction-time
+    // first-run write at the SAME process-global isolated menus dir so it writes
+    // into a temp dir, never the developer's real User_Data_Dir (and so the
+    // override set after construction lines up with where first-run wrote).
+    super::config_bootstrap::set_test_first_run_menus_dir(isolated_menus_dir());
+
     // CR-NR-103 (Task 9): command-dispatch tests now assert on status/error
     // messages that resolve through the ff_i18n seam. Install the English
     // Identity_Base catalogue so t()/t_args() return real English text (not the
@@ -220,6 +227,51 @@ pub(crate) fn make_shell() -> super::WorkbenchShell {
     shell
 }
 
+/// CR-CH-116 first-run test helper: build a shell whose construction-time
+/// first-run write targets `menus_dir`, set via the THREAD-LOCAL seam BEFORE
+/// construction so the first-run hook writes into the caller's temp dir. Lets a
+/// first-run test pre-seed a corrupt/pre-existing file and assert the per-file
+/// write-if-absent behaviour. The per-shell `dir_overrides.menus` is ALSO set so
+/// later reads resolve to the same dir. The alias base stays the shared isolated
+/// base (`FFWB_USER_ALIASES_DIR`). The seam is thread-local, so no cross-test
+/// serialisation is needed.
+pub(crate) fn make_shell_first_run(menus_dir: &std::path::Path) -> super::WorkbenchShell {
+    use ff_config::init;
+    use ff_config::ConfigInitOptions;
+    use ff_core::WorkbenchApp;
+    use ff_keys::HistoryStore;
+    use ff_logging::LoggingStatus;
+    use ff_theme::defaults::dark_palette;
+    use tokio::runtime::Runtime;
+
+    super::i18n_bootstrap::install_catalogue_for_tests();
+    isolate_user_alias_base_once();
+    super::config_bootstrap::set_test_first_run_menus_dir(menus_dir.to_path_buf());
+
+    let cfg_path = std::env::temp_dir().join(unique_temp_name("ffwb_test_cfg"));
+    let hist_path = std::env::temp_dir().join(unique_temp_name("ffwb_test_hist"));
+    let config_handle = init(
+        ConfigInitOptions::new()
+            .with_hot_reload(false)
+            .with_user_config_path(cfg_path),
+    )
+    .expect("config init");
+    let runtime = Runtime::new().expect("runtime");
+    let app =
+        WorkbenchApp::new(Box::new(config_handle.clone()), LoggingStatus::Fallback).expect("app");
+    let palette = dark_palette();
+    let mut shell = super::WorkbenchShell::new_with_history_store(
+        app,
+        runtime,
+        palette,
+        vec![],
+        config_handle,
+        Some(HistoryStore::new(hist_path)),
+    );
+    shell.dir_overrides.menus = Some(menus_dir.to_path_buf());
+    shell
+}
+
 /// Build a unique temp file name (`<prefix>_<pid>_<nanos>.toml`) for per-call
 /// isolation of injected config/history paths (B048).
 fn unique_temp_name(prefix: &str) -> String {
@@ -248,6 +300,8 @@ pub(crate) fn make_shell_with_history_path(
 
     // Same construction-time alias-base isolation as make_shell() (see above).
     isolate_user_alias_base_once();
+    // CR-CH-116: isolate the construction-time first-run write (see make_shell).
+    super::config_bootstrap::set_test_first_run_menus_dir(isolated_menus_dir());
     use ff_keys::HistoryStore;
     use ff_logging::LoggingStatus;
     use ff_theme::defaults::dark_palette;

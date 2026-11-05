@@ -19,6 +19,10 @@ const ARCHIVED_ITEMS: &[&str] = &[
     // CR-NR-090 B.4b: user Workspace Kind files are archived alongside the other
     // config so RESET BARE returns to the compiled built-in Kind defaults.
     "workspace-kinds",
+    // CR-CH-116 (configuration-system Req 19.16): the command alias overrides are
+    // archived too, so a user alias (e.g. SS -> SNAPSHOT) is moved aside and the
+    // FFCMD X -> EXIT seed is rebuilt from the Recovery_Source.
+    "aliases",
     "session.toml",
     "config.toml",
     "catalogs.toml",
@@ -275,12 +279,33 @@ impl WorkbenchShell {
         use crate::notification::{Notification, NotificationLevel};
 
         // 1. Archive each targeted profile (best-effort; one failure does not
-        //    abort the rest -- Req 19.5, 19.13).
+        //    abort the rest -- Req 19.5, 19.13). After a successful archive,
+        //    REBUILD the built-in menus + FFCMD X -> EXIT seed from the
+        //    Recovery_Source via the shared Config_Rebuild_Helper in
+        //    RebuildOverwrite mode (CR-CH-116, Req 19.17).
+        let active_slug = ff_session::active_profile().map(|n| ff_session::profile_slug(&n));
         let mut archived: Vec<String> = Vec::new();
         let mut errors: Vec<String> = Vec::new();
         for (display, udd) in &target.profiles {
             match archive_config(udd) {
-                Ok(path) => archived.push(format!("{display} -> {}", path.display())),
+                Ok(path) => {
+                    archived.push(format!("{display} -> {}", path.display()));
+                    let is_active =
+                        target.includes_active && Self::profile_is_active(display, &active_slug);
+                    let (menus_dir, alias_base) = self.rebuild_dirs_for_profile(udd, is_active);
+                    let locale = self
+                        .config_handle
+                        .get_string(ff_config::keys::ui::LOCALE)
+                        .unwrap_or_else(|_| "en".to_string());
+                    if let Err(e) = super::config_bootstrap::write_builtin_defaults(
+                        &menus_dir,
+                        &alias_base,
+                        &locale,
+                        super::config_bootstrap::BootstrapMode::RebuildOverwrite,
+                    ) {
+                        errors.push(format!("{display}: rebuild: {e}"));
+                    }
+                }
                 Err(errs) => {
                     for e in errs {
                         errors.push(format!("{display}: {e}"));
@@ -312,9 +337,39 @@ impl WorkbenchShell {
         // 2. Reset the live in-memory state ONLY when the running process's
         //    profile was among the targets (Req 19.11); otherwise the archived
         //    profiles are other-process/on-disk only and the running shell is
-        //    left untouched.
+        //    left untouched. The reopened POM reads the just-rebuilt pom.toml and
+        //    the alias store is refreshed so the rebuilt X -> EXIT seed goes live
+        //    without a restart (Req 19.18).
         if target.includes_active {
             self.reset_in_memory_to_baseline();
+            self.refresh_alias_store_in_place();
+        }
+    }
+
+    /// Whether a target profile `display` is the running process's active
+    /// profile. The default profile's display is `DEFAULT_PROFILE_DISPLAY`; a
+    /// named profile's display is its slug, compared to the active slug.
+    fn profile_is_active(display: &str, active_slug: &Option<String>) -> bool {
+        match active_slug {
+            Some(slug) => display == slug,
+            None => display == DEFAULT_PROFILE_DISPLAY,
+        }
+    }
+
+    /// Resolve the `(menus_dir, alias_base)` the Reset-bare rebuild writes for a
+    /// profile. For the ACTIVE profile use the shell's seams (`menus_dir()` /
+    /// `user_alias_override_base()`) so a test override and the live reader agree;
+    /// for a non-active targeted profile build the paths under that profile's
+    /// User_Data_Dir using the same layout the loaders use
+    /// (`<udd>/menus`, `<udd>/aliases`).
+    fn rebuild_dirs_for_profile(&self, udd: &Path, is_active: bool) -> (PathBuf, PathBuf) {
+        if is_active {
+            let alias_base = self
+                .user_alias_override_base()
+                .unwrap_or_else(|| udd.join("aliases"));
+            (self.menus_dir(), alias_base)
+        } else {
+            (udd.join("menus"), udd.join("aliases"))
         }
     }
 
@@ -429,6 +484,39 @@ mod tests {
         assert!(
             ARCHIVED_ITEMS.contains(&"workspace-kinds"),
             "RESET BARE must archive the workspace-kinds/ directory"
+        );
+    }
+
+    // Validates: configuration-system Req 19.16, command-configurator Req 8.4
+    // (CR-CH-116) -- the command alias overrides directory is in the archived
+    // set, so RESET BARE moves a user alias aside and rebuilds the FFCMD seed.
+    #[test]
+    fn archived_items_includes_aliases() {
+        assert!(
+            ARCHIVED_ITEMS.contains(&"aliases"),
+            "RESET BARE must archive the aliases/ directory (CR-CH-116)"
+        );
+    }
+
+    // Validates: configuration-system Req 19.16 -- a user aliases/ dir present at
+    // reset time is MOVED into the archive (non-destructive, not left live).
+    #[test]
+    fn archive_config_moves_aliases_dir() {
+        let dir = TempDir::new().expect("tempdir");
+        let udd = dir.path();
+        write_file(
+            &udd.join("aliases").join("en").join("FFCMD.toml"),
+            "[[alias]]\nsurface = \"SS\"\ncanonical = \"SNAPSHOT\"\n",
+        );
+        let archive = archive_config(udd).expect("archive ok");
+        assert!(archive
+            .join("aliases")
+            .join("en")
+            .join("FFCMD.toml")
+            .exists());
+        assert!(
+            !udd.join("aliases").exists(),
+            "aliases/ must be moved out of the live dir"
         );
     }
 

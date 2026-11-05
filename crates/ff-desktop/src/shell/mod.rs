@@ -57,6 +57,7 @@ mod commands_snapshot;
 mod commands_theme;
 mod commands_theme_save;
 mod common_frame;
+mod config_bootstrap;
 mod configurator;
 mod construct;
 mod construct_commands;
@@ -174,6 +175,8 @@ mod tests_config_snapshot_fidelity;
 mod tests_configurator_save_convention;
 #[cfg(test)]
 mod tests_content_rule;
+#[cfg(test)]
+mod tests_first_run;
 #[cfg(test)]
 mod tests_last_transition;
 #[cfg(test)]

@@ -1264,6 +1264,9 @@ fn full_shell_alias_editor_empty_store_i_insert_shows_editable_row() {
     let mut harness = harness_shell();
     // CR-CH-072: the override is a per-locale DIR base, not a single user.toml.
     harness.state_mut().dir_overrides.user_aliases = Some(dir.path().join("aliases"));
+    // CR-CH-116: refresh the live alias store so it reflects the repointed empty
+    // base (construction seeded it from the shared base's X -> EXIT seed).
+    harness.state_mut().refresh_alias_store_in_place();
     harness.state_mut().dispatch_command_string("ALIASES");
     for _ in 0..4 {
         harness.run();

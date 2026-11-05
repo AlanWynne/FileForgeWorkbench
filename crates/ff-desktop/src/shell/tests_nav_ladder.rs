@@ -1,135 +1,91 @@
-//! CR-CH-052 uniform navigation / exit model -- full-shell egui_kittest tests.
+//! CR-CH-116 ISPF END / RETURN / EXIT model -- full-shell egui_kittest tests.
 //!
-//! Proves the TWO-ROOTS model end-to-end through the real `WorkbenchShell`
-//! (headless `build_eframe` via `harness_shell` / `make_shell`): the `=` family
-//! targets the FFCMD_Root (the POM), while bare `X` / END / RETURN target the
-//! Tab_Visual_Root. The behaviour is UNIFORM across the POM and a non-POM
-//! (`START SETTINGS`) Workspace -- there is no POM special-casing.
+//! Proves the model end-to-end through the real `WorkbenchShell` (headless
+//! `build_eframe` via `harness_shell` / `make_shell`):
+//!   - bare `X` is the FFCMD seed alias of EXIT, so on every NON-editor Context
+//!     it terminates the app UNCONDITIONALLY (the old nav_x collapse/close/exit-
+//!     when-last verb is RETIRED);
+//!   - `=X` reinitialises to the POM (FFCMD) then runs `X` -> EXIT (also exit);
+//!   - END (PF3) pops exactly ONE level of the Navigation_Stack;
+//!   - RETURN unwinds to the tab's primary panel (Tab_Visual_Root) in one step;
+//!   - on an editor Context FFEDIT claims bare `X` as EXCLUDE (active-wins), so
+//!     X does NOT exit there; `=X` escapes to FFCMD and exits.
 //!
-//! Model: `nav_x` collapses to the Tab_Visual_Root (`nav_stack[0]`) when the
-//! stack is non-empty, else closes the Workspace (exit only when last). `=` is
-//! the single front-door reinitialise-to-POM step. These assert on the shell
-//! model (active tab kind / is_home / nav_stack depth / tab count /
-//! `should_close`), not pixels, within a bounded frame budget.
+//! These assert on the shell model (active tab kind / is_home / nav_stack depth /
+//! tab count / `should_close`), not pixels, within a bounded frame budget.
 
 #![allow(unused_imports)]
 use super::tests_common::*;
 use crate::tab_state::{KindTag, TabKind};
 
-/// Validates: menu-workspace Requirement 14.13 (CR-CH-052) -- bare `X` ABOVE the
-/// Tab_Visual_Root collapses to that root in one action; it does not close.
+/// Validates: navigation-commands Requirement 21.4; menu-workspace Req 14.13
+/// (CR-CH-116) -- bare `X` on a non-editor Context ABOVE the visual root
+/// terminates the app via the FFCMD X -> EXIT seed (it no longer collapses to the
+/// visual root). The old nav_x collapse behaviour is retired.
 #[test]
-fn bare_x_collapses_to_visual_root_when_above_root() {
-    let mut harness = harness_shell();
-    // POM -> CONFIG pushes the POM onto the stack (visual root = POM).
-    harness.state_mut().dispatch_command_string("CONFIG");
-    for _ in 0..4 {
-        harness.run();
-    }
+fn bare_x_exits_app_from_drilled_non_editor_context() {
+    let mut shell = make_shell();
+    // POM root, then drill into CONFIG (non-editor Context above the root).
+    shell.set_active_tab_home();
+    shell.dispatch_command_string("CONFIG");
     assert_eq!(
-        harness.state().tabs.active_tab().kind.tag(),
+        shell.tabs.active_tab().kind.tag(),
         KindTag::ConfigPanel,
         "precondition: drilled into the Config Context"
     );
-    assert!(!harness.state().tabs.active_tab().nav_stack.is_empty());
+    assert!(!shell.tabs.active_tab().nav_stack.is_empty());
 
-    harness.state_mut().dispatch_command_string("X");
-    for _ in 0..4 {
-        harness.run();
-    }
+    shell.dispatch_command_string("X");
 
     assert!(
-        harness.state().tabs.active_tab().is_home,
-        "bare X collapses to the Tab_Visual_Root (the POM)"
-    );
-    assert!(
-        harness.state().tabs.active_tab().nav_stack.is_empty(),
-        "collapse clears the Navigation_Stack"
-    );
-    assert!(
-        !*harness.state().should_close.lock().expect("close lock"),
-        "collapse must not app-exit"
+        *shell.should_close.lock().expect("close lock"),
+        "bare X on a non-editor Context terminates the app (X -> EXIT, CR-CH-116)"
     );
 }
 
-/// Validates: menu-workspace Requirement 14.14 (CR-CH-052) -- bare `X` AT the
-/// Tab_Visual_Root (empty stack) with other tabs open closes just this one
-/// Workspace; it does not app-exit.
+/// Validates: navigation-commands Requirement 21.4; menu-workspace Req 14.13
+/// (CR-CH-116) -- bare `X` at the visual root of a non-editor Context exits the
+/// app unconditionally, even with other tabs open (no "close just this tab").
 #[test]
-fn bare_x_at_visual_root_closes_workspace() {
-    let mut harness = harness_shell();
-    // A second POM tab so the close path removes a tab rather than app-exiting.
-    harness.state_mut().dispatch_command_string("START");
-    for _ in 0..4 {
-        harness.run();
-    }
-    let before = harness.state().tabs.len();
-    assert!(before >= 2, "precondition: more than one tab open");
+fn bare_x_exits_app_even_with_other_tabs_open() {
+    let mut shell = make_shell();
+    shell.set_active_tab_home();
+    // A second POM tab so that, under the OLD model, X would merely close one
+    // tab. Under CR-CH-116 X exits the app regardless.
+    shell.dispatch_command_string("START");
     assert!(
-        harness.state().tabs.active_tab().nav_stack.is_empty(),
+        shell.tabs.len() >= 2,
+        "precondition: more than one tab open"
+    );
+    assert!(
+        shell.tabs.active_tab().nav_stack.is_empty(),
         "precondition: the new START tab is at its visual root (empty stack)"
     );
 
-    harness.state_mut().dispatch_command_string("X");
-    for _ in 0..4 {
-        harness.run();
-    }
+    shell.dispatch_command_string("X");
 
-    assert_eq!(
-        harness.state().tabs.len(),
-        before - 1,
-        "bare X at the visual root closes this one Workspace"
-    );
     assert!(
-        !*harness.state().should_close.lock().expect("close lock"),
-        "closing one of several tabs must not app-exit"
+        *shell.should_close.lock().expect("close lock"),
+        "bare X exits the app unconditionally (CR-CH-116), not close-one-tab"
     );
 }
 
-/// Validates: menu-workspace Requirement 14.14; command-framework Req 10.2
-/// (CR-CH-052) -- `=X` closes the Workspace (reinit to POM, then X at the empty
-/// root), NOT an unconditional app-exit: with other tabs open it closes one tab;
-/// as the last tab it app-exits. The multi-tab case runs full-shell; the
-/// app-exit (`should_close`) assertion is made at the model level with
-/// `make_shell` (mirroring `end_at_empty_stack_last_tab_exits`), since the exit
-/// is a `file.exit` dispatch whose close-flag is the authoritative signal.
+/// Validates: navigation-commands Requirement 21.5; menu-workspace Req 14.14
+/// (CR-CH-116) -- `=X` reinitialises to the POM (FFCMD) then runs `X` -> EXIT, so
+/// it terminates the app.
 #[test]
-fn equals_x_closes_not_app_exit() {
-    // More than one tab: `=X` closes one tab, no app-exit (full shell).
-    let mut harness = harness_shell();
-    harness.state_mut().dispatch_command_string("START");
-    for _ in 0..4 {
-        harness.run();
-    }
-    let before = harness.state().tabs.len();
-    assert!(before >= 2);
-
-    harness.state_mut().dispatch_command_string("=X");
-    for _ in 0..4 {
-        harness.run();
-    }
-    assert_eq!(
-        harness.state().tabs.len(),
-        before - 1,
-        "`=X` with other tabs open closes one Workspace"
-    );
-    assert!(
-        !*harness.state().should_close.lock().expect("close lock"),
-        "`=X` is not an unconditional app-exit"
-    );
-
-    // Exactly one tab: `=X` closes it and app-exits (model-level close flag).
+fn equals_x_exits_app() {
     let mut shell = make_shell();
-    assert_eq!(shell.tabs.len(), 1, "precondition: single tab");
+    shell.set_active_tab_home();
     shell.dispatch_command_string("=X");
     assert!(
         *shell.should_close.lock().expect("close lock"),
-        "`=X` on the last tab closes the Workspace and app-exits"
+        "`=X` reinitialises to POM then runs X -> EXIT, terminating the app"
     );
 }
 
-/// Validates: menu-workspace Requirement 14.4 (CR-CH-052 confirms unchanged) --
-/// END pops ONE level of the Navigation_Stack (distinct from X / RETURN collapse).
+/// Validates: navigation-commands Requirement 21.1 (CR-CH-116 confirms unchanged)
+/// -- END (PF3) pops ONE level of the Navigation_Stack.
 #[test]
 fn end_pops_one_level() {
     let mut harness = harness_shell();
@@ -165,112 +121,88 @@ fn end_pops_one_level() {
         depth_before - 1,
         "END decreases the stack depth by exactly one"
     );
-}
-
-/// Validates: menu-workspace Requirement 14.14; CR-CH-016 (CR-CH-052) -- bare
-/// `X` at the visual root of the LAST Workspace app-exits. Asserted at the model
-/// level via the `file.exit` close flag (mirroring `end_at_empty_stack_last_tab_exits`),
-/// the authoritative app-exit signal.
-#[test]
-fn app_exits_only_on_last_close() {
-    let mut shell = make_shell();
-    // make_shell's single tab is the welcome editor; make it the POM root
-    // deterministically (the Home Context at an empty visual root) so bare `X`
-    // reaches the uniform FFCMD close verb rather than FFEDIT EXCLUDE.
-    shell.set_active_tab_home();
-    assert_eq!(shell.tabs.len(), 1, "precondition: single tab");
     assert!(
-        shell.tabs.active_tab().is_home,
-        "precondition: the single tab is the POM root"
-    );
-    assert!(
-        shell.tabs.active_tab().nav_stack.is_empty(),
-        "precondition: at the visual root (empty stack)"
-    );
-
-    shell.dispatch_command_string("X");
-
-    assert!(
-        *shell.should_close.lock().expect("close lock"),
-        "bare X at the root of the last Workspace app-exits"
+        !*harness.state().should_close.lock().expect("close lock"),
+        "END pops a level -- it is NOT app-exit (PF3 stays END, CR-CH-116)"
     );
 }
 
-/// Validates: menu-workspace Requirement 14.13 (CR-CH-052) -- the POM is NOT
-/// special-cased: bare `X` after a POM->CONFIG navigation behaves identically to
-/// bare `X` after a (non-POM-rooted) START SETTINGS -> CONFIG navigation; both
-/// collapse to their respective Tab_Visual_Root.
+/// Validates: navigation-commands Requirement 21.2 (CR-CH-116) -- RETURN unwinds
+/// the Navigation_Stack to the tab's primary panel (Tab_Visual_Root) in one
+/// step, and does NOT app-exit when above the root.
 #[test]
-fn pom_not_special_cased() {
-    // Shell A: a POM-rooted tab drilled into CONFIG. Visual root = POM.
-    let mut a = harness_shell();
-    a.state_mut().dispatch_command_string("CONFIG");
+fn return_unwinds_to_primary_panel() {
+    let mut harness = harness_shell();
+    // POM -> CONFIG -> KEYS (two deep above the POM visual root).
+    harness.state_mut().dispatch_command_string("CONFIG");
     for _ in 0..4 {
-        a.run();
+        harness.run();
     }
-    assert_eq!(a.state().tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
-    a.state_mut().dispatch_command_string("X");
+    harness.state_mut().dispatch_command_string("KEYS");
     for _ in 0..4 {
-        a.run();
+        harness.run();
     }
-    assert!(
-        a.state().tabs.active_tab().is_home,
-        "POM-rooted tab: X collapses to the POM visual root"
-    );
-    let a_closed = *a.state().should_close.lock().expect("close lock");
+    assert!(!harness.state().tabs.active_tab().nav_stack.is_empty());
 
-    // Shell B: a SETTINGS-rooted tab (START SETTINGS = empty stack, non-POM)
-    // drilled into CONFIG. Visual root = Settings. X collapses back to Settings.
-    let mut b = harness_shell();
-    b.state_mut().dispatch_command_string("START SETTINGS");
+    harness.state_mut().dispatch_command_string("RETURN");
     for _ in 0..4 {
-        b.run();
+        harness.run();
     }
+
     assert!(
-        !b.state().tabs.active_tab().is_home,
+        harness.state().tabs.active_tab().is_home,
+        "RETURN unwinds to the primary panel (the POM visual root) in one step"
+    );
+    assert!(
+        harness.state().tabs.active_tab().nav_stack.is_empty(),
+        "RETURN clears the Navigation_Stack back to the primary panel"
+    );
+    assert!(
+        !*harness.state().should_close.lock().expect("close lock"),
+        "RETURN above the root does not app-exit"
+    );
+}
+
+/// Validates: navigation-commands Requirement 21.4 (CR-CH-116) -- X = EXIT is
+/// UNIFORM across the POM and a non-POM (START SETTINGS) Workspace: bare `X` on
+/// either terminates the app; the POM is not special-cased.
+#[test]
+fn x_exits_uniformly_pom_and_non_pom() {
+    // Shell A: a POM-rooted tab drilled into CONFIG.
+    let mut a = make_shell();
+    a.set_active_tab_home();
+    a.dispatch_command_string("CONFIG");
+    assert_eq!(a.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
+    a.dispatch_command_string("X");
+    let a_closed = *a.should_close.lock().expect("close lock");
+
+    // Shell B: a SETTINGS-rooted tab (START SETTINGS) drilled into CONFIG.
+    let mut b = make_shell();
+    b.set_active_tab_home();
+    b.dispatch_command_string("START SETTINGS");
+    assert!(
+        !b.tabs.active_tab().is_home,
         "precondition: START SETTINGS roots a non-POM Workspace"
     );
-    assert!(
-        b.state().tabs.active_tab().nav_stack.is_empty(),
-        "precondition: START SETTINGS leaves an empty stack (Settings is the root)"
-    );
-    b.state_mut().dispatch_command_string("CONFIG");
-    for _ in 0..4 {
-        b.run();
-    }
-    assert_eq!(b.state().tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
-    b.state_mut().dispatch_command_string("X");
-    for _ in 0..4 {
-        b.run();
-    }
+    b.dispatch_command_string("CONFIG");
+    assert_eq!(b.tabs.active_tab().kind.tag(), KindTag::ConfigPanel);
+    b.dispatch_command_string("X");
+    let b_closed = *b.should_close.lock().expect("close lock");
 
-    // The SAME uniform rule applies: both collapsed to their own visual root in
-    // one action and neither app-exited (both had their drilled context above
-    // the root). The POM is not treated differently.
-    assert!(
-        !b.state().tabs.active_tab().is_home,
-        "SETTINGS-rooted tab: X collapses to the Settings visual root (NOT the POM)"
-    );
-    assert_eq!(
-        b.state().tabs.active_tab().kind.tag(),
-        KindTag::MenuWorkspace,
-        "the Settings visual root is a MenuWorkspace"
-    );
-    let b_closed = *b.state().should_close.lock().expect("close lock");
+    assert!(a_closed, "POM-rooted tab: X exits the app");
+    assert!(b_closed, "SETTINGS-rooted tab: X exits the app");
     assert_eq!(
         a_closed, b_closed,
-        "neither the POM-rooted nor the Settings-rooted collapse app-exits -- \
-         the POM is not special-cased"
+        "X = EXIT is uniform: the POM is not special-cased (CR-CH-116)"
     );
-    assert!(!a_closed, "collapse above the root never app-exits");
 }
 
-/// Validates: command-environments Requirement 5.1; menu-workspace Req 14.14
-/// (CR-CH-052) -- on an editor Context FFEDIT claims bare `X` as EXCLUDE (no
-/// close/exit), but `=X` escapes to FFCMD and closes/exits via the uniform path.
+/// Validates: navigation-commands Requirement 21.5; command-configurator Req 8.5
+/// (CR-CH-116) -- on an editor Context FFEDIT claims bare `X` as EXCLUDE
+/// (active-wins), so X does NOT exit; `=X` escapes to FFCMD and exits.
 #[test]
-fn ffedit_bare_x_stays_exclude_but_equals_x_escapes() {
-    // Bare X on an editor Context: FFEDIT EXCLUDE, not a close/exit.
+fn ffedit_bare_x_stays_exclude_but_equals_x_exits() {
+    // Bare X on an editor Context: FFEDIT EXCLUDE, not an exit.
     let mut harness = harness_shell();
     harness.state_mut().shell_new_untitled();
     for _ in 0..4 {
@@ -288,34 +220,29 @@ fn ffedit_bare_x_stays_exclude_but_equals_x_escapes() {
     }
     assert!(
         !*harness.state().should_close.lock().expect("close lock"),
-        "bare `X ALL` on an editor Context is FFEDIT EXCLUDE, not a close/exit"
+        "bare `X ALL` on an editor Context is FFEDIT EXCLUDE, not an exit"
     );
     assert_eq!(
         harness.state().tabs.len(),
         tabs_before,
-        "FFEDIT EXCLUDE does not close the editor Workspace"
+        "FFEDIT EXCLUDE does not close/exit the editor Workspace"
     );
 
-    // `=X` escapes FFEDIT: reinit to POM then X at the empty root closes/exits.
+    // `=X` escapes FFEDIT: reinit to POM (FFCMD) then X -> EXIT terminates.
+    // Assert the close flag directly after dispatch WITHOUT running frames: the
+    // file.exit dispatch keeps requesting repaint (the shutdown signal), which
+    // would exceed the harness frame budget. The close flag is the authoritative
+    // app-exit signal.
     harness.state_mut().dispatch_command_string("=X");
-    for _ in 0..4 {
-        harness.run();
-    }
-    // shell_new_untitled added a tab, so `=X` closes that one; if it was the
-    // last it app-exits. Assert the editor Workspace is gone one way or another.
-    let closed_or_exited = *harness.state().should_close.lock().expect("close lock")
-        || harness.state().tabs.len() < tabs_before;
     assert!(
-        closed_or_exited,
-        "`=X` escapes FFEDIT and closes the Workspace (exit only when last)"
+        *harness.state().should_close.lock().expect("close lock"),
+        "`=X` escapes FFEDIT (reinit to POM) then X -> EXIT terminates the app"
     );
 }
 
-/// Validates: command-framework Requirement 10.2 (CR-CH-052; CR-CH-073) -- `=0`
-/// from a non-POM tab reinitialises to the POM and resolves option 0 (Settings
-/// -> the Settings Menu_Workspace), proving `=` targets the FFCMD_Root from ANY
-/// tab. (Formerly used `=1` -> Catalogs; key 1 was removed from the trimmed
-/// barebones core, so this now exercises the retained key 0.)
+/// Validates: command-framework Requirement 10.2 (CR-CH-073) -- `=0` from a
+/// non-POM tab reinitialises to the POM and resolves option 0 (Settings -> the
+/// Settings Menu_Workspace), proving `=` targets the FFCMD_Root from ANY tab.
 #[test]
 fn equals_0_works_from_a_non_pom_tab() {
     let mut harness = harness_shell();
@@ -341,35 +268,25 @@ fn equals_0_works_from_a_non_pom_tab() {
     );
 }
 
-/// Validates: menu-and-statusbar Requirement 18.9/18.11; menu-workspace Req
-/// 14.14 (CR-CH-052) -- a Detached_Workspace closes via the SAME
-/// close-workspace-or-exit path. Driven at the model level: the detached tab is
-/// closed via bare `X` at its visual root and the tab count drops (the OS-window
-/// teardown aspect is covered manually -- see TCR).
+/// Validates: navigation-commands Requirement 21.4; menu-workspace Req 14.16
+/// (CR-CH-116) -- a Detached_Workspace is a non-editor Context, so bare `X`
+/// there also exits the app (X = EXIT everywhere). END/RETURN still close it.
 #[test]
-fn detached_workspace_closes_via_same_path() {
+fn detached_workspace_x_exits_app() {
     let mut shell = make_shell();
+    shell.set_active_tab_home();
     // Create a second tab and mark it floating (detached) at its visual root.
     shell.dispatch_command_string("START");
     let detached_idx = shell.tabs.active_index();
-    let detached_id = shell.tabs.tabs()[detached_idx].id;
     if let Some(t) = shell.tabs.tabs_mut().get_mut(detached_idx) {
         t.is_floating = true;
         t.nav_stack.clear();
     }
-    let before = shell.tabs.len();
-    assert!(before >= 2, "precondition: a detached tab plus the primary");
 
-    // Bare X at the detached tab's visual root closes it via the shared
-    // close_workspace_or_exit path (exit only when last).
     shell.dispatch_command_string("X");
 
     assert!(
-        shell.tabs.index_of_id(detached_id).is_none() || shell.tabs.len() == before - 1,
-        "the detached Workspace closes via the same close-workspace-or-exit path"
-    );
-    assert!(
-        !*shell.should_close.lock().expect("close lock"),
-        "closing a detached tab while the primary remains must not app-exit"
+        *shell.should_close.lock().expect("close lock"),
+        "bare X on a detached (non-editor) Workspace exits the app (X = EXIT, CR-CH-116)"
     );
 }

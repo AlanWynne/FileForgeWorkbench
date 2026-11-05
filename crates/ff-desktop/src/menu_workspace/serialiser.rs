@@ -12,6 +12,73 @@
 
 use super::{GroupSeparator, MenuFile, MenuOption};
 
+/// The config-model version stamp written into a Complete_Config_File
+/// (CR-CH-116, configuration-system Req 23.9). It leaves room for a future
+/// deferred UPGRADE/merge command (Req 23.10) without implementing one now. It
+/// is crate-private and purely additive: the loader accepts and ignores it.
+pub(crate) const CONFIG_VERSION: u32 = 1;
+
+/// Serialise a [`MenuFile`] to COMPLETE Menu_File TOML text (CR-CH-116,
+/// configuration-system Req 23.4). Unlike [`serialise`], which omits any field
+/// equal to its loader default for clean editor output, this emits EVERY flag
+/// explicitly -- `title`, `show_calendar`, `group_separator`, `group_headers`,
+/// and for each option `key`/`command`/`description`/`enabled`/`group`/
+/// `show_in_menu_bar` -- plus a top-level `config_version` stamp. A
+/// Complete_Config_File fully determines behaviour with no reliance on a hidden
+/// loader default (e.g. the `show_calendar`-defaults-to-true trap). It
+/// round-trips through [`crate::menu_workspace::loader::parse_menu_str`].
+///
+/// Validates: configuration-system Requirement 23.4, 23.9
+pub fn serialise_complete(menu: &MenuFile) -> String {
+    let mut out = String::new();
+
+    out.push_str(&format!("config_version = {CONFIG_VERSION}\n"));
+    out.push_str(&format!("title = {}\n", toml_string(&menu.title)));
+    out.push_str(&format!("show_calendar = {}\n", menu.show_calendar));
+    out.push_str(&format!(
+        "group_separator = {}\n",
+        toml_string(group_separator_str(menu.group_separator))
+    ));
+    out.push_str(&format!("group_headers = {}\n", menu.group_headers));
+
+    for option in &menu.options {
+        out.push('\n');
+        out.push_str(&serialise_option_complete(option));
+    }
+
+    out
+}
+
+/// Serialise a single option as a `[[options]]` block with EVERY flag explicit
+/// (COMPLETE mode). An absent `group` is emitted as an empty string so the field
+/// is always present; the loader normalises an empty/absent group identically.
+fn serialise_option_complete(option: &MenuOption) -> String {
+    let mut s = String::new();
+    s.push_str("[[options]]\n");
+    s.push_str(&format!("key = {}\n", toml_string(&option.key)));
+    s.push_str(&format!("command = {}\n", toml_string(&option.command)));
+    s.push_str(&format!(
+        "description = {}\n",
+        toml_string(&option.description)
+    ));
+    s.push_str(&format!("enabled = {}\n", option.enabled));
+    if let Some(group) = &option.group {
+        s.push_str(&format!("group = {}\n", toml_string(group)));
+    }
+    s.push_str(&format!("show_in_menu_bar = {}\n", option.show_in_menu_bar));
+    // Inline Command_Target, same handling as the clean serialiser.
+    if let Some(target) = &option.target {
+        if let Ok(table) = toml::to_string(target) {
+            s.push_str("[options.target]\n");
+            for line in table.lines() {
+                s.push_str(line);
+                s.push('\n');
+            }
+        }
+    }
+    s
+}
+
 /// Serialise a [`MenuFile`] to TOML text.
 ///
 /// Validates: menu-workspace Requirement 13.8, 13.10
@@ -100,6 +167,80 @@ fn toml_string(value: &str) -> String {
 mod tests {
     use super::*;
     use crate::menu_workspace::loader::parse_menu_str;
+
+    // Validates: configuration-system Requirement 23.4 (CR-CH-116) --
+    // serialise_complete emits show_calendar EXPLICITLY (true for the POM) and
+    // the result round-trips through parse_menu_str.
+    #[test]
+    fn serialise_complete_pom_emits_show_calendar_true_and_round_trips() {
+        let original = crate::menu_workspace::defaults::recovery_pom_menu();
+        let toml = serialise_complete(&original);
+        assert!(
+            toml.contains("show_calendar = true"),
+            "POM complete output must state show_calendar = true explicitly: {toml}"
+        );
+        assert!(
+            toml.contains("config_version = 1"),
+            "complete output carries the config_version stamp: {toml}"
+        );
+        let parsed = parse_menu_str(&toml).expect("complete POM must parse");
+        assert_eq!(parsed, original);
+    }
+
+    // Validates: configuration-system Requirement 23.4 (CR-CH-116) --
+    // serialise_complete emits show_calendar=false EXPLICITLY for Settings
+    // (whose default is false) and round-trips.
+    #[test]
+    fn serialise_complete_settings_emits_show_calendar_false_and_round_trips() {
+        let original = crate::menu_workspace::defaults::recovery_settings_menu();
+        let toml = serialise_complete(&original);
+        assert!(
+            toml.contains("show_calendar = false"),
+            "Settings complete output must state show_calendar = false explicitly: {toml}"
+        );
+        let parsed = parse_menu_str(&toml).expect("complete Settings must parse");
+        assert_eq!(parsed, original);
+    }
+
+    // Validates: configuration-system Requirement 23.4 (CR-CH-116) -- every flag
+    // is present in complete output, including group_separator, group_headers,
+    // and per-option enabled/show_in_menu_bar; the existing serialise() stays
+    // clean (default-omitting) by contrast.
+    #[test]
+    fn serialise_complete_emits_every_flag() {
+        let menu = MenuFile {
+            title: "M".to_string(),
+            options: vec![MenuOption {
+                key: "A".to_string(),
+                command: "A".to_string(),
+                description: "All".to_string(),
+                enabled: true,
+                group: None,
+                show_in_menu_bar: true,
+                target: None,
+            }],
+            show_calendar: true,
+            group_separator: GroupSeparator::Space,
+            group_headers: false,
+        };
+        let toml = serialise_complete(&menu);
+        for needle in [
+            "show_calendar = true",
+            "group_separator = \"space\"",
+            "group_headers = false",
+            "enabled = true",
+            "show_in_menu_bar = true",
+        ] {
+            assert!(
+                toml.contains(needle),
+                "complete output missing {needle}: {toml}"
+            );
+        }
+        // The clean serialiser omits these defaults; the two modes differ.
+        assert!(!serialise(&menu).contains("show_calendar"));
+        let parsed = parse_menu_str(&toml).expect("parse");
+        assert_eq!(parsed, menu);
+    }
 
     // Validates: Requirement 13.10 -- the Recovery_Baseline POM round-trips
     // through serialise -> parse unchanged.

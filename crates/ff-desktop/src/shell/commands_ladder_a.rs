@@ -23,19 +23,20 @@ impl WorkbenchShell {
     /// also calls it first (so the fall-through ladder path is unchanged), but the
     /// front door returns before reaching the ladder, so it never double-runs.
     ///
-    /// `X` and `=X` are NO LONGER members of this family (CR-CH-052): `X` is the
-    /// uniform FFCMD close verb (`nav_x`), and `=X` is handled by the front-door
-    /// `=` step followed by `X` at the POM root. Only EXIT / QUIT / LOGOFF are
-    /// unconditional app-exit.
+    /// CR-CH-116 (navigation-commands Req 21): `X` is the FFCMD seed alias of
+    /// EXIT, so a bare `X` on a non-editor Context is rewritten to `EXIT` by the
+    /// front door BEFORE this family runs and terminates the app here. `=X`
+    /// reinitialises to the POM (FFCMD) then runs `X` -> EXIT (also app-exit).
+    /// The literal verbs EXIT / QUIT / LOGOFF remain unconditional app-exit. EXIT
+    /// terminates FFWB on every non-editor Context; PF3 stays END.
     ///
-    /// Validates: command-framework Requirement 8.4; Requirement 20.3
+    /// Validates: command-framework Requirement 8.4; Requirement 20.3;
+    /// navigation-commands Requirement 21.3
     pub(super) fn try_exit_family(&mut self, upper: &str) -> bool {
-        // CR-CH-052: the EXIT family is now EXIT / QUIT / LOGOFF only -- the
-        // UNCONDITIONAL app-exit verbs. `X` is NO LONGER an exit verb: it is the
-        // uniform FFCMD close verb (`nav_x`, collapse-to-visual-root / close
-        // workspace, exit only when last). `=X` is likewise gone: the front-door
-        // `=` step reinitialises to the POM and the trailing `X` closes the
-        // Workspace at the empty root -- `=X` is NOT app-exit.
+        // The EXIT family is EXIT / QUIT / LOGOFF -- the UNCONDITIONAL app-exit
+        // verbs. CR-CH-116: `X` is NOT a member here; it reaches EXIT via the
+        // FFCMD X -> EXIT seed rewritten at the front door, so by the time this
+        // runs a non-editor `X` has already become `EXIT`.
         if upper == "EXIT" || upper == "QUIT" || upper == "LOGOFF" {
             // Validates: Requirement 20.3 -- LOGOFF is an alias for EXIT
             if upper == "LOGOFF" {
@@ -303,29 +304,24 @@ impl WorkbenchShell {
             // CANCEL-shaped verb -- DISCARD the working changes (no save) then
             // leave. On a non-editable Context `editable_discard` is a no-op.
             self.editable_discard();
-            // CR-CH-052 (supersedes CR-CH-038): RETURN collapses the whole
-            // Navigation_Stack to the TAB'S VISUAL ROOT in one step (converges
-            // with bare X); at the root it closes the Workspace (exit when last,
-            // CR-CH-016). It no longer jumps to the global POM -- the `=` family
-            // is now the only way to reinitialise the stack to the POM.
+            // CR-CH-116 (navigation-commands Req 21.2): RETURN unwinds the whole
+            // Navigation_Stack to the tab's PRIMARY PANEL (Tab_Visual_Root) in one
+            // step; at the root it closes the Workspace (exit when last,
+            // CR-CH-016). Bare `X` no longer converges here -- `X` is now EXIT.
+            // The `=` family remains the only way to reinitialise to the POM.
             self.nav_return();
             self.open_error = None;
             return true;
         }
 
-        // ── X -- Validates: menu-workspace Requirement 14.13, 14.14 (CR-CH-052) ─
-        if upper == "X" {
-            // Uniform FFCMD close verb: non-empty stack collapses to the
-            // Tab_Visual_Root; empty stack closes the Workspace (exit when last).
-            // Identical for every context including the POM -- NO special case.
-            // The editor Command_Environment claims bare `X` as EXCLUDE first
-            // (CR-CH-053 E8), so this arm is only reached on non-editor contexts
-            // (and for `=X`, where the front-door `=` step already reinitialised
-            // to the POM root so `X` closes the Workspace).
-            self.nav_x();
-            self.open_error = None;
-            return true;
-        }
+        // CR-CH-116 (navigation-commands Req 21.4, menu-workspace Req 14.13): the
+        // bare `X` ladder arm (which called `nav_x`) is RETIRED. `X` is now the
+        // FFCMD seed alias of EXIT: the front door's `rewrite_verb_to_root`
+        // rewrites `X` -> `EXIT` against the active (FFCMD) alias table, and the
+        // prelude's `try_exit_family` dispatches `file.exit`. On an editor the
+        // FFEDIT environment claims bare `X` as EXCLUDE first (active-wins), so
+        // the X -> EXIT seed is not reached there. `=X` reinitialises to the POM
+        // (FFCMD) then runs `X` -> EXIT. There is no command named `X`.
         false
     }
 }

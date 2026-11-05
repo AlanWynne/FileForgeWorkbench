@@ -171,8 +171,11 @@ impl WorkbenchShell {
             return menu;
         }
         // No valid file: built-in names fall back to their Recovery_Baseline.
+        // CR-CH-116 (menu-workspace Req 13.3): SCRM maps to recovery_scrm_menu(),
+        // not the POM catch-all, so the editor loads the SCRM menu when selected.
         match name.to_ascii_uppercase().as_str() {
             "SETTINGS" => crate::menu_workspace::defaults::recovery_settings_menu(),
+            "SCRM" => crate::menu_workspace::defaults::recovery_scrm_menu(),
             _ => crate::menu_workspace::defaults::recovery_pom_menu(),
         }
     }
@@ -182,7 +185,16 @@ impl WorkbenchShell {
     ///
     /// Validates: menu-workspace Requirement 13.2
     fn refresh_menus_editor_list(&mut self) {
-        let mut names = vec!["POM".to_string(), "Settings".to_string()];
+        // CR-CH-116 (menu-workspace Req 13.2): the built-in set is
+        // [POM, Settings, SCRM] -- SCRM is a built-in menu like POM/Settings
+        // (written on first run, rebuilt by Reset bare), so it must list and load
+        // like them. User menus from on-disk *.toml follow, with the three
+        // built-ins de-duplicated.
+        let mut names = vec![
+            "POM".to_string(),
+            "Settings".to_string(),
+            "SCRM".to_string(),
+        ];
         let menus_dir = self.menus_dir();
         if let Ok(entries) = std::fs::read_dir(&menus_dir) {
             let mut user: Vec<String> = entries
@@ -193,8 +205,11 @@ impl WorkbenchShell {
                         return None;
                     }
                     let stem = path.file_stem().and_then(|s| s.to_str())?.to_string();
-                    // pom/settings are already represented by POM/Settings.
-                    if stem.eq_ignore_ascii_case("pom") || stem.eq_ignore_ascii_case("settings") {
+                    // pom/settings/scrm are already represented by the built-ins.
+                    if stem.eq_ignore_ascii_case("pom")
+                        || stem.eq_ignore_ascii_case("settings")
+                        || stem.eq_ignore_ascii_case("scrm")
+                    {
                         return None;
                     }
                     Some(stem)
@@ -213,6 +228,8 @@ fn menu_file_stem(name: &str) -> String {
     match name.to_ascii_uppercase().as_str() {
         "POM" => "pom".to_string(),
         "SETTINGS" => "settings".to_string(),
+        // CR-CH-116: SCRM is a built-in menu -> menus/scrm.toml.
+        "SCRM" => "scrm".to_string(),
         _ => name
             .trim()
             .to_lowercase()

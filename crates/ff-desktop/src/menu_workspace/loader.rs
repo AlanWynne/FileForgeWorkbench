@@ -45,6 +45,14 @@ struct RawMenuFile {
     /// Whether to render group header labels (menu-workspace Req 4b). Default false.
     #[serde(default)]
     group_headers: bool,
+    /// Config-model version stamp (CR-CH-116, configuration-system Req 23.9).
+    /// Written by the COMPLETE-mode serialiser; purely additive and IGNORED on
+    /// load. It exists only so a file carrying the stamp parses cleanly and to
+    /// leave room for a deferred UPGRADE/merge command (Req 23.10). An absent
+    /// stamp (older file) defaults to `None`.
+    #[serde(default)]
+    #[allow(dead_code)]
+    config_version: Option<u32>,
 }
 
 /// Raw TOML representation of a single option.
@@ -404,6 +412,19 @@ mode = "captured"
         let f = write_toml("title = \"Menu\"\ngroup_headers = true\n");
         let menu = load_menu_file(f.path()).expect("load ok");
         assert!(menu.group_headers);
+    }
+
+    // Validates: configuration-system Requirement 23.9 (CR-CH-116) -- a menu
+    // TOML carrying the config_version stamp parses successfully and is
+    // otherwise unchanged (the stamp is additive and ignored on load).
+    #[test]
+    fn load_menu_with_config_version_stamp_parses_and_ignores_it() {
+        let toml = "config_version = 1\ntitle = \"Stamped\"\n[[options]]\nkey = \"1\"\ncommand = \"FILES\"\ndescription = \"Files\"\n";
+        let f = write_toml(toml);
+        let menu = load_menu_file(f.path()).expect("stamped file loads");
+        assert_eq!(menu.title, "Stamped");
+        assert_eq!(menu.options.len(), 1);
+        assert_eq!(menu.options[0].command, "FILES");
     }
 
     // Validates: Requirement 9.2 -- load_menu_file_with_limits wires I/O + limits

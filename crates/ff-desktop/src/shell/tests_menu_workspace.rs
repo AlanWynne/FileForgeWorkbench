@@ -216,7 +216,8 @@ fn scrm_bar_dropdown_is_built_from_the_scrm_submenu() {
             "CAPTURE STOP",
             "CAPTURE REPLAY",
             "HELP SCRM",
-            "X",
+            // CR-CH-116: the SCRM Exit option now dispatches EXIT (X is its seed).
+            "EXIT",
         ],
         "the SCRM bar dropdown must list the SCRM submenu's existing verbs (Req 22.5/25.4)"
     );
@@ -344,7 +345,8 @@ fn dispatch_scrm_opens_code_only_scrm_menu() {
             "CAPTURE STOP",
             "CAPTURE REPLAY",
             "HELP SCRM",
-            "X"
+            // CR-CH-116: Exit option dispatches EXIT (X is its FFCMD seed).
+            "EXIT"
         ],
         "the code-only SCRM menu must list the Req 25.3/25.4 options"
     );
@@ -1689,6 +1691,39 @@ fn menus_command_opens_menus_editor() {
             .iter()
             .any(|n| n == "POM"),
         "the selector must list POM"
+    );
+}
+
+// Validates: menu-workspace Requirement 13.2 (CR-CH-116) -- the Menus editor
+// selector lists SCRM alongside POM and Settings (SCRM is a built-in menu).
+#[test]
+fn menus_editor_selector_lists_scrm() {
+    let mut shell = make_shell();
+    shell.dispatch_command_string("MENUS");
+    let avail = &shell.menus_editor_panel.available;
+    for expected in ["POM", "Settings", "SCRM"] {
+        assert!(
+            avail.iter().any(|n| n == expected),
+            "the Menus editor selector must list {expected}: {avail:?}"
+        );
+    }
+}
+
+// Validates: menu-workspace Requirement 13.3 (CR-CH-116) -- selecting SCRM in the
+// Menus editor loads the SCRM menu (Recovery_Baseline when no user file), not the
+// POM (the former catch-all fallback bug).
+#[test]
+fn menus_editor_selecting_scrm_loads_scrm_menu_not_pom() {
+    let shell = make_shell();
+    let loaded = shell.load_menu_for_editor("SCRM");
+    let scrm = crate::menu_workspace::defaults::recovery_scrm_menu();
+    assert_eq!(
+        loaded.title, scrm.title,
+        "selecting SCRM must load the SCRM menu, not the POM"
+    );
+    assert!(
+        loaded.options.iter().any(|o| o.command == "SNAPSHOT"),
+        "the loaded SCRM menu carries the SCRM options"
     );
 }
 

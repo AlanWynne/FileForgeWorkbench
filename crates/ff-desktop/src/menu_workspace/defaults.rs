@@ -66,8 +66,8 @@ group = "Core"
 
 [[options]]
 key = "X"
-command = "X"
-description = "Collapse to the visual root / close workspace (exit when last)"
+command = "EXIT"
+description = "Exit -- terminate the workbench"
 group = "Core"
 show_in_menu_bar = false
 "#;
@@ -167,8 +167,9 @@ pub fn recovery_settings_menu() -> crate::menu_workspace::MenuFile {
 /// front door (Req 22.6, 25.4): Snapshot -> `SNAPSHOT` (bare composite clipboard,
 /// Req 4.1); Capture start -> `CAPTURE START`; Capture stop -> `CAPTURE STOP`
 /// (the 2C Save-As dialog); Capture replay -> `CAPTURE REPLAY` (the 2C saved
-/// -session picker); SCRM Help -> `HELP SCRM` (the SCRM help topic); Exit -> `X`
-/// (the uniform FFCMD close/END verb). NO new verb is introduced.
+/// -session picker); SCRM Help -> `HELP SCRM` (the SCRM help topic); Exit ->
+/// `EXIT` (the FFCMD app-exit verb; `X` is its seed alias, CR-CH-116). NO new
+/// verb is introduced.
 ///
 /// Mnemonic keys are the owner-confirmed (settled-but-tunable) set from Req 25.3:
 /// Snapshot `S`, Capture start `CS`, Capture stop `CT`, Capture replay `CR`,
@@ -209,8 +210,8 @@ group = "Core"
 
 [[options]]
 key = "X"
-command = "X"
-description = "Exit -- close this menu (collapse to the visual root)"
+command = "EXIT"
+description = "Exit -- terminate the workbench"
 group = "Core"
 show_in_menu_bar = false
 "#;
@@ -260,27 +261,36 @@ mod tests {
         assert!(menus_dir.exists());
     }
 
-    // Validates: Requirement 4.1/4.2 (revised, CR-CH-021) -- built-in menus are
-    // CODE-ONLY; ensure_menus_dir never writes pom.toml/settings.toml.
+    // Validates: menu-workspace Requirement 4.1/4.2 (revised, CR-CH-116) -- under
+    // the write-through model the built-in menu files ARE written, but by the
+    // first-run write hook (shell/config_bootstrap.rs), NOT by ensure_menus_dir.
+    // ensure_menus_dir's sole job is still to create the (possibly empty) menus/
+    // directory; by itself it writes no menu file. (The former CR-CH-021
+    // "code-only, never materialised" invariant is REVERSED: first-run writes
+    // pom/settings/scrm; that behaviour is covered by the first-run tests in
+    // shell/tests_first_run.rs.)
     #[test]
-    fn ensure_menus_dir_does_not_materialise_built_in_menus() {
+    fn ensure_menus_dir_creates_dir_but_writes_no_menu_file_itself() {
         let dir = TempDir::new().expect("tempdir");
         ensure_menus_dir(dir.path());
         let menus_dir = dir.path().join("menus");
         assert!(
+            menus_dir.exists(),
+            "ensure_menus_dir creates the menus/ dir"
+        );
+        // ensure_menus_dir alone writes nothing -- the write-through first-run
+        // hook is the writer, exercised by the first-run tests.
+        assert!(
             !menus_dir.join("pom.toml").exists(),
-            "pom.toml must NOT be materialised (menus are code-only, CR-CH-021)"
+            "ensure_menus_dir itself writes no pom.toml (the first-run hook does)"
         );
         assert!(
             !menus_dir.join("settings.toml").exists(),
-            "settings.toml must NOT be materialised (menus are code-only, CR-CH-021)"
+            "ensure_menus_dir itself writes no settings.toml (the first-run hook does)"
         );
-        // screen-snapshot-scrm Req 22.8 / 25.5 (CR-NR-114): the SCRM menu screen
-        // is ALSO code-only and must never be materialised to disk by RESET BARE
-        // / startup scaffolding.
         assert!(
             !menus_dir.join("scrm.toml").exists(),
-            "scrm.toml must NOT be materialised (SCRM menu is code-only, Req 22.8/25.5)"
+            "ensure_menus_dir itself writes no scrm.toml (the first-run hook does)"
         );
     }
 
@@ -311,9 +321,10 @@ mod tests {
         // the bare core is now Settings (0) / Help (3) / SCRM (S) / terminate (X).
         assert_eq!(keys, vec!["0", "3", "S", "X"]);
         let commands: Vec<&str> = menu.options.iter().map(|o| o.command.as_str()).collect();
-        // CR-CH-052: the terminate option's command is the uniform `X` close
-        // verb (collapse-to-visual-root / close-workspace), not `Return`.
-        assert_eq!(commands, vec!["Settings", "Help", "SCRM", "X"]);
+        // CR-CH-116 (navigation-commands Req 21.7, menu-workspace Req 2.1g): the
+        // terminate option's command is now `EXIT` (X is its FFCMD seed alias),
+        // not the retired `X` close verb.
+        assert_eq!(commands, vec!["Settings", "Help", "SCRM", "EXIT"]);
         // Single group -> no stray separator boundary.
         let groups: std::collections::BTreeSet<&str> = menu
             .options
@@ -363,8 +374,8 @@ mod tests {
         // EXACTLY-0/3/X invariant is DELIBERATELY changed, owner-confirmed (b)).
         assert_eq!(
             cmds,
-            vec!["Settings", "Help", "SCRM", "X"],
-            "the bare-core POM must be Settings / Help / SCRM / terminate (Req 22.3)"
+            vec!["Settings", "Help", "SCRM", "EXIT"],
+            "the bare-core POM must be Settings / Help / SCRM / EXIT (Req 22.3, CR-CH-116)"
         );
     }
 
@@ -424,9 +435,10 @@ mod tests {
                 ("CT", "CAPTURE STOP"),
                 ("CR", "CAPTURE REPLAY"),
                 ("H", "HELP SCRM"),
-                ("X", "X"),
+                // CR-CH-116: the SCRM Exit option dispatches EXIT (X is its seed).
+                ("X", "EXIT"),
             ],
-            "SCRM menu keys/commands must match Req 25.3/25.4"
+            "SCRM menu keys/commands must match Req 25.3/25.4 (X -> EXIT, CR-CH-116)"
         );
     }
 
@@ -486,15 +498,16 @@ mod tests {
             .iter()
             .filter_map(|o| o.get("command").and_then(|c| c.as_str()))
             .collect();
-        // CR-CH-052: terminate option command is `X`, not `Return`.
-        assert_eq!(commands, vec!["Settings", "Help", "SCRM", "X"],);
+        // CR-CH-116: terminate option command is `EXIT` (X is its FFCMD seed).
+        assert_eq!(commands, vec!["Settings", "Help", "SCRM", "EXIT"],);
     }
 
-    // Validates: Requirement 2.1g (menu-workspace, revised CR-CH-052) -- the POM
-    // terminate option is the data-driven `X` -> `X` close verb (collapse to the
-    // visual root / close workspace, exit when last), not the former `X -> Return`.
+    // Validates: menu-workspace Requirement 2.1g, 12.2; navigation-commands
+    // Requirement 21.7 (CR-CH-116) -- the POM terminate option keeps the mnemonic
+    // key `X` but its command is `EXIT` (X is the FFCMD seed alias of EXIT, there
+    // is no command named X), displayed as `X EXIT`.
     #[test]
-    fn default_pom_toml_terminate_is_x_x() {
+    fn default_pom_toml_terminate_is_x_exit() {
         let val: toml::Value = toml::from_str(DEFAULT_POM_TOML).expect("valid TOML");
         let options = val
             .get("options")
@@ -504,7 +517,7 @@ mod tests {
             .iter()
             .find(|o| o.get("key").and_then(|k| k.as_str()) == Some("X"))
             .expect("X option present");
-        assert_eq!(x.get("command").and_then(|c| c.as_str()), Some("X"));
+        assert_eq!(x.get("command").and_then(|c| c.as_str()), Some("EXIT"));
     }
 
     // Validates: Requirement 7.1 (cv-requirements.md) -- title matches spec

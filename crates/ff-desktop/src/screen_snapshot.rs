@@ -396,16 +396,19 @@ description = "Settings"
         }
     }
 
-    // Validates: menu-workspace Req 23.2, 23.3, 23.5 (CR-NR-117) -- the built-in
-    // POM renders as aligned `key command : description` rows, no bracket suffix,
-    // `X X` shows both columns.
+    // Validates: menu-workspace Req 23.2, 23.3, 23.5 (CR-NR-117); CR-CH-116 --
+    // the built-in POM renders as aligned `key command : description` rows, no
+    // bracket suffix. The terminate option's command is now `EXIT` (X is its
+    // FFCMD seed alias), so this raw-command render shows `X EXIT` with the new
+    // description. (The live/golden snapshot path surfaces the alias as `X X`;
+    // this path uses the stored command directly.)
     #[test]
     fn built_in_pom_rows_use_aligned_colon_form_without_suffix() {
         let menu = crate::menu_workspace::defaults::recovery_pom_menu();
         let lines = format_menu_rows(&rows_from_menu(&menu), menu.group_separator, false);
         assert_eq!(lines[0], "0 Settings : FFWB Settings and Client Parameters");
         assert_eq!(lines[2], "S SCRM     : Screen Capture and Recording");
-        assert!(lines[3].starts_with("X X        : Collapse to the visual root"));
+        assert!(lines[3].starts_with("X EXIT     : Exit -- terminate the workbench"));
     }
 
     // Validates: screen-snapshot-scrm Req 3.9, 3.13 -- the right column carries

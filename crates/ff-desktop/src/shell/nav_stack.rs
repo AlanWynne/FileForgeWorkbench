@@ -166,17 +166,20 @@ impl WorkbenchShell {
         }
     }
 
-    /// RETURN: collapse the active tab's Navigation_Stack to its own
-    /// Tab_Visual_Root (the bottom of its stack) in one step. When already at the
-    /// root (empty stack), close the Workspace (exit when last, CR-CH-016).
+    /// RETURN (ISPF): unwind the active tab's Navigation_Stack to its PRIMARY
+    /// PANEL -- the tab's own Tab_Visual_Root (the bottom of its stack) -- in one
+    /// step. When already at the root (empty stack), close the Workspace (exit
+    /// when last, CR-CH-016).
     ///
-    /// CR-CH-052 (supersedes CR-CH-038): RETURN targets the TAB'S VISUAL ROOT,
-    /// not the global POM. The Tab_Visual_Root is the context the tab was STARTed
-    /// at (POM by default, or `START <ctx>`), i.e. `nav_stack[0]`. RETURN now
-    /// converges with bare `X` on a non-empty stack. The `=` family remains the
-    /// only way to reinitialise the stack to the POM (FFCMD_Root).
+    /// CR-CH-116: this IS the ISPF "back out to the primary panel" semantics
+    /// (navigation-commands Req 21.2), reclassified as such; behaviour is
+    /// UNCHANGED from CR-CH-052 (it already collapsed to the Tab_Visual_Root).
+    /// The Tab_Visual_Root is the context the tab was STARTed at (POM by default,
+    /// or `START <ctx>`), i.e. `nav_stack[0]`. The `=` family remains the only
+    /// way to reinitialise the stack to the POM (FFCMD_Root). END (PF3) pops one
+    /// level; `X`/EXIT terminate the app.
     ///
-    /// Validates: menu-workspace Requirement 14.10 (revised, CR-CH-052)
+    /// Validates: menu-workspace Requirement 14.10; navigation-commands Req 21.2
     pub(super) fn nav_return(&mut self) {
         if self.tabs.active_tab().nav_stack.is_empty() {
             self.close_workspace_or_exit();
@@ -203,22 +206,12 @@ impl WorkbenchShell {
         }
     }
 
-    /// Uniform bare `X` (CR-CH-052): the FFCMD close verb. When the active tab's
-    /// Navigation_Stack is non-empty, collapse to the Tab_Visual_Root in one
-    /// action; when empty (already at the root), close the Workspace (exit when
-    /// it is the last tab, CR-CH-016). Identical for EVERY context including the
-    /// POM -- there is NO POM special-casing. (The editor Command_Environment
-    /// claims bare `X` as EXCLUDE first, so uniform `X` is not reached there;
-    /// the `=X` escape hatch still routes to this verb at the POM root.)
-    ///
-    /// Validates: menu-workspace Requirement 14.13, 14.14 (CR-CH-052)
-    pub(super) fn nav_x(&mut self) {
-        if self.tabs.active_tab().nav_stack.is_empty() {
-            self.close_workspace_or_exit();
-        } else {
-            self.nav_collapse_to_visual_root();
-        }
-    }
+    // CR-CH-116 (navigation-commands Req 21.6): the former uniform bare-`X`
+    // close verb `nav_x` is RETIRED. `X` is now the FFCMD seed alias of EXIT
+    // (app-exit via the front door), so its step-back role is covered by END
+    // (one level, `nav_end`) and RETURN (to the primary panel, `nav_return`);
+    // the terminate-when-last nuance is gone (X just exits). `close_workspace_or_exit`
+    // and `nav_collapse_to_visual_root` are RETAINED (END / RETURN use them).
 
     /// CR-CH-052 front-door `=` step: reinitialise the active tab's
     /// Navigation_Stack to the POM (FFCMD_Root). Clears the stack, then
