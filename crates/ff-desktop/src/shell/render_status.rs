@@ -250,6 +250,13 @@ impl WorkbenchShell {
     pub(super) fn workspace_status_cells(&self) -> Vec<String> {
         use crate::tab_state::KindTag;
         let tab = self.tabs.active_tab();
+        // CR-NR-116 (command-configurator Req 7.25): the Alias Editor contributes
+        // its own Aliases/Rows/Filter cells. Checked BEFORE the editor early
+        // return so the one `alias_status_cells` method drives both the live bar
+        // and the snapshot band (parity by construction).
+        if matches!(tab.kind.tag(), KindTag::AliasEditor) {
+            return self.alias_status_cells();
+        }
         if !matches!(tab.kind.tag(), KindTag::FileEditor | KindTag::Untitled) {
             return Vec::new();
         }

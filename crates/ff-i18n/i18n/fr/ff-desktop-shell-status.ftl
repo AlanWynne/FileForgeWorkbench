@@ -14,3 +14,9 @@ ff-desktop-shell-status-line-col = Lgn { $line }, Col { $col }
 ff-desktop-shell-status-line-count = { $count } lignes
 ff-desktop-shell-status-caps = MAJ
 ff-desktop-shell-status-log-degraded-hover = Journalisation d{ "\u00e9" }grad{ "\u00e9" }e : { $reason }
+
+# --- Alias Editor status segment (CR-NR-116, Req 7.25) ---
+ff-desktop-shell-status-alias-count = Alias : { $count }
+ff-desktop-shell-status-alias-rows = Lignes 1-{ $max } visibles
+ff-desktop-shell-status-alias-rows-none = Lignes 0 visibles
+ff-desktop-shell-status-alias-filter = Filtre : { $ce }/{ $root }

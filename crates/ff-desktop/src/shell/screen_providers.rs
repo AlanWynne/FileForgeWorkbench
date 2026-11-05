@@ -118,27 +118,26 @@ impl WorkbenchShell {
         model
     }
 
-    /// Alias Editor -- one row per alias (surface -> root, with CE + template).
+    /// Alias Editor -- the single-representation model (CR-NR-116,
+    /// command-configurator Req 7.19-7.22). The ONLY content is the ISPF alias
+    /// GRID: one [`alias_table`](Self::alias_table) in `tables` (the displayed
+    /// rows in backing order + the trailing scratch row, rendered as frame
+    /// bands) and one [`alias_markdown_section`](Self::alias_markdown_section) in
+    /// `markdown_sections` (the raw values for the clipboard, box-first then one
+    /// `### Aliases` table).
+    ///
+    /// There is NO `fields` loop (which previously produced the `SS . . . :`
+    /// dot-leader AND a redundant `| Property | Value |` clipboard table) and the
+    /// model carries NO self-set `header_lines` / `command_line` -- the common
+    /// frame (`apply_common_frame`) owns the chrome. A validation error is still
+    /// surfaced through `messages`.
+    ///
+    /// Validates: command-configurator Requirement 7.19, 7.20, 7.21, 7.22
     pub(super) fn alias_editor_screen_model(&self) -> ScreenModel {
         let p = &self.alias_editor_panel;
         let mut model = ScreenModel::new(active_display_title(self));
-        model.command_line = self.command_text.clone();
-        for row in &p.rows {
-            let value = if row.command_template.is_empty() {
-                row.canonical.clone()
-            } else {
-                format!("{} {}", row.canonical, row.command_template)
-            };
-            let label = if row.surface.is_empty() {
-                "(alias)".to_string()
-            } else {
-                row.surface.clone()
-            };
-            model = model.with_field(Field::new(label, value));
-        }
-        // A2: the alias editor's real columns (Act/CE/Command/Alias/Parameters)
-        // with the current working rows as a table.
         model.tables.push(self.alias_table());
+        model.markdown_sections.push(self.alias_markdown_section());
         if let Some(err) = &p.error {
             model.messages.push(err.clone());
         }

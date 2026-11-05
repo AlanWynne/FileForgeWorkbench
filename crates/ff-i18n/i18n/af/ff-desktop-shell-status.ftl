@@ -17,3 +17,9 @@ ff-desktop-shell-status-line-col = Re{ "\u00eb"}l { $line }, Kol { $col }
 ff-desktop-shell-status-line-count = { $count } re{ "\u00eb" }ls
 ff-desktop-shell-status-caps = CAPS
 ff-desktop-shell-status-log-degraded-hover = Aantekening afgegradeer: { $reason }
+
+# --- Alias Editor status segment (CR-NR-116, Req 7.25) ---
+ff-desktop-shell-status-alias-count = Aliasse: { $count }
+ff-desktop-shell-status-alias-rows = Rye 1-{ $max } sigbaar
+ff-desktop-shell-status-alias-rows-none = Rye 0 sigbaar
+ff-desktop-shell-status-alias-filter = Filter: { $ce }/{ $root }

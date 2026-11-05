@@ -153,13 +153,13 @@ fn conformance_every_retrofitted_context_is_capturable() {
     }
 }
 
-// Validates: ispf-table-editor Requirement 10.3 (CR-CH-077) -- the Alias
-// ScreenProvider snapshot renders the SAME single-chrome layout the live panel
-// shows: the captured model carries the `Command ===>` line (from the shell's
-// command line, which is the single surviving command line after CR-CH-077) AND
-// a table whose header row is the Alias columns in order
-// [Act, CE, Command, Alias, Parameters, Description], so the snapshot shows
-// Title -> Command ===> -> header -> rows, AGREEING with the live panel.
+// Validates: command-configurator Requirement 7.19-7.22 (CR-NR-116) -- the Alias
+// ScreenProvider builds the SINGLE-REPRESENTATION model: ONE alias table (the
+// displayed rows in backing order + a trailing scratch row) and ONE markdown
+// section, with NO self-set command_line and NO fields (the common frame owns
+// the `Command ===>` chrome). The table header is the Alias columns in order
+// [Act, CE, Command, Alias, Parameters, Description] and the seeded row renders
+// through the snapshot cell conventions.
 #[test]
 fn full_shell_alias_screen_model_carries_command_line_and_header() {
     use crate::alias_editor_panel::AliasRowEdit;
@@ -178,7 +178,8 @@ fn full_shell_alias_screen_model_carries_command_line_and_header() {
         "ALIASES opens the Alias Editor Context"
     );
 
-    // Seed one row and type a command line so the captured chrome is observable.
+    // Seed one row; the command line is owned by the common frame now, not the
+    // provider, so a typed command line must NOT leak into the provider model.
     harness.state_mut().alias_editor_panel.rows = vec![AliasRowEdit {
         surface: "SS".to_string(),
         canonical: "SNAPSHOT".to_string(),
@@ -190,14 +191,25 @@ fn full_shell_alias_screen_model_carries_command_line_and_header() {
 
     let model = harness.state().alias_editor_screen_model();
 
-    // The snapshot carries the single `Command ===>` line (the shell command
-    // line text, CR-CH-077 single-chrome).
+    // CR-NR-116 single representation: the provider sets NO command_line and NO
+    // fields; the common frame (apply_common_frame) owns the `Command ===>` line.
+    assert!(
+        model.command_line.is_empty(),
+        "the provider model carries no self-set command line"
+    );
+    assert!(
+        model.fields.is_empty(),
+        "the provider model carries no fields (no dot-leader)"
+    );
+    // Exactly ONE alias table and ONE markdown section.
+    assert_eq!(model.tables.len(), 1, "exactly one alias table");
     assert_eq!(
-        model.command_line, "FILTER ffcmd",
-        "the captured model must carry the Command ===> line text"
+        model.markdown_sections.len(),
+        1,
+        "exactly one markdown section"
     );
 
-    // The snapshot carries a table whose header is the Alias columns in order.
+    // The table header is the Alias columns in order.
     let table = model
         .tables
         .first()
@@ -214,10 +226,23 @@ fn full_shell_alias_screen_model_carries_command_line_and_header() {
         ],
         "the captured table header must match the live ALIAS_COLUMNS order (Req 7.3)"
     );
-    // The seeded row is present under the header.
+    // The seeded row is the single data row (before the scratch row), rendered
+    // through the cell conventions: the Alias text cell starts with SS and the
+    // CE combo is UPPERCASE FFCMD.
+    assert_eq!(
+        table.rows.len(),
+        2,
+        "the seeded row plus the trailing scratch row"
+    );
     assert!(
-        table.rows.iter().any(|r| r.contains(&"SS".to_string())),
-        "the seeded alias row must appear under the header"
+        table.rows[0][3].starts_with("SS"),
+        "the seeded alias surface renders in the Alias cell, got {:?}",
+        table.rows[0]
+    );
+    assert!(
+        table.rows[0][1].starts_with("[FFCMD v]"),
+        "the CE renders as the UPPERCASE FFCMD combo, got {:?}",
+        table.rows[0]
     );
 }
 

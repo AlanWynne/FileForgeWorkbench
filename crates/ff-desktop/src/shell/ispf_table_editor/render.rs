@@ -5,7 +5,8 @@
 //! editor Context: a column header row from the host's
 //! [`super::state::ColumnSpec`] list, a FILTER row, the scrolling data rows
 //! (each with an Act cell plus the host's per-column cells in visual Tab order),
-//! and the always-present scratch row when the backing list is empty (Req 4.6).
+//! and an ALWAYS-PRESENT trailing scratch row after the last displayed data row
+//! that promotes into the backing list on first edit (Req 12.5, revising 4.6).
 //! The egui-free apply pass ([`super::line_commands`]) + Sort ([`super::sort`])
 //! stay the structural core; this surface only paints and collects the typed
 //! intent.
@@ -111,8 +112,9 @@ pub struct TableRenderParams<'a, F> {
 /// anchors as its `InteriorFocus`.
 ///
 /// `rows` is the host's working-copy list (the surface renders an always-present
-/// scratch row when it is empty and promotes the scratch into `rows` the moment
-/// it is edited -- Req 4.6). `displayed` is the pre-filtered list of BACKING
+/// TRAILING scratch row after the displayed rows and promotes the scratch into
+/// `rows` the moment it is edited -- Req 12.5, revising 4.6). `displayed` is the
+/// pre-filtered list of BACKING
 /// indices to show (the host computes it from its filter so the index hazard is
 /// the host's concern). `params` carries the title / error / scratch factory.
 ///
@@ -182,28 +184,35 @@ where
         .max_height(rows_height)
         .show(ui, |ui| {
             let mut act_enter = false;
-            if rows.is_empty() {
-                // EMPTY-STORE affordance (Req 4.6): always render one empty
-                // insertable scratch row at backing index 0 so the first entry
-                // can be created; promote it into `rows` on the first edit. An
-                // Enter in the scratch row's Act cell applies the batch AFTER the
-                // scratch has been promoted into `rows`.
-                let mut scratch = blank_scratch();
-                let default = blank_scratch();
-                let cells = host.render_row_cells(ui, 0, &mut scratch);
-                act_enter |= cells.act_enter;
-                field_matrix.push(cells.cell_ids);
-                if scratch != default {
-                    rows.push(scratch);
+            // Render the displayed data rows (the empty-list case renders none,
+            // behaving exactly as before -- only the scratch row below shows).
+            for &backing in displayed {
+                if let Some(row) = rows.get_mut(backing) {
+                    let cells = host.render_row_cells(ui, backing, row);
+                    act_enter |= cells.act_enter;
+                    field_matrix.push(cells.cell_ids);
                 }
-            } else {
-                for &backing in displayed {
-                    if let Some(row) = rows.get_mut(backing) {
-                        let cells = host.render_row_cells(ui, backing, row);
-                        act_enter |= cells.act_enter;
-                        field_matrix.push(cells.cell_ids);
-                    }
-                }
+            }
+
+            // ALWAYS-PRESENT TRAILING SCRATCH ROW (Req 12.5, revising Req 4.6):
+            // after the last displayed data row, render one empty insertable
+            // scratch row built from `blank_scratch()` so the user can always add
+            // a row (the first row when the list is empty, a next row otherwise).
+            // Its backing index is `rows.len()` -- the slot it will occupy once
+            // promoted -- which is 0 for the empty-list case, keeping that
+            // behaviour identical. Promote it into `rows` on the first edit; a
+            // fresh scratch row then appears next frame. An untouched scratch row
+            // is never pushed, so it is never persisted. Its cell ids are pushed
+            // LAST into `field_matrix`, so it is the last focus stop; the filter
+            // row stays `anchors.first` (first_interior_id is unchanged).
+            let scratch_index = rows.len();
+            let mut scratch = blank_scratch();
+            let default = blank_scratch();
+            let cells = host.render_row_cells(ui, scratch_index, &mut scratch);
+            act_enter |= cells.act_enter;
+            field_matrix.push(cells.cell_ids);
+            if scratch != default {
+                rows.push(scratch);
             }
             act_enter
         })
@@ -253,5 +262,215 @@ fn header_width(header: &str) -> f32 {
         "Parameters" => 260.0,
         "Description" => 180.0,
         _ => 120.0,
+    }
+}
+
+// === Tests ==================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::shell::ispf_table_editor::state::{
+        ColumnSpec, CompareMode, FilterState, LineCommandSet,
+    };
+    use egui_kittest::Harness;
+
+    /// A minimal working-copy row: a value plus a transient Act cell.
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    struct TestRow {
+        value: String,
+        act: String,
+    }
+
+    /// A minimal host implementing both the pure `IspfTableHost` and the
+    /// egui-aware `IspfTableRender`. `inject_at` simulates a user edit landing in
+    /// the row at that BACKING index: when the surface renders that row the host
+    /// writes a non-default value into it, so the surface's promote-on-edit path
+    /// (`scratch != default`) runs exactly as a real keystroke would drive it.
+    struct TestHost {
+        columns: Vec<ColumnSpec>,
+        inject_at: Option<usize>,
+    }
+
+    impl TestHost {
+        fn new() -> Self {
+            Self {
+                columns: vec![
+                    ColumnSpec::display("act", "Act"),
+                    ColumnSpec::filterable("value", "Value", CompareMode::ContainsIgnoreCase),
+                ],
+                inject_at: None,
+            }
+        }
+    }
+
+    impl IspfTableHost for TestHost {
+        type Row = TestRow;
+        fn columns(&self) -> &[ColumnSpec] {
+            &self.columns
+        }
+        fn line_command_set(&self) -> LineCommandSet {
+            LineCommandSet::alias()
+        }
+        fn blank_row(&self) -> TestRow {
+            TestRow::default()
+        }
+        fn clone_row(&self, row: &TestRow) -> TestRow {
+            row.clone()
+        }
+        fn act_of<'a>(&self, row: &'a TestRow) -> &'a str {
+            &row.act
+        }
+        fn clear_act(&self, row: &mut TestRow) {
+            row.act.clear();
+        }
+        fn filter_matches(&self, row: &TestRow, filter: &FilterState) -> bool {
+            match filter.get("value") {
+                Some(v) => row.value.to_uppercase().contains(&v.to_uppercase()),
+                None => true,
+            }
+        }
+        fn sort_key(&self, row: &TestRow, _column: super::super::state::ColumnId) -> String {
+            row.value.to_uppercase()
+        }
+    }
+
+    impl IspfTableRender for TestHost {
+        fn render_filter_cells(&mut self, ui: &mut egui::Ui) -> Option<egui::Id> {
+            let id = egui::Id::new("test_filter_value");
+            let mut buf = String::new();
+            let resp = ui.add(egui::TextEdit::singleline(&mut buf).id(id));
+            Some(resp.id)
+        }
+
+        fn render_row_cells(
+            &self,
+            ui: &mut egui::Ui,
+            backing: usize,
+            row: &mut Self::Row,
+        ) -> RowCells {
+            // Simulate a user edit landing in the row at `inject_at` (used to
+            // drive the scratch-row promotion deterministically through the real
+            // surface code path).
+            if self.inject_at == Some(backing) {
+                row.value = "typed".to_string();
+            }
+            let act_id = egui::Id::new(("test_act", backing));
+            let val_id = egui::Id::new(("test_val", backing));
+            let act_resp = ui.add(egui::TextEdit::singleline(&mut row.act).id(act_id));
+            ui.add(egui::TextEdit::singleline(&mut row.value).id(val_id));
+            RowCells {
+                act_enter: false,
+                cell_ids: vec![act_resp.id, val_id],
+            }
+        }
+    }
+
+    fn run_once(host: &mut TestHost, rows: &mut Vec<TestRow>) -> InteriorAnchors {
+        use std::cell::Cell;
+        use std::rc::Rc;
+
+        let displayed: Vec<usize> = (0..rows.len()).collect();
+        // The anchors reported by the surface, captured through a shared Cell so
+        // the closure's borrow ends when the harness is dropped (before we read).
+        let captured: Rc<Cell<InteriorAnchors>> = Rc::new(Cell::new(InteriorAnchors::default()));
+        let sink = Rc::clone(&captured);
+        let mut state = TableEditorState::default();
+        let mut harness = Harness::builder()
+            .with_size(egui::Vec2::new(800.0, 600.0))
+            .build(|ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    let (_action, anchors) = render_ispf_table(
+                        ui,
+                        host,
+                        &mut state,
+                        rows,
+                        &displayed,
+                        TableRenderParams {
+                            error: None,
+                            blank_scratch: TestRow::default,
+                        },
+                    );
+                    sink.set(anchors);
+                });
+            });
+        harness.run();
+        drop(harness);
+        captured.get()
+    }
+
+    // Validates: ispf-table-editor Requirement 12.5 -- a NON-EMPTY list renders a
+    // trailing scratch row after the last data row; typing in it promotes it into
+    // the backing list and a fresh scratch row appears, while an untouched
+    // scratch row is never persisted.
+    #[test]
+    fn non_empty_list_has_trailing_scratch_that_promotes_on_edit() {
+        let mut host = TestHost::new();
+        let mut rows = vec![TestRow {
+            value: "existing".to_string(),
+            act: String::new(),
+        }];
+
+        // Frame 1: no edit -- the untouched trailing scratch row is NOT persisted.
+        let _ = run_once(&mut host, &mut rows);
+        assert_eq!(
+            rows.len(),
+            1,
+            "an untouched trailing scratch row is never persisted"
+        );
+
+        // Frame 2: simulate a user edit in the scratch row (backing index 1, the
+        // slot after the one existing row). It must be promoted into `rows`.
+        host.inject_at = Some(1);
+        let _ = run_once(&mut host, &mut rows);
+        assert_eq!(rows.len(), 2, "editing the scratch row promotes it");
+        assert_eq!(rows[1].value, "typed", "the promoted row carries the edit");
+
+        // Frame 3: no edit again -- the fresh scratch row (now at index 2) is not
+        // persisted, so the count holds at 2.
+        host.inject_at = None;
+        let _ = run_once(&mut host, &mut rows);
+        assert_eq!(
+            rows.len(),
+            2,
+            "a fresh untouched scratch row appears but is not persisted"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 12.5, 7.1 -- the trailing scratch
+    // row does NOT change the reported first interior focus anchor: it stays the
+    // FILTER row's first control.
+    #[test]
+    fn trailing_scratch_row_does_not_change_first_interior_id() {
+        let mut host = TestHost::new();
+        let mut rows = vec![TestRow {
+            value: "existing".to_string(),
+            act: String::new(),
+        }];
+        let anchors = run_once(&mut host, &mut rows);
+        assert_eq!(
+            anchors.first,
+            Some(egui::Id::new("test_filter_value")),
+            "first_interior_id stays the filter row's first control"
+        );
+    }
+
+    // Validates: ispf-table-editor Requirement 12.5 -- when the list is EMPTY the
+    // behaviour is identical to the old Req 4.6: a single scratch row shows and
+    // an untouched one is not persisted.
+    #[test]
+    fn empty_list_behaviour_is_unchanged() {
+        let mut host = TestHost::new();
+        let mut rows: Vec<TestRow> = Vec::new();
+        let _ = run_once(&mut host, &mut rows);
+        assert!(
+            rows.is_empty(),
+            "an untouched empty-store scratch is not kept"
+        );
+
+        host.inject_at = Some(0);
+        let _ = run_once(&mut host, &mut rows);
+        assert_eq!(rows.len(), 1, "editing the empty-store scratch promotes it");
+        assert_eq!(rows[0].value, "typed");
     }
 }

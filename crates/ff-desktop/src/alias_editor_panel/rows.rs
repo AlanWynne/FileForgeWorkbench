@@ -13,8 +13,14 @@ pub(super) fn row_control_id(prefix: &'static str, backing: usize) -> egui::Id {
 }
 
 /// Render a CE dropdown bound to `env`, returning whether the selection changed.
-/// The CE list is `AliasEnvironment::ALL` (ffcmd / ffedit) for v1 (Req 5.18,
+/// The CE list is `AliasEnvironment::ALL` (FFCMD / FFEDIT) for v1 (Req 5.18,
 /// design 9.10.5). `salt` makes the combo id stable and unique.
+///
+/// CR-NR-116 (ce-case-investigation decision a/e): the DISPLAY uses the
+/// canonical UPPERCASE `env_name()` (FFCMD / FFEDIT), NOT the lowercase
+/// `label()`. Storage, file names, and the dropdown constraints are unchanged;
+/// only the shown text is uppercased (this supersedes the lowercase `[ffcmd v]`
+/// literal in design fixture 9.11.1).
 pub(super) fn render_ce_combo(
     ui: &mut egui::Ui,
     salt: impl std::hash::Hash,
@@ -22,11 +28,11 @@ pub(super) fn render_ce_combo(
 ) -> egui::Response {
     let before = *env;
     let combo = egui::ComboBox::from_id_salt(salt)
-        .selected_text(env.label())
+        .selected_text(env.env_name())
         .width(84.0)
         .show_ui(ui, |ui| {
             for choice in AliasEnvironment::ALL {
-                ui.selectable_value(env, choice, choice.label());
+                ui.selectable_value(env, choice, choice.env_name());
             }
         });
     let mut resp = combo.response;

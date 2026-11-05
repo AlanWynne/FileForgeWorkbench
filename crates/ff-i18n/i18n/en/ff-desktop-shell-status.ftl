@@ -40,3 +40,13 @@ ff-desktop-shell-status-log-degraded-hover = Logging degraded: { $reason }
 # Hover help for the always-shown `Zoom: <n>` segment. The segment itself
 # (`Zoom: 0`, `Zoom: +14`, `Zoom: -3`) is built from the ff-zoom formatter.
 ff-desktop-shell-status-zoom-help = Zoom offset from the default size. Use ZOOM IN, ZOOM OUT or ZOOM RESET, Ctrl+= / Ctrl+- to change it and Ctrl+0 to reset.
+
+# --- Alias Editor per-Kind Workspace_Status_Segment (CR-NR-116, Req 7.25) ---
+# The Alias Editor status cells: the alias count, the visible-row range, and the
+# active FILTER (shown ONLY while a filter is set). Counts are TEXT placeables
+# (pre-formatted in Rust) to stay byte-identical. The CE in the filter cell is
+# the canonical UPPERCASE name (FFCMD / FFEDIT); an unset filter half is `--`.
+ff-desktop-shell-status-alias-count = Aliases: { $count }
+ff-desktop-shell-status-alias-rows = Rows 1-{ $max } visible
+ff-desktop-shell-status-alias-rows-none = Rows 0 visible
+ff-desktop-shell-status-alias-filter = Filter: { $ce }/{ $root }

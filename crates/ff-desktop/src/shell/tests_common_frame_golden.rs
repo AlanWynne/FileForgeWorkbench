@@ -146,7 +146,7 @@ fn config_snapshot_matches_golden_fixture_pfshow_on() {
 #[test]
 fn alias_snapshot_matches_golden_fixture_pfshow_on() {
     let h = fixed_shell("ALIASES", true, None);
-    assert_eq!(snapshot_text(&h), fixture("alias_pfshow_on.txt"));
+    assert_golden("alias_pfshow_on.txt", &snapshot_text(&h));
 }
 
 // Validates: screen-snapshot-scrm Requirement 30.8, 30.9, 30.11, 30.21-30.23 --
@@ -164,7 +164,7 @@ fn config_snapshot_matches_golden_fixture_message_pfshow_off() {
 #[test]
 fn alias_snapshot_matches_golden_fixture_message_pfshow_off() {
     let h = fixed_shell("ALIASES", false, Some("info one"));
-    assert_eq!(snapshot_text(&h), fixture("alias_message_pfshow_off.txt"));
+    assert_golden("alias_message_pfshow_off.txt", &snapshot_text(&h));
 }
 
 // Validates: screen-snapshot-scrm Requirement 30.12, 30.18 -- the ASCII
@@ -182,9 +182,9 @@ fn alias_snapshot_ascii_fallback_matches_golden_fixture() {
         ff_screen_model::SnapshotFormat::PlainText,
         ff_screen_model::RenderOptions { unicode_box: false },
     );
-    assert_eq!(
+    assert_golden(
+        "alias_message_pfshow_off_ascii.txt",
         text.trim_end_matches('\n'),
-        fixture("alias_message_pfshow_off_ascii.txt")
     );
 }
 

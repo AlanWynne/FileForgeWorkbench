@@ -12,5 +12,7 @@ mod render;
 mod rows;
 mod state;
 
+pub(crate) use filter::displayed_indices;
 pub use host::alias_surface_column;
+pub(crate) use host::{alias_snapshot_cells, ALIAS_COLUMNS};
 pub use state::{AliasEditorAction, AliasEditorState, AliasRowEdit};

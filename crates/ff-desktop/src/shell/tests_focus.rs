@@ -1425,13 +1425,18 @@ fn full_shell_alias_editor_enter_in_act_cell_applies_line_command() {
     }
 }
 
-// Validates: ispf-table-editor Requirement 11.1, 11.2, 11.3 (CR-CH-078) -- the
-// shared component's full arrow-key field-matrix navigation, end to end through
-// the live Alias host. With two seeded rows: ArrowDown from row 0's Act cell
-// focuses row 1's Act cell (same column, row below); ArrowDown again on the last
-// row leaves focus unchanged (clamp, no wrap); ArrowRight from row 0's Act cell
-// moves to the next column (the CE combo) in the same row. Each arrow is consumed
-// before egui traverses, so there is no stray Tab-style traversal.
+// Validates: ispf-table-editor Requirement 11.1, 11.2, 11.3 (CR-CH-078) and
+// Requirement 12.5 (FEAT-002) -- the shared component's full arrow-key
+// field-matrix navigation, end to end through the live Alias host, with the
+// always-present TRAILING scratch row. With two seeded rows the matrix has three
+// rows: alias row 0, alias row 1, then the scratch row at backing index 2 (Req
+// 12.5 makes the scratch row the LAST focus stop of the field matrix). So:
+// ArrowDown from row 0's Act cell focuses row 1's Act cell (same column, row
+// below); ArrowDown from the last ALIAS row moves INTO the scratch row's Act cell
+// (not a clamp -- the scratch row is below it); ArrowDown FROM the scratch row
+// clamps (it is the true last matrix row, no wrap); ArrowRight from row 0's Act
+// cell moves to the next column (the CE combo) in the same row. Each arrow is
+// consumed before egui traverses, so there is no stray Tab-style traversal.
 #[test]
 fn full_shell_alias_editor_arrow_down_and_right_walk_the_matrix() {
     use crate::alias_editor_panel::AliasRowEdit;
@@ -1462,6 +1467,10 @@ fn full_shell_alias_editor_arrow_down_and_right_walk_the_matrix() {
 
     let act0 = egui::Id::new(("alias_act", 0usize));
     let act1 = egui::Id::new(("alias_act", 1usize));
+    // The always-present trailing scratch row (Req 12.5) is rendered after the
+    // last displayed alias row at backing index rows.len() == 2, so its Act cell
+    // id is ("alias_act", 2). It is the LAST row of the field matrix.
+    let act_scratch = egui::Id::new(("alias_act", 2usize));
 
     // ArrowDown from row 0's Act cell -> row 1's Act cell (same column, below).
     harness.ctx.memory_mut(|m| m.request_focus(act0));
@@ -1474,13 +1483,25 @@ fn full_shell_alias_editor_arrow_down_and_right_walk_the_matrix() {
         "ArrowDown from row 0 Act must focus row 1 Act (same column, row below)"
     );
 
-    // ArrowDown again on the LAST row -> focus unchanged (clamp, no wrap).
+    // ArrowDown from the LAST ALIAS row -> the trailing scratch row's Act cell
+    // (Req 12.5: the scratch row sits below the last data row and is a focusable
+    // matrix row, so this is a move, NOT a clamp).
     harness.key_press(egui::Key::ArrowDown);
     harness.run();
     assert_eq!(
         harness.ctx.memory(|m| m.focused()),
-        Some(act1),
-        "ArrowDown on the last row leaves focus unchanged (clamp)"
+        Some(act_scratch),
+        "ArrowDown from the last alias row must enter the trailing scratch row (Req 12.5)"
+    );
+
+    // ArrowDown FROM the scratch row -> focus unchanged. The scratch row is the
+    // TRUE last matrix row, so this is the real clamp point (no wrap).
+    harness.key_press(egui::Key::ArrowDown);
+    harness.run();
+    assert_eq!(
+        harness.ctx.memory(|m| m.focused()),
+        Some(act_scratch),
+        "ArrowDown on the trailing scratch row clamps (it is the last matrix row, no wrap)"
     );
 
     // ArrowRight from row 0's Act cell -> the next column (CE combo) in row 0.

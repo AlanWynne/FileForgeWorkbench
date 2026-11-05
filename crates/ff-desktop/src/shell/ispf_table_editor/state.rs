@@ -41,9 +41,23 @@ pub enum CompareMode {
     ContainsIgnoreCase,
 }
 
+/// How a column's value is rendered as a SNAPSHOT cell (ispf-table-editor
+/// Requirement 12.1). A host declares one per column as additive `ColumnSpec`
+/// metadata; the default is [`CellKind::Text`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CellKind {
+    /// A plain text cell: the value padded to the field width, or a run of `_`
+    /// filling the width when empty (ispf-table-editor Requirement 12.2).
+    #[default]
+    Text,
+    /// A combo (dropdown) cell: `[value v]` padded to the field width (empty
+    /// value -> `[ v]`, ispf-table-editor Requirement 12.2).
+    Combo,
+}
+
 /// One declared column of a table editor (ispf-table-editor Requirement 1.3,
-/// 3.1, 5.1). The ORDER of a host's `&[ColumnSpec]` is the authoritative header
-/// order (and the snapshot column order, Requirement 7.3).
+/// 3.1, 5.1, 12.1). The ORDER of a host's `&[ColumnSpec]` is the authoritative
+/// header order (and the snapshot column order, Requirement 7.3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ColumnSpec {
     /// The stable column id (opaque to the component).
@@ -56,6 +70,12 @@ pub struct ColumnSpec {
     pub compare_mode: CompareMode,
     /// Whether this column is a valid `SORT <column>` key.
     pub sortable: bool,
+    /// The SNAPSHOT cell kind (Text or Combo, ispf-table-editor Requirement
+    /// 12.1). Default: [`CellKind::Text`].
+    pub cell: CellKind,
+    /// The SNAPSHOT field width (ispf-table-editor Requirement 12.1). Default:
+    /// the header label's character count.
+    pub snapshot_width: usize,
 }
 
 impl ColumnSpec {
@@ -67,6 +87,8 @@ impl ColumnSpec {
             filterable: false,
             compare_mode: CompareMode::EqualsIgnoreCase,
             sortable: false,
+            cell: CellKind::Text,
+            snapshot_width: header.len(),
         }
     }
 
@@ -78,12 +100,22 @@ impl ColumnSpec {
             filterable: true,
             compare_mode,
             sortable: false,
+            cell: CellKind::Text,
+            snapshot_width: header.len(),
         }
     }
 
     /// Return a copy of this spec marked sortable.
     pub const fn with_sortable(mut self) -> Self {
         self.sortable = true;
+        self
+    }
+
+    /// Return a copy of this spec with the SNAPSHOT cell kind and field width set
+    /// (ispf-table-editor Requirement 12.1). Keeps `ColumnSpec` `Copy` and const.
+    pub const fn with_snapshot(mut self, kind: CellKind, width: usize) -> Self {
+        self.cell = kind;
+        self.snapshot_width = width;
         self
     }
 }
@@ -300,6 +332,38 @@ mod tests {
         assert!(surface.filterable);
         assert_eq!(surface.compare_mode, CompareMode::ContainsIgnoreCase);
         assert!(surface.sortable, "with_sortable marks the column sortable");
+    }
+
+    // Validates: ispf-table-editor Requirement 12.1 -- a ColumnSpec's default
+    // snapshot cell kind is Text and its default snapshot width is the header's
+    // character count.
+    #[test]
+    fn column_spec_default_snapshot_metadata_is_text_at_header_width() {
+        let display = ColumnSpec::display("act", "Act");
+        assert_eq!(display.cell, CellKind::Text, "default cell kind is Text");
+        assert_eq!(
+            display.snapshot_width,
+            "Act".len(),
+            "default snapshot width is the header width"
+        );
+
+        let filterable = ColumnSpec::filterable("ce", "CE", CompareMode::EqualsIgnoreCase);
+        assert_eq!(filterable.cell, CellKind::Text);
+        assert_eq!(filterable.snapshot_width, "CE".len());
+    }
+
+    // Validates: ispf-table-editor Requirement 12.1 -- with_snapshot sets BOTH
+    // the cell kind and the snapshot width, and ColumnSpec stays Copy.
+    #[test]
+    fn column_spec_with_snapshot_sets_kind_and_width_and_stays_copy() {
+        let spec = ColumnSpec::filterable("ce", "CE", CompareMode::EqualsIgnoreCase)
+            .with_snapshot(CellKind::Combo, 8);
+        assert_eq!(spec.cell, CellKind::Combo);
+        assert_eq!(spec.snapshot_width, 8);
+
+        // ColumnSpec is Copy: a bitwise copy leaves the original usable.
+        let copy = spec;
+        assert_eq!(copy, spec, "ColumnSpec is Copy -- the original is intact");
     }
 
     // Validates: command-configurator Requirement 7.4, 7.6 -- the Alias

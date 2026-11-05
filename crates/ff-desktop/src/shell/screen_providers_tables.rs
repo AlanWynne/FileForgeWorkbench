@@ -39,38 +39,52 @@ impl WorkbenchShell {
         }
     }
 
-    /// Alias table: the alias editor's REAL columns
-    /// `[Act, CE, Command, Alias, Parameters, Description]` with the current
-    /// working rows' real values (A2, command-configurator Req 7.2). `Command` is
-    /// the root canonical verb, `Alias` the surface name, `Description` the
-    /// CR-CH-075 optional human-readable note.
+    /// Alias table: the DISPLAYED alias rows (in BACKING order, honouring the
+    /// FILTER row) rendered through the shared ISPF snapshot conventions, THEN an
+    /// always-present trailing SCRATCH row -- so the captured grid matches the
+    /// live editor (CR-NR-116, command-configurator Req 7.16-7.18,
+    /// ispf-table-editor Req 12.3/12.5).
+    ///
+    /// The FILTER row is NEVER a table row. CE + Command render as `[value v]`
+    /// combo cells (CE uppercased via `env_name()`); the rest are text cells. An
+    /// empty working copy yields ONLY the scratch row. The caption stays
+    /// `Some("Aliases")` for the Markdown / HTML section heading.
+    ///
+    /// Validates: command-configurator Requirement 7.16, 7.17, 7.18
     pub(super) fn alias_table(&self) -> Table {
-        let rows = self
-            .alias_editor_panel
-            .rows
-            .iter()
-            .map(|r| {
-                vec![
-                    r.act.clone(),
-                    r.environment.label().to_string(),
-                    r.canonical.clone(),
-                    r.surface.clone(),
-                    r.command_template.clone(),
-                    r.description.clone(),
-                ]
-            })
+        use crate::alias_editor_panel::{
+            alias_snapshot_cells, displayed_indices, AliasRowEdit, ALIAS_COLUMNS,
+        };
+        let p = &self.alias_editor_panel;
+        // Displayed set in BACKING order (the filter is display-only, Req 5.15).
+        let rows: Vec<Vec<String>> = displayed_indices(&p.rows, p.filter_ce, &p.filter_root)
+            .into_iter()
+            .map(|i| alias_snapshot_cells(&p.rows[i]))
             .collect();
-        Table {
-            caption: Some("Aliases".to_string()),
-            headers: vec![
-                "Act".to_string(),
-                "CE".to_string(),
-                "Command".to_string(),
-                "Alias".to_string(),
-                "Parameters".to_string(),
-                "Description".to_string(),
-            ],
-            rows,
+        // The always-present trailing scratch row (the blank row, Req 12.5).
+        let scratch = alias_snapshot_cells(&AliasRowEdit::default());
+        let mut table =
+            crate::shell::ispf_table_editor::snapshot_table(&ALIAS_COLUMNS, &rows, &scratch);
+        table.caption = Some("Aliases".to_string());
+        table
+    }
+
+    /// Alias Markdown section: the RAW alias values (no `[v]` wrapper, no `_`
+    /// fill, no padding) with NO scratch row, for a Context's
+    /// `markdown_sections` clipboard flavour (CR-NR-116, ispf-table-editor
+    /// Req 12.3, screen-snapshot-scrm Req 30.40). The heading is the caption
+    /// "Aliases".
+    pub(super) fn alias_markdown_section(&self) -> ff_screen_model::MarkdownSection {
+        use crate::alias_editor_panel::{alias_snapshot_cells, displayed_indices, ALIAS_COLUMNS};
+        let p = &self.alias_editor_panel;
+        let rows: Vec<Vec<String>> = displayed_indices(&p.rows, p.filter_ce, &p.filter_root)
+            .into_iter()
+            .map(|i| alias_snapshot_cells(&p.rows[i]))
+            .collect();
+        let table = crate::shell::ispf_table_editor::raw_table(&ALIAS_COLUMNS, &rows);
+        ff_screen_model::MarkdownSection {
+            heading: Some("Aliases".to_string()),
+            table,
         }
     }
 

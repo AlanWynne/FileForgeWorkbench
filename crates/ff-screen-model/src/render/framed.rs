@@ -34,7 +34,8 @@
 //! 7.30-7.32.
 
 use crate::model::ScreenModel;
-use crate::render::text::{push_content, render_table_grid, Glyphs};
+use crate::render::framed_bands::table_bands;
+use crate::render::text::{push_content, Glyphs};
 use crate::render::RenderOptions;
 
 /// Marker inside the LAST cell of a band: the text after it is right-aligned
@@ -122,6 +123,36 @@ fn split_cells(line: &str) -> Vec<String> {
     line.split(CELL_SEPARATOR).map(str::to_string).collect()
 }
 
+/// Push a horizontal rule unless the previous row is already one, so adjacent
+/// rules COALESCE into a single rule (30.37, never two consecutive rules).
+fn maybe_push_rule(rows: &mut Vec<Row>) {
+    if !rows.last().is_some_and(is_rule_row) {
+        rows.push(Row::Rule);
+    }
+}
+
+/// Emit a `tables` entry as frame BANDS (CR-NR-116, 30.32-30.37): a leading
+/// rule (coalesced with the frame/previous rule), the header band, a
+/// header/data rule, then one band per data row. No blank spacer row, no
+/// caption row, and no inner box border are drawn. A table with no columns is
+/// omitted. The frame rules around the bands pick up their tee-down / cross /
+/// tee-up junctions from the adjacent bands through the existing junction
+/// machinery (`push_rule`), so no closing rule is added here -- `collect_rows`
+/// adds the frame-owned content closing rule after all content.
+fn push_table_bands(rows: &mut Vec<Row>, table: &crate::model::Table) {
+    let Some(bands) = table_bands(table) else {
+        return;
+    };
+    maybe_push_rule(rows);
+    if let Some(header) = bands.header {
+        rows.push(Row::Band(header));
+        rows.push(Row::Rule);
+    }
+    for row in bands.rows {
+        rows.push(Row::Band(row));
+    }
+}
+
 /// Collect the rows of the framed layout, in display order.
 fn collect_rows(model: &ScreenModel, g: &Glyphs) -> Vec<Row> {
     let mut rows = Vec::new();
@@ -155,13 +186,7 @@ fn collect_rows(model: &ScreenModel, g: &Glyphs) -> Vec<Row> {
         }
     }
     for table in &model.tables {
-        rows.push(Row::Text(String::new()));
-        if let Some(cap) = &table.caption {
-            rows.push(Row::Text(cap.clone()));
-        }
-        let mut grid = String::new();
-        render_table_grid(&mut grid, table, g);
-        rows.extend(grid.lines().map(|l| Row::Text(l.to_string())));
+        push_table_bands(&mut rows, table);
     }
     if !model.buttons.is_empty() {
         let line = model.buttons.iter().map(|b| format!("[{b}]"));

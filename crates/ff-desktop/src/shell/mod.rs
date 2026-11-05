@@ -119,6 +119,7 @@ mod update_theme;
 pub(crate) mod user_aliases;
 pub(crate) mod workspace_context;
 mod workspace_io;
+mod workspace_status_alias;
 
 // Re-exported so `super::WorkbenchShell` / `crate::shell::WorkbenchShell` resolve
 // unchanged after the Phase 2 task 2.2 move of the struct definition into
@@ -147,6 +148,8 @@ pub(crate) use helpers::config_value_to_toml_value;
 // `tests_common` and are glob-imported by each area module.
 #[cfg(test)]
 mod tests_alias_editor;
+#[cfg(test)]
+mod tests_alias_golden;
 #[cfg(test)]
 mod tests_alias_template;
 #[cfg(test)]

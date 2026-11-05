@@ -14,3 +14,9 @@ ff-desktop-shell-status-line-col = Z { $line }, Sp { $col }
 ff-desktop-shell-status-line-count = { $count } Zeilen
 ff-desktop-shell-status-caps = GROSS
 ff-desktop-shell-status-log-degraded-hover = Protokollierung eingeschr{ "\u00e4" }nkt: { $reason }
+
+# --- Alias Editor status segment (CR-NR-116, Req 7.25) ---
+ff-desktop-shell-status-alias-count = Aliase: { $count }
+ff-desktop-shell-status-alias-rows = Zeilen 1-{ $max } sichtbar
+ff-desktop-shell-status-alias-rows-none = Zeilen 0 sichtbar
+ff-desktop-shell-status-alias-filter = Filter: { $ce }/{ $root }

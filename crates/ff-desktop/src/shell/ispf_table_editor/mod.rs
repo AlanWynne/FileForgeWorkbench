@@ -15,6 +15,7 @@ pub(crate) mod arrow_nav;
 pub(crate) mod block_apply;
 pub(crate) mod line_commands;
 pub(crate) mod render;
+pub(crate) mod snapshot;
 pub(crate) mod sort;
 pub(crate) mod state;
 
@@ -28,9 +29,11 @@ pub(crate) use render::{
     render_ispf_table, InteriorAnchors, IspfTableRender, RowCells, TableAction, TableRenderParams,
 };
 #[allow(unused_imports)]
+pub(crate) use snapshot::{combo_cell, raw_table, sanitise_cell, snapshot_table, text_cell};
+#[allow(unused_imports)]
 pub(crate) use sort::{apply_sort, parse_sort_command, SortResult};
 #[allow(unused_imports)]
 pub(crate) use state::{
-    ColumnId, ColumnSpec, CompareMode, FilterState, IspfTableHost, LineCommandSet, SortDirection,
-    SortRequest, TableEditorState,
+    CellKind, ColumnId, ColumnSpec, CompareMode, FilterState, IspfTableHost, LineCommandSet,
+    SortDirection, SortRequest, TableEditorState,
 };

@@ -6,8 +6,11 @@
 
 mod ansi;
 mod framed;
+mod framed_bands;
 #[cfg(test)]
 mod framed_rule_tests;
+#[cfg(test)]
+mod framed_table_tests;
 #[cfg(test)]
 mod framed_tests;
 mod html;

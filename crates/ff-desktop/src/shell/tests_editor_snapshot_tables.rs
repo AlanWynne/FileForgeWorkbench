@@ -109,19 +109,49 @@ fn alias_screen_model_populates_table_with_real_saved_row() {
             "Description".to_string(),
         ]
     );
-    // The saved row's real Alias + Command text is present.
-    let row = table
-        .rows
-        .iter()
-        .find(|r| r.contains(&"GG".to_string()))
-        .expect("the saved GG alias row is captured");
+    // CR-NR-116: the table is the displayed rows + a trailing SCRATCH row, each
+    // cell rendered by the shared snapshot conventions. CE + Command are combo
+    // cells (`[value v]`, CE UPPERCASE); Alias/Parameters/Description are text
+    // cells (an empty text cell is an underscore run). The saved GG -> GSEARCH
+    // row is the single data row before the scratch row.
+    assert_eq!(
+        table.rows.len(),
+        2,
+        "one data row plus the trailing scratch row"
+    );
+    let row = &table.rows[0];
+    assert_eq!(row.len(), 6, "six column cells per row");
+    // Alias (col 3) is the surface GG padded in a text cell.
     assert!(
-        row.contains(&"GSEARCH".to_string()),
-        "the row carries the real root command, got {row:?}"
+        row[3].starts_with("GG"),
+        "the Alias text cell carries the real surface, got {row:?}"
+    );
+    // Command (col 2) is the canonical GSEARCH as an UPPERCASE combo cell.
+    assert!(
+        row[2].starts_with("[GSEARCH v]"),
+        "the Command combo cell carries the real root, got {row:?}"
+    );
+    // CE (col 1) is the UPPERCASE FFCMD combo cell (env_name(), not label()).
+    assert!(
+        row[1].starts_with("[FFCMD v]"),
+        "the CE combo cell is UPPERCASE FFCMD, got {row:?}"
+    );
+    // Empty Parameters/Description render as underscore runs (never a hint).
+    assert!(
+        row[4].starts_with('_') && row[5].starts_with('_'),
+        "empty Parameters/Description cells are underscore runs, got {row:?}"
+    );
+    // The trailing scratch row is the blank row in the same conventions. Its CE
+    // is the DEFAULT environment (Ffcmd -> `[FFCMD v]`, env_name of the default),
+    // its empty Command is `[ v]`, and its empty Alias is an underscore run.
+    let scratch = &table.rows[1];
+    assert!(
+        scratch[1].starts_with("[FFCMD v]"),
+        "the scratch CE is the default environment combo, got {scratch:?}"
     );
     assert!(
-        row.contains(&"ffcmd".to_string()),
-        "the row carries the real CE, got {row:?}"
+        scratch[2].starts_with("[ v]") && scratch[3].starts_with('_'),
+        "the scratch row's empty Command is `[ v]` and empty Alias is `_`, got {scratch:?}"
     );
 }
 
