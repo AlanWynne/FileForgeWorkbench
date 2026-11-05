@@ -1730,3 +1730,133 @@ single-representation principle (workspace-framework Req 7.24, with the Alias-
 specific provider fix deferred to the Alias follow-up Kind gate); D5 (Parameters
 value lost) and D6 (status content) are workspace-content / status fidelity
 handled by the per-Kind follow-up gates and the common status model respectively.
+
+
+---
+
+## Requirement 31 -- SVG snapshot format + configurable default snapshot format (CR-NR-118)
+
+**User story:** As a user who pastes screen snapshots into documents, I want an
+SVG snapshot format as an alternative to the raster PNG, and a configuration item
+to choose which format is my default, so I can get a smaller, scalable, selectable
+image where my document tool supports it while keeping PNG where I need maximum
+paste compatibility.
+
+### Status
+
+PENDING GATE / QUEUED AFTER PORTABILITY. This requirement is RECORDED now at the
+owner's direction but is NOT scheduled for implementation until the
+portable-installation work (`docs/specs/portable-installation/`) is complete. It
+is logged as CR-NR-118 in `docs/status/change-log.md`. The gate CONFIRM step and
+implementation follow the portability phase.
+
+### Context (owner-confirmed 2026-11-05)
+
+The current picture snapshot flavor is a REAL WINDOW SCREENSHOT raster (PNG),
+established by CR-NR-114 (Req 1.3, 23.2). The owner observed that, because the
+FileForge screen is a text/colour/box-drawing grid rather than a photograph, an
+SVG rendered from the LOGICAL screen model would typically be SMALLER than the
+PNG and remain a SCALABLE, selectable-text image. This requirement ADDS SVG as a
+snapshot output format, ADDS a config item selecting the default snapshot format
+(PNG or SVG), and sets the RESET-BARE / Recovery_Source default to SVG.
+
+This BUILDS ON the existing framework: the `ScreenProvider` seam (Req 2), the
+`ff-screen-model` renderers (Req 5), the single command dispatch path (Req 11),
+the write-through configuration model (CR-CH-116, configuration-system Req 23),
+and the multi-flavor clipboard model (Req 23). It introduces NO new command
+dispatcher, NO new navigation stack, and NO new persistence format. The SVG
+renderer is a NEW renderer over the SAME logical model the PNG/TEXT/HTML flavors
+already use -- a sibling of the existing renderers, not a new capture mechanism.
+
+### Relationship to the existing PNG picture flavor (honesty about scope)
+
+- The PNG picture flavor (Req 23.2) is a true WINDOW SCREENGRAB (actual rendered
+  pixels). The SVG flavor is DIFFERENT in kind: it is rendered FROM the logical
+  Screen_Model (text runs, colours, rectangles, box-drawing), the same source as
+  the TEXT/HTML flavors -- NOT a trace of the raster. The two therefore differ by
+  design: PNG is pixel-faithful; SVG is logical-model-faithful and selectable.
+- The clipboard caveat is explicit (see Req 31.5): Word's clipboard support for
+  SVG is inconsistent across versions, so the default clipboard behaviour and the
+  file-output behaviour are specified separately. The gate design step MUST
+  settle the clipboard-vs-file behaviour for SVG rather than assume it.
+
+### Acceptance Criteria -- SVG as a snapshot format
+
+31.1 THE set of SNAPSHOT picture-output formats SHALL be EXTENDED to include SVG,
+     alongside the existing PNG (Req 23.1, 23.2) and PDF (Req 23.3). `[CR-NR-118]`
+31.2 WHEN the user issues `SNAPSHOT SVG` THE system SHALL produce an SVG rendering
+     of the captured screen, derived from the Screen_Model (text runs, colours,
+     rectangles, box-drawing), NOT a rasterised or traced image. The screen text
+     SHALL be emitted as real SVG `<text>` so it remains SELECTABLE and SEARCHABLE
+     (consistent with the selectable-text constraint, Req 1.1, 1.4). `[CR-NR-118]`
+31.3 THE `SNAPSHOT SVG` verb SHALL resolve through `ff_command::resolve_target`
+     to a `Function` target and dispatch through the shared path, with command
+     parity for any menu/toolbar affordance (Req 11.3, 11.4); NO bespoke
+     intercept SHALL be added. `[CR-NR-118]`
+31.4 WHERE the snapshot targets a FILE, the SVG output SHALL be a standalone,
+     self-contained `.svg` (fonts referenced by family, no external asset
+     dependencies). The system MAY additionally offer a gzip-compressed `.svgz`
+     file variant for size; whether `.svgz` is offered SHALL be settled at the
+     gate design step. `[CR-NR-118]`
+
+### Acceptance Criteria -- clipboard behaviour for SVG (to be settled at design)
+
+31.5 THE design step SHALL settle how an SVG snapshot that targets the CLIPBOARD
+     behaves, given that Word's clipboard SVG support is inconsistent across
+     versions. The settled behaviour SHALL be ONE of: (a) place SVG on the
+     clipboard in an SVG-capable flavor WHILE ALSO offering a PNG/DIB fallback
+     flavor for targets that cannot consume SVG (the multi-flavor approach of
+     Req 23.4, extended with an SVG flavor); or (b) keep the clipboard picture
+     flavor as PNG for paste compatibility and treat SVG as a FILE/save output
+     only. The decision SHALL be recorded in design.md with its rationale; this
+     criterion is satisfied by the recorded decision, not by a specific choice.
+     `[CR-NR-118]`
+31.6 WHERE SVG is offered as a clipboard flavor (31.5 option (a)) THE
+     selectable-text and the PNG-fallback flavors SHALL be published in ONE
+     clipboard-open transaction (consistent with the single-transaction rule of
+     Req 23.4, 23.5d). `[CR-NR-118]`
+
+### Acceptance Criteria -- configurable default snapshot format
+
+31.7 THE configuration SHALL carry a snapshot DEFAULT-FORMAT item whose value
+     selects the default picture format a bare `SNAPSHOT` (no explicit format
+     argument) and the default UI snapshot affordance produce. The item's allowed
+     values SHALL include at least `PNG` and `SVG`. (The exact config key name and
+     its placement in the config schema SHALL be settled at the gate design step,
+     consistent with configuration-system.) `[CR-NR-118]`
+31.8 WHEN the user issues a bare `SNAPSHOT` (no explicit format) THE system SHALL
+     produce the picture flavor named by the default-format config item (31.7),
+     composited with the selectable TEXT / rich-HTML flavors exactly as the
+     existing composite clipboard payload does (Req 4.1, 23) -- i.e. the config
+     item selects WHICH picture format fills the picture slot of the composite,
+     without otherwise changing the composite model. `[CR-NR-118]`
+31.9 WHEN the user issues `SNAPSHOT <format>` with an EXPLICIT format
+     (`PNG`/`SVG`/`PDF`/`TEXT`/`ANSI`/`MARKDOWN`/`MD`/`HTML`/`YAML`/`AI`) THE
+     explicit format SHALL OVERRIDE the default-format config item for that
+     invocation (consistent with Req 4.8). The explicit verb list SHALL now
+     include `SVG`. `[CR-NR-118]`
+31.10 THE RESET-BARE / Recovery_Source DEFAULT value of the snapshot
+     default-format config item SHALL be `SVG`. WHEN the user issues RESET BARE
+     (or on first-run write, per the write-through model CR-CH-116) THE rebuilt
+     config SHALL set the snapshot default format to SVG. A user who prefers PNG
+     SHALL be able to change the config item to `PNG`. `[CR-NR-118]`
+31.11 THE default-format config item SHALL be written as part of the
+     Complete_Config_File on first run and rebuilt by RESET BARE from the
+     Recovery_Source via the shared Config_Rebuild_Helper (configuration-system
+     Req 23 / 19.17), consistent with every other write-through config value; the
+     compiled default (SVG, 31.10) is the Recovery_Source only. `[CR-NR-118]`
+
+### Acceptance Criteria -- conformance and non-regression
+
+31.12 ADDING an SVG renderer / dependency SHALL be pinned to an exact version
+     (`.kiro/steering` dependency discipline), consistent with Req 23.7. The
+     logical-model-first constraint SHALL NOT be weakened to add it. `[CR-NR-118]`
+31.13 THE existing PNG picture flavor (Req 23.2, 23.2a crop), the selectable-text
+     flavors (Req 28), and the capture/recorder path (Req 9.13-9.14) SHALL be
+     UNCHANGED by this requirement EXCEPT where the default-format config item
+     selects SVG for the composite picture slot (31.8). A user whose default
+     remains PNG SHALL see no behaviour change. `[CR-NR-118]`
+31.14 WHERE the capture/recorder path stores a per-Capture picture (Req 9.13) THE
+     format of that stored picture MAY follow the same default-format config item;
+     whether the recorder honours the SVG default or always stores PNG SHALL be
+     settled at the gate design step and recorded. `[CR-NR-118]`

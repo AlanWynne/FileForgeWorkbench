@@ -574,6 +574,74 @@ reproduction gracefully omits the message line.
   - [x] 2H.8.3 Implement the boundary rule and the generic merge in `ff-screen-model::render::framed` and regenerate the affected goldens
     - Covers: Requirement 30.18, 30.29, 30.30
 
+## Phase SVG: SVG snapshot format + configurable default format (Req 31, CR-NR-118)
+
+QUEUED AFTER PORTABILITY. Do NOT start this phase until the portable-installation
+work (`docs/specs/portable-installation/`) is complete; the config-default item
+and the RESET-BARE default ride the write-through config model that the
+portability reorg finalises (config paths resolve through the `ff-paths`
+authority). The gate CONFIRM step precedes any code. TDD-first per testing.md;
+agents compile-verify + run scoped unit tests, the owner runs the full gate
+(gate-policy.md). NOTE on numbering: prefixed `SVG.` to avoid collision with the
+other SCRM requirement/phase numbers.
+
+- [ ] SVG.1 SVG renderer over the Screen_Model (`ff-screen-model`) (Req 31.2, 31.4, 31.12)
+  - [ ] SVG.1.1 Failing test (ff-screen-model): an SVG renderer over a Screen_Model
+        fixture emits real `<text>` elements for the screen text (selectable), with
+        rectangles/colours for the frame and cells; the output is a standalone,
+        self-contained `.svg` (no external asset references). (Req 31.2, 31.4)
+  - [ ] SVG.1.2 Implement the SVG renderer as a sibling of the existing
+        PlainText/Ansi/Markdown/Html renderers, consuming the SAME logical model;
+        pin any new SVG/encoder dependency to an exact version. (Req 31.2, 31.12)
+  - [ ] SVG.1.3 Decision + optional implementation: whether a gzip `.svgz` file
+        variant is offered; record the decision in design.md. (Req 31.4)
+
+- [ ] SVG.2 `SNAPSHOT SVG` verb through the single front door (Req 31.1, 31.3, 31.9)
+  - [ ] SVG.2.1 Register `SNAPSHOT SVG` as a Function-target Command_Id resolved by
+        `resolve_target`; NO bespoke intercept; command parity for any menu/toolbar
+        affordance. (Req 31.1, 31.3)
+  - [ ] SVG.2.2 Failing test (ff-desktop): `SNAPSHOT SVG` produces the SVG file/
+        flavor; the explicit verb overrides the default-format config item for that
+        invocation. (Req 31.9)
+
+- [ ] SVG.3 Clipboard behaviour for SVG -- DESIGN DECISION then implement (Req 31.5, 31.6)
+  - [ ] SVG.3.1 Design step: settle and RECORD in design.md whether a clipboard SVG
+        snapshot (a) adds an SVG clipboard flavor alongside a PNG/DIB fallback in one
+        transaction, or (b) keeps the clipboard picture as PNG and treats SVG as a
+        file/save output only (Word SVG-clipboard inconsistency is the driver).
+        (Req 31.5)
+  - [ ] SVG.3.2 Implement the settled behaviour; where SVG is a clipboard flavor,
+        publish it + the selectable-text + PNG-fallback flavors in ONE
+        clipboard-open transaction. (Req 31.6)
+
+- [ ] SVG.4 Configurable default snapshot format + RESET-BARE default SVG (Req 31.7, 31.8, 31.10, 31.11)
+  - [ ] SVG.4.1 Design step: settle and RECORD the config key name and its placement
+        in the config schema (consistent with configuration-system). Allowed values
+        include at least `PNG` and `SVG`. (Req 31.7)
+  - [ ] SVG.4.2 Add the default-format config item; bare `SNAPSHOT` fills the
+        composite picture slot with the configured format without otherwise changing
+        the composite model. (Req 31.7, 31.8)
+  - [ ] SVG.4.3 Set the Recovery_Source default to SVG; write it in the
+        Complete_Config_File on first run and rebuild it by RESET BARE via the shared
+        Config_Rebuild_Helper; a user may switch it to PNG. (Req 31.10, 31.11)
+  - [ ] SVG.4.4 Tests: bare `SNAPSHOT` honours the configured default; RESET BARE
+        rebuilds the item to SVG; an explicit `SNAPSHOT PNG`/`SNAPSHOT SVG` overrides
+        the default. (Req 31.8, 31.9, 31.10)
+
+- [ ] SVG.5 Non-regression + recorder decision (Req 31.13, 31.14)
+  - [ ] SVG.5.1 Test: with the default left at PNG (or the explicit PNG verb), the
+        PNG picture flavor (incl. the dialog crop, Req 23.2a), the selectable-text
+        flavors (Req 28), and the recorder path (Req 9.13-9.14) are UNCHANGED.
+        (Req 31.13)
+  - [ ] SVG.5.2 Design step: settle and RECORD whether the capture/recorder stored
+        picture honours the SVG default or always stores PNG; implement the settled
+        choice. (Req 31.14)
+
+- [ ] SVG.6 MANUAL (record in TCR)
+  - [ ] SVG.6.1 MANUAL: paste an SVG snapshot into the target Word version(s) in use
+        and confirm the settled clipboard behaviour; confirm a saved `.svg` opens
+        scalable and selectable. Cannot be driven headlessly. (Req 31.5, 31.2)
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

@@ -26,6 +26,7 @@ The `ff-theme` crate is a Wave 6 (UI and Rendering) component. It depends on `co
 | `layout-and-docking` | **Consumer** | Obtains panel border colours, tab-group colours, drag-overlay colours, resize-handle colours from the theme. |
 | `plugin-architecture` | **Integration** | Plugins register additional colour tokens and theme extensions through the plugin trait interface. |
 | `file-tree-panel` | **Consumer** | Obtains file-category colours, selection highlight, tree-node colours from the theme palette. |
+| `project-master` Req 11 | **Governs** | The Theme Editor Context MUST follow the ISPF-style explicit-save convention (SAVE commits + stays, END commits + exits, RETURN discards + exits; live preview is a view of the working copy and reverts on RETURN). See master Requirement 11 and `.kiro/steering/save-convention.md`. |
 
 ## Glossary
 
