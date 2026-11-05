@@ -166,7 +166,42 @@ OWNER runs the full `cargo gate` (`.kiro/steering/gate-policy.md`). No file over
         passes (Tab/Shift+Tab + stable ids unchanged) with arrow nav added.
         (Validates Req 11.4)
 
-## Acceptance Criteria Coverage (CR-CH-075 / 076 / 077 / 078)
+- [ ] 12. Snapshot cell conventions, builders and trailing scratch row -- CR-NR-116 (Req 12)
+  - Depends on screen-snapshot-scrm Phase 2I for the framed table form. VERIFICATION
+    IS COMPILE-ONLY for agents: scoped `cargo check -p ff-desktop`, `cargo clippy
+    -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, plus the
+    quick scoped new tests; the owner runs the full gate.
+  - [ ] 12.1 Write FAILING pure unit tests for `ColumnSpec` snapshot metadata:
+        default is `Text` with the header width; `with_snapshot(kind, width)` sets
+        both; the same declaration is the order used by the host's `ScreenProvider`
+        (Validates Req 12.1)
+  - [ ] 12.2 Write FAILING pure unit tests for `combo_cell`, `text_cell` and
+        `sanitise_cell`: `[value v]`, empty combo `[ v]`, empty text = underscores
+        to width, filled text padded to width, longer value widens (never
+        truncates), control characters become a space, and the helper signatures
+        have NO hint-text parameter (Validates Req 12.2, 12.4)
+  - [ ] 12.3 Write FAILING tests for `snapshot_table` / `raw_table`: headers from
+        `columns()`, one row per displayed row, then the scratch row built from the
+        host's blank-row mapping; the raw builder emits unpadded values (Validates
+        Req 12.3)
+  - [ ] 12.4 Add the `ColumnSpec` fields and builder, and create
+        `shell/ispf_table_editor/snapshot.rs` (pure, egui-free); make 12.1-12.3
+        pass (Req 12.1, 12.2, 12.3)
+  - [ ] 12.5 Write a FAILING egui_kittest test: a non-empty list shows a trailing
+        scratch row after the last DISPLAYED row; typing in it promotes it to a
+        real row and a new scratch row appears; an untouched scratch row is never
+        persisted; the first-Tab target is unchanged (Validates Req 12.5, 8.1)
+  - [ ] 12.6 Implement the trailing scratch row in `render_ispf_table` (revises
+        Req 4.6); make 12.5 pass (Req 12.5)
+  - [ ] 12.7 Document and test that the filter row is never part of the snapshot
+        table: a filtered host reports the filter through its status cells only
+        (Validates Req 12.6)
+  - [ ] 12.8 Confirm by inspection (no code) that no new crate, persistence
+        format, `ff-line-commands` change or `WorkspaceContext` / `InteriorFocus`
+        change was introduced (Covers Req 12.8); reuse by Menu/Kinds/Keys/Theme is
+        recorded as a follow-up for their own Kind gates (Req 12.7)
+
+## Acceptance Criteria Coverage (CR-CH-075 / 076 / 077 / 078 / CR-NR-116)
 
 | Requirement | Criteria | Covered by Task(s) |
 |-------------|----------|--------------------|
@@ -181,6 +216,7 @@ OWNER runs the full `cargo gate` (`.kiro/steering/gate-policy.md`). No file over
 | 9 Block commands (CR-CH-076) | 9.1-9.6 | 9.1-9.6 |
 | 10 Single-chrome (CR-CH-077) | 10.1-10.4 | 10.1-10.4 |
 | 11 Arrow navigation (CR-CH-078) | 11.1-11.6 | 11.1-11.5 |
+| 12 Snapshot cells + scratch row (CR-NR-116) | 12.1-12.8 | 12.1-12.8 |
 
 ## Notes
 

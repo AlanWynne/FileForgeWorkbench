@@ -509,3 +509,99 @@ alias row (flagged in command-configurator Req 7, carried over from CR-CH-075),
 which is a persisted-shape question, not a framework change. (The one schema QUESTION -- the Alias Editor's new Description
 column -- is raised in the command-configurator spec, NOT here, because it is a
 host-editor field concern, not a Table_Editor concern.)
+
+## Requirement 12 -- snapshot grid form, cell conventions, trailing scratch row (Alias per-Kind gate, CR-NR-115)
+
+### Overview
+
+The Alias per-Workspace-Kind gate (`command-configurator` design 9.11) found that
+three things every table editor needs are missing from the shared component: the
+cell conventions live only in renderer tests (providers emit raw strings), the
+snapshot table is drawn as a nested box, and the scratch row exists only for an
+empty list. All three are SHARED concerns, so they are designed here once and the
+Menu / Kinds / Keys / Theme gates inherit them.
+
+### Investigation verdict (against the code)
+
+- `shell/ispf_table_editor/render.rs::render_ispf_table` draws header, FILTER row,
+  separator, then rows. The scratch row is inside `if rows.is_empty() { ... }`
+  (promote-on-edit through `blank_scratch()` / `scratch != default`). For a
+  non-empty list only `displayed` backing indices render. So today the scratch row
+  is NOT always present.
+- `ColumnSpec` (`state.rs`) is a `Copy` struct of `id, header, filterable,
+  compare_mode, sortable` with const builders (`display`, `filterable`,
+  `with_sortable`); `columns()` is already the single source for the live header
+  and the declared snapshot column order (Req 7.3). It carries no snapshot cell
+  metadata.
+- The snapshot cell strings (`[value v]`, `[ v]`, `____`, padded) are produced by
+  NO production code today; they appear only in `ff-screen-model` renderer tests.
+- Live widgets use egui `hint_text` placeholders (Alias: `_`, `name`, `(&1)`,
+  `note`). Hints are not values and must not leak into the snapshot.
+
+### Chosen design
+
+1. `ColumnSpec` gains `cell: CellKind` (`Text` default, `Combo`) and
+   `snapshot_width: usize` (default 0 = use the header width) plus a const
+   builder `with_snapshot(kind, width)`. It stays `Copy`, const, ff-desktop
+   internal. Rejected alternative: a separate parallel `snapshot_columns()` list
+   on the host trait - it would let live and snapshot column sets drift, which
+   Req 7.3 forbids.
+2. New pure module `shell/ispf_table_editor/snapshot.rs` (no egui, unit-tested):
+   `combo_cell(value, width)`, `text_cell(value, width)`, `sanitise_cell(s)`,
+   `snapshot_table(columns, rows, scratch, caption) -> ff_screen_model::Table`
+   (applies each column's `CellKind`/width to RAW host values, appends the
+   scratch row), and `raw_table(columns, rows, caption)` (raw values, for a
+   `MarkdownSection`). The host supplies RAW values through one function
+   `snapshot_cells(&Row) -> Vec<String>`; the scratch row is
+   `snapshot_cells(&host.blank_row())`, so it is the blank row in the same
+   conventions by construction.
+3. `render_ispf_table`: replace the `if rows.is_empty()` scratch branch with an
+   always-rendered TRAILING scratch row after the displayed rows. The scratch
+   `Row` is a frame-local value from `blank_scratch()`; when it differs from the
+   baseline after the frame it is pushed onto `rows` (as the empty-list case does
+   today) and the next frame renders a fresh scratch. Its cell ids use backing
+   index `rows.len()` (stable and not colliding with real rows). The scratch
+   cells are appended LAST to `field_matrix`, so Tab and the arrow walk reach it
+   last; `anchors.first` (filter) and `first_interior_id` are unchanged, so the
+   mandatory first-Tab test is unaffected. With an active filter the scratch row
+   still renders (an edited promoted row may not match the filter and then
+   disappears from the displayed set, which is the existing filter contract,
+   Req 3.2). Empty list: identical to today.
+4. The FILTER row is not part of the snapshot table (12.6); hosts report an
+   active filter in their status cells.
+5. Hosts opt in per column; a host that sets no metadata still gets headers and
+   header-width `Text` cells (no behaviour change for Menu/Kinds until their own
+   gates).
+
+### Error handling and edge cases
+
+- Row shorter/longer than the column count: `snapshot_table` pads with the
+  column's empty-convention string / truncates extras to the column count
+  (recoverable, silent; both come from the same `columns()` so it indicates a
+  host bug only in tests).
+- `snapshot_width` smaller than a value: the cell is NOT truncated (renderer
+  widens the column).
+- Control characters: replaced by a space by `sanitise_cell`.
+- Scratch row promoted with all fields still default: not promoted (`!= default`
+  guard), so merely focusing it never creates a row.
+- A scratch row typed into while `I`/`D` pending line commands exist: the apply
+  pass runs on the promoted list as today (promotion happens before the batch,
+  as the existing empty-list branch does).
+
+### Testability
+
+- Unit (pure): the three cell helpers incl. empty combo `[ v]`, filled `[x v]`,
+  empty text underscores, filled padded, overflow not truncated, control-char
+  sanitising; `snapshot_table` with a stub host (Text + Combo columns, scratch last,
+  cell count equals column count).
+- egui_kittest: a non-empty list renders a trailing scratch row; typing promotes
+  it and a fresh scratch appears; Tab reaches the scratch row last; the existing
+  first-Tab and arrow-walk tests stay green.
+
+### Framework check
+
+Builds ON the existing component and `WorkspaceContext` latch; no dispatch,
+navigation, save, persistence, `ff-line-commands` or public-type change. The
+trailing scratch row is a behaviour change to shared live UI (Requirement 12.5)
+and is flagged `[OWNER CONFIRM f]`; `ColumnSpec` is an ff-desktop-internal struct,
+not a public framework type.

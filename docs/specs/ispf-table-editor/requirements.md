@@ -233,7 +233,9 @@ the mainframe way instead of using buttons.
    tolerates and clears stray line commands), leaving the row list unchanged and
    surfacing a non-blocking notice where appropriate.
 
-6. WHEN the row list becomes empty after a batch, THE Table_Editor SHALL still
+6. (EXTENDED 2026-11-04 by Requirement 12.5, pending owner confirmation: the
+   scratch row becomes a TRAILING row present for non-empty lists too.)
+   WHEN the row list becomes empty after a batch, THE Table_Editor SHALL still
    render an insertable surface (the header, filter row, and at least one blank
    insertable data row) so the user can always add the first row; a transient
    scratch blank row SHALL be used for display when the backing list is empty and
@@ -504,6 +506,85 @@ component so every host inherits it.
    future) because it lives in the shared component; a host SHALL NOT need to
    re-implement it. (Reusability principle, Requirement 8 and the design's
    reusability note.)
+
+### Requirement 12: Snapshot grid form, cell conventions, and trailing scratch row (shared) -- Alias per-Kind gate, CR-NR-116 (building on CR-NR-115)
+
+**User Story:** As a user capturing a table editor, I want the snapshot grid to
+look like the live grid - drawn in the frame's own rules, with the same cell
+conventions and an insertable scratch row - and I want every table editor (Alias
+first, then Menu, Kinds, Keys, Theme) to get that from ONE shared place instead
+of re-deriving it.
+
+**Source:** the Alias per-Workspace-Kind gate (2026-11-04), owner issues 2, 4, 5
+(`command-configurator` Requirement 7.14-7.28). Builds ON Requirement 7.3
+(snapshot columns), Requirement 10.3 (live and snapshot agree), Requirement 4.6
+(the insertable surface), and `screen-snapshot-scrm` Requirement 29.6-29.9 and
+30.32-30.40 (the renderer half; renumbered from 30.27-30.35 at rebase onto
+fd35620). Each host's own per-Kind gate declares only its
+DATA (column kinds, widths, row-to-cells mapping, status cells).
+
+#### Acceptance Criteria
+
+12.1. THE component SHALL let a host declare, per column, the SNAPSHOT cell kind
+   (`Text` or `Combo`) and the snapshot FIELD WIDTH, as additive metadata on the
+   existing `ColumnSpec` (default: `Text`, the header width). THE same
+   `columns()` list SHALL drive the live header, the filter mapping, and the
+   snapshot table, so the live and captured column sets cannot diverge
+   (Requirement 7.3).
+
+12.2. THE component SHALL provide shared, pure (egui-free) cell helpers that
+   implement the cell conventions ONCE: `combo_cell(value, width)` ->
+   `[value v]` (empty value -> `[ v]`) padded to the width; `text_cell(value,
+   width)` -> the value padded to the width, or a run of `_` filling the width
+   when the value is empty; and a sanitiser replacing tab / CR / LF with a space.
+   A cell longer than the width SHALL NOT be truncated (the renderer widens the
+   column, screen-snapshot-scrm Requirement 29.6).
+
+12.3. THE component SHALL provide a shared builder that turns a host's displayed
+   rows into a `ff_screen_model::Table` (headers from `columns()`, one row per
+   displayed row, then the scratch row of 12.5) given ONE host function
+   `snapshot_cells(&Row) -> Vec<String>` that returns RAW values (no markers, no
+   padding); the builder applies each column's cell kind and width (12.1, 12.2).
+   A second builder SHALL produce the same table with RAW values and no scratch
+   row, for a Context's `markdown_sections` (screen-snapshot-scrm 30.40). THE
+   host SHALL use the single function for data rows AND the scratch row
+   (`snapshot_cells(&blank_row())`), so the scratch row is by construction the
+   blank row in the same conventions.
+
+12.4. PLACEHOLDER HINT TEXT that a live widget shows when its field is empty
+   (egui `hint_text`) is NOT cell content: the snapshot SHALL show the empty-cell
+   convention (underscores), never the hint, and the shared helpers SHALL have no
+   parameter for hint text.
+
+12.5. THE live Table_Editor SHALL render, after the last DISPLAYED data row, an
+   always-present empty insertable SCRATCH row (REVISES Requirement 4.6, which
+   rendered it only when the row list was empty). Typing in the scratch row SHALL
+   promote it into the backing list (appended after the last backing row, using
+   the host's `blank_row()` as the unchanged baseline) exactly as the empty-list
+   scratch does today, and a fresh scratch row SHALL then appear. THE scratch row
+   SHALL remain present while a filter is active, SHALL be the LAST focus stop of
+   the Tab ring and the field matrix (Requirement 11), and SHALL NOT change the
+   `first_interior_id` (the filter row stays the first stop; Requirement 7.1).
+   WHEN the list is empty the behaviour is IDENTICAL to Requirement 4.6.
+   `[OWNER CONFIRM f]` - this changes live behaviour of every table editor
+   (the owner described the scratch row as "always present"; today it exists
+   only for an empty list).
+
+12.6. THE snapshot SHALL NOT include the FILTER row. A host SHALL report an
+   active filter through its Workspace_Status_Segment (command-configurator
+   7.22, 7.25) rather than as a grid row. `[OWNER CONFIRM b]`
+
+12.7. REUSE. Menu, Kinds, Keys, Theme and future table editors SHALL obtain the
+   grid form (via `model.tables`, screen-snapshot-scrm Requirement 30.32), the
+   cell helpers (12.2), the builder (12.3), and the trailing scratch row (12.5)
+   from this component without re-implementing them; their per-Kind gates only
+   declare their `ColumnSpec` cell metadata, `snapshot_cells`, field widths, and
+   status cells.
+
+12.8. THIS requirement SHALL add NO new crate, NO new persistence format, NO
+   change to the `ff-line-commands` engine, and NO change to the `WorkspaceContext`
+   / `InteriorFocus` contract (Requirement 8). The `ColumnSpec` addition is an
+   ff-desktop-internal struct field, not a public framework type.
 
 ### Requirement 8: Scope and non-goals
 

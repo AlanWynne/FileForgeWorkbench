@@ -480,6 +480,9 @@ live. Criteria 7.2 / 7.3 are therefore SETTLED on option (a); option (b)
    snapshot/capture (Group A), so a captured snapshot shows Act / CE / Command /
    Alias / Parameters / Description in that order
    (ispf-table-editor Requirement 7.3).
+   (REVISED 2026-11-04 by the Alias per-Kind gate: the SHAPE of that captured
+   table - frame rules, cell conventions, scratch row, single representation - is
+   now specified by 7.14-7.28.)
 
 7.10. THE CR-CH-075 redesign SHALL NOT change the dispatch front door / `ALIASES`
    registration (criterion 5.2), the `WorkspaceKind::CommandConfigurator` +
@@ -528,6 +531,10 @@ live. Criteria 7.2 / 7.3 are therefore SETTLED on option (a); option (b)
    (NOTE 2026-11-01: this criterion was reconciled IN PLACE from its original
    wording -- which had the shared COMPONENT own the one `Command ===>` line -- to
    the owner-confirmed option-A shell-level design implemented under CR-CH-077.)
+   (REVISED 2026-11-04: since CR-NR-115 the `Command ===>` line and the single
+   Title are COMMON-FRAME output owned by the shell in the snapshot too; the
+   Alias provider contributes neither (7.14), and the remainder of the snapshot
+   layout is governed by 7.15-7.22.)
 
 7.13. ARROW-KEY FOCUS NAVIGATION (CR-CH-078). THE Alias_Editor SHALL inherit the
    shared component's full arrow-key focus navigation (ispf-table-editor
@@ -539,6 +546,173 @@ live. Criteria 7.2 / 7.3 are therefore SETTLED on option (a); option (b)
    unchanged; the arrow walk is additive (ispf-table-editor Requirement 11.4). The
    focused `Command ===>` field keeps its CR-NR-096 Up/Down history gesture
    (ispf-table-editor Requirement 11.5).
+
+#### Acceptance Criteria -- Alias Workspace Kind: Content_Area + Workspace_Status_Segment (per-Kind gate, CR-NR-116, building on CR-NR-115)
+
+> NOTE ON TAGGING: the gate criteria below carry the `[CR-NR-115]` tag because
+> they EXTEND the common-frame family (the convention also used by CR-NR-117).
+> The owning change-log id for this gate is CR-NR-116; `[CR-NR-115]` marks the
+> framework family these criteria build on, not their ownership.
+
+
+**Source:** the FIRST per-Workspace-Kind gate under the common workspace frame
+(`workspace-framework` Requirement 7.23-7.25; `screen-snapshot-scrm` Requirement
+30). Owner issues of 2026-11-03/04 (`.agents/tasks/snapshot-fidelity-impl/
+owner-review-vs-live.md` D2/D5, `.agents/tasks/alias-editor-concerns/
+snapshot-fidelity-gap.md`, and the 2026-11-04 owner capture). The change-log
+CR id is CR-NR-116 (this gate). This block defines ONLY what the
+Alias Workspace owns: its CONTENT AREA and ONE STATUS SEGMENT, in BOTH the live
+panel and the snapshot/capture. It REVISES the snapshot half of 7.9 and 7.12
+(whose "today the command line and header are missing" wording described the
+pre-CR-NR-115 snapshot; the command line and header are now frame/grid output).
+Criteria marked `[OWNER CONFIRM]` carry a recommended default that the owner
+accepts or flips at the gate CONFIRM step (decision points a-g, design 9.11.9).
+
+7.14. OWNERSHIP BOUNDARY. THE Alias Workspace SHALL own ONLY (i) its Content_Area
+   (the region between the shell `Command ===>` line and the Message_Line) and
+   (ii) its Workspace_Status_Segment cells. It SHALL NOT draw, compose, or
+   capture any Common_Frame element (window title bar, menu bar, tab bar,
+   centered title, `Command ===>` line, Message_Line, `Last:`/`Prof:`/`Zoom:`
+   status cells, key line) in either the live panel or the `ScreenProvider` model
+   (workspace-framework Requirement 7.23; screen-snapshot-scrm Requirement
+   30.15). `[CR-NR-115]`
+
+7.15. SINGLE REPRESENTATION (owner issue 1 / D2). WHEN the Alias Context is
+   snapshotted or captured, THE `ScreenProvider` SHALL present each alias row's
+   data EXACTLY ONCE, as one row of the content grid. It SHALL NOT populate
+   `ScreenModel.fields` (no `SS . . . : SNAPSHOT` dot-leader line), and NO
+   clipboard flavor SHALL contain a `| Property | Value |` table built from alias
+   rows (workspace-framework Requirement 7.24; screen-snapshot-scrm Requirement
+   28.4 is unchanged for Contexts that legitimately use it). `[CR-NR-115]`
+
+7.16. NO STRAY ROWS (owner issue 7). THE Alias Content_Area SHALL begin with the
+   grid's own top rule MERGED with the frame-owned rule that the shell draws
+   between the `Command ===>` line and the first Content_Area row
+   (screen-snapshot-scrm Requirement 30.34 / 30.35, CR-NR-115 grid-merge) and
+   SHALL contain NO blank row before the grid, NO `Aliases` caption/heading row,
+   and NO blank row between the last grid row and the Content_Area's closing
+   rule. An inline panel error (`AliasEditorState.error`) SHALL be carried in
+   `model.messages` (the shell Message_Line band, screen-snapshot-scrm
+   Requirement 30.25), not as a Content_Area row. `[CR-NR-115]`
+
+7.17. GRID IN THE FRAME'S RULES (owner issue 2). THE Alias grid SHALL be drawn
+   with the FRAME'S OWN rules and full-width dividers, NOT as a separate nested
+   box: a top rule (tee-down at each column divider), the header band, a
+   header/data rule (crosses), one band per data row, and then the
+   Content_Area's closing rule (tee-up at each column divider), exactly as in the
+   design 9.11.1 fixture. This behaviour is SHARED and defined in
+   `screen-snapshot-scrm` Requirement 30.32-30.39 and `ispf-table-editor`
+   Requirement 12.1-12.3; the Alias Kind only supplies the table
+   (`model.tables[0]`). It BUILDS ON the shared box-drawing content grid and the
+   framed renderer delivered by CR-NR-115/117 (screen-snapshot-scrm Requirement
+   30.12-30.14); it introduces NO bespoke grid. `[CR-NR-115]`
+
+7.18. COLUMNS AND HEADER. THE grid columns SHALL be, in order, Act, CE, Command,
+   Alias, Parameters, Description (criterion 7.2), with plain-text header cells
+   (the combo marker lives in the CELLS, not the header - decision a, design
+   9.11.9). `[OWNER CONFIRM a]` `[CR-NR-115]`
+
+7.19. LIVE-VALUE FIDELITY (owner issues 3 / D5). THE snapshot grid SHALL mirror
+   the live panel's data EXACTLY: (i) the data rows SHALL be the live DISPLAYED
+   set (after the CE + Command filter, criterion 7.7) in BACKING order, one per
+   working-copy row -- INCLUDING the write-through `X -> EXIT` FFCMD seed row
+   (Requirement 8), which appears in the grid like any other alias and is
+   editable (the Alias store is now file-backed and seeded, not empty-until-user-
+   adds); (ii) each cell SHALL be derived from the same
+   `AliasRowEdit` field the live widget edits: Act = `act`, CE =
+   `environment.label()`, Command = `canonical`, Alias = `surface`, Parameters =
+   `command_template`, Description = `description`. PLACEHOLDER HINT TEXT that
+   the live widgets show on an EMPTY field (`_` in Act, `name`, `(&1)`, `note`) is
+   NOT a value and SHALL NOT appear in the snapshot; an empty text field is
+   shown as underscores (criterion 7.20). The value is mirrored as stored, with
+   its original case (e.g. `ffcmd`, not `FFCMD`). `[OWNER CONFIRM e]`
+   `[CR-NR-115]`
+
+7.20. CELL CONVENTIONS AND WIDTHS (owner issue 4; screen-snapshot-scrm
+   Requirement 29.8, 29.9, 30.13). THE Alias grid cells SHALL use these
+   per-column conventions, each padded to the column's snapshot field width
+   (Act 4, CE 10, Command 20, Alias 16, Parameters 28, Description 32 - declared
+   once as host data, design 9.11.3) and WIDENING (never truncating) when a value
+   is longer:
+   - Act: TEXT cell. Empty = `____`; a pending line-command letter is shown
+     padded (e.g. `D   `).
+   - CE: COMBO cell. `[ffcmd v]` / `[ffedit v]`.
+   - Command: COMBO cell. `[SNAPSHOT v]`; an empty selection = `[ v]`.
+   - Alias, Parameters, Description: TEXT cells. Empty = a run of underscores
+     filling the field width; filled = the value padded to the field width.
+   `[OWNER CONFIRM a]` `[CR-NR-115]`
+
+7.21. SCRATCH ROW (owner issue 5). THE grid SHALL end with ONE always-present
+   empty insertable SCRATCH row after the last displayed data row, built from
+   the SAME row-to-cells mapping as a data row applied to the blank row
+   (`AliasRowEdit::default()`: Act `____`, CE `[ffcmd v]`, Command `[ v]`,
+   Alias/Parameters/Description underscores). The live panel SHALL show the same
+   trailing scratch row (ispf-table-editor Requirement 12.5), so the snapshot
+   mirrors live. The scratch row is NOT counted in `Aliases: <n>` or
+   `Rows 1-<n> visible`, and is never persisted unless the user edits it.
+   `[OWNER CONFIRM f]` `[CR-NR-115]`
+
+7.22. FILTER ROW. THE snapshot grid SHALL NOT include the live FILTER row (the
+   CE / Command filter dropdowns under the headers): it is an input control, not
+   data. An ACTIVE filter SHALL instead be reported by the status cell of
+   criterion 7.25, so a snapshot of a filtered list is never mistaken for the
+   whole list. `[OWNER CONFIRM b]` `[CR-NR-115]`
+
+7.23. CELL SAFETY. WHEN a cell value contains a control character (tab, CR,
+   LF) THE provider SHALL replace it with a single space; a cell value is carried
+   as a discrete string and SHALL NOT be re-split on the frame's ` | ` band
+   separator (a Description containing ` | ` stays inside its own cell). No cell
+   is truncated (screen-snapshot-scrm Requirement 29.6, 30.14). `[CR-NR-115]`
+
+7.24. CLIPBOARD FLAVORS. THE Alias model SHALL feed the Markdown and HTML-table
+   clipboard flavors from `ScreenModel.markdown_sections` (one `Aliases` section
+   with RAW values: no `[v]` marker, no underscore fill, no padding), using the
+   SAME `markdown_sections` mechanism as the Menu Kind's Option|Command|
+   Description clipboard table (CR-NR-117), so the box carries the cell
+   conventions while the structured flavor stays pasteable data
+   (screen-snapshot-scrm Requirement 28.6, 30.40). The clipboard SHALL contain
+   the box FIRST and the `Aliases` table once; it SHALL NOT contain the
+   Property/Value table of criterion 7.15. `[OWNER CONFIRM g]` `[CR-NR-115]`
+
+7.25. WORKSPACE_STATUS_SEGMENT CONTENT. THE Alias Kind's `workspace_status_cells`
+   (workspace-framework Requirement 7.17, 7.21) SHALL be APPENDED after the
+   Common_Status_Segments `Last: HH:MM | Prof: <name> | Zoom: <pct>`
+   (screen-snapshot-scrm Requirement 30.10, CR-NR-115) and SHALL return, in order:
+   (1) `Aliases: <n>` where `<n>` = the number of working-copy rows
+   (`AliasEditorState.rows.len()`, scratch row excluded);
+   (2) `Rows 1-<m> visible` where `<m>` = the number of rows passing the CE +
+   Command filter (`displayed_indices(..).len()`); `Rows 0 visible` when none
+   (the range is the LOGICAL visible set; it SHALL NOT read egui scroll state);
+   (3) ONLY WHILE a filter is active, `Filter: <ce>/<root>` using `--` for an
+   unset half (e.g. `Filter: ffcmd/--`).
+   None of the cells SHALL contain the band separator ` | `. The cell strings are
+   localisable `ff_i18n` messages following the existing
+   `ff-desktop-shell-status-*` pattern. `[OWNER CONFIRM d]` `[CR-NR-115]`
+
+7.26. STATUS LIVE/SNAPSHOT PARITY. THE live Status_Bar and the snapshot/capture
+   status band SHALL both obtain the Alias cells from the ONE method
+   `WorkbenchShell::workspace_status_cells()` (a new `KindTag::AliasEditor` arm),
+   so they are identical by construction; the Alias Kind SHALL add NO other
+   status text and SHALL NOT contribute `Ln`/`Col`/encoding/line count.
+   `[CR-NR-115]`
+
+7.27. NO FRAMEWORK CHANGE. THE Alias content-area and status work SHALL change
+   NO dispatch path, NO navigation, NO `WorkspaceKind`/descriptor, NO focus
+   contract (the first-Tab test of 7.8 is unchanged), NO save path, and NO public
+   `ff-screen-model` or `WorkspaceContext` type. The additive pieces (renderer
+   form of 7.17, trailing scratch row of 7.21, `ColumnSpec` cell metadata) are
+   flagged in design 9.11.8 and do not reshape a public framework type.
+   `[CR-NR-115]`
+
+7.28. VERIFICATION. THE Alias goldens (`golden/alias_pfshow_on.txt`,
+   `alias_message_pfshow_off.txt`, `alias_message_pfshow_off_ascii.txt`) SHALL be
+   regenerated to the design 9.11.1 layout and compared line for line; unit
+   tests SHALL cover the row-to-cells mapping (value fidelity incl. placeholder
+   exclusion, the `X -> EXIT` seed row present, filter, scratch row), the status
+   cells (count, filtered range, active-filter cell), and the absence of
+   `fields`; the existing Alias snapshot tests that assert raw cell strings
+   (`tests_editor_snapshot_tables.rs`, `tests_screen_directive.rs`) SHALL be
+   updated to the cell conventions. `[CR-NR-115]`
 
 ---
 

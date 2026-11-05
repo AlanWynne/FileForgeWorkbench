@@ -1591,6 +1591,75 @@ rendering only: the live egui window keeps its own visuals.
       the frame criteria 30.1-30.30 or to the `ScreenModel` / `Table` types is
       implied. `[CR-NR-117]`
 
+#### Acceptance Criteria -- content grid drawn in the frame's rules (Alias per-Kind gate, CR-NR-116, building on CR-NR-115, 2026-11-04)
+
+Added by the first per-Workspace-Kind gate (Alias, `command-configurator`
+Requirement 7.14-7.28). SHARED renderer behaviour: every Context whose model
+carries `tables` inherits it. Renderer-internal; no public `ScreenModel` /
+`Table` shape changes (criterion 30.17 stands).
+
+> NOTE ON TAGGING: criteria 30.32-30.40 below carry the `[CR-NR-115]` tag
+> because they EXTEND the common-frame family; the owning change-log id for this
+> gate is CR-NR-116. The tag marks the framework family these criteria build on,
+> not their ownership.
+
+30.32 WHEN a framed model (one carrying `header_lines`) contains `tables`, THE
+      framed renderer SHALL draw each table INSIDE the frame's own ruled bands
+      instead of as a nested box: a rule, one header band, a header/data rule,
+      then one band per data row; the Content_Area's closing rule (30.18)
+      follows the last data band. It SHALL NOT emit a blank row before the
+      table, a caption row, or an inner top/bottom border. The table's
+      `caption` remains available to the Markdown / HTML flavors (their
+      heading) and is simply not drawn in the framed box. `[CR-NR-115]`
+30.33 THE table's column widths SHALL be, per column, the widest of its header
+      and all its cells (so dividers align across the header and every data
+      row), with each cell padded to its column width and dividers drawn as
+      band-cell dividers (` | ` rendered as the vertical glyph). The last
+      column's right edge is the frame's right border. A cell longer than its
+      provider-declared field width widens the column (and, if needed, the
+      frame); NO cell is truncated (consistent with 29.6, 30.14). `[CR-NR-115]`
+30.34 THE rules around the grid SHALL carry the junction glyphs of 30.20: the
+      grid's top rule a tee-down at every column divider, the header/data rule a
+      cross, and the closing rule a tee-up at every column divider (a cross
+      where the status band below has a divider at the same column, a tee-down
+      where only the status band has one). The existing band/junction machinery
+      SHALL be reused; no second junction mechanism is introduced. `[CR-NR-115]`
+30.35 RECONCILED (rebase onto fd35620): the grid's OWN top rule MERGES with the
+      frame-owned rule the shell draws between the `Command ===>` line and the
+      first Content_Area row (main's 30.29 frame rule + 30.30 grid-merge). When
+      the first content row is a grid, the single rule under the Command line is
+      the MERGED rule, carrying the grid header's tee-down junctions; it is NOT a
+      frame-suppressed rule. A Content_Area with no grid renders the plain frame
+      rule (30.29). (SUPERSEDES the gate's earlier wording "the frame adds NO
+      rule between the Command line and the first content row", which predated the
+      CR-NR-115 frame rule that landed on main.) `[CR-NR-115]` `[OWNER CONFIRM c]`
+30.36 EACH cell string SHALL be carried as a DISCRETE value and SHALL NOT be
+      re-split on ` | `; a cell containing ` | ` stays in its cell. Control
+      characters (tab, CR, LF) in a cell SHALL render as a space and SHALL NOT
+      be interpreted as the right-align marker. `[CR-NR-115]`
+30.37 WHEN a model carries more than one table, or a table follows body lines /
+      fields, THE tables SHALL be laid out one after another with adjacent rules
+      COALESCED into one (never two consecutive rules); no blank spacer row is
+      inserted between them. A table with NO rows renders its header band and
+      rules only; a table with NO columns is omitted. `[CR-NR-115]`
+30.38 THE ASCII fallback (Req 5.2) SHALL produce the equivalent layout with
+      `+ - |` (30.23). `[CR-NR-115]`
+30.39 THE legacy renderer path (`render_plain` for a model WITHOUT
+      `header_lines`) SHALL be UNCHANGED, including its below-the-frame
+      `render_table_grid`; only the framed path gains 30.32-30.38. Tables of
+      other Contexts (Theme, Menu, Keys, Kinds) adopt the new form automatically;
+      their goldens/tests are regenerated in the same change and reviewed in
+      their own per-Kind gates. `[CR-NR-115]`
+30.40 A Context MAY supply `markdown_sections` (Req 28.6) to present RAW values
+      in the Markdown / HTML-table flavors while `tables` carries the
+      box-convention strings (`[value v]`, `____`, padding). WHEN
+      `markdown_sections` is non-empty the structured flavors use it and ignore
+      `fields`/`tables` (existing behaviour), so 29.7a / 30.13 govern the BOX
+      and HTML `<pre>` text and the structured flavors may carry raw data. This
+      is the SAME `markdown_sections` mechanism the Menu Kind uses for its
+      Option|Command|Description clipboard table (30.31, CR-NR-117).
+      `[CR-NR-115]` `[OWNER CONFIRM g]`
+
 Rendered fixture (the box-drawing glyphs are runtime product output, exempt from
 the ASCII-only documentation rule):
 

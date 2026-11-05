@@ -325,3 +325,171 @@ quick; the authoritative full suite/gate is the owner's manual run.
     - Covers: Requirement 8.2, 8.4, 8.5
   - [ ] 8.7 Scoped compile-verify (agent COMPILE-ONLY): `cargo check/clippy/fmt -p ff-desktop` + named alias tests where quick; logs read back; owner runs the full gate before merge
     - Covers: Requirement 8 (verification)
+
+---
+
+## Task 9: Alias Workspace Kind -- Content_Area + Workspace_Status_Segment (CR-NR-116, Requirement 7.14-7.28)
+
+Per-Kind gate under the common frame (CR-NR-115). Design: Section 9.11 (target
+fixture 9.11.1). Shared pieces are tracked in
+`docs/specs/screen-snapshot-scrm/tasks.md` Phase 2I (framed table bands) and
+`docs/specs/ispf-table-editor/tasks.md` group 12 (cell helpers, builders,
+trailing scratch row); Task 9 consumes them and MUST NOT start its provider
+tasks (9.3 onward) before those shared tasks are green.
+
+TDD per testing.md: each test task is written and seen RED before its
+implementation task. VERIFICATION IS COMPILE-ONLY for agents (testing.md
+execution split): scoped `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop
+-- -D warnings`, `cargo fmt -p ff-desktop -- --check` (and the same for
+`ff-screen-model` when touched), plus the quick scoped new tests by name. Agents
+do NOT run `cargo test` for the whole workspace, `cargo nextest`, or `cargo gate`;
+the OWNER runs the full gate (gate-policy.md) and is the authority on green.
+Every touched source file stays under 400 non-test lines (rust-standards.md);
+tests go in sibling `_tests` files. Wiring follows wiring-standard.md: NO new
+dispatch path, NO new focus mechanism, NO change to the first-Tab target.
+
+- [ ] 9.1 Column cell metadata on the Alias host (Req 7.18, 7.20)
+  - [ ] 9.1.1 Write a FAILING unit test: `ALIAS_COLUMNS` declares, in order, Act
+        (Text, 4), CE (Combo, 10), Command (Combo, 20), Alias (Text, 16),
+        Parameters (Text, 28), Description (Text, 32), with plain-text header cells
+    - Validates: Requirement 7.18, 7.20
+  - [ ] 9.1.2 Declare the metadata in `alias_editor_panel/host.rs` using the
+        shared `with_snapshot` builder (depends on ispf-table-editor 12.4); make
+        9.1.1 pass
+    - Covers: Requirement 7.18, 7.20
+
+- [ ] 9.2 Row-to-cells mapping with live-value fidelity (Req 7.19, 7.20, 7.23)
+  - [ ] 9.2.1 Write FAILING unit tests for `alias_snapshot_cells(&AliasRowEdit)`:
+        returns the six RAW values in order from `act`, `environment.label()`,
+        `canonical`, `surface`, `command_template`, `description`; original case
+        kept (`ffcmd`, not `FFCMD`); the placeholders `_`, `name`, `(&1)` and
+        `note` never appear for an empty field; a typed `&1` does appear; a control
+        character becomes a space; a Description containing ` | ` stays one value
+    - Validates: Requirement 7.19, 7.23
+  - [ ] 9.2.2 Implement `alias_snapshot_cells`; make 9.2.1 pass
+    - Covers: Requirement 7.19, 7.23
+
+- [ ] 9.3 Table builder: displayed set, scratch row, no filter row (Req 7.19, 7.21, 7.22)
+  - [ ] 9.3.1 Write FAILING unit tests for `alias_table()`: rows are the
+        `displayed_indices(..)` set (CE + Command filter applied) in BACKING order;
+        the scratch row is LAST and equals `AliasRowEdit::default()` mapped through
+        the cell conventions (Act `____`, CE `[ffcmd v]`, Command `[ v]`, the
+        rest underscores); with an active filter the filter row is NOT a table row;
+        an empty working copy yields only the scratch row
+    - Validates: Requirement 7.19, 7.21, 7.22
+  - [ ] 9.3.2 Implement `alias_table()` in `shell/screen_providers_tables.rs` via
+        the shared `snapshot_table`; make 9.3.1 pass
+    - Covers: Requirement 7.19, 7.21, 7.22
+
+- [ ] 9.4 Single representation and message routing (Req 7.14, 7.15, 7.16)
+  - [ ] 9.4.1 Write FAILING unit tests on `alias_editor_screen_model`: `fields` is
+        EMPTY (no `SS . . . : SNAPSHOT` dot-leader line); exactly one table; the
+        model contains no `header_lines`/`command_line` of its own (common-frame
+        elements come from `apply_common_frame`); an `AliasEditorState.error` is
+        carried in `model.messages`, not as a Content_Area row
+    - Validates: Requirement 7.14, 7.15, 7.16
+  - [ ] 9.4.2 Remove the `fields` loop, keep the error-to-`messages` mapping, push
+        `alias_table()`; make 9.4.1 pass
+    - Covers: Requirement 7.14, 7.15, 7.16
+
+- [ ] 9.5 Clipboard flavors (Req 7.24)
+  - [ ] 9.5.1 Write FAILING unit tests: the model carries ONE `markdown_sections`
+        entry `Aliases` with RAW values (no `[v]` marker, no underscore fill, no
+        padding); the Markdown clipboard text contains the fenced box FIRST, then
+        the `### Aliases` GFM table exactly once, and NO `| Property | Value |`
+        table; the HTML-table flavor mirrors that
+    - Validates: Requirement 7.24, 7.15
+  - [ ] 9.5.2 Implement `alias_markdown_section()` and attach it; make 9.5.1 pass
+        (depends on screen-snapshot-scrm 2I.4)
+    - Covers: Requirement 7.24
+
+- [ ] 9.6 GOLDEN full-text snapshot test for the Alias content (Req 7.17-7.22, 7.25, 7.28)
+  - [ ] 9.6.1 Create the golden fixture
+        `crates/ff-desktop/src/shell/golden/alias_pfshow_off_rows.txt` by hand
+        from the design 9.11.1 target layout (BEFORE any implementation), so it is
+        the RED reference. Working copy: row 1 is the mandatory `X -> EXIT` FFCMD
+        seed row (Requirement 8) -- `X` / ffcmd / `EXIT` with EMPTY Parameters and
+        Description `Exit the application`; row 2 `SS` / ffcmd / SNAPSHOT with
+        EMPTY Parameters and Description; row 3 `CS` / ffcmd / `CAPTURE START` with
+        Parameters `&1` (a FILLED Parameters cell) and Description `Session
+        Recording start`; then the trailing scratch row; status cells `Aliases:
+        3`, `Rows 1-3 visible`. The fixture holds the full box (title bar through
+        status band) so junction glyphs and widths are compared line for line, and
+        the `X -> EXIT` seed row being present and editable is asserted (7.28)
+    - Validates: Requirement 7.17, 7.18, 7.19, 7.20, 7.21, 7.25, 7.28
+  - [ ] 9.6.2 Write the FAILING golden test (`tests_alias_golden.rs`, sibling of
+        `tests_common_frame_golden.rs`): build the shell with the three-row
+        working copy above (seed `X -> EXIT` + `SS` + `CS`), take the SNAPSHOT
+        text, and assert it EQUALS the golden file in full (diff-friendly
+        `assert_eq!` on the whole string). Assert in the same test group: the
+        `X -> EXIT` seed row is present as the first data row; a shipped `SS` row
+        shows the empty Parameters/Description cells as underscore runs (never the
+        placeholder `(&1)` / `note`); no blank row before the grid and none after
+        the last row; no `Aliases` caption row
+    - Validates: Requirement 7.15, 7.16, 7.17, 7.19, 7.20, 7.21, 7.28
+  - [ ] 9.6.3 Add a second golden for the FILTERED and ASCII variants:
+        `alias_filtered.txt` (filter `ffcmd/SNAPSHOT` shows only the matching row
+        plus the scratch row, status band ends `Filter: ffcmd/SNAPSHOT`) and the
+        ASCII fallback fixture using only `+ - |`
+    - Validates: Requirement 7.22, 7.25, 7.28
+  - [ ] 9.6.4 Regenerate/replace the three existing Alias goldens
+        (`alias_pfshow_on.txt`, `alias_message_pfshow_off.txt`,
+        `alias_message_pfshow_off_ascii.txt`) to the new layout and review each
+        diff against design 9.11.1
+    - Validates: Requirement 7.28
+
+- [ ] 9.7 Workspace_Status_Segment cells -- live panel (Req 7.25, 7.26)
+  - [ ] 9.7.1 Write FAILING unit tests for `WorkbenchShell::workspace_status_cells()`
+        with the Alias editor active (live-panel status-cells test): a 2-row
+        working copy yields exactly `["Aliases: 2", "Rows 1-2 visible"]` (scratch
+        row excluded, no `Ln`/`Col`/encoding/line count); a CE + Command filter
+        matching 1 of 40 rows yields `Aliases: 40`, `Rows 1-1 visible`,
+        `Filter: ffcmd/SNAPSHOT`; a filter with an unset half renders `--`
+        (`Filter: ffcmd/--`); a filter matching nothing yields `Rows 0 visible`;
+        no cell contains the band separator ` | `; with NO active filter there is
+        NO `Filter:` cell
+    - Validates: Requirement 7.25, 7.26
+  - [ ] 9.7.2 Write a FAILING parity test: the cells the LIVE `render_status_bar`
+        consumes and the cells the snapshot status band consumes are the SAME
+        `workspace_status_cells()` result (identical by construction), and the
+        common `Last:` / `Prof:` cells precede them
+    - Validates: Requirement 7.26
+  - [ ] 9.7.3 Add `shell/workspace_status_alias.rs` (`alias_status_cells`, under
+        400 lines), the `KindTag::AliasEditor` arm in
+        `render_status.rs::workspace_status_cells()` (before the
+        FileEditor/Untitled early return), and the `ff_i18n` keys following
+        `ff-desktop-shell-status-*`; make 9.7.1 and 9.7.2 pass
+    - Covers: Requirement 7.25, 7.26
+
+- [ ] 9.8 Live behaviour: trailing scratch row on the Alias host (Req 7.21)
+  - [ ] 9.8.1 Write the FAILING full-shell egui_kittest test (Alias host over the
+        shared surface, see ispf-table-editor 12.5): a non-empty Alias list shows a
+        trailing scratch row; typing in it promotes it and a new scratch row
+        appears; the scratch row is not counted in `Aliases: <n>`
+    - Validates: Requirement 7.21, 7.25
+  - [ ] 9.8.2 Confirm the existing mandatory first-Tab test (Req 7.8, 5.23) still
+        lands on the filter CE combo (unchanged, no phantom stop)
+    - Validates: Requirement 7.8, 7.27
+
+- [ ] 9.9 Update existing tests to the new conventions (Req 7.28)
+  - [ ] 9.9.1 Update the tests that assert raw cell strings or the old shape:
+        `tests_editor_snapshot_tables.rs`, `tests_screen_directive.rs`,
+        `tests_common_frame_snapshot.rs`, `tests_common_frame_order.rs`,
+        `tests_common_frame_helper.rs`. Each change is a convention update, never
+        a weakened assertion; report any test that looks wrong instead of editing
+        it
+    - Validates: Requirement 7.28
+
+- [ ] 9.10 Compile-only verification and handoff
+  - [ ] 9.10.1 Run the scoped trio for `ff-desktop` and `ff-screen-model`
+        (`cargo check -p`, `cargo clippy -p ... -- -D warnings`, `cargo fmt -p ...
+        -- --check`), each redirected to a uniquely named log under
+        `_ignore/logs/`, and read the logs back; run only quick named tests
+        (`cargo test -p ff-desktop <name>`)
+    - Validates: Requirement 7.28
+  - [ ] 9.10.2 Confirm no file exceeds 400 non-test lines and that no `Common_Frame`
+        element is drawn by the Alias provider or panel (Req 7.14, 7.27)
+    - Validates: Requirement 7.14, 7.27
+  - [ ] 9.10.3 Update `docs/quality/TCR.md` rows for Req 7.14-7.28 as each test
+        lands; hand off for the OWNER's full `cargo gate` before any merge to main
+    - Covers: Requirement 7.14-7.28

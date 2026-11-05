@@ -1056,3 +1056,71 @@ line in `alias_pfshow_on.txt` is one unbroken row with NO rule junctions from
 it. A new unit test (`editor_context_status_text_keeps_ln_col_encoding_and_line_count`)
 asserts the editor Context's composed status text is unchanged:
 `Last: 11:02 | Prof: default | Ln 1, Col 1 | UTF-8 | 1 lines`.
+
+### Third refinement -- content grids drawn in the frame's rules (Req 30.32-30.40, Alias per-Kind gate, 2026-11-04; renumbered from 30.27-30.35 at rebase onto fd35620)
+
+**Investigation (against `ff-screen-model/src/render/framed.rs`).** For a framed
+model, `collect_rows` handles content as: `body_lines` (verbatim `Row::Text`),
+then `fields` (a blank `Row::Text` plus `label . . . : value` rows), then for each
+`tables` entry a blank spacer row, the caption row, and the lines of
+`text.rs::render_table_grid` pushed as plain `Row::Text` rows. That is the source
+of the nested box, the `Aliases` heading, and the stray blank rows. The renderer
+ALREADY has the machinery to draw cell grids in the frame: `Row::Band(cells)`
+composes cells with the vertical glyph and records divider columns, and
+`Row::Rule` derives tee-down / tee-up / cross junctions from the dividers of the
+rows above and below (`push_rule` with `cuts_at`) - used today for the title
+bar, menu bar, tab bar and status bar. Tables simply do not use it.
+
+**Chosen design.** In `collect_rows`, replace the table branch with: ensure a
+`Row::Rule` precedes the table (coalescing with a preceding rule), push
+`Row::Band(headers padded)`, `Row::Rule`, then one `Row::Band(row padded)` per
+data row; the existing `push_bottom_bands` already inserts the Content_Area's
+closing `Row::Rule` after the last content row, which therefore receives tee-ups
+from the last data band (and crosses with the status band's dividers, exactly as
+30.20). Column widths = max over header and cells per column (chars); cells are
+padded to that width; `Row::Band` is built DIRECTLY from the cell vector (not by
+`split_cells` on ` | `), so a cell containing ` | ` is not re-split, and control
+characters are flattened by the existing `flat()` (TAB is also the RIGHT_ALIGN
+marker, so it must be flattened for table cells too: the table path passes cells
+through a sanitiser, never as the LAST cell of a right-aligned band). No caption
+row and no blank spacer are emitted for tables in the framed path; the caption is
+still used by the Markdown `**caption**` / HTML `<caption>`. The legacy
+(`header_lines`-less) path and `render_table_grid` are untouched, so existing
+non-framed tests and any consumer of the legacy layout keep working.
+
+**Why this and not the alternatives.**
+- A new `ScreenModel` field (e.g. `content_bands`) or a `Table` flag would
+  reshape public types (30.17 forbids) and force every provider to change.
+- An in-string marker inside `body_lines` (the RIGHT_ALIGN precedent) would work
+  without a type change but makes every provider hand-build ruled text, losing
+  the shared `Table` that the Markdown/HTML flavors already consume.
+- Rendering `tables` as bands is renderer-internal, keeps ONE data source for
+  box, Markdown and HTML, and gives every table Context the form for free.
+
+**Width and fill.** The frame inner width stays `max(natural widths)` so the
+key line (pfshow on) sets it; a grid narrower than the frame leaves the last
+column to the frame border (its text is padded by `push_content`, so the right
+border is aligned) - no explicit stretch is needed and none is added. A grid
+wider than the key line widens the frame (29.6 widen-on-overflow).
+
+**Frame rule + grid-merge interaction (RECONCILED onto fd35620).** Since this
+gate was authored, main landed the frame-owned rule BETWEEN the Command line and
+the first content row (30.29) plus the generic grid-merge (30.30). When the first
+content is a grid, the grid's own top rule MERGES with that frame rule into ONE
+rule line carrying the grid header's tee-down junctions - the observable result
+(owner layout) is exactly one rule directly under the Command line. Criterion
+30.35 states this merge, superseding the gate's earlier "the frame inserts no
+rule" wording; the two criteria no longer read as contradictory because the frame
+now OWNS the rule and the grid MERGES with it rather than suppressing it.
+
+**Blast radius.** Every framed model with `tables` changes: Theme, Menu, Keys,
+Kinds, Alias (Config has no tables). Their goldens/tests are regenerated in the
+same implementation change and reviewed in their own per-Kind gates; the
+framework verdict is unaffected (renderer-internal, no public type change).
+
+**Tests.** Unit in `render/framed.rs` / `framed_tests.rs`: junction glyphs for a
+3-row table above a status band (top tee-down, header cross, closing tee-up/cross),
+equal widths per column across header and rows, widen-on-overflow, coalesced
+adjacent rules for two tables, empty-rows table, zero-column table omitted, a
+cell containing ` | ` and a TAB, ASCII fallback; plus the Alias golden fixtures
+(command-configurator design 9.11.1).

@@ -642,6 +642,67 @@ other SCRM requirement/phase numbers.
         and confirm the settled clipboard behaviour; confirm a saved `.svg` opens
         scalable and selectable. Cannot be driven headlessly. (Req 31.5, 31.2)
 
+## Phase 2I: Tables drawn in the frame's own rules (Req 30.32-30.40, CR-NR-116)
+
+First consumer: the Alias Workspace Kind (command-configurator Requirement
+7.14-7.28, tasks Task 9). Renumbered from 30.27-30.35 at rebase onto main fd35620
+(main now owns 30.1-30.31). TDD-first: every implementation task is preceded by
+its failing test. VERIFICATION IS COMPILE-ONLY for agents: `cargo check -p
+ff-screen-model`, `cargo clippy -p ff-screen-model -- -D warnings`, `cargo fmt -p
+ff-screen-model -- --check` (scoped), plus quick scoped unit tests where fast. The
+owner runs the full `cargo gate` (gate-policy.md, testing.md). Every touched
+source file stays under 400 non-test lines.
+
+- [ ] 2I.1 Framed table bands: failing tests first (Req 30.32-30.34, 30.37)
+  - [ ] 2I.1.1 Failing tests (ff-screen-model `render/framed_tests.rs`): a framed
+        model with one table draws top rule (tee-down per divider), header band,
+        header/data rule (cross), one band per data row, closing rule (tee-up);
+        NO caption row and NO blank spacer row; column width = widest of header
+        and cells; a table with no rows draws header band and rules only; a table
+        with no columns is omitted
+    - Validates: Requirement 30.32, 30.33, 30.34, 30.37
+  - [ ] 2I.1.2 Failing tests: two tables, or a table after body lines/fields,
+        are laid out one after another with adjacent rules COALESCED (never two
+        consecutive rules)
+    - Validates: Requirement 30.37
+  - [ ] 2I.1.3 Failing test: the grid's own top rule MERGES with the frame-owned
+        rule the shell draws between the `Command ===>` line and the first content
+        row (main's 30.34 + merge 30.30), so exactly one rule carries the header
+        tee-down junctions; a Content_Area with no grid renders as before
+    - Validates: Requirement 30.35
+  - [ ] 2I.1.4 Implement the table-band layout in `render/framed.rs` reusing the
+        existing band/junction machinery (no second junction mechanism); make
+        2I.1.1-2I.1.3 pass
+    - Covers: Requirement 30.32, 30.33, 30.34, 30.35, 30.37
+
+- [ ] 2I.2 Discrete cells and ASCII fallback (Req 30.36, 30.38)
+  - [ ] 2I.2.1 Failing tests: a cell containing ` | ` stays inside its cell (not
+        re-split); tab/CR/LF render as a space and are never read as the
+        right-align marker; the ASCII fallback yields the equivalent layout with
+        `+ - |` only
+    - Validates: Requirement 30.36, 30.38
+  - [ ] 2I.2.2 Implement; make 2I.2.1 pass
+    - Covers: Requirement 30.36, 30.38
+
+- [ ] 2I.3 Legacy path unchanged and golden regeneration (Req 30.39)
+  - [ ] 2I.3.1 Failing/guard test: `render_plain` for a model WITHOUT
+        `header_lines` still emits the below-the-frame `render_table_grid`
+        byte-for-byte
+    - Validates: Requirement 30.39
+  - [ ] 2I.3.2 Regenerate the goldens of every framed model with tables (Theme,
+        Menu, Keys, Kinds, Alias) in the same change; owner reviews each diff
+        (flag 1 in the gate summary)
+    - Covers: Requirement 30.39
+
+- [ ] 2I.4 Clipboard markdown sections (Req 30.40)
+  - [ ] 2I.4.1 Failing tests: a model with non-empty `markdown_sections` emits the
+        fenced box FIRST, then the sections and nothing else, in both the Markdown
+        and the HTML-table flavors; a model WITHOUT them is unchanged (Req 28.4
+        still applies)
+    - Validates: Requirement 30.40
+  - [ ] 2I.4.2 Implement/confirm the `markdown_sections` path; make 2I.4.1 pass
+    - Covers: Requirement 30.40
+
 ## Cross-cutting
 
 - [ ] 10. TCR + verification

@@ -1024,3 +1024,399 @@ EXITs on `X`. No change to `ffedit_english()` or any existing alias.
   with `X -> EXIT`; the resolver resolves bare `X` (non-editor) to `EXIT`; an FFEDIT
   editor resolves bare `X` to `EXCLUDE`; Reset bare rebuilds the seed after
   archiving a user-edited aliases dir. Agent compile-verifies scoped; owner full gate.
+
+---
+
+## 9.11 Alias Workspace Kind: Content_Area + Workspace_Status_Segment (Requirement 7.14-7.28, per-Kind gate under CR-NR-115)
+
+### 9.11.0 Overview
+
+> **RECONCILED ON REBASE (CR-NR-116, rebased onto main fd35620).** This section
+> was first authored off the old main a6aacae. Main has since gained: the common
+> workspace frame's frame-owned rule between the Command line and content plus the
+> grid-merge (CR-NR-115, screen-snapshot-scrm 30.29/30.30 on main, referenced here
+> as 30.34/30.35), the Menu Kind box-drawing content grid + Option|Command|
+> Description clipboard table (CR-NR-117), the common `Zoom:` status cell, and the
+> write-through config model with the `X -> EXIT` FFCMD seed row (CR-CH-116). The
+> gate's criteria, fixture, and decisions below are reconciled to those: the grid
+> top rule now MERGES with the frame rule, the status segment follows
+> `Last | Prof | Zoom`, the grid builds on the shared framed renderer (not a
+> bespoke grid), the clipboard uses the shared `markdown_sections` mechanism, and
+> the file-backed seed row is accounted for in the grid.
+
+The common workspace frame (CR-NR-115, merged a6aacae) is shell-owned. This
+section defines what the Alias Workspace owns on top of it: ONE Content_Area
+(the grid) and ONE Workspace_Status_Segment, in the live panel and in the
+snapshot/capture. It is the FIRST per-Kind gate, so the grid-in-frame form, the
+cell conventions and the trailing scratch row are designed as SHARED pieces
+(`ispf-table-editor` Requirement 12, `screen-snapshot-scrm` Requirement
+30.32-30.40) and the Alias Kind contributes only data: its columns' cell metadata,
+its row-to-cells mapping, its field widths, and its status cells. The decisions
+below were settled by reading the code, not assumed.
+
+### 9.11.1 Target Content_Area (normative layout, snapshot)
+
+Rendered at the pfshow-off, no-message case so the box is easy to read (the
+glyphs are runtime product output, exempt from the ASCII-only rule). With pfshow
+on, the frame is as wide as the key line and the last (Description) column's
+right edge is simply the frame border; nothing else changes. The data shows the
+mandatory write-through `X -> EXIT` FFCMD seed row (Requirement 8, CR-CH-116;
+always present and editable), the shipped SCRM `SS` alias row (empty Parameters /
+Description), a row with real values, and the trailing scratch row. The Act
+column shows its pending-letter text.
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                         Alias Editor                                                          │
+├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Command ===> ________________________________________________________________________________________________________________ │
+├──────┬────────────┬──────────────────────┬──────────────────┬──────────────────────────────┬──────────────────────────────────┤
+│ Act  │ CE         │ Command              │ Alias            │ Parameters                   │ Description                      │
+├──────┼────────────┼──────────────────────┼──────────────────┼──────────────────────────────┼──────────────────────────────────┤
+│ ____ │ [ffcmd v]  │ [EXIT v]             │ X                │ ____________________________ │ Exit the application             │
+│ ____ │ [ffcmd v]  │ [SNAPSHOT v]         │ SS               │ ____________________________ │ ________________________________ │
+│ ____ │ [ffcmd v]  │ [CAPTURE START v]    │ CS               │ &1                           │ Session Recording start          │
+│ ____ │ [ffcmd v]  │ [ v]                 │ ________________ │ ____________________________ │ ________________________________ │
+├──────┴──────┬─────┴──────┬────┴───────┬───┴──────────────┴──────────────────────────────┴──────────────────────────────────┤
+│ Last: 12:06 │ Prof: def  │ Zoom: 100% │ Aliases: 3 | Rows 1-3 visible                                                    │
+└─────────────┴────────────┴────────────┴──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Reading it: everything from the centered title to the `Command ===>` line and the
+`Last:`/`Prof:`/`Zoom:` cells is the common frame (CR-NR-115). The frame draws its
+OWN rule between the `Command ===>` line and the first Content_Area row
+(screen-snapshot-scrm Requirement 30.34); because that first content row is the
+Alias grid's header band, the grid's own top rule and the frame rule MERGE into
+one rule line (CR-NR-115 grid-merge, screen-snapshot-scrm Requirement 30.35), so
+there is exactly one rule between the Command line and the header - carrying the
+header's tee-down junctions. The Alias Content_Area is exactly the header band,
+the data bands and the scratch band with their rules. The status band's Alias
+cells (`Aliases: 3`, `Rows 1-3 visible`) are APPENDED after the Common_Status_
+Segments `Last:`/`Prof:`/`Zoom:` (screen-snapshot-scrm Requirement 30.10). The
+first data row is the mandatory `X -> EXIT` FFCMD seed row (Requirement 8); the
+fourth row is the scratch row (blank-row conventions); the `SS` row has empty
+Parameters/Description because that is its real data (see 9.11.2, D5). The fixture was generated from the rules in 9.11.3 by
+a throw-away script (not committed), so column widths and junctions are exact.
+
+### 9.11.2 Investigation findings (read against the code on branch alias-kind-gate, off a6aacae)
+
+D2 / issue 1 - why a fields block AND a grid. `screen_providers.rs::alias_editor_screen_model`
+builds `model.fields` first (one `Field::new(surface, canonical[ template])` per
+row - the pre-A2 representation, the `SS . . . : SNAPSHOT` line, rendered by
+`render/framed.rs::collect_rows` as a blank spacer row plus `label . . . : value`),
+and THEN `model.tables.push(self.alias_table())` (the A2 representation added in
+Group A, `screen_providers_tables.rs::alias_table`). A2 added the table without
+removing the fields, so the same row is emitted twice. The clipboard `| Property |
+Value |` table comes from `render/markdown.rs::render_markdown`: when
+`markdown_sections` is empty it appends a Property/Value table built from
+`model.fields` (and `html.rs::render_tables_html` mirrors it). It is therefore the
+SAME stale `fields` block surfacing in the structured flavor; deleting the Alias
+`fields` loop removes the dot-leader line AND the Property/Value table in one move.
+The Markdown path then still appends each `tables` element as a GFM table (the
+deliberate Req 28 dual representation) - addressed by decision g (9.11.5).
+
+D5 / issue 3 - why Parameters and Description are "empty". They are empty
+because the working-copy rows ARE empty; nothing is lost or mis-mapped. Evidence:
+(1) `alias_table()` maps `r.command_template` -> Parameters and `r.description` ->
+Description (correct, Req 7.2 order); (2) the same snapshot's dot-leader line
+shows `SNAPSHOT` with no template suffix, and that code appends the template
+whenever `command_template` is non-empty, so the row's template really is empty;
+(3) the `SS` row is a shipped SCRM alias row (its template is `None`;
+`alias_reader.rs` seed -> `effective_display_rows`), distinct from the CR-CH-116
+`X -> EXIT` seed row (Requirement 8); its description comes
+from `user_alias_descriptions()` (empty unless a user override carries one);
+(4) the live panel's `(&1)` and `note` are egui `hint_text` PLACEHOLDERS on the
+empty Parameters and Description TextEdits (`alias_editor_panel/rows.rs`:
+`.hint_text("(&1)")`, `.hint_text("note")`, plus `"name"` on Alias and `"_"` on
+Act). They are rendered in a faint colour and are not values. The snapshot is
+faithful; the live panel only LOOKS populated. Consequence for the requirements:
+placeholders are never snapshot content (7.19, ispf-table-editor 12.4), and an
+empty text cell is `____` (7.20). If the owner did store a real template on a row,
+the same `command_template` field feeds both widget and snapshot, so it would
+appear; a quick confirmation is to type `&1` into Parameters and snapshot again.
+Round-trip coverage of the description already exists
+(`tests_alias_editor.rs`, save/reload with `description`).
+
+Cell conventions are NOT applied by the provider today. The `[value v]` / `[ v]` /
+`____` strings exist only in `ff-screen-model` renderer tests (`text.rs`
+`alias_like_table`) and in Req 29.8/29.9; `alias_table()` emits raw strings
+(`ffcmd`, empty), which is why the owner capture shows bare `ffcmd` and blank
+cells. The conventions must therefore be implemented in the PROVIDER side (shared
+helpers, 9.11.3), not the renderer.
+
+Issue 2 - why a nested box. In the framed path (`render/framed.rs::collect_rows`)
+each `model.tables` entry is emitted as `Row::Text("")` (blank spacer),
+`Row::Text(caption)` (the `Aliases` heading) and then the lines of
+`text.rs::render_table_grid` as plain text rows. `render_table_grid` draws a
+complete box (top/mid/bottom rules, corners) inside a content row, hence the
+`┌─┬─┐` box nested in the frame, with the frame's right border far to its right.
+The frame's own band machinery (`Row::Band` cells + `Row::Rule` with tee/cross
+junctions computed from the neighbouring band's dividers - already used for the
+menu bar, tab bar and status bar) is not used for content.
+
+Issue 7 - stray rows. Same cause: the blank spacer before `fields`, the blank
+spacer and caption before each table. Removing `fields` and drawing tables as
+bands removes all three.
+
+Scratch row (issue 5). The live scratch row is NOT always present. In
+`shell/ispf_table_editor/render.rs::render_ispf_table` the scratch row is
+rendered only `if rows.is_empty()` (ispf-table-editor Req 4.6); a list with one or
+more rows shows exactly those rows. The owner's mental model (and screen-snapshot
+Req 29.7) is an always-present trailing blank row. Mirroring live literally would
+give NO scratch row in the owner's SS example. Decision f resolves this.
+
+Filter row. `render_ispf_table` draws the header, then a FILTER row (the host's
+`render_filter_cells`: CE and Root comboboxes showing `--` when unset), then a
+separator. These are input controls whose unset state carries no data.
+
+Status data sources. `workspace_status_cells()` (`render_status.rs`) is the single
+per-Kind seam read by BOTH the live bar (`render_status_bar` loop) and the
+snapshot (`common_frame.rs::common_frame_status_bar_text`); it currently returns
+an empty Vec for every Kind except FileEditor/Untitled. Alias data: the working
+rows are `self.alias_editor_panel.rows`; the filtered set is
+`alias_editor_panel::filter::displayed_indices(rows, filter_ce, &filter_root)`;
+the active filter is `filter_ce` / `filter_root`. No dirty/baseline tracking
+exists on `AliasEditorState`, so a `Modified` cell is NOT specified (a follow-up
+would need a baseline snapshot of the rows).
+
+### 9.11.3 Design
+
+Technology: Rust, existing crates (`ff-desktop`, `ff-screen-model`), no new crate
+or dependency, egui untouched in the provider (logical state only, Req 29.13).
+
+Shared pieces (owned by `ispf-table-editor` / `screen-snapshot-scrm`, designed in
+their design.md):
+- `ff-screen-model` framed renderer lays `model.tables` out as frame-ruled bands
+  (30.32-30.39).
+- `shell/ispf_table_editor/snapshot.rs` (new, pure): `CellKind {Text, Combo}`,
+  `combo_cell`, `text_cell`, `sanitise_cell`, and
+  `snapshot_table(columns, rows, scratch) -> Table` / `raw_table(...)`.
+  `ColumnSpec` gains `cell: CellKind` and `snapshot_width: usize` with builder
+  `with_snapshot(kind, width)` (const; default Text, header width).
+- The trailing scratch row in `render_ispf_table` (12.5).
+
+Alias-specific pieces:
+- `alias_editor_panel/host.rs`: `ALIAS_COLUMNS` declares the cell metadata:
+
+  | Column | CellKind | snapshot_width | Raw value source |
+  |--------|----------|----------------|------------------|
+  | Act | Text | 4 | `row.act` |
+  | CE | Combo | 10 | `row.environment.label()` |
+  | Command | Combo | 20 | `row.canonical` |
+  | Alias | Text | 16 | `row.surface` |
+  | Parameters | Text | 28 | `row.command_template` |
+  | Description | Text | 32 | `row.description` |
+
+  The widths follow the live widget proportions (28/84/96/120/260/180 px) and the
+  owner's sketch; they are minimums - a longer value widens, never truncates.
+  A new `alias_snapshot_cells(&AliasRowEdit) -> Vec<String>` returns the six RAW
+  values in that order (used for data rows, the scratch row via
+  `AliasRowEdit::default()` - CE `ffcmd` because `AliasEnvironment` derives
+  `Default` = Ffcmd - and the raw markdown section).
+- `shell/screen_providers_tables.rs::alias_table()`: builds the displayed set with
+  `displayed_indices(&p.rows, p.filter_ce, &p.filter_root)`, maps rows through
+  `alias_snapshot_cells`, appends the scratch cells, and calls the shared
+  `snapshot_table(...)`; `caption` stays `Some("Aliases")` for the structured
+  flavors. A sibling `alias_markdown_section()` builds the RAW section.
+- `shell/screen_providers.rs::alias_editor_screen_model()`: delete the `fields`
+  loop; push `alias_table()` and the markdown section; keep `p.error` ->
+  `model.messages`. (`command_line` is set by `apply_common_frame` afterwards.)
+- `shell/workspace_status_alias.rs` (new, <400 lines): `alias_status_cells(&self)
+  -> Vec<String>`; `render_status.rs::workspace_status_cells()` gains a
+  `KindTag::AliasEditor => return self.alias_status_cells()` arm before the
+  FileEditor/Untitled early return. New `ff_i18n` keys follow
+  `ff-desktop-shell-status-*` (English `Aliases: { $count }`, `Rows 1-{ $shown }
+  visible`, `Rows 0 visible`, `Filter: { $ce }/{ $root }`).
+
+Live panel: no visual change except the trailing scratch row (12.5), which lives
+in the shared surface. The live Alias widgets, ids and the first-Tab target (filter
+CE combo) are unchanged.
+
+### 9.11.4 The status segment
+
+`Aliases: <n>` = `rows.len()` (scratch excluded). `Rows 1-<m> visible` = number of
+rows passing the filter - the LOGICAL visible set. The owner's phrase "visible" is
+honoured, but the snapshot is egui-free (29.13) so it cannot know the scroll
+viewport; with no scroll state the range is always `1-<m>` and its information
+content is the filtered count (differs from `Aliases` only when filtered). The
+third Alias cell `Filter: ffcmd/--` appears only while a filter is active and is
+how a filtered snapshot announces itself (decision b). Cells contain no ` | `. The
+Alias cells are APPENDED after the Common_Status_Segments `Last:`/`Prof:`/`Zoom:`
+(CR-NR-115, screen-snapshot-scrm Requirement 30.10): `Zoom` is now a common cell
+owned by the shell, not an Alias cell. Example bands: unfiltered `Last: 12:06 |
+Prof: default | Zoom: 100% | Aliases: 2 | Rows 1-2 visible`; filtered `... | Zoom:
+100% | Aliases: 40 | Rows 1-6 visible | Filter: ffcmd/SNAPSHOT`.
+
+### 9.11.5 Clipboard flavors (decision g)
+
+`render_markdown` with a non-empty `markdown_sections` emits the fenced box then
+the sections and nothing else; `render_tables_html` does the same. So the Alias
+model sets ONE section `### Aliases` with the RAW six-column table. Result in the
+clipboard: box first (with cell conventions, scratch row, status), then
+`### Aliases` + a GFM table of real values (no `[v]`, no `____`, no padding, no
+scratch row), and no Property/Value table. If the owner prefers the structured
+table to mirror the box strings, drop the section and let `tables` feed the
+structured flavors (they would then carry `[ffcmd v]`/`____`/the scratch row, and
+29.7a stays literally true). Interaction noted: 29.7a (HTML scratch `<tr>`) holds
+only for models WITHOUT `markdown_sections`; 30.40 records this.
+
+### 9.11.6 Error handling (concrete)
+
+- `AliasEditorState.error` present: recoverable; pushed to `model.messages`
+  (Message_Line band), NOT logged by the provider (the validation path already
+  logs); the grid is still rendered.
+- Row with control characters in any field: provider replaces tab/CR/LF with a
+  space (`sanitise_cell`); no error, no log.
+- Value containing ` | `: kept inside its cell (cells are discrete strings, 30.36).
+- Value longer than the field width: column widens (frame widens if needed); never
+  truncated; no error.
+- Zero working rows: the grid shows the header and the scratch row only; status
+  `Aliases: 0` / `Rows 0 visible`.
+- Filter hides every row: grid shows header + scratch row; `Rows 0 visible`,
+  `Filter:` cell present.
+- A model with `tables` but a broken column count (row shorter than headers):
+  the shared builder pads missing cells with empty-convention strings; a longer
+  row is truncated to the header count (defensive; callers build both from the
+  same column list so it should not happen).
+- Status cells cannot fail (pure reads of in-memory state); `ff_i18n` missing key
+  falls back to the key text per the existing i18n behaviour.
+
+### 9.11.7 Input validation
+
+The provider reads only in-memory working-copy state; there is no external input
+at snapshot time. The only user-controlled text is alias field values, handled by
+`sanitise_cell` (control chars -> space), no length limit (widen-on-overflow),
+and `Filter:` echoing `filter_root` (a value chosen from the registry's root list
+or empty; sanitised the same way). Markdown cell escaping of `|` and newlines is
+the existing `escape_cell` in `render/markdown.rs`.
+
+### 9.11.8 Framework verdict (framework-conformance.md)
+
+BUILD ON existing seams; NO framework change; nothing here reshapes a public
+framework type.
+- Dispatch, navigation, descriptor, persistence, save path: untouched.
+- `WorkspaceContext` / `InteriorFocus`: untouched; the filter CE combo stays the
+  first interior stop; the scratch row is appended LAST in the Tab/arrow ring.
+- Common frame (mechanism 8): not reshaped. The Alias Kind fills only the
+  Content_Area and its status cells, via the existing `workspace_status_cells`
+  seam (which needs no new trait: it is a `match` arm on a shell method).
+- `ScreenModel` / `ScreenProvider` / `Table` / `MarkdownSection`: public shapes
+  UNCHANGED. Tables carry the cell strings; `markdown_sections` is an existing
+  field with precedent (Config panel).
+ADDITIVE items flagged for the owner at the CONFIRM step (none is a framework
+change, but each is behaviour/shared-code reach):
+1. Framed renderer draws ALL Contexts' `model.tables` in frame rules (Theme, Menu,
+   Keys, Kinds snapshots change appearance; their goldens/tests are regenerated in
+   the implementation change). Renderer-internal, `ff-screen-model` public API
+   unchanged.
+2. Grid-merge under the frame rule (30.35, building on main's CR-NR-115 30.34 /
+   30.30): the frame draws its OWN rule between the Command line and the first
+   content row, and when that first row is the grid header the grid's top rule
+   MERGES with the frame rule into one line carrying the header junctions. (This
+   reconciles the gate's earlier "no frame-added rule, grid rule sits directly
+   under the Command line" wording with the common-frame rule that landed on main
+   since: the single rule the owner sees is now the MERGED rule, not a
+   frame-suppressed one.)
+3. Live behaviour change: trailing scratch row for NON-empty lists (12.5), shared
+   by every table editor.
+4. `ColumnSpec` gains two fields (ff-desktop-internal struct, `Copy`, const
+   builders; the sole current host is Alias).
+5. Markdown/HTML-table flavors use `markdown_sections` (raw values).
+
+### 9.11.9 Decision points (recommendations)
+
+(a) Combo marker in header vs per cell. RECOMMEND per cell (`[ffcmd v]`,
+`[SNAPSHOT v]`, `[ v]`), header plain. Per-cell is the already-approved Req
+29.8/30.13 convention, marks exactly which cells are dropdowns (an empty combo
+`[ v]` is distinguishable from an empty text cell `____`, which a header marker
+cannot express per row), and is identical in the HTML flavor. The sketch's `CE   v`
+header marker plus `FFCMD__` cells loses the empty-combo distinction and
+re-uses `_` fill (an edit-field cue) on a non-edit control. Both CE and Command
+are combos in the live panel, so both get the marker (the sketch shows Command
+unmarked; live shows a combo).
+(b) Filter row in the snapshot. RECOMMEND omit the row; report an ACTIVE filter as
+the `Filter: <ce>/<root>` status cell. It is an input, an unset filter is `--`
+noise (the stray-row complaint), and an extra non-data row in `model.tables` would
+need a row-type the Table model does not have (reshape). The status cell keeps the
+information that matters (the list is filtered).
+(c) Grid header rule directly under the Command line. RECOMMEND yes (owner
+sketch), reconciled to the common frame that landed on main since this gate was
+authored: CR-NR-115 (main 30.29/30.30) now has the SHELL draw a frame-owned rule
+between the `Command ===>` line and the first Content_Area row, and MERGE it with
+a grid's own top rule when the first content row is a grid. So the single rule the
+owner sees under the Command line is the MERGED frame+grid rule (screen-snapshot-
+scrm 30.34/30.35), produced by the same rule/junction machinery as the
+menu/tab/status bands and carrying the header's tee-down junctions. (BASIS CHANGED
+BY REBASE: the gate's original wording was "no frame-added rule, the rule is the
+grid's own"; the frame now owns that rule and merges it.)
+(d) Status wording. RECOMMEND `Aliases: <n>` and `Rows 1-<m> visible` (owner's
+words), plus the conditional `Filter: <ce>/<root>` cell, APPENDED after the common
+`Last:`/`Prof:`/`Zoom:` cells. Sources in 9.11.4. No `Modified` cell (no baseline
+tracking exists). (BASIS CHANGED BY REBASE: since CR-NR-115 landed, `Zoom:` is a
+COMMON status cell owned by the shell, so the Alias segment now follows
+`Last | Prof | Zoom`, not `Last | Prof`; the Alias Kind still contributes only
+`Aliases`/`Rows`/`Filter`.)
+(e) Value fidelity. RECOMMEND mirror live VALUES exactly as stored (`ffcmd` not
+`FFCMD`); there is no `(&1)` value to mirror - it is a placeholder (D5). The
+sketch's `&1` / `FFCMD` were illustrative data. If a template `(&1)` is typed, it
+appears as `(&1)`. (BASIS CHANGED BY REBASE: since CR-CH-116 the FFCMD alias store
+is file-backed and seeded with `X -> EXIT` on first run, so the Alias grid now
+ALWAYS contains at least that seed row - `Act ____`, `CE [ffcmd v]`, `Command
+[EXIT v]`, `Alias X`, empty Parameters, its seed Description - and the value
+mirrored for it is exactly the stored seed, same as any user row. The store is no
+longer empty-until-the-user-adds.)
+(f) Scratch row. RECOMMEND make the LIVE panel show the trailing scratch row for
+non-empty lists too (12.5) so snapshot = live = owner's mental model. The
+alternative (snapshot-only scratch row) breaks the mirror-live rule; the other
+alternative (no scratch row unless empty) contradicts Req 29.7 and the owner's
+issue 5. This is the one criterion that changes live behaviour of every table
+editor, hence flagged.
+(g) Clipboard structured table. RECOMMEND keep the `### Aliases` GFM table (Req 28
+dual-flavor, box first) but with RAW values via `markdown_sections`, and no
+Property/Value table. Alternative: structured flavors mirror the box strings.
+
+### 9.11.10 Shared vs Alias-specific
+
+| Concern | Shared (ispf_table_editor / ff-screen-model) | Alias-specific |
+|---------|----------------------------------------------|----------------|
+| Grid in frame rules, junctions, widths, no caption/spacer | framed.rs table bands (30.32-30.39) | none |
+| Cell helpers + conventions | `ispf_table_editor/snapshot.rs` | none |
+| Column cell kind + width metadata | `ColumnSpec` fields + builder | the six values in `ALIAS_COLUMNS` |
+| Row -> cells | `snapshot_table` / `raw_table` builders | `alias_snapshot_cells` |
+| Trailing scratch row (live) | `render_ispf_table` (12.5) | `AliasRowEdit::default()` baseline |
+| Hint text excluded | helper API has no hint param | n/a |
+| Filter row omitted + status cell | rule (12.6) | `Filter:` cell wording |
+| Status cells | `workspace_status_cells` seam | `alias_status_cells` + i18n keys |
+| Clipboard raw section | `markdown_sections` mechanism | `alias_markdown_section` |
+
+Menu, Kinds, Keys and Theme inherit everything in the Shared column; each declares
+only its Alias-style column.
+
+### 9.11.11 Testability
+
+- Unit, pure (ff-screen-model): framed table bands - junction glyphs, widths,
+  coalesced rules, no caption/spacer, ASCII fallback, cell with ` | ` stays in its
+  cell; golden regeneration for `alias_*` fixtures.
+- Unit, pure (ff-desktop): `combo_cell` / `text_cell` / `sanitise_cell`;
+  `alias_snapshot_cells` (placeholder text absent, empty -> underscores, filled
+  padded, non-truncating); filtered rows in backing order; scratch row last;
+  `alias_editor_screen_model` has NO `fields`; `markdown_sections` raw;
+  `alias_status_cells` (count, filtered `Rows`, `Filter:` only when active).
+- Existing tests to update: `tests_editor_snapshot_tables.rs`,
+  `tests_screen_directive.rs`, `tests_common_frame_snapshot.rs`,
+  `tests_common_frame_order.rs`, `tests_common_frame_helper.rs`, the three alias
+  goldens.
+- egui_kittest: trailing scratch row present for a non-empty list; typing in it
+  promotes it and a new scratch appears; first-Tab test unchanged (still the
+  filter CE combo).
+- Not drivable headlessly: pixel appearance of the live scratch row (MANUAL, owner
+  eyeball; the logical presence is test-covered).
+
+### 9.11.12 Files expected to change in the implementation step (this gate edits docs only)
+
+`crates/ff-screen-model/src/render/framed.rs` (+ tests file),
+`crates/ff-desktop/src/shell/ispf_table_editor/{state.rs,render.rs,snapshot.rs}`,
+`crates/ff-desktop/src/alias_editor_panel/host.rs`,
+`crates/ff-desktop/src/shell/{screen_providers.rs,screen_providers_tables.rs,
+render_status.rs,workspace_status_alias.rs}`, i18n catalogue, the three goldens and
+the tests listed in 9.11.11. Each stays under 400 non-test lines.

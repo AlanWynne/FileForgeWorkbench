@@ -383,6 +383,17 @@ confirmation in the design.
     Workspace_Status_Segment SHALL be specified in FOLLOW-UP gates, one per
     Workspace Kind (Alias, Menu, Kinds, Config, Theme, ...), each building on this
     common-frame contract. This requirement is deliberately the COMMON part only.
+    `[PER-KIND GATE LOG]` The FIRST per-Kind gate is the ALIAS Kind
+    (2026-11-04): its Content_Area and Workspace_Status_Segment are specified in
+    `command-configurator` Requirement 7.14-7.28, with the shared grid-in-frame
+    and cell-convention behaviour in `ispf-table-editor` Requirement 12 and
+    `screen-snapshot-scrm` Requirement 30.32-30.40 (renumbered from 30.27-30.35
+    at rebase onto fd35620). The Alias Kind's `workspace_status_cells` are
+    `Aliases: <n>`, `Rows 1-<n> visible` and, only while a filter is active,
+    `Filter: <ce>/<root>`, appended after the common `Last | Prof | Zoom`
+    (command-configurator 7.25).
+    This is a content decision inside the existing criterion 17 / 21 seam; it
+    changes no common-frame element.
 
 #### Acceptance Criteria -- framework conformance
 
