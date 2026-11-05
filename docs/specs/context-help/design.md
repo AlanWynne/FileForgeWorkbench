@@ -1712,3 +1712,380 @@ pub struct AboutInfo {
   optional field does not render an empty row for it. Pixel-exact appearance is the
   only MANUAL aspect; the presence/absence of each field is asserted on the model/
   rendered structure, not pixels.
+
+---
+
+# CR-NR-119 -- Root-Command Help Model (design)
+
+This section designs the root-command help model: every home-grown FFCMD root
+command is defined with a structured Markdown help file that is the SINGLE SOURCE
+OF TRUTH for its one-line description and its full help, reachable by both
+`HELP <cmd>` (ISPF) and `<cmd> --help` (POSIX). It covers context-help
+Requirements 21-23, command-semantics Requirement 15, command-configurator
+Requirement 9, and command-framework Requirement 3.8-3.9.
+
+## Overview
+
+The investigation (`.agents/tasks/alias-seed-set/root-command-descriptions.md`)
+established that FFWB has NO single source of truth for a root command's
+description: descriptions are scattered across the `CommandRegistry` (4 commands),
+the `ff-file-ops` `file.*` table, optional user `CommandDefinition`s, and partial
+`cmd:<NAME>` help topics, while the FFCMD root verbs carry none. The help
+subsystem (`ff-help`), by contrast, ALREADY has the right shape: `.help.md` files
+parsed by `ContentParser` into `HelpTopic`s keyed `cmd:<NAME>`, with per-command
+sections Syntax / Description / Modifiers / Examples / See Also (context-help
+Req 7.2), loaded once into a shell-owned `HelpTopicRegistry` and displayed via
+`open_help`. The design therefore UNIFIES description sourcing onto the help file
+and builds the two reach-paths (`HELP <cmd>`, `--help`) on the EXISTING single
+dispatch front door. Nothing new is invented: the retrofit authors `cmd:<ROOT>`
+topics for the FFCMD roots that lack them and adds (a) a pure one-line extraction
+function, (b) a registry lookup, and (c) a prelude-level `--help` short-circuit.
+
+## Central design decision -- the help-file structure and where the one-liner comes from
+
+Three options were considered for making the one-line description deterministically
+extractable:
+
+- **(a) YAML frontmatter with an explicit `description:` field.** A dedicated field
+  is unambiguous, but it adds a second parse path to `ContentParser` (which today
+  recognises `<!-- TOPIC: -->` / `<!-- TITLE: -->` delimiters, not YAML), introduces
+  a field that can DRIFT from the prose Description section, and changes the shape
+  of every existing `.help.md`.
+- **(b) A fixed first-line / first-paragraph-after-the-`# <CMD>`-heading
+  convention.** No new field, but the shipped topics do NOT lead with an `# <CMD>`
+  heading -- they lead with `## Syntax` then `## Description` (see
+  `help/commands/session.help.md`). Adopting (b) would require reworking existing
+  topics and is fragile against authors who reorder sections.
+- **(c) Formalise the EXISTING `cmd:<NAME>` structure and extract the first
+  paragraph of the `## Description` section.** The shipped topics already have a
+  `## Description` section whose first paragraph is a natural one-liner ("Writes
+  the current buffer to its backing file ...", "Closes the current Context ..."). No
+  new markup, no second store, no change to the parser or renderer; the files stay
+  standard Markdown.
+
+**CHOSEN: Option (c).** It reuses what already ships, adds no parse syntax (so
+`.help.md` files remain portable Markdown), keeps ONE description per command (the
+prose), and matches context-help Req 7.2. Owner confirmation is requested on this
+choice (it is the one genuinely load-bearing decision). The extraction rule
+(context-help Req 21.3): take the `## Description` section body, take its first
+non-empty paragraph, strip inline Markdown (``code``, `**bold**`, `[text](key)` ->
+`text`) to plain text, collapse internal whitespace to single spaces, and trim.
+Validate non-empty and `<= 200` chars (Req 21.4); a missing/empty Description is a
+FAILURE surfaced by the enforcement check, never silently defaulted.
+
+### Extraction API (ff-help)
+
+Add to `ff-help` a pure function and a registry method:
+
+```
+// ff-help/src/one_liner.rs (new, < 100 lines incl. tests split out)
+/// Extract the one-line description from a topic body per context-help Req 21.3.
+/// Pure: depends only on the body string. Returns None if no non-empty
+/// Description-section first paragraph exists.
+pub fn extract_one_line_description(body: &str) -> Option<String>;
+```
+
+```
+// ff-help/src/registry.rs (method on HelpTopicRegistry)
+/// context-help Req 22.2: the single short-description lookup.
+pub fn short_description(&self, key: &TopicKey) -> Option<String> {
+    self.get(key).and_then(|t| extract_one_line_description(t.body()))
+}
+```
+
+`extract_one_line_description` scans the body line-by-line for the `## Description`
+heading (case-insensitive, any heading level that reads "Description"), collects
+lines until the next `##`/`#` heading or EOF, and returns the first blank-line-
+delimited paragraph cleaned as above. Locale-awareness (Req 21.6) is automatic: the
+registry is already built per active locale (the shell loads per-locale help dirs
+then the English base), so `short_description` reads whichever `cmd:<ROOT>` topic
+is loaded for the active locale, falling back to English when only that exists.
+
+## The `--help` dispatch hook (command-semantics Req 15)
+
+The single front door is `WorkbenchShell::dispatch_command_string` (shell/dispatch.rs):
+`=` strip -> `rewrite_verb_to_root` -> `run_command_prelude` -> `resolve_target` ->
+`run_command_ladder`. The `--help` convention is a prelude-level short-circuit
+placed AFTER `rewrite_verb_to_root` (so an alias is already canonicalised: `SS` ->
+`SNAPSHOT`) and BEFORE `resolve_target`/the ladder (so the command never executes).
+
+Concretely, add one guarded branch near the top of `run_command_prelude` (or as the
+first check `dispatch_command_string` makes after the rewrite), reusing the existing
+`split_verb_arg` helper:
+
+```
+let (verb, arg) = split_verb_arg(&raw);   // single-token verb (Req 15.9)
+if first_token_is_help_flag(arg) {         // --help | -h | /?  (first arg token)
+    self.open_root_help(verb);             // enforced-root-aware help open
+    return true;                            // short-circuit: do not execute
+}
+```
+
+`open_root_help(verb)` opens the Help Context on the command's topic through the
+ONE help-display seam. For an enforced FFCMD root (membership tested against
+`builtin_ffcmd_roots()`) it resolves `cmd:<VERB-UPPERCASED>` DIRECTLY, bypassing
+`resolve_help_argument`'s keyword special-cases so `KEYS --help` -> `cmd:KEYS` and
+`CONFIG --help` -> `cmd:CONFIG` (context-help Req 22.8) rather than the
+`feature:` topics; for any other verb it falls back to the existing `open_help`
+behaviour. The SAME `open_root_help` entry is used by the `HELP <ROOT>` path so
+there is exactly one resolution of a root's help (Req 22.1 / 22.8). Thus
+`EXIT --help`, `HELP EXIT`, and (after rewrite) `SS --help` / `HELP SS` all reach
+`cmd:EXIT` / `cmd:SNAPSHOT`, and `KEYS --help` / `HELP KEYS` reach `cmd:KEYS` --
+no second dispatcher, no bespoke scattered intercepts (framework-conformance
+mechanism 1). Precedence is settled: `--help` SHORT-CIRCUITS before the command
+runs (Req 15.2). The flag is recognised only as the FIRST argument token of a
+single-token verb (Req 15.7, 15.9). Not recorded in history/undo (Req 15.8), the
+same as HELP.
+
+Recognised spellings: `--help`, `-h`, `/?` (letter forms case-insensitive). These
+live in one small `first_token_is_help_flag` helper so the set is defined once.
+
+### Known limitation -- two-word roots and the `--help` token split
+
+`split_verb_arg` (`crates/ff-desktop/src/shell/helpers.rs`) splits on the FIRST
+whitespace only, returning `(head, rest)`. For the two enforced TWO-WORD roots
+`FILE CATALOGS` and `RESET BARE` this breaks the simple short-circuit above:
+
+- `FILE CATALOGS --help` -> verb = `FILE`, arg = `CATALOGS --help`. The FIRST arg
+  token is `CATALOGS`, not a help flag, so `first_token_is_help_flag(arg)` is
+  FALSE: the short-circuit does not fire and the command would execute.
+- Even if it fired, `open_help("FILE")` would resolve `cmd:FILE`, not
+  `cmd:FILE CATALOGS`.
+
+CHOSEN FIX (recommended option (a)): the `--help` convention applies to
+SINGLE-TOKEN verbs in THIS version; `--help` for the two-word roots
+`FILE CATALOGS` and `RESET BARE` is explicitly DEFERRED and recorded as a known
+limitation (command-semantics Req 15.9). The ISPF reach-path is UNAFFECTED --
+`HELP FILE CATALOGS` and `HELP RESET BARE` still work, because
+`resolve_help_argument` uppercases and preserves the embedded space, resolving
+`cmd:FILE CATALOGS` / `cmd:RESET BARE` (the enforcement at Req 23.2 asserts those
+topics exist, and decision point 5 covers the `TopicKey` space). So both two-word
+roots still have a reachable single source of truth via HELP; only their POSIX
+`--help` spelling waits for a later version. The rejected alternative (option (b)
+-- detect a help flag as the TRAILING token and derive the root from the leading
+tokens for the known two-word roots) was declined for this version: it
+complicates the otherwise one-line short-circuit and the two-word roots are a
+closed, tiny set already covered by HELP. If `--help` for two-word roots is
+wanted later, option (b) is the additive follow-up (no framework change).
+
+## HELP <cmd> routing for FFCMD roots (context-help Req 22.1)
+
+For MOST roots `HELP <cmd>` already resolves `cmd:<NAME>` via `open_help` and the
+only work is CONTENT: author the missing `cmd:<ROOT>` topics so the resolution
+lands on real content instead of the "No help available" miss path.
+
+TWO enforced roots are an EXCEPTION and DO require a routing change. The existing
+argument resolver `resolve_help_argument` (`crates/ff-help/src/commands.rs`)
+hard-special-cases several surface strings BEFORE the `cmd:<NAME>` fall-through,
+two of which are enforced FFCMD roots:
+
+- `KEYS` -> `TopicKey::feature("function_keys")`
+- `CONFIG` / `CONFIGURATION` -> `TopicKey::feature("configuration")`
+
+(The other special-cased strings -- `OFF`, `INDEX`, `LINECOMMANDS`, `MACRO`,
+`API` -- are NOT FFCMD roots, so they do not collide.) Because both the `HELP`
+path and the `--help` path funnel through `resolve_help_argument`, today
+`HELP KEYS` / `KEYS --help` resolve `feature:function_keys` and
+`HELP CONFIG` / `CONFIG --help` resolve `feature:configuration` -- NEVER
+`cmd:KEYS` / `cmd:CONFIG`. That directly contradicts the model's invariant that
+every enforced root is reached, by both conventions, at its own `cmd:<ROOT>`
+topic (Req 22.1, Req 15.4), and the enforcement (Req 23.2) that requires those
+`cmd:` topics to be the reachable single source of truth.
+
+CHOSEN FIX (recommended option (a)): FFCMD-root `cmd:<ROOT>` resolution takes
+PRECEDENCE over the `feature:` keyword special-cases for `KEYS` and `CONFIG`. The
+root-help reach-path (the `--help` short-circuit, and `HELP <ROOT>` for an
+enforced root) resolves `cmd:<ROOT>` DIRECTLY -- `open_help` for an enforced root
+constructs `TopicKey::command(<ROOT>)` rather than deferring to
+`resolve_help_argument`'s keyword table. Concretely: the enumeration
+`builtin_ffcmd_roots()` is the authority on which surface strings are enforced
+roots; when the HELP/`--help` argument (after uppercasing) is in that set, bypass
+the keyword table and go straight to `cmd:<ROOT>`. The rejected alternative
+(option (b) -- leave `KEYS`/`CONFIG` pointing at their `feature:` topics and key
+their short-description lookup to the feature topic) was declined because it
+breaks the "one `cmd:` topic per root reached identically by both conventions"
+invariant and complicates the Req 22.2 lookup with a per-root special case.
+
+Note the `feature:function_keys` and `feature:configuration` topics are NOT
+removed -- they remain reachable via the Help Index and the menus that link them
+(context-help Req 15, Req 13.5/13.6); only the HELP/`--help` resolution of the
+ENFORCED ROOT verbs `KEYS` and `CONFIG` is repointed to `cmd:KEYS` / `cmd:CONFIG`.
+The retrofit therefore authors `cmd:KEYS` (a topic already ships under
+`menu-options.help.md`, so KEYS needs only the resolution repoint) and `cmd:CONFIG`
+(new) with conforming `## Description` sections, and those two topics MAY link to
+their fuller `feature:` counterparts via See Also.
+
+## Enforcement mechanism (context-help Req 23)
+
+A test in `ff-desktop` (the crate that owns both the FFCMD root sets and the
+`HelpTopicRegistry` wiring) enumerates `EnvironmentRegistry::root_commands("FFCMD")`
+(= `builtin_ffcmd_roots()`), loads the shipped `help/` tree the same way
+construct.rs does, and asserts for each root: a `cmd:<ROOT>` topic is present AND
+`short_description` returns a non-empty string within limits. The test FAILS if any
+enforced root lacks a conforming topic -- so adding a new FFCMD root without its
+help file breaks the suite (Req 23.2/23.3). FFEDIT roots are excluded now
+(Req 23.4). Extensions are never asserted (Req 23.5); the guideline is steering
+only (`.kiro/steering/command-help-guideline.md`).
+
+A small roadmap nuance: a handful of enforced roots are navigation/lifecycle verbs
+(END, RETURN, CLOSE, DOCK, SPLIT, ...) that today have no `cmd:` topic. The retrofit
+authors a `cmd:<ROOT>` topic for EVERY enforced root, not only EXIT/SNAPSHOT/
+CAPTURE/RETRIEVE; see the retrofit list below. The enforcement test is added
+AFTER the topics are authored so the suite goes green in the same change (TDD: the
+test is written first and is RED until the topics exist).
+
+## FFCMD root enumeration and retrofit list
+
+The enforced set is `builtin_ffcmd_roots()` = `BUILTIN_FFCMD_LADDER_VERB_ROOTS` +
+`BUILTIN_WORKSPACE_VERB_ROOTS` + the code-only built-in menu option roots. From
+`command_config/mod.rs`:
+
+- Ladder roots: EDIT, VIEW, BROWSE, COMPARE, CREATE, REPLACE, EXIT, QUIT, LOGOFF,
+  START, MENU, CLOSE, DOCK, END, RETURN, DETACH, SPLIT, UNSPLIT, FOCUS, SWAP,
+  WORKSPACE, PFSHOW, COMMAND, SNAPSHOT, CAPTURE, RETRIEVE, SUBMIT, TIME, STATUS,
+  SAVE, CANCEL, REFRESH.
+- Workspace-verb roots: FILE CATALOGS, CONFIG, KEYS, THEME, FILES, CATALOGS,
+  COMMANDS, LOG, PLUGINS, MACROS, GSEARCH, SEARCH, KINDS, MENUS, ALIASES.
+- Plus the built-in menu option roots unioned by `builtin_ffcmd_roots()` (e.g.
+  HELP, X, RESET BARE, SETTINGS).
+
+Coverage today (investigation + `help/commands/*.help.md`): topics EXIST for SAVE,
+CANCEL, END, UNDO, REDO, HELP, KEYS, POM, SETTINGS, FILES and the navigation verbs
+UP/DOWN/TOP/BOTTOM/LOCATE. Topics are MISSING for, among others: EXIT, SNAPSHOT,
+CAPTURE (START/STOP/REPLAY), RETRIEVE, START, MENU, CLOSE, DOCK, RETURN, DETACH,
+SPLIT, UNSPLIT, FOCUS, SWAP, WORKSPACE, PFSHOW, COMMAND, SUBMIT, TIME, STATUS,
+REFRESH, EDIT, VIEW, BROWSE, COMPARE, CREATE, REPLACE, CONFIG, THEME, CATALOGS,
+COMMANDS, LOG, PLUGINS, MACROS, GSEARCH, SEARCH, KINDS, MENUS, ALIASES. The retrofit
+authors a `cmd:<ROOT>` topic (minimum: a non-empty `## Description`) for every
+MISSING enforced root, grouped into a few new `help/commands/*.help.md` files
+(e.g. `session-lifecycle.help.md` for EXIT/START/MENU/CLOSE/RETURN, `scrm.help.md`
+for SNAPSHOT/CAPTURE/RETRIEVE, `workspace-verbs.help.md` for CONFIG/THEME/... ).
+Two-word roots (FILE CATALOGS, RESET BARE) key as `cmd:FILE CATALOGS` /
+`cmd:RESET BARE`; confirm `TopicKey` accepts a space (it stores the raw suffix) or
+normalise to the resolved root the enumeration returns. These two roots are
+reachable by `HELP <ROOT>` but their POSIX `--help` spelling is a deferred known
+limitation (command-semantics Req 15.9; see "Known limitation -- two-word roots"
+above).
+
+## Unification of today's scattered description sources
+
+- The 4 registered `CommandMetadata.description`s (file.open/exit, menu.open,
+  config.open) and the `ff-file-ops` `file.*` table remain for the dotted
+  Command_Ids they key, but the ROOT-verb description (what the alias editor /
+  palette / status line show for a typed verb) now comes from the ONE
+  `short_description(cmd:<ROOT>)` lookup. Over time the registry/table descriptions
+  can be made to defer to the same lookup, but that is not required by this change
+  (keeps blast radius small; command-framework Req 3.8 only mandates the DERIVED
+  source for FFCMD roots).
+- The alias Description column (command-configurator Req 7/9) and the `X -> EXIT`
+  seed (Req 8) stop needing a literal: an empty row inherits `cmd:<ROOT>` at display
+  time (Req 9.1/9.5). This directly resolves the owner's "reset-bare alias has no
+  description" observation WITHOUT a throwaway literal on the seed row.
+
+## Error handling (concrete, per operation)
+
+- Missing `## Description` / empty first paragraph: `extract_one_line_description`
+  returns `None`. Recoverable at the call site: the enforcement test treats it as
+  a FAILURE (Req 21.4/23.2); the alias editor / palette treat it as "no inherited
+  description" and show empty (Req 9.4/22.6). No panic, no log spam at display time
+  (the enforcement test is the authoring-time signal).
+- One-liner over 200 chars: extraction returns `None` (treated as a failure by the
+  enforcement test, so the author shortens the first paragraph). Not a runtime
+  error.
+- `cmd:<ROOT>` topic absent (help dir missing, extension command, or an
+  un-retrofitted root): `short_description` returns `None` and `open_help` shows
+  the existing "No help available for: <cmd>" index-with-message (context-help
+  Req 13.7). `--help` and `HELP` both degrade to this; neither errors as
+  "unrecognised command" (Req 15.5/22.6). Recoverable, no fatal path.
+- `--help` on a verb that does not resolve to any root: the rewrite leaves it
+  unchanged, `open_help(verb)` resolves `cmd:<verb>`, misses, and shows the
+  no-help affordance -- identical to typing `HELP <verb>` for an unknown verb.
+- Extensions: the framework NEVER rejects an extension command for a missing help
+  file (Req 23.5). Graceful degradation is the only behaviour; no registration-time
+  validation of extension help.
+
+## Input validation
+
+- Help flag tokens: validated against the fixed set {`--help`, `-h`, `/?`} on the
+  FIRST argument token only; letter forms case-insensitive; `/?` exact. Anything
+  else is a normal argument and the command runs (Req 15.7).
+- Topic key for a root: uppercased canonical root from the front door's verb token;
+  spaces preserved for two-word roots. No user-supplied key reaches the extractor
+  except through the resolved root.
+- Extracted description: validated non-empty and length <= 200 before it is treated
+  as valid (Req 21.4).
+
+## Invariant ownership
+
+- "One description per command" is owned by the help file (the prose Description)
+  and enforced by the `ff-help` extractor + the `ff-desktop` enforcement test. No
+  consumer stores its own copy (Req 22.2/22.3/9.3).
+- "`--help` never executes the command" is owned by the front-door prelude
+  short-circuit (the single place the branch lives), not by each command handler
+  (Req 15.2/15.6).
+- "Enforced for FFCMD, guideline for extensions" is owned by the enforcement test's
+  SCOPE (it enumerates FFCMD roots only) and by steering (the extension guideline
+  file), not by any code path that could block an extension (Req 23.4/23.5).
+
+## Testability
+
+- Unit (pure, `ff-help`): `extract_one_line_description` over fixture bodies --
+  happy path (first Description paragraph), inline-markup stripping, missing
+  Description -> None, over-length -> None, multi-paragraph (takes first only),
+  locale body. `short_description` over a registry with/without the topic.
+- Unit (`ff-desktop`): the `--help` short-circuit -- `EXIT --help` opens `cmd:EXIT`
+  and does NOT fire the EXIT side effect (assert the close flag is NOT set);
+  `SS --help` opens `cmd:SNAPSHOT` (alias canonicalised first); `-h` and `/?`
+  spellings; a help flag as a non-first token does NOT short-circuit; a missing
+  topic degrades to the no-help affordance.
+- Unit (`ff-desktop`): the alias-description inheritance -- an empty-description row
+  for `X -> EXIT` DISPLAYS the `cmd:EXIT` one-liner; a non-empty row keeps the user
+  string; a row whose root has no topic shows empty.
+- Unit (`ff-help`/`ff-desktop`): the enforced-root precedence -- `KEYS --help` /
+  `HELP KEYS` resolve `cmd:KEYS` (not `feature:function_keys`), `CONFIG --help` /
+  `HELP CONFIG` resolve `cmd:CONFIG` (not `feature:configuration`), while the
+  `feature:*` topics remain reachable via the Index (Req 22.8).
+- Unit (`ff-desktop`): the two-word-root limitation -- `FILE CATALOGS --help` and
+  `RESET BARE --help` do NOT short-circuit (Req 15.9), while `HELP FILE CATALOGS`
+  / `HELP RESET BARE` DO resolve their `cmd:` topics.
+- Enforcement test (`ff-desktop`): every `root_commands("FFCMD")` entry has a
+  conforming `cmd:<ROOT>` topic with a valid one-liner (RED until the retrofit
+  topics are authored, GREEN after).
+- No GUI-harness test is strictly required for the extraction/dispatch logic; the
+  existing help-display egui_kittest coverage (Req 18.5) is unaffected.
+
+## Framework verdict
+
+NO framework change. The `--help` convention is a prelude-level short-circuit on
+the EXISTING single front door (`dispatch_command_string`), reusing the EXISTING
+`open_help` seam -- no new dispatcher, no new navigation stack, no new persistence
+format (framework-conformance mechanisms 1 and 5 respected). The help-file
+structure reuses the EXISTING `ff-help` topic format and registry. The enforcement
+lives in a test, not in a new registration gate. Extensions are explicitly NOT
+blocked. This design BUILDS ON the single dispatch front door and the context-help
+subsystem.
+
+## Review responses (revision 1 -- review.json verdict CHANGES_REQUESTED)
+
+Both MEDIUM findings were verified against the live tree and ADDRESSED:
+
+- **Finding 1 -- "No routing change needed" is false for KEYS and CONFIG.**
+  Confirmed in `crates/ff-help/src/commands.rs`: `resolve_help_argument`
+  special-cases `KEYS` -> `feature:function_keys` and `CONFIG`/`CONFIGURATION` ->
+  `feature:configuration` before the `cmd:<NAME>` fall-through, and both are
+  enforced FFCMD roots. FIX (recommended option (a)): the unqualified "no routing
+  change is needed" claim is DELETED; the "HELP <cmd> routing" section now
+  documents the divergence and specifies that enforced-root `cmd:<ROOT>`
+  resolution takes PRECEDENCE over the `feature:` special-cases (the reach-path
+  resolves `cmd:KEYS` / `cmd:CONFIG` directly). Added criterion context-help
+  Req 22.8; updated the `--help` pseudocode to an enforced-root-aware
+  `open_root_help`; added task 25.4 and the 26.2 note.
+- **Finding 2 -- the `--help` short-circuit cannot serve two-word roots.**
+  Confirmed in `crates/ff-desktop/src/shell/helpers.rs`: `split_verb_arg` splits
+  on the first whitespace only, so `FILE CATALOGS --help` yields verb=`FILE`,
+  arg=`CATALOGS --help` and the first arg token is not a help flag. FIX
+  (recommended option (a)): the `--help` convention is scoped to single-token
+  verbs this version; `FILE CATALOGS` / `RESET BARE` POSIX `--help` is explicitly
+  DEFERRED as a known limitation, both still reachable via `HELP <ROOT>`. Added
+  the "Known limitation -- two-word roots" subsection, criterion command-semantics
+  Req 15.9, tasks 25.2/25.5, and the coverage mapping update.

@@ -781,3 +781,55 @@ and resolver) and the write-through model (configuration-system Requirement 23).
 - The X / END / RETURN / EXIT command semantics themselves (menu-workspace
   Requirement 14, navigation-commands Requirement 21) -- this requirement only
   defines the SEED alias row and its first-run/Reset-bare lifecycle.
+
+---
+
+### Requirement 9: Derived Short-Description for Aliases and Command Listings (CR-NR-119)
+
+**User Story:** As a user, I want an alias row and the command palette/configurator
+to show a command's one-line description drawn from that command's help file, so
+that a seed alias like `X -> EXIT` is never description-less and no description
+string is duplicated across code and docs.
+
+**Source:** CR-NR-119 (owner message 6: "When Resetting bare, and the alias is being
+added, it does not have a description, it should at least have the command
+description. Do Root commands have descriptions? Should we make a rule somewhere
+that root commands have descriptions?"; messages 7-8: single source of truth in the
+help file). Cross-references: context-help Requirement 21 (the one-line-description
+extraction) and Requirement 22 (the `short_description(cmd:<ROOT>)` lookup API),
+Requirement 7 (the Alias Editor Description column), Requirement 8 (the `X -> EXIT`
+seed), command-completion Requirement 1.3 (completion reads display name/description),
+command-framework Requirement 3 (metadata description). Builds ON the existing
+Description column and the single Help_Topic_Registry; no new dispatcher or store.
+
+#### Acceptance Criteria
+
+9.1. WHEN the Alias_Editor displays a row whose Description field is EMPTY (no
+   user-entered description), THE effective description shown SHALL be the one-line
+   description of the row's CANONICAL root command, obtained through the context-help
+   Requirement 22.2 lookup `short_description(cmd:<ROOT>)` (keyed by the uppercased
+   canonical root). WHEN the Description field is NON-EMPTY, the user's string SHALL
+   take precedence. [CR-NR-119]
+
+9.2. THE inherited description SHALL be applied at DISPLAY time and SHALL NOT be
+   written into the persisted alias row: the stored Description remains the user's
+   own value (empty for the seed), so the seed write / Reset-bare rebuild
+   (Requirement 8.4) is UNCHANGED and does NOT depend on help-registry readiness at
+   construction time. [CR-NR-119]
+
+9.3. THE command palette / command configurator listings SHALL obtain a home-grown
+   FFCMD root command's one-line description through the SAME Requirement 22.2 lookup
+   rather than from a duplicated literal, so there is one description per command.
+   [CR-NR-119]
+
+9.4. WHEN the lookup returns `None` (no `cmd:<ROOT>` topic loaded -- e.g. help
+   directory absent, or an alias targeting a command outside the enforced FFCMD
+   scope), THE displayed description SHALL fall back to EMPTY (the current
+   behaviour), never failing or panicking. [CR-NR-119]
+
+9.5. THE `X -> EXIT` seed row (Requirement 8) with its empty stored Description SHALL,
+   through criterion 9.1, DISPLAY the one-line description extracted from `cmd:EXIT`
+   (e.g. "Exit the application") once the `cmd:EXIT` help topic is authored
+   (context-help Requirement 21/23), resolving the owner's observation that a
+   reset-bare alias has no description -- without a throwaway literal on the row.
+   [CR-NR-119]

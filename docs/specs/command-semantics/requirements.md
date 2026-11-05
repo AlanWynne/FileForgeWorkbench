@@ -453,3 +453,33 @@ does NOT contradict CR-NR-111 Requirement 12. Builds ON the primary command pars
 14.9. WHEN the worked example is exercised -- an alias `ECOB` with ROOT `EDIT` and template `FFWB.COBOL.MASTER(&1)` -- typing `ecob helloW` SHALL resolve to `EDIT FFWB.COBOL.MASTER(helloW)` and open `ffwb.cobol.master(helloW)` in an editor through the EXISTING EDIT routing (command-semantics Requirement 9.10, command-framework Requirement 8), with no new dispatch path. [CR-NR-112]
 
 14.10. THE argument tokenisation for `&N`/`&*` SHALL be whitespace splitting of the Alias_Invocation_Argument (the single split the front door provides, command-framework Requirement 9.1); quoted multi-word positional arguments are NOT in scope for this version (a `&N` is one whitespace-delimited token). [CR-NR-112]
+
+---
+
+### Requirement 15: POSIX `--help` Global Dispatch Convention (CR-NR-119)
+
+**User Story:** As a user familiar with command-line tools, I want typing `<cmd> --help` to show the same help that `HELP <cmd>` shows, so that both the ISPF convention and the POSIX convention reach the one Markdown help file for a command.
+
+**Source:** CR-NR-119 (owner messages 7-8, 2026-11-05: "EXIT --help (POSIX-style) shows the same help -- so both conventions reach the one markdown file"). Cross-references: command-framework Requirement 2.1 / 8 / 19 (the single dispatch front door `dispatch_command_string`: `=` strip -> `rewrite_verb_to_root` -> `run_command_prelude` -> `resolve_target` -> `run_command_ladder`), context-help Requirement 13.2 / 18.2 / 21 / 22 (the `HELP <cmd>` routing and `cmd:<ROOT>` topics), localization Requirement 11.6 (the verb-to-root rewrite). This is a CROSS-CUTTING convention on the EXISTING front door; it introduces NO new dispatcher and NO new navigation stack (framework-conformance mechanism 1).
+
+**Design decision -- where the convention hooks + aliases (CR-NR-119, recommended, confirm in design.md):** The `--help` check is a prelude-level short-circuit placed AFTER `rewrite_verb_to_root` (so an alias has already been rewritten to its canonical root, making `SS --help` resolve `cmd:SNAPSHOT`) and BEFORE `resolve_target` / the ladder (so the command does NOT execute). It reuses the existing `open_help(<ROOT>)` path -- the same entry `HELP <cmd>` uses -- so there is one help-display path. Three surface spellings are recognised: `--help`, `-h`, and `/?`. The convention applies to SINGLE-TOKEN root verbs in this version; the two-word roots `FILE CATALOGS` and `RESET BARE` cannot be served by the first-arg-token check (their first arg token is not a help flag) and are deferred to a later additive change, with the ISPF `HELP <ROOT>` reach-path still covering them (Requirement 15.9). For the two enforced roots that `resolve_help_argument` otherwise diverts to a `feature:` topic (`KEYS`, `CONFIG`), the root reach-path resolves `cmd:<ROOT>` directly (context-help Requirement 22.8).
+
+#### Acceptance Criteria
+
+15.1. WHEN a command line is submitted whose FIRST argument token (after the verb) is one of the help flags `--help`, `-h`, or `/?` (case-insensitive for the letter forms), THE command engine SHALL route to the command's help -- opening Topic_Key `cmd:<ROOT>` via the EXISTING `open_help` path (context-help Requirement 13.2 / 18.2) -- INSTEAD of executing the command. [CR-NR-119]
+
+15.2. THE help-flag check SHALL be applied at the single dispatch front door AFTER the verb-to-root rewrite (localization Requirement 11.6 / `rewrite_verb_to_root`) and BEFORE `resolve_target` and the command ladder, so the flag SHORT-CIRCUITS execution: the command's side effects SHALL NOT run when a help flag is present. [CR-NR-119]
+
+15.3. BECAUSE the check runs after the verb-to-root rewrite, an ALIAS invoked with a help flag SHALL show its CANONICAL command's help: `SS --help` SHALL open `cmd:SNAPSHOT`, exactly as `HELP SNAPSHOT` and `HELP SS` do. [CR-NR-119]
+
+15.4. THE `--help` convention SHALL resolve to the SAME `cmd:<ROOT>` topic and the SAME one-line description source as `HELP <cmd>` (context-help Requirement 21/22); there SHALL be exactly one help file per command reached by both conventions. [CR-NR-119]
+
+15.5. WHEN the resolved root has no loaded `cmd:<ROOT>` topic (e.g. an extension command outside the enforced scope, or the help directory is absent), THE `--help` path SHALL degrade gracefully to the existing "No help available for: <cmd>" affordance (context-help Requirement 13.7), NOT an unrecognised-command error and NOT a panic. [CR-NR-119]
+
+15.6. THE help-flag short-circuit SHALL be a convention on the EXISTING front door only: it SHALL NOT add a second dispatcher, SHALL NOT be a bespoke `if upper == "..."` intercept scattered across handlers, and SHALL route help display through the one `open_help` seam (framework-conformance mechanism 1; command-framework Requirement 2.1). [CR-NR-119]
+
+15.7. A help flag appearing as a NON-FIRST argument token (e.g. `FIND --help foo`, where `--help` is not the first token) SHALL NOT trigger the convention in this version; the convention keys off the FIRST argument token being a help flag. A command that itself defines `--help` as meaningful data is out of scope for this version (none of the enforced FFCMD roots do). [CR-NR-119]
+
+15.8. THE `--help` routing SHALL NOT be recorded in command history and SHALL NOT be an undoable transaction, consistent with the HELP command (context-help Requirement 13.10). [CR-NR-119]
+
+15.9. THE `--help` convention SHALL apply to SINGLE-TOKEN root verbs in this version. BECAUSE the verb/arg split (`split_verb_arg`, `crates/ff-desktop/src/shell/helpers.rs`) splits on the FIRST whitespace only, the TWO-WORD enforced roots `FILE CATALOGS` and `RESET BARE` cannot be detected by a first-arg-token help-flag check (for `FILE CATALOGS --help` the first arg token is `CATALOGS`, not a help flag); therefore `--help` for `FILE CATALOGS` and `RESET BARE` is explicitly DEFERRED and recorded as a KNOWN LIMITATION. The ISPF reach-path is UNAFFECTED: `HELP FILE CATALOGS` and `HELP RESET BARE` SHALL still resolve `cmd:FILE CATALOGS` / `cmd:RESET BARE` (context-help Requirement 22.1 / 23.2), so both two-word roots retain a reachable single source of truth. A later additive change MAY extend help-flag detection to a trailing token for the known two-word roots; that is out of scope for this version and is NOT a framework change. [CR-NR-119]

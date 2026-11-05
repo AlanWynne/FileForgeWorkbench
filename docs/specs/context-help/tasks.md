@@ -618,3 +618,74 @@ evaluation/decision) may proceed at the gate.
 |-------------|---------------------|------|
 | Req 17: Shipped Help Content Set | AC 17.9 (amended, whole help/ tree exempt) | Task 23 |
 | Req 17: Shipped Help Content Set | AC 17.9c (test removed/relaxed for whole tree) | Task 23 |
+
+---
+
+## CR-NR-119 Tasks: Root-Command Help Model -- help file is the single source of truth; HELP <cmd> + <cmd> --help; derived short description; enforced for FFCMD roots
+
+TDD-first. Each test carries its `// Validates:` annotation. Scoped verification
+only (`cargo check -p <crate>`, `cargo clippy -p <crate> -- -D warnings`,
+`cargo fmt -- --check`, and the SCOPED new tests); the owner runs the full gate.
+
+- [ ] 24. One-line description extraction in ff-help (Req 21)
+  - [ ] 24.1 Write failing unit tests for `extract_one_line_description(body)` in `ff-help`: first `## Description` paragraph is returned; inline markup (code, bold, links) is stripped to plain text; multi-paragraph Description returns the FIRST paragraph only; missing/empty Description returns `None`; a first paragraph over 200 chars returns `None`.
+    - Validates: context-help Requirement 21.3, 21.4
+  - [ ] 24.2 Implement `extract_one_line_description` as a pure function (new `ff-help/src/one_liner.rs`, tests split if the file nears the size limit); make 24.1 green.
+    - Validates: context-help Requirement 21.3, 21.5
+  - [ ] 24.3 Write a failing test then add `HelpTopicRegistry::short_description(&TopicKey) -> Option<String>` delegating to 24.2; cover present-topic and absent-topic (None).
+    - Validates: context-help Requirement 22.2
+  - Covers: context-help Requirement 21, 22.2
+
+- [ ] 25. `--help` / `-h` / `/?` global convention on the single front door (command-semantics Req 15)
+  - [ ] 25.1 Write failing `ff-desktop` tests: `EXIT --help` opens `cmd:EXIT` and does NOT set the app-close flag (no execution); `-h` and `/?` spellings behave identically; a help flag as a NON-first token (e.g. `FIND --help foo` where `--help` is not first) does NOT short-circuit; `--help` is not recorded in history.
+    - Validates: command-semantics Requirement 15.1, 15.2, 15.7, 15.8
+  - [ ] 25.2 Add the `first_token_is_help_flag` helper and the prelude-level short-circuit AFTER `rewrite_verb_to_root` and BEFORE `resolve_target`/the ladder, routing through the enforced-root-aware help open (Task 25.4); make 25.1 green. Single-token verbs only (Req 15.9). No new dispatcher.
+    - Validates: command-semantics Requirement 15.2, 15.6, 15.9
+  - [ ] 25.3 Write a failing test then prove alias canonicalisation: `SS --help` opens `cmd:SNAPSHOT` (rewrite runs first); a missing topic degrades to the "No help available" affordance, not an error.
+    - Validates: command-semantics Requirement 15.3, 15.4, 15.5
+  - [ ] 25.4 Write failing `ff-help`/`ff-desktop` tests for the enforced-root precedence over the `resolve_help_argument` keyword special-cases: `KEYS --help` / `HELP KEYS` open `cmd:KEYS` (NOT `feature:function_keys`) and `CONFIG --help` / `HELP CONFIG` open `cmd:CONFIG` (NOT `feature:configuration`); the `feature:*` topics remain reachable via the Help Index. Then implement the enforced-root-aware help open (an `open_root_help`/equivalent that resolves `cmd:<ROOT>` directly for a `builtin_ffcmd_roots()` member, otherwise falls back to `open_help`). Make the tests green.
+    - Validates: context-help Requirement 22.8; command-semantics Requirement 15.4
+  - [ ] 25.5 Write a failing test documenting the two-word-root limitation: `FILE CATALOGS --help` and `RESET BARE --help` do NOT short-circuit in this version (the command path is unaffected by the help convention), while `HELP FILE CATALOGS` and `HELP RESET BARE` DO resolve `cmd:FILE CATALOGS` / `cmd:RESET BARE`. Encode the limitation so a future extension is a deliberate change.
+    - Validates: command-semantics Requirement 15.9
+  - Covers: command-semantics Requirement 15
+
+- [ ] 26. Author cmd:<ROOT> help files for the missing FFCMD roots (Req 21, 23 content)
+  - [ ] 26.1 Author `cmd:<ROOT>` topics (Syntax / Description / Modifiers / Examples / See Also per Req 7.2; at minimum a non-empty `## Description`) for EXIT, SNAPSHOT, CAPTURE (START/STOP/REPLAY), RETRIEVE in new/updated `help/commands/*.help.md` files; ASCII-only.
+    - Validates: context-help Requirement 21.1, 21.2
+  - [ ] 26.2 Author `cmd:<ROOT>` topics for the remaining enumerated FFCMD roots lacking one (START, MENU, CLOSE, DOCK, RETURN, DETACH, SPLIT, UNSPLIT, FOCUS, SWAP, WORKSPACE, PFSHOW, COMMAND, SUBMIT, TIME, STATUS, REFRESH, EDIT, VIEW, BROWSE, COMPARE, CREATE, REPLACE, CONFIG, THEME, CATALOGS, COMMANDS, LOG, PLUGINS, MACROS, GSEARCH, SEARCH, KINDS, MENUS, ALIASES, FILE CATALOGS, RESET BARE). Note `cmd:KEYS` already ships (`menu-options.help.md`), so KEYS needs only the Task 25.4 resolution repoint, not a new topic; `cmd:CONFIG` is new and MAY link to `feature:configuration` via See Also.
+    - Validates: context-help Requirement 21.1, 21.2
+  - Covers: context-help Requirement 21, 23 (content)
+
+- [ ] 27. Enforcement check: every FFCMD root has a conforming help topic (Req 23)
+  - [ ] 27.1 Write the failing `ff-desktop` enforcement test: enumerate `EnvironmentRegistry::root_commands("FFCMD")`, load the shipped `help/` tree, assert each root has a `cmd:<ROOT>` topic whose `short_description` is non-empty and within limits. RED until Task 26 lands.
+    - Validates: context-help Requirement 23.1, 23.2, 23.3
+  - [ ] 27.2 Confirm the test EXCLUDES FFEDIT roots and asserts nothing about extension commands; add a comment noting FFEDIT is on the roadmap (Req 23.4) and extensions are guideline-only (Req 23.5). Make the suite green together with Task 26.
+    - Validates: context-help Requirement 23.4, 23.5
+  - Covers: context-help Requirement 23
+
+- [ ] 28. Derived short description wired to the alias editor and command listings (command-configurator Req 9, context-help Req 22)
+  - [ ] 28.1 Write failing `ff-desktop` tests: an alias row with an EMPTY description displays its canonical root's one-liner via `short_description` (e.g. `X -> EXIT` shows the `cmd:EXIT` one-liner); a NON-empty user description wins; a root with no topic shows empty; applied at display time (the persisted seed row keeps its empty description).
+    - Validates: command-configurator Requirement 9.1, 9.2, 9.4, 9.5; context-help Requirement 22.3, 22.4, 22.7
+  - [ ] 28.2 Implement the display-time inheritance in `load_effective_alias_rows` (or the editor's row-to-cells mapping), reading `short_description(cmd:<ROOT>)`; wire the command palette / configurator listing to the same lookup. Make 28.1 green.
+    - Validates: command-configurator Requirement 9.1, 9.3; context-help Requirement 22.3
+  - [ ] 28.3 Write a failing test then prove a chained alias (`SS -> SNAPSHOT`) inherits SNAPSHOT's one-liner.
+    - Validates: context-help Requirement 22.5
+  - Covers: command-configurator Requirement 9; context-help Requirement 22
+
+- [ ] 29. Steering guideline + command-framework description-rule alignment (Req 23.5, 23.6; command-framework Req 3.8/3.9)
+  - [ ] 29.1 Add `.kiro/steering/command-help-guideline.md` recording the extension recommendation (encouraged, NOT enforced; degrades gracefully) -- docs only, ASCII-only. (Authored in this gate; listed here for the implementation record.)
+    - Validates: context-help Requirement 23.5
+  - [ ] 29.2 Confirm no code treats the command-framework Req 3 description rule as requiring a separate literal for home-grown FFCMD roots (the derived one-liner satisfies it); add/adjust a test comment if a registration path asserts a description.
+    - Validates: command-framework Requirement 3.8, 3.9; context-help Requirement 23.6
+  - Covers: context-help Requirement 23.5, 23.6; command-framework Requirement 3.8, 3.9
+
+### CR-NR-119 Requirement Coverage Mapping
+
+| Requirement | Acceptance Criterion | Task |
+|-------------|---------------------|------|
+| context-help Req 21 (help-file structure + one-liner) | 21.1-21.7 | 24, 26 |
+| context-help Req 22 (short-description lookup + HELP routing) | 22.1-22.8 | 24.3, 25.3, 25.4, 28 |
+| context-help Req 23 (enforcement FFCMD; guideline extensions) | 23.1-23.6 | 26, 27, 29 |
+| command-semantics Req 15 (`--help` convention) | 15.1-15.9 | 25 |
+| command-configurator Req 9 (derived alias description) | 9.1-9.5 | 28 |
+| command-framework Req 3.8/3.9 (tiered description rule) | 3.8, 3.9 | 29 |

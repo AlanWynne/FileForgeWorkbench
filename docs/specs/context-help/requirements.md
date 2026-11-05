@@ -595,6 +595,80 @@ character-set (ASCII) rule SHALL NOT apply to any file under the `help/` tree.
 
 ---
 
+### Requirement 21: Command Help File -- Required Structure and Deterministic One-Line Description (CR-NR-119)
+
+**User Story:** As a workbench developer, I want every home-grown root command to be defined with a structured Markdown help file that is the SINGLE SOURCE OF TRUTH for both its one-line description and its full help, so that descriptions are never duplicated across code and docs, and so that a command cannot be authored without its documentation.
+
+**Source:** CR-NR-119 (owner messages 6-8, 2026-11-05: "Every root command has a markdown help file ... That becomes the single source of truth for the command's description and its full help ... A rule that no root command can exist without its help file and a one line command description ... perhaps the one line command description can come from the command's help file? But this will require the helpfile to comply with a certain structure?"). Cross-references: Requirement 5 (Help Content Format -- the `.help.md` file + `<!-- TOPIC: -->` / `<!-- TITLE: -->` delimiters), Requirement 7.2 (the per-command topic sections Syntax/Description/Modifiers/Examples/See-Also), Requirement 17.3 (the shipped `cmd:<NAME>` set), command-framework Requirement 3 (command metadata description rule), command-semantics Requirement 15 (the `--help` convention). Builds ON the existing context-help topic structure; it does NOT invent a new help format.
+
+**Design decision -- the one-liner comes from the Description section, not a new field (CR-NR-119, recommended, confirm in design.md):** The investigation (`.agents/tasks/alias-seed-set/root-command-descriptions.md`) found NO single source of truth for a root command's description today -- descriptions are scattered across the `CommandRegistry` (4 commands), the `ff-file-ops` `file.*` table, optional user `CommandDefinition`s, and partial `cmd:<NAME>` help topics, and the FFCMD root verbs carry none. Three structure options were considered (see `design.md`): (a) YAML frontmatter with an explicit `description:` field; (b) a fixed first-line/first-paragraph convention; (c) formalising the EXISTING `cmd:<NAME>` topic structure (Req 7.2) and extracting the first paragraph of its `## Description` section. Option (c) is RECOMMENDED because it reuses the delimiters and sections already shipped (session.help.md etc.), adds no new parse syntax, keeps `.help.md` files standard Markdown, and avoids a second description store. The criteria below are framed on Option (c); the final choice is confirmed in `design.md`.
+
+#### Acceptance Criteria
+
+21.1. EACH home-grown FFCMD root command (the enforced scope of Requirement 23) SHALL be defined with a Markdown help topic keyed `cmd:<ROOT>` (the uppercased canonical root verb, e.g. `cmd:EXIT`, `cmd:SNAPSHOT`, `cmd:CAPTURE`, `cmd:RETRIEVE`), authored in a `.help.md` file under the `help/` tree per Requirement 5.1 and delimited per Requirement 5.2. [CR-NR-119]
+
+21.2. EACH such `cmd:<ROOT>` topic SHALL contain the sections already required by Requirement 7.2 (Syntax, Description, Modifiers where applicable, Examples, See Also); at MINIMUM it SHALL contain a non-empty `## Description` section. [CR-NR-119]
+
+21.3. THE one-line description of a root command SHALL be defined as the FIRST non-empty paragraph of its `cmd:<ROOT>` topic's `## Description` section, with Markdown inline markup stripped to plain text and collapsed to a single line. THIS derived string SHALL be the SINGLE SOURCE OF TRUTH for the command's one-line description; no separate description literal SHALL be authored for a home-grown FFCMD root. [CR-NR-119]
+
+21.4. THE derived one-line description SHALL be validated as non-empty and SHALL NOT exceed 200 characters (consistent with command-semantics Status_Message length). WHEN the `## Description` section is missing or its first paragraph is empty, THE extraction SHALL be treated as a FAILURE for that command (surfaced by the Requirement 23 enforcement check), NOT silently defaulted. [CR-NR-119]
+
+21.5. THE one-line description extraction SHALL be a PURE function of the topic body (`HelpTopic::body`) and SHALL NOT depend on the Help Panel being open, on the editor state, or on any runtime UI; it SHALL be callable wherever the Help_Topic_Registry is available (so the alias editor, command palette, and status lines of Requirement 22 can consume it). [CR-NR-119]
+
+21.6. THE extraction SHALL be locale-aware consistent with the rest of the help system (localization CR-NR-103): WHEN a per-locale `cmd:<ROOT>` topic is loaded for the active locale, THE one-line description SHALL be extracted from that locale's topic; WHEN only the English base topic exists, THE English description SHALL be used (graceful fallback, no failure). [CR-NR-119]
+
+21.7. THE `cmd:<ROOT>` help file SHALL remain standard Markdown: the one-line-description convention of 21.3 SHALL add NO new markup and SHALL NOT change how Requirement 5.2 parses topics or how Requirement 20 renders them. [CR-NR-119]
+
+---
+
+### Requirement 22: Derived Short-Description Lookup and HELP <cmd> Routing for FFCMD Roots (CR-NR-119)
+
+**User Story:** As a user, I want HELP <cmd> and the alias editor, command palette, and status lines to all draw a command's short description from the one help file, so that there is one description per command and HELP EXIT opens EXIT's own help.
+
+**Source:** CR-NR-119 (owner messages 7-8). Cross-references: Requirement 13 (HELP primary command integration), Requirement 7.1 (per-command topics keyed `cmd:<NAME>`), Requirement 21 (the extraction), command-configurator Requirement 7/8 (the alias Description column and the `X -> EXIT` seed), command-completion Requirement 1.3 (completion reads display name/description), command-framework Requirement 3 (metadata description). Builds ON the existing `open_help` routing and the single Help_Topic_Registry; no new dispatcher.
+
+#### Acceptance Criteria
+
+22.1. WHEN `HELP <ROOT>` is issued for an FFCMD root command (e.g. `HELP EXIT`, `HELP SNAPSHOT`), THE Help_System SHALL resolve Topic_Key `cmd:<ROOT>` and open the Help Context on that command's topic, via the EXISTING `open_help` routing (Requirement 13.2, 18.2); no new dispatch path SHALL be added. [CR-NR-119]
+
+22.2. THE Help_Topic_Registry SHALL expose a short-description lookup, `short_description(cmd:<ROOT>) -> Option<String>`, that returns the Requirement 21.3 derived one-line description for a loaded topic and `None` when no topic is loaded for that key. This SHALL be the single API all consumers call; no consumer SHALL hold its own description literal for a home-grown FFCMD root. [CR-NR-119]
+
+22.3. THE alias editor Description column (command-configurator Requirement 7), the command palette / command configurator listings, and any status-line command description SHALL obtain a home-grown FFCMD root's short description THROUGH the Requirement 22.2 lookup rather than from a duplicated string. [CR-NR-119]
+
+22.4. WHEN an alias row has NO own (user-entered) description, THE effective description shown for that row SHALL be INHERITED from its canonical command via the Requirement 22.2 lookup (keyed by the alias's canonical root, uppercased). WHEN the alias row HAS a user-entered description, that user string SHALL take precedence (the user's explicit value wins). [CR-NR-119]
+
+22.5. WHEN an alias resolves through a chain (e.g. `SS -> SNAPSHOT`), THE inherited description SHALL be that of the CANONICAL root the alias targets (so `SS` with no own description shows SNAPSHOT's one-liner; `HELP SS` and `SS --help` both open `cmd:SNAPSHOT`). [CR-NR-119]
+
+22.6. WHEN the lookup returns `None` for a root (no topic loaded -- e.g. help directory absent, or an extension command outside the enforced scope), THE consumer SHALL degrade gracefully: the alias Description SHALL fall back to empty (its current behaviour), and `HELP <cmd>` SHALL show the existing "No help available for: <cmd>" affordance (Requirement 13.7). No consumer SHALL fail or panic on a missing description. [CR-NR-119]
+
+22.7. THE short-description lookup SHALL NOT couple the alias seed/bootstrap path to help-registry readiness at construction time (per the investigation's finding that the seed write runs during construction before help is loaded): the inheritance of 22.4 SHALL be applied at DISPLAY time by the alias editor / palette (which run after the registry is loaded), NOT by writing a copied description into the persisted seed row. [CR-NR-119]
+
+22.8. THE existing argument resolver `resolve_help_argument` (`crates/ff-help/src/commands.rs`) hard-special-cases `KEYS` -> `feature:function_keys` and `CONFIG` / `CONFIGURATION` -> `feature:configuration` BEFORE the `cmd:<NAME>` fall-through, and BOTH `KEYS` and `CONFIG` are enforced FFCMD roots. FOR an enforced FFCMD root, THE `HELP <ROOT>` and `<ROOT> --help` reach-path SHALL resolve `cmd:<ROOT>` DIRECTLY, taking PRECEDENCE over the `feature:` keyword special-cases: `HELP KEYS` / `KEYS --help` SHALL open `cmd:KEYS`, and `HELP CONFIG` / `CONFIG --help` SHALL open `cmd:CONFIG`, so that the Requirement 22.1 / 23.2 invariant (every enforced root reached at its own `cmd:<ROOT>` topic by both conventions) holds. THE `feature:function_keys` and `feature:configuration` topics SHALL remain reachable via the Help Index and their menu links (Requirement 13.5 / 13.6 / 15); only the HELP/`--help` resolution of the root VERBS `KEYS` and `CONFIG` is repointed. [CR-NR-119]
+
+---
+
+### Requirement 23: Enforced Help-File + One-Line-Description Rule for FFCMD Roots; Guideline for Extensions (CR-NR-119)
+
+**User Story:** As a maintainer, I want an automated check that every FFCMD root command has a conforming help file with a valid one-line description, so that the single-source-of-truth rule cannot silently regress, while leaving extension commands free to adopt the convention without being blocked.
+
+**Source:** CR-NR-119 (owner message 8: "A rule that no root command can exist without its help file and a one line command description"; owner message 12: tiered -- "strong guideline" for extensions, enforced for FFWB's own FFCMD now, FFEDIT later). Cross-references: command-framework Requirement 3 (metadata description rule, extended), the FFCMD root sets `BUILTIN_FFCMD_LADDER_VERB_ROOTS` + `BUILTIN_WORKSPACE_VERB_ROOTS` + `builtin_ffcmd_roots()`, `framework-conformance` (builds on the single front door). The extension guideline is recorded in steering (`.kiro/steering/command-help-guideline.md`), NOT as a hard framework rule.
+
+#### Acceptance Criteria
+
+23.1. THE enforced scope of the help-file rule SHALL be the FFCMD ROOT COMMANDS -- the union returned by `builtin_ffcmd_roots()` (`BUILTIN_FFCMD_LADDER_VERB_ROOTS` + `BUILTIN_WORKSPACE_VERB_ROOTS` + the code-only built-in menu option roots), the canonical set `EnvironmentRegistry::root_commands("FFCMD")` enumerates. [CR-NR-119]
+
+23.2. FOR each FFCMD root in the enforced scope, an automated check SHALL assert that (a) a `cmd:<ROOT>` help topic is loaded in the Help_Topic_Registry, and (b) its Requirement 21.3 one-line description extracts to a non-empty string within the 21.4 limits. THE check SHALL FAIL (a failing test / gate assertion) when any enforced root lacks a conforming topic or a valid one-liner. [CR-NR-119]
+
+23.3. THE enforcement check SHALL live as a test in the crate that owns the FFCMD root set and the Help_Topic_Registry wiring (ff-desktop), reading the shipped `help/` tree, so that authoring a new FFCMD root without its help file breaks the suite. [CR-NR-119]
+
+23.4. FFEDIT root commands SHALL be OUT OF SCOPE for enforcement in this change (owner message 12: FFEDIT conforms later); they SHALL be noted as on the roadmap but SHALL NOT be asserted by the Requirement 23.2 check now. [CR-NR-119]
+
+23.5. EXTENSION commands SHALL NOT be subject to the enforced rule: the framework SHALL NOT reject, block, or fail to register an extension command that lacks a conforming help file. A missing extension help file SHALL degrade gracefully per Requirement 22.6 (no derived description; `HELP <cmd>` shows "No help available"). The RECOMMENDATION that extensions ship a conforming help file SHALL be recorded as a steering GUIDELINE, not enforced in code. [CR-NR-119]
+
+23.6. THE command-framework Requirement 3 metadata description rule SHALL be read as satisfied, for home-grown FFCMD roots, by the Requirement 21.3 derived one-line description (one source), rather than by a separate hand-authored metadata string. [CR-NR-119]
+
+---
+
 ## Cross-Reference Summary
 
 | Dependency | Relationship |
@@ -609,3 +683,5 @@ character-set (ASCII) rule SHALL NOT apply to any file under the `help/` tree.
 | `lua-macro-engine` | Macro API function help registration; `"feature:macros"` topic |
 | `menu-and-statusbar` | Help_Menu is part of the workbench menu bar |
 | `custom-file-viewers` | Markdown-rendered help (Req 20) may reuse the ff-viewers PREVIEW integration / `MdxFileViewer`; depends on Requirement 14 / Task 21 (viewer-to-shell seam) |
+| `command-semantics` (Req 15) | The `--help` / `-h` / `/?` global convention routes to the same `cmd:<ROOT>` topic as `HELP <cmd>` (Req 21/22) through the single dispatch front door |
+| `command-configurator` (Req 7/8) | The alias Description column and the `X -> EXIT` seed consume the Req 22.2 derived short-description lookup; an alias with no own description inherits its canonical command's one-liner (Req 22.4) |
