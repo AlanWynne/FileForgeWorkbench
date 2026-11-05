@@ -28,7 +28,7 @@ impl WorkbenchShell {
 
         // Command Palette overlay -- Validates: command-palette Requirement 1.1-1.5, 4.1-4.5
         if self.palette_state.open {
-            let all_entries = build_palette_entries(&self.cmd_registry);
+            let all_entries = build_palette_entries(&self.cmd_registry, &self.help.registry);
             let recent = self.recent_palette_commands.clone();
             let palette_outcome =
                 render_command_palette(ctx, &mut self.palette_state, &all_entries, &recent);
@@ -299,20 +299,42 @@ impl WorkbenchShell {
 
 /// Build the full list of palette entries from the command registry.
 ///
-/// Validates: command-palette Requirement 2.1
-fn build_palette_entries(registry: &ff_command::CommandRegistry) -> Vec<PaletteEntry> {
+/// CR-NR-119 (command-configurator Req 9.3): when a command's own metadata
+/// description is EMPTY, a home-grown FFCMD ROOT command inherits its one-line
+/// description from the SINGLE `short_description(cmd:<ROOT>)` lookup rather than
+/// a duplicated literal, so there is one description per command. A command that
+/// is not a root, or whose root has no `cmd:<ROOT>` topic, keeps the empty
+/// description (Req 9.4 -- graceful fallback). The derived value is DISPLAY-time
+/// only and is never written back into the command registry.
+///
+/// Validates: command-palette Requirement 2.1; command-configurator Requirement 9.3, 9.4
+fn build_palette_entries(
+    registry: &ff_command::CommandRegistry,
+    help_registry: &ff_help::HelpTopicRegistry,
+) -> Vec<PaletteEntry> {
     registry
         .list_all()
         .into_iter()
         .filter_map(|id| {
-            registry.metadata(&id).map(|meta| PaletteEntry {
-                command_id: id.as_str().to_string(),
-                display_name: meta.display_name.clone(),
-                category: meta.category.clone(),
-                description: meta.description.clone(),
-                shortcut: None,
-                enabled: true,
-                score: 0,
+            registry.metadata(&id).map(|meta| {
+                let mut description = meta.description.clone();
+                if description.trim().is_empty() {
+                    // Inherit the FFCMD root one-liner (empty when the id is not a
+                    // root or has no cmd:<ROOT> topic).
+                    description = crate::shell::alias_description::inherited_root_description(
+                        id.as_str(),
+                        help_registry,
+                    );
+                }
+                PaletteEntry {
+                    command_id: id.as_str().to_string(),
+                    display_name: meta.display_name.clone(),
+                    category: meta.category.clone(),
+                    description,
+                    shortcut: None,
+                    enabled: true,
+                    score: 0,
+                }
             })
         })
         .collect()

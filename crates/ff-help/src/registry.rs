@@ -41,6 +41,17 @@ impl HelpTopicRegistry {
         topics.get(key).cloned()
     }
 
+    /// Derive the one-line short description for a topic (CR-NR-119, Req 22.2).
+    ///
+    /// Returns the first paragraph of the topic's `## Description` section as a
+    /// stripped single line. Returns `None` when the topic is absent or has no
+    /// usable Description (the single-source-of-truth one-liner, derived from the
+    /// help file -- no duplicated description string).
+    pub fn short_description(&self, key: &TopicKey) -> Option<String> {
+        self.get(key)
+            .and_then(|t| crate::one_liner::extract_one_line_description(t.body()))
+    }
+
     /// Check if a topic exists for the given key.
     pub fn contains(&self, key: &TopicKey) -> bool {
         self.topics
@@ -450,6 +461,47 @@ mod tests {
     fn registry_is_send_and_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<HelpTopicRegistry>();
+    }
+
+    // Validates: context-help Requirement 22.2 -- derived one-liner for a topic
+    #[test]
+    fn short_description_returns_one_liner_for_topic_with_description() {
+        let registry = HelpTopicRegistry::new();
+        let key = TopicKey::command("SAVE");
+        registry.register_file_topic(file_topic(
+            key.clone(),
+            "SAVE Command",
+            "## Description\n\nWrites the current buffer to its backing file.\n\n## See Also\n",
+        ));
+
+        assert_eq!(
+            registry.short_description(&key).as_deref(),
+            Some("Writes the current buffer to its backing file.")
+        );
+    }
+
+    // Validates: context-help Requirement 22.2 -- absent key returns None
+    #[test]
+    fn short_description_returns_none_for_absent_key() {
+        let registry = HelpTopicRegistry::new();
+        assert_eq!(
+            registry.short_description(&TopicKey::command("MISSING")),
+            None
+        );
+    }
+
+    // Validates: context-help Requirement 22.2 -- topic without Description -> None
+    #[test]
+    fn short_description_returns_none_when_topic_has_no_description() {
+        let registry = HelpTopicRegistry::new();
+        let key = TopicKey::command("NODESC");
+        registry.register_file_topic(file_topic(
+            key.clone(),
+            "NODESC Command",
+            "## Syntax\n\n```\nNODESC\n```\n\n## See Also\n",
+        ));
+
+        assert_eq!(registry.short_description(&key), None);
     }
 
     // Validates: Requirement 6.1 — len and is_empty

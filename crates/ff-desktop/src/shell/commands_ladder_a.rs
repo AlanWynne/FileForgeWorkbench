@@ -191,7 +191,11 @@ impl WorkbenchShell {
             return true;
         }
         if let Some(arg) = verb_arg(cmd, "HELP") {
-            self.open_help(arg);
+            // CR-NR-119 (context-help Req 22.1/22.8): an enforced FFCMD root
+            // resolves `cmd:<ROOT>` directly (KEYS -> cmd:KEYS, CONFIG ->
+            // cmd:CONFIG), taking precedence over the legacy feature: keyword
+            // special-cases; a non-root arg falls back to open_help unchanged.
+            self.open_root_help(arg);
             return true;
         }
 

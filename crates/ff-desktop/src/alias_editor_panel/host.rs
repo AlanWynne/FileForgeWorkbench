@@ -200,7 +200,16 @@ impl IspfTableRender for AliasEditorState {
         backing: usize,
         row: &mut AliasRowEdit,
     ) -> crate::shell::ispf_table_editor::render::RowCells {
-        render_data_row(ui, backing, row)
+        // CR-NR-119 (Req 9.1): the DISPLAY-TIME inherited one-liner for this
+        // row's canonical root, used as the Description cell HINT when the row's
+        // own Description is empty. Keyed by the UPPERCASED canonical; empty when
+        // the root has no cmd:<ROOT> topic (Req 9.4).
+        let inherited = self
+            .inherited_descriptions
+            .get(&row.canonical.trim().to_uppercase())
+            .map(String::as_str)
+            .unwrap_or_default();
+        render_data_row(ui, backing, row, inherited)
     }
 }
 

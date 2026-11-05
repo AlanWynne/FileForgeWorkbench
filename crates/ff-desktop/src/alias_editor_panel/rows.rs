@@ -99,6 +99,7 @@ pub(super) fn render_data_row(
     ui: &mut egui::Ui,
     backing: usize,
     row: &mut AliasRowEdit,
+    inherited_description: &str,
 ) -> crate::shell::ispf_table_editor::render::RowCells {
     ui.horizontal(|ui| {
         // Act: the ISPF line-command field (I / R / D). One focusable control.
@@ -150,12 +151,23 @@ pub(super) fn render_data_row(
                 .hint_text("(&1)"),
         );
         // CR-CH-075 (Req 7.3): Description -- an optional human-readable note.
+        // CR-NR-119 (Req 9.1/9.2): when the row's OWN Description is empty, the
+        // HINT shows the inherited one-line description of its canonical root
+        // (e.g. the X -> EXIT seed shows "Exit the application"). This is a
+        // DISPLAY-TIME hint only -- the stored value stays empty, so SAVE and
+        // Reset-bare are unchanged (Req 9.2). An absent root one-liner leaves the
+        // generic "note" hint (Req 9.4).
         let description_id = row_control_id("alias_description", backing);
+        let description_hint = if inherited_description.is_empty() {
+            "note"
+        } else {
+            inherited_description
+        };
         ui.add(
             egui::TextEdit::singleline(&mut row.description)
                 .id(description_id)
                 .desired_width(180.0)
-                .hint_text("note"),
+                .hint_text(description_hint),
         );
         crate::shell::ispf_table_editor::render::RowCells {
             act_enter,

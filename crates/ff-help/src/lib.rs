@@ -55,6 +55,10 @@ pub mod topic;
 /// Help Topic Registry — thread-safe indexed store.
 pub mod registry;
 
+/// One-line-description extractor (CR-NR-119) -- derives a command's one-liner
+/// from the first paragraph of its help topic's `## Description` section.
+pub mod one_liner;
+
 /// Context detection for F1 help activation.
 pub mod context_detector;
 
@@ -100,6 +104,7 @@ pub use error::HelpError;
 pub use help_panel::{BreadcrumbEntry, HelpPanelModel, TocEntry};
 pub use menu::{help_menu_items, AboutInfo, HelpMenuAction, HelpMenuItem};
 pub use navigation::NavigationStack;
+pub use one_liner::extract_one_line_description;
 pub use plugin_help::HelpPluginBridge;
 pub use registry::HelpTopicRegistry;
 pub use search::{HelpSearch, MatchLocation, SearchResult};

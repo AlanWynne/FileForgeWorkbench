@@ -47,6 +47,7 @@ impl WorkbenchShell {
     pub(super) fn open_alias_editor(&mut self) {
         let rows = self.load_effective_alias_rows();
         self.alias_editor_panel.load_rows(rows);
+        self.refresh_alias_inherited_descriptions();
 
         self.navigate_to(
             ff_session::session_state::WorkspaceDescriptor::CustomWorkspace {
@@ -219,6 +220,37 @@ impl WorkbenchShell {
     pub(super) fn alias_editor_reload(&mut self) {
         let rows = self.load_effective_alias_rows();
         self.alias_editor_panel.load_rows(rows);
+        self.refresh_alias_inherited_descriptions();
+    }
+
+    /// Recompute the Alias Editor's DISPLAY-TIME inherited one-line descriptions
+    /// from the Help_Topic_Registry (CR-NR-119, command-configurator Req 9.1/9.3):
+    /// one entry per distinct canonical root among the working rows that has a
+    /// `cmd:<ROOT>` topic. The render reads this map as the Description cell HINT
+    /// when a row's own Description is empty; it is NEVER written into a persisted
+    /// row (Req 9.2) and degrades to empty for a root with no topic (Req 9.4).
+    ///
+    /// Validates: command-configurator Requirement 9.1, 9.2, 9.3, 9.4
+    pub(super) fn refresh_alias_inherited_descriptions(&mut self) {
+        use super::environment_registry::EnvironmentRegistry;
+        // Cover every canonical that can appear in a row's Root dropdown (both
+        // environments' root commands), so the inherited hint follows a live Root
+        // selection -- not only the roots present at load time. The set is small
+        // (tens of roots) and the map is built once per load.
+        let mut canonicals: Vec<String> = Vec::new();
+        for env in AliasEnvironment::ALL {
+            for root in EnvironmentRegistry::root_commands(env.env_name()) {
+                canonicals.push(root);
+            }
+        }
+        for row in &self.alias_editor_panel.rows {
+            canonicals.push(row.canonical.clone());
+        }
+        self.alias_editor_panel.inherited_descriptions =
+            super::alias_description::inherited_description_map(
+                canonicals.iter().map(String::as_str),
+                &self.help.registry,
+            );
     }
 
     /// Rebuild the shell's live `LocaleAliasStore` IN PLACE (Req 6.4): one re-seed

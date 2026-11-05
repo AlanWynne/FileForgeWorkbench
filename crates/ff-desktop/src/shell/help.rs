@@ -106,6 +106,39 @@ impl WorkbenchShell {
         self.open_error = None;
     }
 
+    /// Open help for a command VERB, resolving an enforced FFCMD ROOT to its
+    /// `cmd:<ROOT>` topic DIRECTLY (CR-NR-119, context-help Req 22.1, 22.8).
+    ///
+    /// For a member of `builtin_ffcmd_roots()` (case-insensitive) this builds
+    /// `TopicKey::command(<UPPER>)` and displays it, bypassing the
+    /// `resolve_help_argument` keyword table -- so `KEYS` opens `cmd:KEYS` and
+    /// `CONFIG` opens `cmd:CONFIG` rather than the legacy
+    /// `feature:function_keys` / `feature:configuration` special-cases (Req
+    /// 22.8). Those feature topics remain reachable via the Index and menus.
+    ///
+    /// For a NON-root `verb` (and for OFF/INDEX/LINECOMMANDS/MACRO/API, which are
+    /// not roots) this delegates to [`open_help`](Self::open_help), preserving
+    /// the existing `resolve_help_argument` behaviour (HELP OFF closes, HELP
+    /// LINECOMMANDS -> line:index, the unrecognised-topic miss affordance).
+    ///
+    /// A missing `cmd:<ROOT>` topic degrades gracefully through
+    /// `display_help_topic` (records the miss, shows the index with a message).
+    ///
+    /// Validates: context-help Requirement 22.1, 22.8.
+    pub(super) fn open_root_help(&mut self, verb: &str) {
+        let upper = verb.trim().to_uppercase();
+        let is_root = crate::shell::alias_reader::builtin_ffcmd_roots()
+            .iter()
+            .any(|r| r.eq_ignore_ascii_case(&upper));
+        if is_root {
+            let key = TopicKey::command(&upper);
+            self.display_help_topic(&key);
+            self.open_error = None;
+        } else {
+            self.open_help(verb);
+        }
+    }
+
     /// Resolve the F1 context topic from the Cursor_Context snapshot + command
     /// line (mirrors the pre-CR-NR-097 handler, minus the throwaway registry).
     fn resolve_f1_topic(&self) -> Option<TopicKey> {

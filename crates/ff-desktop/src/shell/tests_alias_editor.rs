@@ -530,6 +530,76 @@ fn copy_after_applies_end_to_end_through_action() {
     );
 }
 
+// Validates: command-configurator Requirement 9.1, 9.2, 9.5; context-help
+// Requirement 22.2 -- an empty-description alias row (the X -> EXIT seed)
+// DISPLAYS the inherited one-line description of its canonical root EXIT, drawn
+// from the cmd:EXIT help topic through short_description, WITHOUT writing that
+// value into the persisted row (the stored Description stays empty).
+#[test]
+fn empty_description_row_inherits_root_one_liner_display_only() {
+    let mut shell = make_shell();
+    let _dir = point_user_aliases_at_temp(&mut shell);
+    // Seed a cmd:EXIT help topic with a Description first paragraph.
+    shell.seed_help_registry_for_test(vec![ff_help::HelpTopic::new(
+        ff_help::TopicKey::command("EXIT"),
+        "EXIT Command".to_string(),
+        "## Description\n\nExit the application.\n\n## See Also\n".to_string(),
+        ff_help::TopicSource::FileBased {
+            file_path: std::path::PathBuf::from("exit.help.md"),
+        },
+    )]);
+    // An X -> EXIT row with an EMPTY stored description (the seed shape).
+    shell.dispatch_command_string("ALIASES");
+    shell.alias_editor_panel.rows = vec![row("X", "EXIT", AliasEnvironment::Ffcmd, "")];
+    // Recompute the inherited map now that the help topic is seeded.
+    shell.refresh_alias_inherited_descriptions();
+
+    // The inherited map carries the EXIT one-liner, keyed uppercase.
+    assert_eq!(
+        shell
+            .alias_editor_panel
+            .inherited_descriptions
+            .get("EXIT")
+            .map(String::as_str),
+        Some("Exit the application."),
+        "the inherited map carries the cmd:EXIT one-liner for display"
+    );
+    // CRITICAL (Req 9.2): the inheritance is DISPLAY-time only -- the stored row
+    // Description stays EMPTY, so SAVE / Reset-bare are unchanged.
+    assert_eq!(
+        shell.alias_editor_panel.rows[0].description, "",
+        "the inherited description is never written into the persisted row"
+    );
+}
+
+// Validates: command-configurator Requirement 9.4 -- a row whose canonical root
+// has no cmd:<ROOT> help topic contributes no inherited description (the map
+// omits it); the display falls back to empty, never a panic.
+#[test]
+fn row_with_no_root_topic_contributes_no_inherited_description() {
+    let mut shell = make_shell();
+    let _dir = point_user_aliases_at_temp(&mut shell);
+    // Seed an UNRELATED topic so the registry is non-empty but lacks cmd:GSEARCH.
+    shell.seed_help_registry_for_test(vec![ff_help::HelpTopic::new(
+        ff_help::TopicKey::command("EXIT"),
+        "EXIT Command".to_string(),
+        "## Description\n\nExit the application.\n\n## See Also\n".to_string(),
+        ff_help::TopicSource::FileBased {
+            file_path: std::path::PathBuf::from("exit.help.md"),
+        },
+    )]);
+    shell.dispatch_command_string("ALIASES");
+    shell.alias_editor_panel.rows = vec![row("GG", "GSEARCH", AliasEnvironment::Ffcmd, "")];
+    shell.refresh_alias_inherited_descriptions();
+    assert!(
+        !shell
+            .alias_editor_panel
+            .inherited_descriptions
+            .contains_key("GSEARCH"),
+        "a root with no cmd:<ROOT> topic contributes no inherited description (Req 9.4)"
+    );
+}
+
 // Validates: command-configurator Requirement 6.7 -- a parameterised alias
 // authored in the editor expands/dispatches per CR-NR-112: ECOB -> EDIT with
 // template FFWB.COBOL.MASTER(&1), saved, then `ecob helloW` rewrites to

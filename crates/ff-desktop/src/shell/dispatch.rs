@@ -87,6 +87,24 @@ impl WorkbenchShell {
         let raw = self.rewrite_verb_to_root(raw);
         let raw = raw.as_str();
 
+        // CR-NR-119 (command-semantics Req 15.1-15.4): the POSIX `<cmd> --help`
+        // / `-h` / `/?` convention is a prelude-level SHORT-CIRCUIT on this ONE
+        // front door, reusing the EXISTING open_help/display seam (no new
+        // dispatcher). It runs AFTER rewrite_verb_to_root (so the FFCMD seed
+        // alias `SS --help` resolves the ROOT cmd:SNAPSHOT) and BEFORE the
+        // prelude/resolve_target, so the command NEVER executes (e.g. `EXIT
+        // --help` opens help without exiting). Only when the help flag is the
+        // FIRST argument token; single-token verbs only -- two-word roots
+        // (`FILE CATALOGS`, `RESET BARE`) are a documented deferred limitation
+        // (Req 15.9): their first arg token is the second verb word, not a help
+        // flag, so this branch naturally does not fire. Like HELP, this is not
+        // recorded in history/undo.
+        let (verb, arg) = super::helpers::split_verb_arg(raw);
+        if !verb.is_empty() && super::helpers::first_token_is_help_flag(arg) {
+            self.open_root_help(verb);
+            return;
+        }
+
         let upper = raw.trim().to_uppercase();
 
         // Prelude first (A1 ordering: stage 1 / EXIT family / POM / chained before

@@ -31,6 +31,7 @@
 // already removed; the bar's top-level entries are the POM option `command`s.
 
 mod actions;
+mod alias_description;
 mod alias_editor;
 mod alias_editor_line_commands;
 mod alias_overlay;
@@ -198,6 +199,8 @@ mod tests_editor_snapshot_tables;
 #[cfg(test)]
 mod tests_focus;
 #[cfg(test)]
+mod tests_help_flag;
+#[cfg(test)]
 mod tests_keys_save_convention;
 #[cfg(test)]
 mod tests_kinds_save_convention;
@@ -225,6 +228,8 @@ mod tests_misc;
 mod tests_nav;
 #[cfg(test)]
 mod tests_nav_ladder;
+#[cfg(test)]
+mod tests_root_help_enforcement;
 #[cfg(test)]
 mod tests_screen_directive;
 #[cfg(test)]

@@ -81,6 +81,12 @@ pub struct AliasEditorState {
     /// Action produced by the most recent `WorkspaceContext::render`, stashed for
     /// the shell to apply via `apply_alias_editor_action` (CR-NR-078). Transient.
     pub pending_action: AliasEditorAction,
+    /// DISPLAY-TIME inherited one-line descriptions, keyed by UPPERCASED canonical
+    /// root (CR-NR-119, command-configurator Req 9.1). Populated by the shell on
+    /// load/reload from the Help_Topic_Registry; read by the render as the
+    /// Description cell's HINT when a row's own Description is empty. NEVER written
+    /// into a persisted row (Req 9.2); transient render input only.
+    pub inherited_descriptions: std::collections::HashMap<String, String>,
 }
 
 impl AliasEditorState {

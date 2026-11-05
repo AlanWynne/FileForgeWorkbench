@@ -292,6 +292,19 @@ pub(super) fn split_verb_arg(cmd: &str) -> (&str, &str) {
     (head, rest.trim())
 }
 
+/// Whether the FIRST whitespace-delimited token of an Argument_String is a
+/// POSIX-style help flag -- `--help` or `-h` (case-insensitive) or the Windows
+/// `/?` (exact). Used by the single front door to short-circuit `<cmd> --help`
+/// to the command's `cmd:<ROOT>` help topic BEFORE the command executes
+/// (CR-NR-119, command-semantics Req 15.1-15.4). Only the FIRST arg token is
+/// inspected, so `FIND --help foo` fires but `FIND foo --help` does not.
+///
+/// Validates: command-semantics Requirement 15.1, 15.2, 15.4
+pub(super) fn first_token_is_help_flag(arg: &str) -> bool {
+    let first = arg.split_whitespace().next().unwrap_or("");
+    first.eq_ignore_ascii_case("--help") || first.eq_ignore_ascii_case("-h") || first == "/?"
+}
+
 /// Parse two single-quoted or bare-word arguments from a CHANGE command tail.
 /// Handles: `'old text' 'new text'`, `old new`, `'old' new`, `old 'new'`.
 #[allow(dead_code)]
