@@ -1,9 +1,10 @@
 //! The Config_Rebuild_Helper (CR-CH-116, configuration-system Req 23.6).
 //!
 //! The write-through config model keeps the built-in menus (POM, Settings,
-//! SCRM) and the FFCMD `X -> EXIT` alias seed as a RECOVERY source in code
-//! (`menu_workspace::defaults`), writes COMPLETE config files on first run, and
-//! runs from the on-disk files thereafter. Reset bare rebuilds those same files.
+//! SCRM) and the five FFCMD alias seed rows (CR-NR-120) as a RECOVERY source in
+//! code (`menu_workspace::defaults` and [`FFCMD_ALIAS_SEED`]), writes COMPLETE
+//! config files on first run, and runs from the on-disk files thereafter. Reset
+//! bare rebuilds those same files.
 //!
 //! This module owns the ONE shared write engine both paths call so their output
 //! cannot diverge: [`write_builtin_defaults`]. It is a PURE free function -- the
@@ -41,9 +42,10 @@ pub(super) enum BootstrapMode {
 /// Write the COMPLETE built-in config files from the Recovery_Source through the
 /// passed directory seams (CR-CH-116). Writes `pom.toml`, `settings.toml` AND
 /// `scrm.toml` under `menus_dir` (each a Complete_Config_File via
-/// [`serialiser::serialise_complete`]), and the single FFCMD `X -> EXIT` alias
-/// seed row to `<alias_base>/<locale>/FFCMD.toml`. Parent directories are
-/// created as needed.
+/// [`serialiser::serialise_complete`]), and the five FFCMD alias seed rows
+/// (CR-NR-120) to `<alias_base>/<locale>/FFCMD.toml`. Parent directories are
+/// created as needed. The alias seed is the five FFCMD rows of
+/// [`FFCMD_ALIAS_SEED`] (CR-NR-120).
 ///
 /// `scrm.toml` is a MENU file read from `menus_dir()/scrm.toml` by the SCRM menu
 /// open path and the Menus editor (gate: `menus/scrm.toml`), NOT the unrelated
@@ -98,9 +100,31 @@ fn write_menu(path: &Path, menu: &MenuFile, mode: BootstrapMode) -> Result<(), S
     std::fs::write(path, toml).map_err(|e| format!("write {}: {e}", path.display()))
 }
 
-/// Write the single `X -> EXIT` FFCMD alias seed row to the per-locale override
-/// file, honouring the mode's write-if-absent guard. The row is a user-override
-/// row (editable in the Alias Editor) targeting the FFCMD environment.
+/// The FFCMD alias seed set (CR-NR-120, configuration-system Requirement 24).
+/// Returns the five seed rows as `(surface, canonical, command_template)` with
+/// their canonical uppercase values. Each row's STORED description is EMPTY
+/// (criterion 24.3): the DISPLAYED one-liner is inherited at render time from the
+/// row's `cmd:<ROOT>` help topic (criterion 24.4), never persisted. The two-word
+/// CAPTURE shortcuts use Option A (owner-approved 2026-11-06): canonical root
+/// `CAPTURE` with the subcommand in the parameter template (`START`/`STOP`/
+/// `REPLAY`), so each is a valid FFCMD root (`contains_root`), expands through
+/// the existing pre-pass to `CAPTURE START`/`STOP`/`REPLAY`, and inherits the
+/// single `cmd:CAPTURE` one-liner (criterion 24.5).
+///
+/// Validates: configuration-system Requirement 24.1, 24.3, 24.5
+const FFCMD_ALIAS_SEED: [(&str, &str, &str); 5] = [
+    ("X", "EXIT", ""),
+    ("SS", "SNAPSHOT", ""),
+    ("CS", "CAPTURE", "START"),
+    ("CT", "CAPTURE", "STOP"),
+    ("CR", "CAPTURE", "REPLAY"),
+];
+
+/// Write the five FFCMD alias seed rows (CR-NR-120, [`FFCMD_ALIAS_SEED`]) to the
+/// per-locale override file, honouring the mode's write-if-absent guard. The rows
+/// are user-override rows (editable/removable in the Alias Editor) targeting the
+/// FFCMD environment. This is the SINGLE Recovery_Source both first-run write and
+/// Reset-bare rebuild emit, so the two cannot diverge (criterion 24.2).
 fn write_alias_seed(alias_base: &Path, locale: &str, mode: BootstrapMode) -> Result<(), String> {
     let path = user_alias_override_file(alias_base, locale, FFCMD_NAME);
     if mode == BootstrapMode::FirstRunMissingOnly && path.exists() {
@@ -109,13 +133,16 @@ fn write_alias_seed(alias_base: &Path, locale: &str, mode: BootstrapMode) -> Res
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("create {}: {e}", parent.display()))?;
     }
-    let rows = vec![UserAliasRowToml {
-        surface: "X".to_string(),
-        canonical: "EXIT".to_string(),
-        environment: AliasEnvironment::Ffcmd,
-        command_template: String::new(),
-        description: String::new(),
-    }];
+    let rows: Vec<UserAliasRowToml> = FFCMD_ALIAS_SEED
+        .iter()
+        .map(|&(surface, canonical, template)| UserAliasRowToml {
+            surface: surface.to_string(),
+            canonical: canonical.to_string(),
+            environment: AliasEnvironment::Ffcmd,
+            command_template: template.to_string(),
+            description: String::new(),
+        })
+        .collect();
     let text = user_aliases::serialise_user_aliases(&rows)?;
     std::fs::write(&path, text).map_err(|e| format!("write {}: {e}", path.display()))
 }
@@ -146,7 +173,7 @@ pub(super) fn set_test_first_run_menus_dir(dir: PathBuf) {
 impl WorkbenchShell {
     /// First-run write hook (CR-CH-116, startup-and-session Req 23): on
     /// construction, write any ABSENT built-in menu file (pom/settings/scrm) and
-    /// the absent FFCMD `X -> EXIT` alias seed through the dir seams, so the app
+    /// the absent five-row FFCMD alias seed (CR-NR-120) through the dir seams, so the app
     /// then runs from the on-disk files. This is the ONE first-run hook.
     ///
     /// Skips entirely in Degraded_Mode (the User_Data_Dir cannot be resolved):
@@ -357,10 +384,13 @@ mod tests {
         );
     }
 
-    // Validates: command-configurator Requirement 8.1, 8.2 (CR-CH-116) --
-    // aliases/<locale>/FFCMD.toml contains a parseable X -> EXIT row.
+    // Validates: command-configurator Requirement 8.1, 8.2 (CR-CH-116);
+    // configuration-system Requirement 24.1, 24.2, 24.3, 24.5 (CR-NR-120) --
+    // the FirstRun seed writes EXACTLY the five FFCMD seed aliases with their
+    // canonical uppercase values, Option A CAPTURE parameter templates, and an
+    // EMPTY stored description on every row (display inheritance is runtime-only).
     #[test]
-    fn alias_seed_contains_x_to_exit_row() {
+    fn alias_seed_writes_exactly_the_five_ffcmd_seed_rows() {
         let menus = TempDir::new().expect("menus");
         let aliases = TempDir::new().expect("aliases");
         write_builtin_defaults(
@@ -372,9 +402,24 @@ mod tests {
         .expect("write ok");
         let text = read(&aliases.path().join("en").join("FFCMD.toml"));
         let rows = user_aliases::parse_user_alias_toml(&text).expect("seed parses");
-        assert_eq!(rows.len(), 1, "exactly the one seed row");
-        assert_eq!(rows[0].surface, "X");
-        assert_eq!(rows[0].canonical, "EXIT");
+        // (surface, canonical, command_template) -- Option A CAPTURE targets.
+        let expected = [
+            ("X", "EXIT", ""),
+            ("SS", "SNAPSHOT", ""),
+            ("CS", "CAPTURE", "START"),
+            ("CT", "CAPTURE", "STOP"),
+            ("CR", "CAPTURE", "REPLAY"),
+        ];
+        assert_eq!(rows.len(), expected.len(), "exactly the five seed rows");
+        for (row, (surface, canonical, template)) in rows.iter().zip(expected) {
+            assert_eq!(row.surface, surface, "seed surface");
+            assert_eq!(row.canonical, canonical, "seed canonical root");
+            assert_eq!(row.command_template, template, "Option A CAPTURE template");
+            assert_eq!(
+                row.description, "",
+                "every seed row has an EMPTY stored description (Req 24.3)"
+            );
+        }
     }
 
     // Validates: command-configurator Requirement 8.2 -- the seed is written to
