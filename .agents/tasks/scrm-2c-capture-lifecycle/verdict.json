@@ -1,0 +1,21 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "info",
+      "file": "crates/ff-desktop/src/shell/dispatch.rs",
+      "detail": "last_dispatched is stashed ONLY on the resolve_target Ok path. A transition caused by a ladder-only verb (run_command_ladder fall-through) records None for the triggering command. This is documented as deliberate in FEAT-001 findings and is consistent with the single-seam constraint (no second dispatcher). Non-blocking."
+    },
+    {
+      "severity": "info",
+      "file": "crates/ff-desktop/src/scrm_viewer_panel.rs",
+      "detail": "current_screen_text() is reused by the ScreenProvider (current_screen_snapshot_text), so the prepended 'caused by:' line can appear in a SCRM-viewer self-capture's text. Flagged as a known note in FEAT-001 findings for later phases; outside this task's acceptance criteria. Non-blocking."
+    },
+    {
+      "severity": "info",
+      "file": "crates/ff-desktop/src/shell/commands_scrm.rs",
+      "detail": "Bare CAPTURE REPLAY now ALWAYS opens the saved-session picker (even with an active in-memory collection), a deliberate behaviour change per Req 10.12. Two pre-existing tests were updated and the mandatory first-Tab egui_kittest test now opens the viewer via the FILE form. Verified against the plan's D4 decision. Non-blocking."
+    }
+  ],
+  "summary": "All review checks pass. Single dispatch seam used: dispatch_command_string stashes last_dispatched only on the resolve_target Ok path and auto_capture_active_context reads-and-clears it (no bespoke intercept, no second dispatcher). Save-As directory defaults to scrm_dir() and is an editable field; CANCEL/Escape/dimmed-click clears save_as and writes nothing (Req 24.5). CAPTURE REPLAY <file> loads via the single handle_capture_load path then opens the ScrmViewer only on success; bare CAPTURE REPLAY opens a modal picker that enumerates *.ffscrm in scrm_dir() and dispatches CAPTURE REPLAY <abs-path> through the front door. ScrmViewer remains a WorkspaceContext; the two new pickers are modal overlays. TriggeringCommand is Option with #[serde(default)], round-trips absent and present (persist test present), and is recorded None for interval/rule captures. All touched/new .rs files are under 400 non-test lines (largest non-test: update_dialogs.rs 397, commands_scrm.rs 366, state_groups.rs 301). ASCII-only check passed (no non-ASCII outside allowed box-drawing range). Coder's recorded scoped verification (check/clippy/fmt/scoped tests) read from FEAT findings; full gate left to owner per gate-policy."
+}

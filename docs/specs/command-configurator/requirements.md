@@ -774,9 +774,19 @@ and resolver) and the write-through model (configuration-system Requirement 23).
    `X` remains NOT a registered command (there is no command named `X`); it resolves
    as an alias of the existing `EXIT` command (startup-and-session Requirement 20.3).
 
+> **EXTENDED by CR-NR-120 (owner-approved 2026-11-06).** The single-alias seed
+> set (`X -> EXIT` only) defined by this requirement is GROWN to FIVE seed aliases
+> (`X -> EXIT`, `SS -> SNAPSHOT`, `CS -> CAPTURE START`, `CT -> CAPTURE STOP`,
+> `CR -> CAPTURE REPLAY`) by configuration-system Requirement 24, so the SCRM
+> shortcuts survive a Reset bare. The mechanism is UNCHANGED (same single Rust
+> Recovery_Source function, same write-through file, same Config_Rebuild_Helper);
+> criteria 8.2-8.7 apply to each of the five rows. See configuration-system
+> Requirement 24 for the full criteria and the two-word CAPTURE representation.
+
 #### Out of scope (Requirement 8)
 
-- Turning any verb other than `X` into a seed alias.
+- Turning any verb other than `X` (and, per CR-NR-120, `SS` / `CS` / `CT` / `CR`)
+  into a seed alias.
 - Changing the FFEDIT `X -> EXCLUDE` base alias or any other existing alias.
 - The X / END / RETURN / EXIT command semantics themselves (menu-workspace
   Requirement 14, navigation-commands Requirement 21) -- this requirement only

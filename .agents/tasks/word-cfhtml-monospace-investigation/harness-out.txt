@@ -1,0 +1,25 @@
+=== LITERAL CF_HTML (repr, CRLF visible) ===
+'Version:0.9\r\nStartHTML:0000000105\r\nEndHTML:0000000524\r\nStartFragment:0000000141\r\nEndFragment:0000000488\r\n<html>\r\n<body>\r\n<!--StartFragment--><img src="data:image/png;base64,iVBORw0KGgoAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs=">\r\n<pre style="white-space:pre;"><font face="Consolas,\'Courier New\',monospace"><span style="font-family:\'Consolas\',\'Courier New\',monospace">ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ\r\nΓöé Save As  Γöé\r\nΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ</span></font></pre><!--EndFragment-->\r\n</body>\r\n</html>'
+
+=== VALIDATION ===
+StartHTML    = 105
+EndHTML      = 524
+StartFragment= 141
+EndFragment  = 488
+payload bytes= 524
+
+CHECK StartHTML points at '<html>': True b'<html>\r\n'
+BYTE CHECK StartHTML -> '<html>': True
+BYTE CHECK bytes before StartFragment end with marker: True
+BYTE CHECK EndFragment -> just before marker: True
+BYTE CHECK EndHTML == payload byte len: True
+FRAGMENT [StartFragment:EndFragment] =
+<img src="data:image/png;base64,iVBORw0KGgoAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs=">
+
+<pre style="white-space:pre;"><font face="Consolas,'Courier New',monospace"><span style="font-family:'Consolas','Courier New',monospace">ΓöîΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ
+
+Γöé Save As  Γöé
+
+ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ</span></font></pre>
+bytes AT StartFragment: b'<img src="da'
+bytes AT EndFragment: b'<!--EndFragment-->'

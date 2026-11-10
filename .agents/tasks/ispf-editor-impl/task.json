@@ -1,0 +1,7 @@
+{
+  "task_id": "task-ispf-editor-impl",
+  "task_description": "Implement three owner-confirmed, already-gated UI-behaviour change requests in the shared ISPF table editor component (crates/ff-desktop/src/shell/ispf_table_editor + the Alias host): CR-CH-076 block line commands RR/DD/CC/MM (MM disabled on Alias), CR-CH-078 full arrow-key focus navigation across the field matrix, and CR-CH-077 single-chrome layout (one Title + one Command line, live and snapshot agree). TDD-first. Build ON the ff-line-commands engine and the WorkspaceContext focus latch with NO public-API or framework change. Keep the behaviour in the SHARED component so Menu/Kinds/future hosts inherit it.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

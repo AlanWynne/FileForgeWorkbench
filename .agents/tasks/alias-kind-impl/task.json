@@ -1,0 +1,7 @@
+{
+  "task_id": "task-alias-kind-impl",
+  "task_description": "Implement the APPROVED Alias Workspace Kind gate (CR-NR-116): render the Alias content grid inside the shared common frame via the shared framed renderer, with six-column cell conventions, an always-present trailing scratch row, filter-as-status, Alias status cells, a single ### Aliases clipboard table, and the CE uppercase display fix. Build ON the framework; no framework change. Agents verify COMPILE-ONLY (scoped check/clippy/fmt + quick named tests); the owner runs the full cargo gate.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

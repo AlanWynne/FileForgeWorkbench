@@ -1,0 +1,24 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "area": "EARS quality",
+      "location": "requirements.md Requirement 5, criterion 5.4",
+      "detail": "5.4 bundles four distinct save-time rejections (empty surface, empty canonical, within-environment surface->two-roots collision, built-in-root shadow) plus serialise/write/file-unchanged-on-failure in one criterion. Testable but would map 1:1 to tests more cleanly if split into lettered sub-criteria (5.4a..5.4d). Not blocking."
+    },
+    {
+      "severity": "NIT",
+      "area": "The one new mechanism / design clarity",
+      "location": "design.md Section 9.2 vs 9.4",
+      "detail": "AliasEnvironment is shared between the panel-side state (9.2) and UserAliasRowToml declared alongside AliasRowToml in alias_reader.rs (9.4), but neither section states the enum's defining module or that it is pub(crate) for cross-module reuse. Minor; no behavioural ambiguity. Add one sentence naming its home module."
+    },
+    {
+      "severity": "NIT",
+      "area": "EARS quality",
+      "location": "requirements.md Requirement 5, criterion 5.7",
+      "detail": "5.7 packs the third-overlay precedence, per-row environment routing, the no-shadow invariant, and the SAME-root/DIFFERENT-root cross-layer rule into one dense criterion. Correct and consistent with design 9.5, but doing the work of three testable statements. Consider splitting the cross-layer collision behaviour into its own sub-criterion. Not blocking."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\alias-editor-workspace\\design-review.md"
+}

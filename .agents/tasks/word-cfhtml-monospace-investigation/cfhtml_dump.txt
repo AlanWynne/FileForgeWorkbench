@@ -1,0 +1,13 @@
+Version:0.9
+StartHTML:0000000105
+EndHTML:0000000524
+StartFragment:0000000141
+EndFragment:0000000488
+<html>
+<body>
+<!--StartFragment--><img src="data:image/png;base64,iVBORw0KGgoAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs=">
+<pre style="white-space:pre;"><font face="Consolas,'Courier New',monospace"><span style="font-family:'Consolas','Courier New',monospace">┌─────┐
+│ Save As  │
+└─────┘</span></font></pre><!--EndFragment-->
+</body>
+</html>

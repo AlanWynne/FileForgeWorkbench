@@ -1,0 +1,20 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "title": "open_root_help referenced as both a concrete name and 'equivalent'",
+      "where": "context-help design.md '--help dispatch hook' pseudocode; tasks.md task 25.4",
+      "problem": "The enforced-root-aware help open is named open_root_help in the design pseudocode but task 25.4 says 'open_root_help/equivalent'. It is an illustrative name, not a committed public seam, so the slight inconsistency is cosmetic and does not affect the behaviour-level criteria (Req 22.1/22.8).",
+      "fix": "Optional: add one sentence stating open_root_help is an illustrative name for the enforced-root branch; the implementer may inline it into open_help provided there is ONE resolution path for a root's help."
+    },
+    {
+      "severity": "NIT",
+      "title": "Req 21.4 ties the 200-char cap to Status_Message length without citing the requirement id",
+      "where": "context-help Req 21.4",
+      "problem": "21.4 says '<= 200 characters (consistent with command-semantics Status_Message length)' but does not cite the specific command-semantics requirement id. command-semantics does define Status_Message as short (<=200 characters), so the value is unambiguous; only the traceability cross-ref id is missing.",
+      "fix": "Optional: cite the command-semantics Status_Message definition id for traceability."
+    }
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/command-help-gate/review.md"
+}

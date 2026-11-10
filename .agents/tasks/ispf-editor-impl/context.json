@@ -1,0 +1,31 @@
+{
+  "project_type": "Rust workspace (cargo). egui/eframe desktop app ff-desktop plus dependency-closure crates incl. the GUI-free ff-line-commands engine.",
+  "language": "Rust",
+  "build_system": "cargo workspace. Scoped commands only for agents; the shared ISPF table editor lives inside the ff-desktop crate (not its own crate). A machine-wide cargo gate exists but is OWNER-only.",
+  "test_framework": "Rust built-in #[test] (unit tests in #[cfg(test)] mod tests) plus full-shell egui_kittest harness tests in crates/ff-desktop/src/shell/tests_focus.rs (harness_shell(), cmd_field_id(), request_focus, Event::Text, key_press).",
+  "build_command": "cargo check -p ff-desktop",
+  "test_command": "cargo test -p ff-desktop <scoped-name>  (e.g. block_, arrow_target, full_shell_alias_editor, alias_screen_model)",
+  "verification_instructions": "Per change: write the FAILING test first (with // Validates: Requirement 9.x/10.x/11.x), see it fail, implement, see it pass. Agents compile-verify SCOPED ONLY: cargo check -p ff-desktop; cargo clippy -p ff-desktop -- -D warnings; cargo fmt -p ff-desktop -- --check; plus the quick scoped unit tests named per feature. Read logs / verify by effect; the Exit Code line is unreliable (terminal-discipline.md). Do NOT run the full cargo gate or whole-suite cargo test/nextest (they wedge the terminal) -- that is the OWNER's pre-merge run (gate-policy.md).",
+  "snapshot_or_generated_files": "None. No code generation; no snapshot files checked in for these changes.",
+  "environment_constraints": "Work and read ONLY inside the worktree c:/workspace/apps/FileForgeWorkbench/.worktrees/ispf-editor-impl; use git -C <that path> for git. Terminal is unreliable: use the pwsh7 non-interactive wrapper (C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command), one command per call, no ';' chaining on the raw path; prefer the read/grep tools over shell for inspection. No source .rs over 400 non-test lines; split a test module before ~200 lines. ASCII-only in docs and pattern-matched source.",
+  "contribution_requirements": "framework-conformance.md: build ON the existing seams -- NO ff-line-commands public-API change, NO new dispatcher/navigation stack, NO core-type reshape, resolver (shell/environment.rs) UNCHANGED, ISPF explicit-commit save seam and the single render_workspace_context focus latch must hold. Keep block commands / single-chrome / arrow nav in the SHARED component; the Alias host only sets its LineCommandSet (blocks on, move_ off) and keeps its cell rendering. testing.md TDD is non-negotiable. rust-standards.md 400-line rule. Commit locally on the branch; never push.",
+  "key_patterns": "The pure apply adapter (apply_line_commands) rebuilds the row list via per-row before/after/removed vectors over STABLE original indices -- block ops reuse this. The render surface owns ONE Command ===> line + ONE header + scratch row; hosts implement IspfTableHost (egui-free) + IspfTableRender (egui). Per-row controls carry stable salted ids row_control_id(prefix, backing): alias_act/alias_surface/alias_template/alias_description; combos from from_id_salt((salt, backing)); command line id 'alias_editor_command_line'. Arrow walk must CONSUME the arrow with ui.input_mut(|i| i.consume_key(Modifiers::NONE, key)) BEFORE egui traverses (render_menu_bar/render_chrome B056-B059 lesson) and request_focus a stable same-frame id. ff-line-commands already parses DD/RR/CC/MM -> *Block kinds; classify() returns LineCommandCategory::Block; BlockPairValidator::validate_pair(&PendingCommandStore, BlockCommandKind) forms the inclusive order-normalised BlockPair and returns AwaitingPair/TooManyMarkers for lone/extra markers; check_overlaps guards overlap.",
+  "relevant_files": [
+    "crates/ff-desktop/src/shell/ispf_table_editor/state.rs (LineCommandSet, IspfTableHost, ColumnSpec, TableEditorState)",
+    "crates/ff-desktop/src/shell/ispf_table_editor/line_commands.rs (apply_line_commands adapter + the Block arm to change + its unit tests)",
+    "crates/ff-desktop/src/shell/ispf_table_editor/render.rs (render_ispf_table surface, IspfTableRender trait, single Command line + header)",
+    "crates/ff-desktop/src/shell/ispf_table_editor/mod.rs (module re-exports)",
+    "crates/ff-desktop/src/alias_editor_panel/host.rs (Alias IspfTableHost/IspfTableRender impls, ALIAS_COLUMNS, LineCommandSet::alias usage)",
+    "crates/ff-desktop/src/alias_editor_panel/rows.rs (render_data_row, row_control_id, CE/Root combos)",
+    "crates/ff-desktop/src/alias_editor_panel/render.rs (WorkspaceContext render, surface title param)",
+    "crates/ff-desktop/src/shell/alias_editor_line_commands.rs (apply_pending_line_commands shell adapter)",
+    "crates/ff-desktop/src/shell/screen_providers.rs (alias_editor_screen_model)",
+    "crates/ff-desktop/src/shell/screen_providers_tables.rs (alias_table headers/rows)",
+    "crates/ff-desktop/src/shell/render.rs (Alias central-panel arm + Title_Line draw -- the single-chrome duplicate lives here or in the surface title label)",
+    "crates/ff-desktop/src/shell/tests_focus.rs (full-shell egui_kittest tests: full_shell_alias_editor_* -- model new tests on these)",
+    "crates/ff-line-commands/src/block_pair.rs, command.rs, pending.rs, lib.rs (READ-ONLY engine API: do NOT change)",
+    "docs/specs/ispf-table-editor/{requirements.md,design.md,tasks.md}",
+    "docs/specs/command-configurator/requirements.md (Req 7.11-7.13)"
+  ],
+  "directory_structure": "crates/ff-desktop/src/shell/ispf_table_editor/ holds the shared component (state.rs, line_commands.rs, render.rs, sort.rs, mod.rs). crates/ff-desktop/src/alias_editor_panel/ is the Alias host (mod.rs, state.rs, host.rs, render.rs, rows.rs, filter.rs). Shell-side wiring in crates/ff-desktop/src/shell/ (alias_editor.rs, alias_editor_line_commands.rs, screen_providers*.rs, render.rs, tests_focus.rs, tests_alias_editor.rs). The GUI-free engine is crates/ff-line-commands/."
+}

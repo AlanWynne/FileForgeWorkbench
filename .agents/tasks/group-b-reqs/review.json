@@ -1,0 +1,27 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "location": "docs/status/change-log.md (CR-CH-075 entry, Description item 1)",
+      "problem": "Change-log claims the ff-line-commands engine 'already does D/I/R/C/M/sort for the text editor'. The engine (crates/ff-line-commands/src/lib.rs) supports D/I/R/C/M/X/T/U/shift but NOT Sort. The design correctly implements Sort at the component level, so this is a wording inaccuracy with no design impact.",
+      "fix": "Change the parenthetical to 'already does D/I/R/C/M for the text editor; Sort is a component-level reorder, not an engine command' (or drop '/sort' from the engine list)."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "location": "docs/specs/ispf-table-editor/requirements.md Requirement 4.3",
+      "problem": "4.3 says the batch result 'SHALL be independent of the order in which the user typed the letters', which reads as over-broad given C/M pairing with A/B markers is inherently position/marker dependent (4.4). The intent (deterministic descending-index apply for immediate I/D) is clear from context but the blanket wording is ambiguous.",
+      "fix": "Scope 4.3 to the immediate commands: 'FOR the immediate commands (I/D), the batch result SHALL be independent of the order the letters were typed (descending-index processing); paired C/M results are determined by their source/target markers per 4.4.'"
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "location": "docs/specs/ispf-table-editor/design.md (Technology-stack paragraph)",
+      "problem": "States 'ff-line-commands crate (already a ff-desktop dependency transitively via the editor stack)' as fact without a reference. findings 5a shows the engine is wired to the text editor, but the transitive ff-desktop dependency is unverified; the implementer may need to add ff-line-commands to ff-desktop's Cargo.toml.",
+      "fix": "Soften to 'reused via the editor stack; add ff-line-commands to ff-desktop's Cargo.toml if it is not already a direct dependency' so the task list captures the possible Cargo edit."
+    }
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/group-b-reqs/review.md"
+}

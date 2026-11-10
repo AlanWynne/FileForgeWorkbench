@@ -1,0 +1,9 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "state.rs (426) and update.rs (408) exceed 400 non-test lines after growing on this branch (disclosed, pre-existing debt): schedule the split refactor.",
+    "Possible gap: no test shows a non-empty command field typed before the command is preserved in the capture; only absence of the triggering command is asserted.",
+    "Possible: the non-message Config/Alias goldens omit the empty message band; confirm that is the owner's intent for the empty case."
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/common-frame-fixes/review.md"
+}

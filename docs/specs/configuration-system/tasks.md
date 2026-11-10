@@ -776,3 +776,18 @@ dot-leaders. Design delta D13/D14; requirements 22.1a, 22.3-22.6, 22.12 re-revis
     - Covers: Requirement 23.2, 23.4, 19.16, 19.17
   - [ ] 47.7 Scoped compile-verify (agent COMPILE-ONLY): `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, plus the named first-run/reset-bare tests where quick; logs under `_ignore/logs/` read back; owner runs the authoritative full gate (gate-policy.md)
     - Covers: Requirement 23 (verification)
+
+- [ ] 48. Expand the FFCMD alias seed set from one to five aliases (CR-NR-120)
+  - [ ] 48.1 Extend the single Rust Recovery_Source seed in `shell/config_bootstrap.rs::write_alias_seed` from the one `X -> EXIT` row to FIVE `UserAliasRowToml` rows with EMPTY descriptions: `X -> EXIT`; `SS -> SNAPSHOT`; and (Option A, framework-conforming) `CS`/`CT`/`CR` -> canonical `CAPTURE` each carrying `command_template` `START`/`STOP`/`REPLAY`. All five `environment = Ffcmd`. Keep the definition in this ONE function so first-run write and Reset-bare rebuild emit the identical set
+    - Covers: Requirement 24.1, 24.2, 24.3, 24.5
+    - DECIDED: Option A (owner-approved 2026-11-06) -- canonical `CAPTURE` + template `START`/`STOP`/`REPLAY`; no framework change, no new help topics
+  - [ ] 48.2 Confirm the five seed rows PASS `validate_user_alias_rows` / the user-overlay load path: each canonical is a valid FFCMD root via `EnvironmentRegistry::contains_root` (`EXIT`, `SNAPSHOT`, `CAPTURE` under Option A), so none is skipped with a WARN at load
+    - Covers: Requirement 24.5
+  - [ ] 48.3 Confirm display-time description inheritance with the EXISTING CR-NR-119 mechanism (`shell/alias_description.rs` + `refresh_alias_inherited_descriptions`): `SS` inherits from `cmd:SNAPSHOT`; `CS`/`CT`/`CR` inherit from `cmd:CAPTURE` (Option A) -- all already-authored topics -- with NO new display code and NO persisted description literal
+    - Covers: Requirement 24.4
+  - [ ] 48.4 Confirm the two-word CAPTURE shortcuts resolve through dispatch: under Option A, `CS` expands via the existing `rewrite_verb_to_root` pre-pass to `CAPTURE START` and dispatches through the single front door (the existing `CAPTURE` ladder arm in `commands_ladder_b.rs` parses START/STOP/REPLAY). No new dispatch path
+    - Covers: Requirement 24.7
+  - [ ] 48.5 Tests: extend the first-run seed test (`tests_first_run.rs::construction_writes_builtin_menus_and_alias_seed` / `alias_seed_contains_x_to_exit_row`) to assert the FFCMD.toml now carries all five rows with empty descriptions; a Reset-bare rebuild test asserting the five rows are restored; a resolver test that each surface resolves (incl. `CS` -> `CAPTURE START`); an inheritance test that `SS`/`CS`/`CT`/`CR` display their inherited one-liners
+    - Covers: Requirement 24.1, 24.4, 24.6, 24.7
+  - [ ] 48.6 Scoped compile-verify (agent COMPILE-ONLY): `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, plus the named seed/first-run/inheritance tests where quick; logs under `_ignore/logs/` read back; owner runs the authoritative full gate (gate-policy.md)
+    - Covers: Requirement 24 (verification)

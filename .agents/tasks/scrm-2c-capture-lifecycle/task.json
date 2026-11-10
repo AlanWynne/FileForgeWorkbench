@@ -1,0 +1,7 @@
+{
+  "task_id": "task-scrm-2c-capture-lifecycle",
+  "task_description": "Stream SCRM Phase 2C -- the capture lifecycle: C.5 capture START per-transition metadata (TriggeringCommand + reliable text/markdown; picture deferred per async tradeoff), C.6 capture STOP Save-As modal defaulting to the ffwb-domain captures dir (scrm_dir()) and invoking existing CAPTURE SAVE/EXPORT verbs, and C.7 replay save-to-file + list/open/select of saved .ffscrm sessions + PDF export. All via the single dispatch front door and existing ff-scrm persist/replay/export. Worktree c:/workspace/apps/FileForgeWorkbench/.worktrees/scrm-2c-capture-lifecycle on branch scrm-2c. Do NOT merge to main.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

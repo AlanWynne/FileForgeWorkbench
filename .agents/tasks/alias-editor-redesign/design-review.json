@@ -1,0 +1,24 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "where": "docs/specs/command-configurator/tasks.md, Task 8.9",
+      "problem": "Subtask numbering is non-monotonic (8.9.1, 8.9.4, 8.9.5, 8.9.2, 8.9.3) after the L18N round-trip subtasks were inserted for review finding 1. Content is complete; only the ordering reads awkwardly.",
+      "fix": "Renumber into ascending order: 8.9.1 SAVE-path verification, 8.9.2 L18N round-trip test, 8.9.3 save-path localisation_key change, 8.9.4 TCR update, 8.9.5 record the five open decisions. Pure editorial."
+    },
+    {
+      "severity": "NIT",
+      "where": "requirements.md Req 5.14/5.15 and tasks.md 8.3.1/8.5.1",
+      "problem": "FILTER/RESET primary commands and applied-on-command filtering are 'RECOMMENDED, owner to confirm' inside otherwise-testable EARS criteria, while tasks already assume them. This is deliberately parked as OPEN DECISIONS 2 and 3 for the CONFIRM step; the SHALL core of each criterion is unambiguous on its own.",
+      "fix": "No gate action required. When the owner confirms, fold the decision into the criterion prose and drop the 'RECOMMENDED' qualifier so the final criterion is a flat SHALL."
+    },
+    {
+      "severity": "NIT",
+      "where": ".agents/tasks/alias-editor-redesign/design-review.md",
+      "problem": "A prior-iteration review artifact exists (referenced by design 9.10.13 and gate-summary) and is superseded by this review.",
+      "fix": "None needed; noted so the iteration-2 verdict record is known to be replaced by this one."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\alias-editor-redesign\\design-review.md"
+}

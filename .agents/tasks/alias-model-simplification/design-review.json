@@ -1,0 +1,18 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "where": "docs/specs/command-framework/tasks.md, docs/specs/command-semantics/tasks.md",
+      "problem": "Pre-existing non-ASCII glyphs (en-dashes, arrows, set/logic symbols) in already-completed [x] tasks and property-test prose. Not part of the CR-CH-072 authored content and touching no CR-CH-072 criterion; violates documentation-charset.md but is out of scope for this gate.",
+      "fix": "Separate cleanup (non-blocking): replace en-dash with '-', arrow with '->', set membership with 'in', iff symbol with 'iff'."
+    },
+    {
+      "severity": "NIT",
+      "where": "docs/specs/localization/requirements.md Req 13.4",
+      "problem": "The menu-option-reference storage shape is both the recommended default of OPEN DECISION 2 and written into a SHALL criterion. Internally consistent (criterion states the observable contract; shape is flagged OPEN in the decision list and design), but a reader could briefly read Req 13.4 as finalising decision 2.",
+      "fix": "Add a one-line note on Req 13.4 that the stored-value SHAPE is OPEN DECISION 2 pending owner CONFIRM, mirroring the design's explicit 'Decision -- OPEN' marker."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\alias-model-simplification\\design-review.md"
+}

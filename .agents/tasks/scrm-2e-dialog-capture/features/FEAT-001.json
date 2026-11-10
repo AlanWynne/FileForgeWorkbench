@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add the credential-secret redaction MECHANISM as a pure model transform in ff-screen-model. The ScreenModel already carries FieldAttributes::sensitive but no renderer masks a sensitive value (text/ansi/markdown/html emit it in clear; yaml only adds a `sensitive: true` marker and still prints the value). Add `ScreenModel::redacted()` that returns a clone whose every sensitive field value is replaced by the ASCII placeholder `[REDACTED]`. Applying this to the model BEFORE any render means the model, the direct-copy text, the composite TEXT/HTML flavors, and the PNG raster are all redacted from the one source -- satisfying Req 27.4/27.5 with no renderer edits and no second mechanism. This feature has NO shell dependency and leaves the crate buildable; FEAT-002 depends on it.",
+  "status": "completed",
+  "steps": [
+    "Create crates/ff-screen-model/src/redact.rs. Add `pub const REDACTED_PLACEHOLDER: &str = \"[REDACTED]\";` (ASCII).",
+    "Write the FAILING test first in redact.rs's #[cfg(test)] module: `redacted_masks_only_sensitive_field_values` annotated `// Validates: screen-snapshot-scrm Req 27.4, 27.5` -- build a ScreenModel with a plain field Field::new(\"User\",\"alan\") and a sensitive field Field::new(\"Password\",\"hunter2\").with_attrs(FieldAttributes::plain().sensitive()); assert model.redacted() has the password field value == REDACTED_PLACEHOLDER, the secret string \"hunter2\" is ABSENT from the redacted model's fields, and the non-secret value \"alan\" is still present (27.5 -- only declared-secret is withheld).",
+    "Run the scoped test and confirm it fails to compile (redacted() absent) = red.",
+    "Implement `impl ScreenModel { pub fn redacted(&self) -> ScreenModel }` in redact.rs: clone self; for each field with attrs.sensitive == true set value = REDACTED_PLACEHOLDER.to_string() (preserve label + attrs). Keep under ~40 lines.",
+    "Wire the module: add `mod redact;` and `pub use redact::REDACTED_PLACEHOLDER;` to crates/ff-screen-model/src/lib.rs near the other mod/pub use lines.",
+    "Add a second test `redacted_model_omits_secret_in_every_text_format` annotated `// Validates: screen-snapshot-scrm Req 27.4`: for each of SnapshotFormat::{PlainText,Ansi,Markdown,Html,Yaml} call render(&model.redacted(), fmt, RenderOptions::default()) and assert the output does NOT contain \"hunter2\" and DOES contain \"[REDACTED]\" (proves redaction is upstream of yaml, which otherwise prints the value in clear).",
+    "Run `cargo test -p ff-screen-model redact`, `cargo clippy -p ff-screen-model -- -D warnings`, `cargo fmt -p ff-screen-model -- --check`; read the logs; confirm green/clean.",
+    "Keep redact.rs under 400 non-test lines (it will be small); commit locally on branch scrm-2e."
+  ],
+  "acceptance_criteria": [
+    "ff-screen-model exposes ScreenModel::redacted() and REDACTED_PLACEHOLDER == \"[REDACTED]\" (ASCII).",
+    "redacted() masks ONLY fields whose attrs.sensitive is true; non-secret field values are unchanged (Req 27.5).",
+    "The secret value is ABSENT and the placeholder PRESENT in every text format rendered from the redacted model (Req 27.4).",
+    "`cargo test -p ff-screen-model redact` passes; `cargo clippy -p ff-screen-model -- -D warnings` clean; `cargo fmt -p ff-screen-model -- --check` clean.",
+    "No file exceeds 400 non-test lines; placeholder and source are ASCII."
+  ],
+  "verification": [
+    "cargo check -p ff-screen-model",
+    "cargo test -p ff-screen-model redact",
+    "cargo clippy -p ff-screen-model -- -D warnings",
+    "cargo fmt -p ff-screen-model -- --check"
+  ],
+  "blocked_reason": null,
+  "findings": "DONE. Added crates/ff-screen-model/src/redact.rs. Public API for FEAT-002 to consume: (1) `ff_screen_model::ScreenModel::redacted(&self) -> ScreenModel` -- pure transform, clones self and replaces every field whose attrs.sensitive is true with the placeholder; non-sensitive values/labels/attrs preserved. (2) `ff_screen_model::REDACTED_PLACEHOLDER` (re-exported from crate root, value \"[REDACTED]\", ASCII). FEAT-002 should apply .redacted() once in active_dialog_capture() (as the plan step 5 says) so all callers get the masked model; do NOT re-mask in renderers (none were edited -- redaction is strictly upstream of render, confirmed by test redacted_model_omits_secret_in_every_text_format which proves yaml output drops the secret despite yaml otherwise printing field values in clear). Note: redacted() only masks the fields[] vector -- it does NOT scan title/messages/tables/status_bar/command_line/header_lines/footer_lines. If a FEAT-002 dialog puts a secret anywhere other than a sensitive-marked Field, it will NOT be redacted; keep secrets in a Field with FieldAttributes::plain().sensitive(). redact.rs is ~115 lines total incl tests (~37 non-test), well under 400. Verification all green in worktree: cargo check/clippy(-D warnings)/fmt(--check)/test -p ff-screen-model redact (2 tests pass). Committed on branch scrm-2e."
+}

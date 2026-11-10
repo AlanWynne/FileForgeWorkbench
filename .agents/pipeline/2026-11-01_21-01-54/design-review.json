@@ -1,0 +1,54 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "MEDIUM",
+      "summary": "D6 relocates the key description to hover text, contradicting FR7/AC 22.9 'unchanged behaviour' and dropping the existing selectable description surface (Req 14.2).",
+      "location": "02-design.md D6; config_panel/render.rs render_entry",
+      "fix": "Keep the description as a visible, selectable element (same-row secondary weak label after the value, or a second line under the key row) and state the alignment column is computed only from the key-label line. A real change to description display needs the requirements gate."
+    },
+    {
+      "id": 2,
+      "severity": "MEDIUM",
+      "summary": "D5 renders the key path as a single RichText::monospace label for alignment, which drops the current selectable key-name button (Req 14.2) and does not state the styling that keeps the char-count->pixel-width assumption valid.",
+      "location": "02-design.md D5/D6; config_panel/render.rs render_entry",
+      "fix": "State explicitly that the padded key path is a non-interactive RichText::monospace label (no button frame/padding) so char-count width holds, and confirm whether the selectable key-name must be preserved; if so, specify how (transparent selectable_label sized to the padded text)."
+    },
+    {
+      "id": 3,
+      "severity": "MEDIUM",
+      "summary": "Save button + 'Unsaved edits : <yes|no>' placement is ambiguous ('same row or immediately adjacent'); interacts with the Tab-order caveat since Save is interactive and must not precede the Filter field.",
+      "location": "02-design.md D2, D7",
+      "fix": "Pick one layout: keep Filter+Save as the first header row with Filter TextEdit allocated before the Save button (preserving first-Tab=Filter), and render 'Unsaved edits : yes|no' as a non-interactive label row below it."
+    },
+    {
+      "id": 4,
+      "severity": "NIT",
+      "summary": "D9 overstates render.rs proximity to the 400-line budget; it is ~297 non-test lines (407 total incl. tests), ~100 lines of headroom.",
+      "location": "02-design.md D9; config_panel/render.rs",
+      "fix": "Restate the premise with the real ~297 non-test count; keep the conditional layout.rs split and extract-if-approaching guidance."
+    },
+    {
+      "id": 5,
+      "severity": "NIT",
+      "summary": "D5's grid-rejection rationale is substantively correct but cites 'the keys_editor panel' whereas the documented evidence is in keys_editor_panel/render.rs, not shell/keys_editor.rs.",
+      "location": "02-design.md D5; crates/ff-desktop/src/shell/keys_editor_panel/render.rs lines ~83-88",
+      "fix": "Cite keys_editor_panel/render.rs as the source of the documented Grid/ScrollArea cell-collapse behaviour."
+    },
+    {
+      "id": 6,
+      "severity": "NIT",
+      "summary": "AC 22.4 vs FR3 connector-set divergence (FR3 lists a vertical continuation bar) is resolved by the two-level model but not called out in D4.",
+      "location": "02-design.md D4; 01-requirements.md FR3/AC 22.4",
+      "fix": "Add one sentence in D4 noting FR3's vertical continuation bar does not apply (no intermediate levels in a two-level tree), so only tee/L are drawn, matching AC 22.4."
+    },
+    {
+      "id": 7,
+      "severity": "NIT",
+      "summary": "The 'Macro Library header' alignment-idiom precedent cited in D5/tech-stack was not located during verification; calendar_header.rs and the POM calendar precedents are confirmed.",
+      "location": "02-design.md Technology stack, D5",
+      "fix": "Cite the exact Macro Library file/function or drop the reference; the calendar_header.rs precedent alone justifies the idiom."
+    }
+  ]
+}

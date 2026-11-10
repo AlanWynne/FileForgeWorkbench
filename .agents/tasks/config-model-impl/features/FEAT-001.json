@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "The write engine: ONE shared Config_Rebuild_Helper that serialises the Recovery_Source into COMPLETE config files through the dir seams, a COMPLETE-mode menu serialiser, and the optional crate-private config_version stamp. This is the foundation every write path (first-run, Reset bare) depends on. Nothing else in this task can write config without it. It introduces no new dispatcher, stack, or public cross-crate type.",
+  "status": "pending",
+  "steps": [
+    "Read context.json and this file FIRST. Read crates/ff-desktop/src/menu_workspace/serialiser.rs, loader.rs, defaults.rs, and crates/ff-desktop/src/shell/user_aliases.rs so you reuse serialise_user_aliases + user_alias_override_file and the recovery_*_menu() constants.",
+    "TDD: in menu_workspace/serialiser.rs write a FAILING test that serialise_complete(recovery_pom_menu()) emits show_calendar explicitly (true for POM) and round-trips through parse_menu_str; and that serialise_complete(recovery_settings_menu()) emits show_calendar=false explicitly. Validates: configuration-system Requirement 23.4.",
+    "Add pub fn serialise_complete(menu: &MenuFile) -> String to serialiser.rs that emits EVERY flag explicitly (title, show_calendar, group_separator, group_headers, and per option key/command/description/enabled/group/show_in_menu_bar) plus a top-level config_version stamp integer. Do NOT change the existing serialise() (the Menus-editor save keeps clean output). Make the new tests pass.",
+    "Add an optional defaulted config_version to the crate-private RawMenuFile in loader.rs (#[serde(default)] config_version: Option<u32>) so a file carrying the stamp loads and the field is ignored. Add a loader test that a menu TOML with config_version parses successfully and is otherwise unchanged. Validates: configuration-system Requirement 23.9.",
+    "Create crates/ff-desktop/src/shell/config_bootstrap.rs. Add pub(super) enum BootstrapMode { FirstRunMissingOnly, RebuildOverwrite } and a pure free function pub(super) fn write_builtin_defaults(menus_dir: &Path, scrm_dir: &Path, alias_base: &Path, locale: &str, mode: BootstrapMode) -> Result<(), String> that: writes pom.toml and settings.toml under menus_dir and scrm.toml under scrm_dir via serialise_complete; writes the single X->EXIT row (surface X, canonical EXIT, environment Ffcmd) via user_aliases::serialise_user_aliases to user_aliases::user_alias_override_file(alias_base, locale, environment_registry::FFCMD_NAME); creates parent dirs; in FirstRunMissingOnly writes only a file whose path does not exist (per-file), in RebuildOverwrite always writes. Pass the three resolved paths IN (do not call self.menus_dir() inside) so the helper is pure and unit-testable and both hooks share one body.",
+    "Register the new module: add `mod config_bootstrap;` (pub(super) as needed) in crates/ff-desktop/src/shell/mod.rs near the other shell submodules.",
+    "TDD for the helper (tests inside config_bootstrap.rs against TempDirs): FirstRunMissingOnly writes pom/settings/scrm + aliases/en/FFCMD.toml when absent and leaves a pre-existing file byte-unchanged (Validates: configuration-system Requirement 23.2, 23.6); RebuildOverwrite replaces an existing file (Validates: Requirement 19.17); every write lands under the PASSED paths, not a real dir (Validates: Requirement 23.5); written menu files are Complete_Config_File with show_calendar explicit (Validates: Requirement 23.4); aliases/en/FFCMD.toml contains a parseable X->EXIT row (Validates: command-configurator Requirement 8.1, 8.2).",
+    "Run the scoped checks and read their output. Fix any clippy/fmt issue. Keep config_bootstrap.rs and serialiser.rs under 400 non-test lines (split the test module to a sibling if needed)."
+  ],
+  "acceptance_criteria": [
+    "`cargo test -p ff-desktop config_bootstrap` passes all new helper tests.",
+    "`cargo test -p ff-desktop serialiser` and `cargo test -p ff-desktop loader` pass (new serialise_complete + config_version tests and all pre-existing tests).",
+    "serialise_complete emits show_calendar explicitly (POM true, Settings false) and round-trips through parse_menu_str; the existing serialise() is unchanged.",
+    "write_builtin_defaults writes through the passed menus_dir/scrm_dir/alias_base only; FirstRunMissingOnly is per-file write-if-absent, RebuildOverwrite always writes; the FFCMD seed file contains X->EXIT.",
+    "No public cross-crate type is reshaped; config_version is crate-private/serialised only.",
+    "cargo clippy -p ff-desktop -- -D warnings is clean and cargo fmt -p ff-desktop -- --check passes."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop config_bootstrap\" (cwd = worktree root); read the output.",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop serialiser\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo clippy -p ff-desktop -- -D warnings\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo fmt -p ff-desktop -- --check\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

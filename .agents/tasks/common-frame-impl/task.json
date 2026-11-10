@@ -1,0 +1,7 @@
+{
+  "task_id": "task-common-frame-impl",
+  "task_description": "Implement the approved, gated COMMON WORKSPACE FRAME (CR-NR-115): the shell owns one common frame (8 elements) around every workspace; each workspace owns only its content area + one status-bar segment. Adds additive Message_Line + last_action_at shell state, removes RUNNING, shortens Profile to Prof:, adds the per-Kind status-segment seam, reproduces the full frame in the snapshot/capture box (full tab bar + menu bar + message line + box-drawing grid), and folds in steering amendments. TDD-first. STOP before merge for the owner's full gate + manual check.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

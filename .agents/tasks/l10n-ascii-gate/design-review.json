@@ -1,0 +1,18 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "location": "docs/quality/TCR.md -- context-help Req 17.9 ASCII row",
+      "problem": "The row shows the pass glyph while its own note states the test still walks per-locale subdirs and is inconsistent with amended 17.9/17.9a; a reader skimming only the glyph could miss that 17.9a is not yet enforced.",
+      "fix": "Optionally append '(enforced for the English base; per-locale UTF-8 enforcement lands with Task 23)' to the glyph row so the status is unambiguous."
+    },
+    {
+      "severity": "NIT",
+      "location": ".agents/tasks/l10n-ascii-gate/amendments-summary.md / documentation-charset.md note",
+      "problem": "The ASCII-scope relaxation is expressed only in the context-help spec; the house-rule steering file documentation-charset.md is not in this workspace checkout and was not edited.",
+      "fix": "Optional, owner-directed: if the carve-out should be visible in the steering rule, open a separate user-space edit where that file lives (out of scope for this workspace-scoped gate)."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\l10n-ascii-gate\\design-review.md"
+}

@@ -1,0 +1,10 @@
+{
+  "task_id": "task-scrm-2e-dialog-capture",
+  "task_description": "Stream SCRM Phase 2E: make message boxes and dialog boxes capturable and copy/paste-able per screen-snapshot-scrm Requirement 27 -- a logical ScreenModel for transient overlays on the existing ScreenProvider seam, SNAPSHOT capturing the frontmost dialog via the Phase 2B composite clipboard, a direct COPY affordance, and a declared-credential-secret redaction exception (ASCII placeholder in the model, the copy text, and the composite).",
+  "status": "completed",
+  "feature_order": [
+    "FEAT-001",
+    "FEAT-002"
+  ],
+  "blocked_reason": null
+}

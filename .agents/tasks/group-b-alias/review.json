@@ -1,0 +1,8 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "Copy + immediate index shift (likely): in ispf_table_editor/line_commands.rs, immediate I/D entries are collected against original indices but applied after copy/move inserts have already grown the list, so a batch mixing C/A with a D on a later row would delete the wrong row. Not covered by any test. Apply immediates before copy inserts, re-resolve indices, or document+test that mixing copy with immediate in one batch is unsupported. Non-blocking for APPROVED.",
+    "enabled_letters omits SORT (possible, cosmetic): LineCommandSet::enabled_letters returns only I/D/C/M and never reflects the sort flag, so a header hint built from it would under-report. Only used for a hint/notice today; confirm no surface relies on it to advertise SORT."
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/group-b-alias/review.md"
+}

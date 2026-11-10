@@ -1,0 +1,7 @@
+{
+  "task_id": "task-command-help-impl",
+  "task_description": "Implement CR-NR-119 Root-Command Help Model: a pure one-line-description extractor and short_description lookup in ff-help; a --help/-h//? prelude short-circuit plus enforced-root-aware help open and KEYS/CONFIG cmd:<ROOT> precedence on the single dispatch front door (no new dispatcher); ~40 authored cmd:<ROOT> Markdown help topics for the missing FFCMD roots; an ff-desktop enforcement test asserting every FFCMD root has a conforming cmd:<ROOT> topic with a valid one-liner (FFEDIT deferred, extensions never asserted); and display-time short-description inheritance for the alias editor and command listings (not persisted).",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

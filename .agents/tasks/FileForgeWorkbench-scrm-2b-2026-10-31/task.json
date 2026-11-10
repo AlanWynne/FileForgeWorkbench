@@ -1,0 +1,10 @@
+{
+  "task_id": "task-scrm-2b-three-flavor-clipboard",
+  "task_description": "Rework the SCRM Phase 2B bare-SNAPSHOT clipboard payload into a THREE-FLAVOR Windows transaction: (1) picture CF_DIB/CF_DIBV5 from a REAL egui/eframe window screenshot (not a text raster), (2) CF_UNICODETEXT Markdown-fenced text using proper Unicode box-drawing glyphs, (3) composite CF_HTML embedding the screenshot as base64 <img> plus the box-drawn <pre> text so Word shows both. All three placed in one clipboard-open transaction. ANSI stays off the clipboard; explicit SNAPSHOT <FORMAT> file outputs unchanged; no format picker; ff-screen-model stays egui-free; single dispatch seam; framework-conformance.",
+  "status": "completed",
+  "feature_order": [
+    "FEAT-001",
+    "FEAT-002"
+  ],
+  "blocked_reason": null
+}

@@ -1,0 +1,13 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "location": "docs/specs/screen-snapshot-scrm/tasks.md (## Cross-cutting block)",
+      "problem": "Task numbering is out of sequence across waves: the Cross-cutting block uses '- [ ] 10. TCR + verification' appearing after task 9 (Wave 3), while Wave 2R continues at 11-13 and Wave F adds 15-21. Numbers are unique and every line is titled, so task-format.md is satisfied and the UI renders correctly; this is a readability nit and the ordering is largely pre-existing, not introduced by this gate.",
+      "fix": "Optional/non-blocking: move the Cross-cutting TCR block to the end and renumber after the highest wave task (e.g. 22. TCR + verification), or leave as-is since numbers remain unique and titled."
+    }
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/scrm-saveconv-extensions-investigation/phase0-review.md"
+}

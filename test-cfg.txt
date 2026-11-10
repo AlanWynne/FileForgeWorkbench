@@ -1,0 +1,19 @@
+False
+
+    Directory: C:\Users\A142367\AppData\Roaming\ffworkbench
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d----          2026/08/22    15:23                catalogs
+d----          2026/11/02    22:12                config-archive
+d----          2026/11/02    22:13                keymaps
+d----          2026/09/15    21:23                logs
+d----          2026/11/02    22:12                menus
+d----          2026/08/10    11:14                plugins
+d----          2026/09/18    17:53                profiles
+d----          2026/08/10    11:14                recovery
+d----          2026/11/01    20:09                screen-collections
+d----          2026/08/10    11:14                sessions
+-a---          2026/11/02    18:09           5685 command_history.toml
+-a---          2026/09/06    15:56            281 datasets.toml
+

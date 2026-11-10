@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "The first-run write hook: one hook in shell/construct.rs::new_with_history_store that writes any ABSENT built-in menu file and the absent FFCMD.toml seed via the FEAT-001 helper (FirstRunMissingOnly), with Degraded_Mode skip and parse-failure safety, plus the test-isolation change so the shell suite's writes stay in temp dirs. Depends on FEAT-001.",
+  "status": "pending",
+  "steps": [
+    "Read context.json, this file, and FEAT-001.json findings FIRST. Read crates/ff-desktop/src/shell/construct.rs, tests_common.rs, commands_fastpath.rs (ensure_pom_menu_loaded), commands_menu.rs (open_menu_by_name), and alias_editor.rs (active_locale, user_alias_override_base). Confirm how Degraded_Mode / a non-writable User_Data_Dir is detectable (ff-session UserDataDir / degraded_mode).",
+    "Add impl WorkbenchShell { pub(super) fn first_run_write_builtin_config(&mut self) } in config_bootstrap.rs: resolve self.menus_dir(), self.scrm_dir(), self.user_alias_override_base(), and the active ui.locale (default en, as alias_editor::active_locale does); if the User_Data_Dir is not writable (Degraded_Mode) RETURN without writing (session falls back to the Recovery_Source); else call write_builtin_defaults(.., FirstRunMissingOnly) and log a WARN on any write error (non-blocking).",
+    "Wire the hook: in new_with_history_store bind the constructed struct to `let mut shell = Self { .. };`, call `shell.first_run_write_builtin_config();`, then return `shell`. This is the ONE hook; do NOT add a write in ensure_pom_menu_loaded (keep its code-only fallback for a still-absent/corrupt file).",
+    "RESOLVE THE TEST-ISOLATION DESIGN POINT (blocking): make_shell() and harness_shell() currently set dir_overrides.menus AFTER construction, but the first-run write now runs DURING construction and would hit the real User_Data_Dir. Make the menus AND scrm dirs resolve to the process-global isolated temp dirs BEFORE the write runs -- mirror the existing isolated_menus_dir() set-once pattern for scrm, and arrange construction to use them (e.g. a test-only pre-construction seam in the same spirit as isolate_user_alias_base_once() which already isolates the alias base via FFWB_USER_ALIASES_DIR). Do NOT weaken production behaviour (production dir_overrides stay None -> real dir). If the only clean fix needs a constructor signature change that ripples widely, record it in findings and prefer the env/set-once seam that matches the existing patterns.",
+    "TDD (shell suite tests, using an isolated menus/scrm/alias base): an empty overridden user dir -> construction writes pom/settings/scrm + aliases/en/FFCMD.toml and the subsequent POM load reads the written file (Validates: startup-and-session Requirement 23.1, configuration-system Requirement 23.2); a pre-existing user pom.toml is NOT overwritten (Validates: Requirement 23.2 per-file / startup Req 23.1 idempotent); a present-but-corrupt pom.toml -> recovery fallback + non-blocking notice, the file is NOT overwritten and NOT treated as absent (Validates: configuration-system Requirement 23.7); Degraded_Mode (non-writable dir) skips the write and falls back to Recovery_Source (Validates: configuration-system Requirement 23.8, startup-and-session Requirement 23.4).",
+    "Run the scoped checks and the relevant scoped tests; read output; fix clippy/fmt. Keep construct.rs and config_bootstrap.rs under 400 non-test lines."
+  ],
+  "acceptance_criteria": [
+    "Construction with an empty, isolated user dir writes pom/settings/scrm + aliases/<locale>/FFCMD.toml and then loads them.",
+    "A pre-existing user menu file is left byte-unchanged; a corrupt present file is not overwritten and not treated as absent (recovery fallback + notice).",
+    "Degraded_Mode skips the first-run write and does not loop; the session still runs from the Recovery_Source.",
+    "The existing ff-desktop shell test suite still compiles and its menu/alias-dependent tests remain deterministic (writes isolated to temp dirs; no real User_Data_Dir writes).",
+    "The first-run write goes through menus_dir()/scrm_dir()/user_alias_override_base() seams only.",
+    "cargo clippy -p ff-desktop -- -D warnings clean; cargo fmt -p ff-desktop -- --check passes."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop first_run\" (and the specific new test names); read output.",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop construct\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo clippy -p ff-desktop -- -D warnings\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo fmt -p ff-desktop -- --check\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

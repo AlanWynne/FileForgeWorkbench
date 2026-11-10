@@ -1,0 +1,24 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "where": "workspace-framework Req 7.2 / screen-snapshot-scrm Req 30.2 vs Req 29.1 and design Section 13 fixture",
+      "problem": "The window-title-bar leading marker differs across places: 7.2/30.2 show brand token + '_ [] X' with no leading marker, 29.1 shows a '# |' marker, the design fixture shows '| #  '. All three are explicitly SETTLED-BUT-TUNABLE, so it is presentation, not a contract conflict.",
+      "fix": "Add a one-line note in Req 30.2 that the exact leading glyph follows 29.1's tunable marker, so 7.2/30.2 are not read as forbidding the '# |' marker 29.1 permits."
+    },
+    {
+      "severity": "NIT",
+      "where": "screen-snapshot-scrm design.md Section 13 rendered-frame fixture",
+      "problem": "The fixture status line clips the Alias Kind example segment mid-phrase ('... Aliases: 1 | Rows 1'); since per-Kind segment content is deferred (7.21/30.10), the clipped text is only illustrative but could be misread as literal required text.",
+      "fix": "Annotate the fixture that the Alias segment text is illustrative and its content is defined by the Alias follow-up Kind gate."
+    },
+    {
+      "severity": "NIT",
+      "where": "workspace-framework tasks Phase CF",
+      "problem": "screen-snapshot-scrm Phase 2H correctly documents its dependency on Phase CF's Message_Line/last_action_at state, but Phase CF has no reverse pointer noting Phase 2H consumes that state. Navigability only; no correctness impact.",
+      "fix": "Add a one-line cross-reference in Phase CF noting screen-snapshot-scrm Phase 2H reproduces the Message_Line it introduces."
+    }
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/common-frame-gate/review.md"
+}

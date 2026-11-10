@@ -1,0 +1,7 @@
+{
+  "task_id": "config-model-impl",
+  "task_description": "Implement the owner-confirmed CR-CH-116 framework change in the ff-desktop crate: write-through TOML config for the built-in menus (POM, Settings, SCRM) and the FFCMD X->EXIT alias seed, plus the ISPF END/RETURN/EXIT command model with X = EXIT everywhere. Build ON existing seams (single dispatch front door, per-tab Navigation_Stack, three-layer alias resolver, ScreenProvider); introduce NO new dispatcher or navigation stack. TDD-first; ASCII-only; <=400 non-test lines per source file; only crate-private config_version data-shape change.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

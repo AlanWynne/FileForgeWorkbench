@@ -1,0 +1,9 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "FFEDIT X -> EXCLUDE protection is mis-described in commit messages and ladder comments as the active-wins claim gate, but EnvironmentRegistry::is_ffedit_active returns false unconditionally in this core-strip build; the real protection is the front-door rewrite_verb_to_root resolving X under the FFEDIT table to EXCLUDE. Behaviour and tests are correct -- documentation/comment imprecision only, non-blocking.",
+    "POM/SCRM exit option renders command column X (not EXIT) in the rendered menu and markdown golden; this is the intended alias-surface display (display_surface_for_canonical(EXIT) -> X), not a stale golden or regression.",
+    "Reset-bare rebuild via write_builtin_defaults can fail after the old files are already archived, leaving the active profile on the compiled Recovery_Source until next launch; this is the intended graceful-degradation posture and the error is surfaced in the reported errors list."
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/config-model-impl/review.md"
+}

@@ -1,0 +1,16 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "summary": "Second-prize resolution order (localization/design.md and menu-workspace/design.md give a three-step order menus/<L>/<name>.toml -> base menus/<name>.toml -> code-only DEFAULT_*_TOML) is a correct superset of Req 12.7's two-step wording ('locale file else Identity_Base'), but the mapping is left implicit.",
+      "fix": "Add one sentence to the design noting that for a USER menu the 'Identity_Base definition' of Req 12.7 is the base menus/<name>.toml, and for a built-in it is the code-only DEFAULT_*_TOML, so the two-step requirement maps cleanly onto the three-step design."
+    },
+    {
+      "severity": "NIT",
+      "summary": "The design says the two reconstruct seams re-read 'the THEN-active locale L each time' but does not name HOW L is obtained at reconstruct_settings_menu / reconstruct_named_menu.",
+      "fix": "Add a half-sentence naming the active-locale source the two seams read (the same ui.locale accessor on_locale_reload / menu_option_command_surfaces use)."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\menu-kind-localisation\\design-review.md"
+}

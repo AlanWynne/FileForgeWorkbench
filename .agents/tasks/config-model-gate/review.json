@@ -1,0 +1,45 @@
+{
+  "verdict": "APPROVED",
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/config-model-gate/review.md",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "status": "unchanged-from-round-1",
+      "location": "docs/specs/startup-and-session/requirements.md, screen-snapshot-scrm/requirements.md, navigation-commands/requirements.md (pre-existing lines, e.g. startup lines 27/66/69/97/248)",
+      "problem": "The ASCII scan flags non-ASCII characters (arrows, en-dashes) in touched files. All are pre-existing lines not authored by CR-CH-116; the round-2 fix lines (startup 291, scrm 987, the citation edits) are ASCII-clean.",
+      "fix": "Optional standing-repo cleanup pass per documentation-charset.md; not introduced by this change. Non-blocking."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "status": "unchanged-from-round-1",
+      "location": ".agents/tasks/config-model-gate/ (main root) vs .worktrees/config-model-gate/ (deliverables)",
+      "problem": "The prompt's absolute paths resolve to the main repo root, which holds none of the 16 doc edits; the deliverables live in the sibling worktree. gate-summary.md section 9 documents this as an intentional split (worktree = merging docs; .agents = shared scratch).",
+      "fix": "Direct implementers/reviewers to the worktree for the docs. Not blocking: the complete deliverables exist in the worktree."
+    }
+  ],
+  "closedFindings": [
+    {
+      "id": "round1-1",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "location": "docs/specs/startup-and-session/requirements.md criterion 11.9 (line 291)",
+      "resolution": "Rewritten to the write-through model: built-in menus ARE written on first launch (Req 23.1-23.2); compiled Recovery_Source consumed only for first-run write, Reset-bare rebuild, and last-ditch fallback. Companion criterion 8 CR-CH-021 tag qualified. No 'never materialised' clause remains."
+    },
+    {
+      "id": "round1-2",
+      "severity": "HIGH",
+      "status": "CLOSED",
+      "location": "docs/specs/screen-snapshot-scrm/requirements.md criterion 25.5 (line 987)",
+      "resolution": "Rewritten to agree with revised 22.8: scrm.toml written on first run and rebuilt by Reset bare from DEFAULT_SCRM_MENU_TOML via the shared helper; app runs from disk; user file authoritative; compiled default is Recovery_Source only."
+    },
+    {
+      "id": "round1-3",
+      "severity": "MEDIUM",
+      "status": "CLOSED",
+      "location": "configuration-system 513/929; menu-workspace 197/638/971",
+      "resolution": "All five citations now read 'command-configurator Requirement 8' (the X -> EXIT seed). Zero 'command-configurator Requirement 6' occurrences remain; Req 8 heading confirmed at line 545, Req 6 is the unrelated localisation-alias requirement."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "location": "command-semantics design.md 'The substitution algorithm' + Requirement 14.5",
+      "problem": "Extra-arg append slices tokens[highest..] where highest is the highest REFERENCED index; a template referencing a non-contiguous subset (e.g. only &2) silently drops lower unreferenced tokens, contradicting 14.5's 'no supplied token silently discarded'.",
+      "fix": "Add a one-line caveat to 14.5 and the design algorithm naming this as a recorded limitation, or change the append rule to cover any token not consumed by a &N."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "location": "command-framework design.md 'Menu-composition finding' + Requirement 19.6",
+      "problem": "activate_menu_option calls rewrite_verb_to_root(option.command) unconditionally; a menu option whose stored command IS a template alias surface expands with an empty arg list on click. This consequence is never named, so it has no criterion.",
+      "fix": "Add a sentence to Req 19.6 / the menu-composition section stating the empty-substitution outcome (per 14.4) for a menu option storing a template-alias surface, or state that menu options are not expected to store template-alias surfaces."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "location": "gate-summary open decision 1 + command-semantics Requirement 14.3",
+      "problem": "14.3 is written as settled ('&*' = all remaining tokens) while gate-summary lists the '&*'-mixed-with-&N semantics as an open owner question; a reviewer cannot tell whether 14.3 is final.",
+      "fix": "Mark 14.3 as '(proposed; owner to confirm &* semantics -- see gate-summary open decision 1)'. No algorithm change required."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\parameterised-aliases\\design-review.md"
+}

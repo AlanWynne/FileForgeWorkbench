@@ -986,3 +986,134 @@ supersedes [CR-CH-021]. Investigation `.agents/tasks/config-model-change/investi
 - Any change to the X / END / RETURN / EXIT command model (that is menu-workspace
   Requirement 14 and navigation-commands Requirement 21, revised separately under
   the same CR).
+
+---
+
+### Requirement 24: Expanded FFCMD alias seed set -- five seed aliases (CR-NR-120)
+
+> **BEHAVIOUR CHANGE on CR-CH-116 (owner-approved 2026-11-06).** EXTENDS the
+> write-through alias seed of Requirement 23.3 and command-configurator
+> Requirement 8. Today the bare/first-run seed and the Reset-bare rebuild emit
+> exactly ONE genuine seed alias, `X -> EXIT`. This requirement grows the seed set
+> to exactly FIVE aliases so the SCRM shortcuts (`SS`, `CS`, `CT`, `CR`) survive a
+> Reset bare instead of disappearing. The reported defect: after Reset bare the
+> owner's `SS` alias vanished because `SS` was never part of the rebuilt baseline.
+> NO new mechanism is introduced: the five rows are defined in the SAME single
+> Rust Recovery_Source function that defines `X -> EXIT` today, written through to
+> the SAME `aliases/<locale>/FFCMD.toml` file, and rebuilt by the SAME
+> Config_Rebuild_Helper (Requirement 23.6). Nothing is hidden.
+
+**User Story:** As an operator who relies on the SCRM shortcuts, I want `SS`, `CS`,
+`CT`, and `CR` to be part of the rebuilt baseline, so that a Reset bare (or a first
+run) restores them exactly as it restores `X -> EXIT`, instead of silently dropping
+them.
+
+**Source:** CR-NR-120 (owner, 2026-11-06, "Proceed with the alias seed set"):
+expand the bare/first-run seed set from one alias to five. Owner-approved seed set
+(carried verbatim): `X -> EXIT`, `SS -> SNAPSHOT`, `CS -> CAPTURE START`,
+`CT -> CAPTURE STOP`, `CR -> CAPTURE REPLAY`. Cross-references: configuration-system
+Requirement 23 (write-through config model, First_Run_Write, Reset-bare rebuild),
+command-configurator Requirement 8 (the `X -> EXIT` seed this extends) and
+Requirement 9 (CR-NR-119 display-time description inheritance), screen-snapshot-scrm
+Requirement 7-10/24 (the SNAPSHOT / CAPTURE verbs these aliases target).
+
+#### Acceptance Criteria
+
+1. WHEN a bare FFCMD alias config is built for the active locale -- on First_Run_Write
+   (Requirement 23.3) OR on a Reset-bare rebuild (Requirement 19.17) -- THE workbench
+   SHALL seed `aliases/<locale>/FFCMD.toml` with EXACTLY these five FFCMD seed
+   aliases, each with an EMPTY stored description, and NO other genuine (non-identity)
+   seed aliases:
+   - `X` -> `EXIT`
+   - `SS` -> `SNAPSHOT`
+   - `CS` -> the CAPTURE START shortcut (representation per criterion 24.5)
+   - `CT` -> the CAPTURE STOP shortcut (representation per criterion 24.5)
+   - `CR` -> the CAPTURE REPLAY shortcut (representation per criterion 24.5)
+   [CR-NR-120]
+
+2. THE five seed aliases SHALL be defined in ONE Rust Recovery_Source -- the SAME
+   function that defines the `X -> EXIT` seed row today (the Config_Rebuild_Helper's
+   alias-seed builder, Requirement 23.6 / command-configurator Requirement 8) -- so
+   the First_Run_Write and the Reset-bare rebuild emit the identical set from a
+   single definition and cannot diverge. No seed alias SHALL be defined anywhere
+   else; nothing is hidden. [CR-NR-120]
+
+3. EACH seed alias's STORED description SHALL be the EMPTY string; the five rows
+   SHALL carry no description text on disk. The on-disk `FFCMD.toml` row shape SHALL
+   be UNCHANGED from Requirement 23 / command-configurator Requirement 8 (surface,
+   canonical, environment `ffcmd`, optional empty description, optional parameter
+   template), so an existing reader parses the expanded file without schema change.
+   [CR-NR-120]
+
+4. EACH seed alias's DISPLAYED one-line description SHALL be INHERITED at display
+   time from its target command's `cmd:<ROOT>` help topic through the CR-NR-119
+   `short_description(cmd:<ROOT>)` lookup (command-configurator Requirement 9.1/9.5,
+   context-help Requirement 22.2), keyed by the UPPERCASED canonical root the row
+   stores. The seed SHALL persist NO description literal (criterion 24.3); inheritance
+   is display-only and SHALL NOT alter the SAVE / on-disk shape (Requirement 9.2).
+   WHEN no matching `cmd:<ROOT>` topic is loaded, the display SHALL fall back to EMPTY
+   (Requirement 9.4), never failing. [CR-NR-120]
+
+5. THE stored canonical VALUE of each seed alias SHALL be a VALID FFCMD canonical
+   root (`EnvironmentRegistry::contains_root("FFCMD", <canonical>)` TRUE), so the
+   seed rows PASS the alias load/save validation (command-configurator Requirement
+   5.4 / 6.6, the `contains_root` root-validity rule) and are never skipped with a
+   WARN. For the two-word CAPTURE shortcuts (`CS`, `CT`, `CR`) THE representation
+   SHALL be: canonical root `CAPTURE` (a valid FFCMD root) WITH the subcommand carried
+   in the row's parameter template (`command_template` = `START` / `STOP` / `REPLAY`),
+   so the typed surface expands through the EXISTING `rewrite_verb_to_root` pre-pass
+   to `CAPTURE START` / `CAPTURE STOP` / `CAPTURE REPLAY` and dispatches through the
+   EXISTING single front door; and the inherited description (criterion 24.4) resolves
+   from the EXISTING `cmd:CAPTURE` topic (so `CS`, `CT`, `CR` all display the single
+   `cmd:CAPTURE` one-liner -- the accepted tradeoff of this representation). This is
+   the DECIDED representation (Option A, owner-approved 2026-11-06); see the OWNER
+   DECISION note below. [CR-NR-120]
+
+6. THE five seed aliases SHALL each appear as an editable/removable user-override row
+   in the Alias Editor's FFCMD view exactly like the `X -> EXIT` seed
+   (command-configurator Requirement 8.6): the write-through model exposes them; they
+   are not hidden logic. Removing one is the user's prerogative; a subsequent Reset
+   bare restores the full five-alias set (criterion 24.1). [CR-NR-120]
+
+7. THE resolver SHALL load the five seed aliases through the EXISTING User_Alias_Store
+   overlay path routed into the FFCMD AliasTable (command-configurator Requirement
+   5.7 / 8.7), introducing NO new resolution mechanism, dispatcher, navigation stack,
+   or persistence format (framework-conformance mechanisms 1 and 4). [CR-NR-120]
+
+> **OWNER DECISION -- two-word CAPTURE targets (`CS` / `CT` / `CR`).** The brief's
+> confirmed decision stored the canonical VALUE as the full two-word string (e.g.
+> `CAPTURE START`). Investigation found this contradicts two EXISTING framework
+> facts, so the gate surfaces it rather than silently implementing a framework
+> change:
+>   (i) `EnvironmentRegistry::contains_root("FFCMD", ...)` is an EXACT full-string
+>       match and the FFCMD root set contains `CAPTURE` (single word), NOT
+>       `CAPTURE START`. A row whose canonical is `CAPTURE START` would be REJECTED
+>       by the alias load/save validation (command-configurator Req 5.4/6.6) and
+>       skipped with a WARN at load, so the seed would not survive.
+>   (ii) The CR-NR-119 help topics authored for SCRM are `cmd:SNAPSHOT` and
+>       `cmd:CAPTURE` (single). There is NO `cmd:CAPTURE START` / `cmd:CAPTURE STOP`
+>       / `cmd:CAPTURE REPLAY` topic, so `short_description(cmd:CAPTURE START)`
+>       returns None and the inherited description would be EMPTY, not the promised
+>       one-liner.
+> **DECISION: Option A, owner-approved 2026-11-06.** Criterion 24.5 implements
+> **Option A (framework-conforming, no framework change):** canonical root
+> `CAPTURE` + parameter template `START` / `STOP` / `REPLAY`; valid root, inherits
+> from `cmd:CAPTURE`, no new mechanism, no new help topic. The accepted tradeoff:
+> `CS`, `CT`, `CR` all display the single `cmd:CAPTURE` one-liner, and the editor
+> shows canonical `CAPTURE` with the subcommand in the template column.
+> **Option B (REJECTED at this gate):** store the canonical as the two-word
+> `CAPTURE START` etc. -- would have REQUIRED a confirmed FRAMEWORK CHANGE (relax
+> `contains_root` to accept compound/first-word roots, rippling into the no-shadow
+> and root-validity rules) PLUS authoring three new `cmd:CAPTURE START/STOP/REPLAY`
+> help topics under CR-NR-119. The owner chose A; B is recorded here only as the
+> considered alternative and is NOT implemented.
+
+#### Out of scope (Requirement 24)
+
+- Turning any verb other than `X`, `SS`, `CS`, `CT`, `CR` into a seed alias.
+- Changing the SNAPSHOT / CAPTURE command semantics (screen-snapshot-scrm) or the
+  X / END / RETURN / EXIT model (menu-workspace Req 14, navigation-commands Req 21).
+- Persisting any description literal on a seed row (descriptions are inherited at
+  display time only, criterion 24.4).
+- Authoring new `cmd:<ROOT>` help topics (would have been Option B only; Option A
+  was chosen, so no new help topic is authored).

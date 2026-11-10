@@ -1,0 +1,23 @@
+{
+  "verdict": "APPROVED",
+  "reviewed_against": [
+    "screen-snapshot-scrm Requirement 27.1-27.7",
+    "master-screen-directive Requirement 4.6"
+  ],
+  "confirmed": [
+    "27.4/27.5 redaction is a PURE model transform applied BEFORE render: ff_screen_model::ScreenModel::redacted() clones and replaces only attrs.sensitive field values with the ASCII [REDACTED] placeholder; no renderer was edited. Secret absent / placeholder present is proven in the model AND in all five text formats (PlainText/Ansi/Markdown/Html/Yaml) by redacted_model_omits_secret_in_every_text_format -- including yaml, which otherwise prints field values in clear, confirming redaction is strictly upstream. Applied ONCE in active_dialog_capture() so SNAPSHOT, direct COPY, and the composite flavors all receive the masked model (copy text proven by copy_places_frontmost_redacted_text_without_screenshot; composite proven by composite_text_flavor_for_dialog_is_redacted).",
+    "27.2/27.7 SNAPSHOT/active_screen_capture returns the FRONTMOST dialog, not the Context: active_screen_capture() calls active_dialog_capture() FIRST and returns ScreenCapture::Model(..) when an overlay is open; the per-Context KindTag match is left byte-for-byte unchanged for the no-overlay case. The dialog model is built from each overlay's OWN state (DialogScreen trait + shell-flag builders), never an egui pixel grab (27.7). Frontmost precedence faithfully mirrors the modal_open OR-chain in update_input.rs (show_about -> show_history_list -> show_swap_list -> show_unsaved_workspace_dialog -> reset_bare_confirm -> pending_external) then the SCRM overlays; palette deliberately excluded. Tests: dialog_open_captures_dialog_not_context_behind, no_dialog_open_returns_none, snapshot_text_for_active_captures_frontmost_redacted_dialog, no_overlay_capture_is_still_the_context_model.",
+    "27.3 the direct COPY verb avoids the screenshot machinery: handle_copy() renders the frontmost surface's redacted PlainText and places it via SnapshotClipboard::place_text (a new TEXT-ONLY flavor -- no picture, no HTML; place_text_offers_text_only asserts the picture payload is never set). It never sets snapshot.screenshot_requested and never issues ViewportCommand::Screenshot, asserted by copy_places_frontmost_redacted_text_without_screenshot and full_shell_copy_command_copies_dialog_text.",
+    "Single command dispatch preserved: COPY is a new arm in the existing commands_ladder_b ladder routed through the single handle_command front door (self.handle_copy(); return true) -- no second dispatcher, no bespoke intercept.",
+    "One ScreenProvider seam preserved: the only capture entry point remains active_screen_capture(); the dialog binding is an additive early-return at its top. No egui pixel grab in the text model path.",
+    "No .rs over 400 non-test lines: dialog_capture.rs ~195 non-test (+ test module), dialog_screen.rs ~130 non-test, redact.rs ~37 non-test, clipboard_backend.rs additions stay under 400. New files total 389/139/101 lines respectively.",
+    "ASCII-only: Select-String [^\\x00-\\x7F] over the three new Rust source files returned no matches. The .ftl additions use \\u00.. escapes (ASCII-encoded) for accented chars; .ftl i18n content is out of the documentation-charset source scope.",
+    "TDD annotations present: every added test carries a // Validates: screen-snapshot-scrm Req 27.x comment (redact.rs, dialog_screen.rs, dialog_capture.rs, clipboard_backend.rs, tests_scrm.rs)."
+  ],
+  "non_blocking_observations": [
+    "redacted() masks only ScreenModel.fields[] -- a secret placed in title/messages/buttons would NOT be masked. This is explicitly documented in master-screen-directive 4.6 / Req 27.4-27.5 (a credential-secret FIELD) and in both FEAT findings; the dialog models deliberately keep secrets in a sensitive-marked Field. Not a defect against the requirement.",
+    "handle_copy/place_text write to the real OsClipboard and return only a status message, so exact clipboard bytes are not asserted headlessly; the computed redacted text and FakeClipboard.place_text are asserted instead, matching the existing SNAPSHOT posture. The OS round-trip is the owner's manual check.",
+    "Per gate-policy.md the authoritative full cargo gate is the owner's manual run; agent-side verification was scoped compile+clippy+fmt+focused tests (reported green in FEAT findings)."
+  ],
+  "findings": []
+}

@@ -1,0 +1,9 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "Calendar today-marker truncation (confirmed, non-blocking): calendar_lines marks today as format!(\"*{day}\").chars().take(2).collect(), which corrupts double-digit days (25 renders as *2, 10 as *1). Snapshot-only cosmetic defect; fix by keeping both digits (trailing marker, single-digit-only marking, or three-char cells).",
+    "Conformance harness no longer drives the real command path (confirmed, non-blocking): assert_capture_contract switched from dispatch_command_string to set_active_tab_context. Still proves every Context is capturable through the seam (the Req 5 ask) but drops Phase 1A's incidental proof that the command path opens each Context. Add a follow-up test or note so the coverage change is intentional.",
+    "Menu-bar chrome sourced separately from the option list (possible): menu_screen_chrome builds menu_bar from resolve_menu_bar_menu() while option rows come from mw. Confirm the intended global-bar semantics so the captured menu bar and body cannot describe different screens."
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/scrm-2a/review.md"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "ff-help one-line-description extractor + registry short_description lookup (context-help Req 21, 22.2). The pure mechanism that derives a command's single-source-of-truth one-liner from its cmd:<ROOT> help topic's `## Description` first paragraph. Independent of all later features; FEAT-002/003/004 depend on this.",
+  "status": "pending",
+  "steps": [
+    "TDD: in a new file crates/ff-help/src/one_liner.rs, write FAILING unit tests FIRST for `extract_one_line_description(body: &str) -> Option<String>`: (a) happy path returns the first paragraph of the `## Description` section; (b) inline markup is stripped (`` `code` ``->code, `**bold**`->bold, `[text](cmd:X)`->text); (c) a multi-paragraph Description returns the FIRST paragraph only; (d) missing or empty Description returns None; (e) a first paragraph over 200 chars returns None; (f) a body modelled on help/commands/session.help.md cmd:SAVE ('Writes the current buffer to its backing file...') extracts that sentence. Each test carries `// Validates: context-help Requirement 21.3` or `21.4`.",
+    "Implement `pub fn extract_one_line_description(body: &str) -> Option<String>` in crates/ff-help/src/one_liner.rs as a PURE function of `body`: scan lines for a heading whose text (after stripping leading `#`/spaces) equals `Description` case-insensitively; collect subsequent lines until the next heading line (starts with `#`) or EOF; take the first blank-line-delimited non-empty paragraph; strip inline Markdown to plain text; collapse internal whitespace to single spaces; trim. Return None if no such paragraph OR the result is empty OR its char count > 200. Keep the function <= ~40 lines (extract a small markup-strip helper if needed). No unwrap/expect (library crate).",
+    "Register the module in crates/ff-help/src/lib.rs: add `pub mod one_liner;` to the Public Modules list and `pub use one_liner::extract_one_line_description;` to the Public API Re-exports block.",
+    "TDD: in the existing `#[cfg(test)] mod tests` of crates/ff-help/src/registry.rs, write FAILING tests FIRST for a new `short_description` method: a registered topic whose body has a Description returns Some(one-liner); an absent key returns None; a registered topic whose body has NO Description returns None. Annotate `// Validates: context-help Requirement 22.2`.",
+    "Implement `pub fn short_description(&self, key: &TopicKey) -> Option<String>` on HelpTopicRegistry in crates/ff-help/src/registry.rs: `self.get(key).and_then(|t| crate::one_liner::extract_one_line_description(t.body()))`.",
+    "Split one_liner.rs tests into crates/ff-help/src/one_liner_tests.rs (or an inline module) only if the file approaches 400 total / ~200 test lines (rust-standards). Keep all prose/test fixtures ASCII-only."
+  ],
+  "acceptance_criteria": [
+    "`extract_one_line_description` is a pure function in crates/ff-help/src/one_liner.rs, re-exported from lib.rs, returning the first `## Description` paragraph as a stripped single line or None for missing/empty/over-200 cases (context-help Req 21.3/21.4).",
+    "`HelpTopicRegistry::short_description(&TopicKey) -> Option<String>` returns the derived one-liner for a loaded topic and None when the topic is absent or has no Description (context-help Req 22.2).",
+    "Running `cargo test -p ff-help one_liner` and `cargo test -p ff-help short_description` passes all new tests.",
+    "No ff-help source file exceeds 400 non-test lines; clippy is clean with -D warnings."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-help one_liner\"  (read the proxy result file; expect all new tests pass)",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-help short_description\"  (expect pass)",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo clippy -p ff-help -- -D warnings\"  (expect clean)",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo fmt -p ff-help -- --check\"  (expect no diff)"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

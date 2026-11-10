@@ -1,0 +1,32 @@
+{
+  "project_type": "Rust workspace (FileForgeWorkbench, ffwb). egui/eframe desktop GUI shell crate ff-desktop plus many dependency crates. ISPF-inspired workbench.",
+  "language": "Rust",
+  "build_system": "Cargo workspace. A custom `cargo gate` alias runs fmt+clippy+build+nextest over the default members and takes several minutes; it is the OWNER's manual run, not an agent step.",
+  "test_framework": "Rust built-in tests + nextest; full-shell GUI tests use egui_kittest harnesses (harness_shell/fixed_shell). Golden text fixtures under crates/ff-desktop/src/shell/golden/ (regen with FFWB_UPDATE_GOLDEN=1).",
+  "build_command": "cargo check -p ff-desktop",
+  "test_command": "cargo test -p ff-desktop <focused_name>",
+  "verification_instructions": "Per gate-policy.md: on every change run SCOPED `cargo check -p ff-desktop`, `cargo clippy -p ff-desktop -- -D warnings`, `cargo fmt -p ff-desktop -- --check`, and the QUICK scoped tests for the touched area (`cargo test -p ff-desktop <name>`). Do NOT run `cargo gate`/full `cargo test`/`cargo nextest` (they wedge the terminal) -- that is the owner's manual run. Verify by effect: read result files / command output; never trust a bare Exit Code -1. Clean up temp files.",
+  "snapshot_or_generated_files": "Golden text fixtures at crates/ff-desktop/src/shell/golden/*.txt. Regenerate the POM/SCRM ones that legitimately change (X option now dispatches EXIT) with `FFWB_UPDATE_GOLDEN=1 cargo test -p ff-desktop <golden_test_name>`, then review the diff by hand before relying on it.",
+  "environment_constraints": "Execution proxy is ON; use clean pwsh7 (C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command). NO raw semicolon chaining on the raw path. Use `git -C c:/workspace/apps/FileForgeWorkbench/.worktrees/config-model-impl` for git. Do ALL work inside that worktree; relative paths resolve against the parent workspace, so pass absolute paths. Never push or merge. Commit locally only when a FEAT asks.",
+  "contribution_requirements": "This IS the owner-confirmed framework change (framework-conformance.md mechanism 4 already superseded by CR-CH-116; mechanism 3 carries the END/RETURN/EXIT note). Do NOT make any OTHER framework change. No public cross-crate type reshape beyond the crate-private config_version field -- if something else seems to need one, STOP and surface it. Preserve the three-layer alias resolver. ASCII-only source/docs (box-drawing only in fixtures). Keep every touched source file under 400 non-test lines; split if needed (config_bootstrap.rs is new). TDD: write the failing test first, each carrying `// Validates: <Req id>`; never silence or delete a failing test to go green.",
+  "key_patterns": "Single command front door: shell/dispatch.rs::dispatch_command_string runs rewrite_verb_to_root (active-env alias table) -> run_command_prelude (try_exit_family, POM fastpath) -> resolve_target -> run_command_ladder. Per-tab Navigation_Stack in shell/nav_stack.rs (nav_end=END one level, nav_return=RETURN to Tab_Visual_Root, close_workspace_or_exit at root). Alias resolver three layers in shell/alias_reader.rs (identity seed + shipped i18n seed + user per-locale override); user override files at <base>/<locale>/<ENV>.toml via user_aliases.rs (serialise_user_aliases + user_alias_override_file). Recovery_Source constants in menu_workspace/defaults.rs (DEFAULT_POM_TOML, DEFAULT_SETTINGS_TOML, DEFAULT_SCRM_MENU_TOML + recovery_*_menu()). Menu serialiser in menu_workspace/serialiser.rs (serialise OMITS default-valued fields -- a COMPLETE mode is needed). Dir seams: menus_dir() / scrm_dir() / user_alias_override_base() honour dir_overrides.* (state_groups.rs DirOverrides) and FFWB_USER_ALIASES_DIR. Reset bare in shell/reset_bare.rs (ARCHIVED_ITEMS + execute_reset_bare + reset_in_memory_to_baseline). Construction in shell/construct.rs::new_with_history_store.",
+  "relevant_files": [
+    "crates/ff-desktop/src/shell/config_bootstrap.rs (NEW -- the Config_Rebuild_Helper + first-run method)",
+    "crates/ff-desktop/src/menu_workspace/serialiser.rs (add serialise_complete + config_version)",
+    "crates/ff-desktop/src/menu_workspace/loader.rs (add crate-private config_version to RawMenuFile)",
+    "crates/ff-desktop/src/menu_workspace/defaults.rs (POM/SCRM X option command -> EXIT; invert materialise tests)",
+    "crates/ff-desktop/src/shell/construct.rs (first-run write hook in new_with_history_store)",
+    "crates/ff-desktop/src/shell/tests_common.rs (make_shell/harness_shell isolation BEFORE the first-run write)",
+    "crates/ff-desktop/src/shell/reset_bare.rs (archive aliases + rebuild via helper)",
+    "crates/ff-desktop/src/shell/commands_ladder_a.rs (remove the upper==\"X\" nav_x arm)",
+    "crates/ff-desktop/src/shell/nav_stack.rs (retire nav_x; keep close_workspace_or_exit/nav_return/nav_collapse_to_visual_root)",
+    "crates/ff-desktop/src/shell/menus_editor.rs (built-in list + SCRM load fallback)",
+    "crates/ff-desktop/src/shell/dispatch.rs (read-only: the front door; X resolves here)",
+    "crates/ff-desktop/src/shell/commands.rs (read-only: run_command_prelude EXIT-family active-wins gate)",
+    "crates/ff-desktop/src/shell/alias_reader.rs (read-only: builtin_ffcmd_roots already includes EXIT; LocaleAliasStore)",
+    "crates/ff-desktop/src/shell/user_aliases.rs (read-only: serialise_user_aliases + user_alias_override_file)",
+    "crates/ff-desktop/src/shell/alias_editor.rs (read-only: active_locale(), user_alias_override_base(), write_override_rows pattern)",
+    "crates/ff-desktop/src/shell/golden/*.txt (regenerate POM/SCRM goldens that change)"
+  ],
+  "directory_structure": "crates/ff-desktop/src/shell/ holds the shell dispatch, navigation, reset-bare, construction, alias and menus-editor code and the test modules (tests_common.rs, tests_common_frame_*.rs, tests_menu_kind_snapshot.rs, golden/). crates/ff-desktop/src/menu_workspace/ holds the menu loader/serialiser/defaults. Specs (already merged in this worktree) live under docs/specs/<sub-project>/requirements.md: configuration-system Req 23 (23.1-23.10) + Req 19.16-19.18; startup-and-session Req 23; menu-workspace Req 2.1g/4/12/13/14; command-configurator Req 8 (8.1-8.7); navigation-commands Req 21 (21.1-21.8); screen-snapshot-scrm Req 22.8/25.5."
+}

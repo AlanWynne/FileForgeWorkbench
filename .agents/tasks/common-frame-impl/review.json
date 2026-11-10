@@ -1,0 +1,95 @@
+{
+  "cr": "CR-NR-115 Common Workspace Frame",
+  "branch": "common-frame-impl",
+  "base": "main@217848d (CR-NR-115 requirements/design gate)",
+  "verdict": "APPROVED",
+  "reviewed": {
+    "diff": "git diff main...HEAD (22 files, +1340 / -50)",
+    "commits": [
+      "bfc889b feat(shell): FEAT-001 common frame state, status-bar segments, single-chrome guard",
+      "e02cebf feat(scrm): FEAT-002 reproduce the common workspace frame in snapshot/capture (Req 30)",
+      "1d9542e docs(steering): FEAT-003 add Common Workspace Frame mechanism 8",
+      "17689a6 fix(shell): ASCII comment separator for message line in render_status.rs"
+    ],
+    "feat_json": [
+      "FEAT-001.json completed",
+      "FEAT-002.json completed",
+      "FEAT-003.json completed"
+    ],
+    "note": "Scoped check results read from commit messages + FEAT findings; full suite/gate NOT re-run per the execution split (owner runs it)."
+  },
+  "judgement": {
+    "single_chrome_eight_elements": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "apply_common_frame (shell/common_frame.rs) composes window title bar (shared WINDOW_TITLE const + ASCII '_ [] X'), menu-bar echo (bar-visible POM options joined by ' | '), FULL tab bar (every tab's BuiltinKind::default_title() [XXX] tag + ASCII 'x' close marker, active wrapped '>TAG x<'), status bar text (Last/Prof/Ln,Col/encoding/Lines + per-Kind segment, NO RUNNING), Message_Line (pushed to model.messages, omitted when empty), and the pfshow key bar (footer, only when key_bar_visible and not the menu path). Centered title stays in model.title; Command ===> left as each per-Context builder set it, so the helper never adds a second title or command line. Live-GUI frame composed by render_status_bar + render_message_line with panel order render_key_label_bar -> render_status_bar -> render_message_line in update.rs."
+    },
+    "drawn_once_seam": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "active_screen_capture is now a thin wrapper: active_context_capture() builds the per-Context model, then apply_common_frame is called once on a ScreenCapture::Model only. SNAPSHOT and CAPTURE share this ONE seam. Dialog-overlay captures and OptOut returned UNFRAMED (frontmost transient / not capturable) -- correct."
+    },
+    "box_drawing_both_contexts": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "render/text.rs now renders model.tables as a box-drawing grid (render_table_grid + push_grid_rule[Top/Mid/Bottom] + push_grid_row) with fixed per-column widths that widen on overflow, Unicode box glyphs or +/-/| ASCII fallback, preserving [value v]/[ v]/____ cell conventions. Full-shell tests prove the frame for a TABLE Context (common_frame_snapshot_table_context_alias_with_second_tab: both [ALIASES] and [CONFIG] tags, box cross glyph, seeded SNAPSHOT row, Last/Prof, no RUNNING) and a markdown_sections Context (common_frame_snapshot_markdown_sections_context_config: menu echo, [CONFIG], Command ===>, Last/Prof, no RUNNING -- general, not Alias-specific). Grid tests: box_draw_table_grid_has_ruled_borders_and_cell_separators, box_draw_table_columns_fixed_width_and_widen_on_overflow, box_draw_table_grid_ascii_fallback; html_table_cells_carry_cell_conventions."
+    },
+    "capture_snapshot_parity": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "common_frame_capture_matches_snapshot_byte_for_byte asserts the two seam paths yield identical framed text for the same Context (both route through active_screen_capture + the single apply_common_frame)."
+    },
+    "common_vs_unique_boundary": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "No frame element redrawn inside content. Menu/POM path not double-framed: common_frame_does_not_double_frame_menu_pf_footer proves the helper adds shared title/menu/tab chrome but NOT a second PF footer for a MenuWorkspace Context (the menu body folds its own command line + PF footer). full_shell_common_frame_is_single_chrome proves exactly one 'Command ===>' line with the Message_Line present, RUNNING gone, key bar following pfshow."
+    },
+    "per_kind_status_seam": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "workspace_status_segment() returns String::new() (empty default); appended to the live status bar (guarded by !is_empty) and to common_frame_status_bar_text when non-empty. The SEAM exists and works generically; per-Kind CONTENT is correctly deferred (not flagged)."
+    },
+    "tdd": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "Every new test carries a // Validates: Requirement 7.x / 30.x annotation (verified in the diff for tests_session.rs, tests_common_frame.rs, tests_common_frame_helper.rs, tests_common_frame_snapshot.rs, render/text.rs, render/html.rs; tests_misc.rs updated). FEAT findings record failing-first TDD and scoped runs: FEAT-001 message_line(4)/common_frame(3)/last_action(2)/active_profile(1); FEAT-002 box_draw(4)/common_frame_helper(6)/common_frame_snapshot(3)/screen_provider(3)/snapshot(48). Requirements Req 7.8-7.27 + Req 30.x exist in the spec and match the implementation (RUNNING removal 7.15/7.20, Last/Prof 7.16/7.18/7.19, Workspace_Status_Segment 7.17/7.21, content-area-only 7.22/7.27, additive state)."
+    },
+    "file_size_400": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "common_frame.rs 158 non-test lines; render/text.rs 296 non-test lines. Under the 400 rule."
+    },
+    "ascii_only": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "FEAT-003 ASCII scan over the three steering files returned empty (rc 0). New source comment separator '// === Message line ===' is ASCII (commit 17689a6 fixed this). Box-drawing glyphs appear only in render-grid code and test fixtures (allowed). NOTE: a pre-existing box-drawing separator '// -- File-open dialog --' survives unchanged in render_status.rs as context (not introduced by this diff) -- out of scope, not a finding against this change."
+    },
+    "no_framework_type_reshape": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "message_line: Vec<String> and last_action_at: Option<chrono::DateTime<chrono::Local>> added as ADDITIVE pub(crate) fields on WorkbenchShell (owner-confirmed additive). WINDOW_TITLE added as a new pub const. No change to ScreenModel/Table/WorkspaceContext/InteriorFocus/WorkspaceDescriptor shape; the helper uses existing ScreenModel slots (header_lines/footer_lines/tables/status_bar/messages/title) as-is. The prior inside-frame row.join table path was removed (rendering change, not a type reshape)."
+    },
+    "preserved_invariants": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "render_workspace_context single focus latch untouched (no change to workspace_context dispatch). ISPF explicit-commit save untouched. Single command dispatch preserved: begin_command_line and dispatch_bound_command only ADD a note_action_dispatched() call at the top (idempotent clear + same-action restamp on the double-invoked key path). Stable egui ids (command_field_input etc.) unchanged; panel id strings status_bar/message_line/key_label_bar reused. resolver (shell/environment.rs) untouched."
+    },
+    "steering_amended": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "framework-conformance.md adds core mechanism 8 'Common Workspace Frame (CR-NR-115)' + a 'what counts as a framework change' entry, citing real names apply_common_frame, message_line, last_action_at, note_action_dispatched, format_last_action, active_profile_label, workspace_status_segment, render_message_line, render_status_bar. wiring-standard.md adds the content-area-only + workspace_status_segment obligation to View Integration, checklist step 6, and anti-patterns. workspace-conformance.md adds the focus-contract <-> common-frame cross-reference. All ASCII."
+    },
+    "no_merge_no_push": {
+      "status": "PASS",
+      "confidence": "confirmed",
+      "detail": "git log main..HEAD shows 4 linear non-merge commits; no merge commit. git branch -vv shows common-frame-impl has NO upstream ([origin/...]) tracking and git status -sb reports '## common-frame-impl' with no ahead/behind -- never pushed. Working tree clean."
+    }
+  },
+  "non_blocking_observations": [
+    {
+      "label": "Dual status-bar composition paths",
+      "confidence": "possible",
+      "detail": "The live Status_Bar (render_status_bar builds egui labels + separators) and the snapshot helper (common_frame_status_bar_text builds a ' | '-joined string) assemble the common status segments via two independent code paths. They share the value functions (format_last_action, active_profile_label, encoding/line-count) so values cannot drift, but segment ORDER/separators are duplicated and could diverge in a future edit. Not a defect now; a future refactor could extract a single ordered-segment source. No action required for this change."
+    }
+  ]
+}

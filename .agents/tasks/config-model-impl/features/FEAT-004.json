@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "The ISPF command model: X = EXIT everywhere via the FFCMD seed, retire nav_x, POM/SCRM X-option command -> EXIT, confirm/reclassify END/RETURN/EXIT, and the Menus-editor SCRM fix; regenerate the goldens that legitimately change. Builds on existing seams only (no new dispatcher/stack). Depends on FEAT-001 (POM/SCRM default TOML + the X->EXIT seed resolution); independent of FEAT-002/003 in code but ordered last so the whole model lands together.",
+  "status": "pending",
+  "steps": [
+    "Read context.json and this file FIRST. Read crates/ff-desktop/src/shell/commands_ladder_a.rs, nav_stack.rs, commands.rs (run_command_prelude EXIT-family active-wins gate), dispatch.rs (rewrite_verb_to_root front door), menu_workspace/defaults.rs, shell/menus_editor.rs, and shell/environment.rs (FFEDIT X->EXCLUDE). Do a reference search for nav_x across the crate and record every caller in findings BEFORE deleting anything.",
+    "TDD first (dispatch tests): bare X on a NON-editor Context terminates the app via the FFCMD seed X->EXIT (the front door rewrites X->EXIT, the prelude try_exit_family dispatches file.exit). Validates: navigation-commands Requirement 21.4, menu-workspace Requirement 14.13, command-configurator Requirement 8.1/8.7. Bare X on an editor Context still EXCLUDEs (active-wins, FFEDIT owns X). Validates: navigation-commands Requirement 21.5, command-configurator Requirement 8.5. =X terminates (reinit to POM then X->EXIT). Validates: navigation-commands Requirement 21.5, menu-workspace Requirement 14.14.",
+    "Remove the `if upper == \"X\" { self.nav_x(); ... }` arm from try_commands_a in commands_ladder_a.rs. Leave try_exit_family and the END/RETURN arms. Update stale comments that call X the close verb.",
+    "Retire nav_x: delete shell/nav_stack.rs::nav_x after the reference search confirms no remaining caller (re-point any caller to END or RETURN as appropriate -- retiring must not orphan a caller, navigation-commands Requirement 21.6). RETAIN close_workspace_or_exit, nav_return, nav_collapse_to_visual_root, reinitialise_active_tab_to_pom. Add a test asserting nav_x is gone / no caller remains. Validates: navigation-commands Requirement 21.6.",
+    "Reclassify RETURN/END/EXIT (behaviour unchanged): update nav_return's doc comment to the ISPF RETURN classification (unwind to the tab's primary panel / Tab_Visual_Root) and REMOVE the stale 'converges with bare X' note; confirm nav_end (PF3) still pops one level and try_exit_family stays unconditional. Add/confirm tests: PF3/END pops exactly one level (Validates: navigation-commands Requirement 21.1); RETURN collapses to the primary panel in one step (Validates: navigation-commands Requirement 21.2); EXIT terminates unconditionally (Validates: navigation-commands Requirement 21.3).",
+    "Change the X-option command in DEFAULT_POM_TOML and DEFAULT_SCRM_MENU_TOML from \"X\" to \"EXIT\" (keep key X, keep show_in_menu_bar=false, update the description to drop the self-reference; displayed as 'X EXIT'). Update the defaults.rs tests that assert the old command 'X' (default_pom_toml_terminate_is_x_x, recovery_pom_menu_has_barebones_options, bare_pom_contains_scrm_and_stays_minimal, default_pom_toml_has_recovery_baseline_options, recovery_scrm_menu_has_owner_confirmed_keys_and_verbs) to expect 'EXIT'. Validates: menu-workspace Requirement 2.1g/12.2, screen-snapshot-scrm Requirement 22.3. Add a test that the POM/SCRM X option dispatches EXIT. Validates: navigation-commands Requirement 21.7.",
+    "Invert/retire the obsolete first-run-model tests in defaults.rs: ensure_menus_dir_does_not_materialise_built_in_menus asserted menus are NEVER written -- that invariant is reversed by CR-CH-116 (first-run writes them). Keep ensure_menus_dir creating the empty dir (that behaviour is unchanged) but remove/replace the 'pom/settings/scrm must NOT be materialised' assertions; list each changed test and the reason in findings. Do NOT delete a test merely to go green -- replace it with the correct new expectation or move the coverage to the FEAT-002 first-run tests.",
+    "Fix shell/menus_editor.rs: refresh_menus_editor_list seed list becomes [POM, Settings, SCRM] (dedup SCRM against the on-disk *.toml scan, like pom/settings); load_menu_for_editor fallback match adds \"SCRM\" => recovery_scrm_menu() (not the _ => recovery_pom_menu() catch-all); confirm menu_file_stem maps SCRM -> scrm. Add tests: the selector lists SCRM (Validates: menu-workspace Requirement 13.2); selecting SCRM loads the SCRM menu, not POM (Validates: menu-workspace Requirement 13.3).",
+    "Regenerate the goldens that legitimately change (POM/SCRM X option now reads/dispatches EXIT): run the specific golden test with FFWB_UPDATE_GOLDEN=1, then READ the regenerated fixture diff and confirm ONLY the X row changed before relying on it. Keep every other golden byte-identical.",
+    "Run the scoped checks and the touched scoped tests (X/END/RETURN/EXIT, defaults, menus_editor, golden modules); read output; fix clippy/fmt. Keep every touched file under 400 non-test lines."
+  ],
+  "acceptance_criteria": [
+    "Bare X on a non-editor Context exits the app via the FFCMD X->EXIT seed; X on an editor still EXCLUDEs; =X exits.",
+    "nav_x is removed with zero remaining callers; close_workspace_or_exit / nav_return / nav_collapse_to_visual_root retained; PF3 stays END (one level); RETURN still collapses to the primary panel; EXIT unconditional.",
+    "DEFAULT_POM_TOML and DEFAULT_SCRM_MENU_TOML X option command is EXIT (no self-reference); the POM/SCRM X option dispatches EXIT.",
+    "Obsolete 'never materialised' defaults tests are inverted/retired with justification (not silently deleted); ensure_menus_dir still creates the empty dir.",
+    "Menus-editor selector lists SCRM and selecting SCRM loads the SCRM menu, not POM.",
+    "Only the X-row goldens change; all others stay byte-identical; cargo clippy -p ff-desktop -- -D warnings clean; cargo fmt -p ff-desktop -- --check passes."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop defaults\"; read output.",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop menus_editor\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop nav\" (END/RETURN/X) and the EXIT-family tests",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop golden\" after regenerating fixtures",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo clippy -p ff-desktop -- -D warnings\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo fmt -p ff-desktop -- --check\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

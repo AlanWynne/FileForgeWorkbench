@@ -1,0 +1,13 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "label": "help.rs over the 400-line limit",
+      "confidence": "confirmed",
+      "severity": "minor",
+      "blocking": false,
+      "detail": "crates/ff-desktop/src/shell/help.rs is ~499 non-test lines (was 462 before this change); rust-standards requires splitting a source file before growing it past 400 non-test lines. Behaviour is correct and the coder self-reported a behaviour-preserving split as separate follow-up refactor work. Non-blocking."
+    }
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/command-help-impl/review.md"
+}

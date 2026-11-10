@@ -1,0 +1,37 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "MEDIUM",
+      "title": "D6 single-horizontal row mixes a left-column value widget and a right-to-left block without pinning allocation order or coexistence",
+      "where": "02-design.md D6 (item 5 value widget, item 6 right-to-left block); verified against config_panel/render.rs::render_entry",
+      "problem": "D6 places the value widget inline at the aligned ':' column AND a greedy right_to_left provenance/Reset block in the same ui.horizontal. Today the value widget is rendered on its own line BELOW the horizontal, not inside it. A right_to_left sub-layout consumes remaining width from the right; combined with an f32::INFINITY path TextEdit at the value position, the two layouts fight for row width and the column-alignment property can break. The design asserts the order but does not specify how the left-aligned column and the right-greedy block coexist on one row.",
+      "fix": "Pin the row construction explicitly: either keep a two-line structure (line 1 = aligned connector+key+':'+value; right-to-left block stays on the key row) and state the exact egui allocation order and owning sub-ui; or give path fields a bounded desired_width inside this layout and state the explicit left-to-right then right-to-left allocation sequence. Name the chosen structure and the allocation order."
+    },
+    {
+      "id": 2,
+      "severity": "MEDIUM",
+      "title": "Column alignment across ui.indent + framed selectable button is asserted with a runtime hedge, not a locked decision",
+      "where": "02-design.md D5/D6; verified against config_panel/render.rs (ui.indent wrapper, Button::selectable key)",
+      "problem": "Char-count padding is claimed to yield equal pixel widths, but each key row is wrapped in ui.indent (unmodelled left inset) and the key is a framed Button::selectable (frame/padding differs from an inert monospace spacer). D6 admits 'if the button frame proves non-uniform in practice, switches to a frameless selectable_label' -- a hedge deferred to runtime, not a design decision. The char-count->pixel mapping is therefore not guaranteed to land ':' in one column.",
+      "fix": "Lock one mechanism now: drop the ui.indent for key rows (connector prefix conveys depth) and render the whole aligned left segment (connector+key+padding+' : ') as a single RichText::monospace string via pad_to_column, with selectability provided by a frameless ui.selectable_label of that monospace text (still selectable, Req 14.2/AC 22.9). State this as the decision, not a conditional fallback."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "title": "D6 widget-width note omits the non-path string fixed 400.0 width",
+      "where": "02-design.md D6 closing note; verified against config_panel/widgets.rs",
+      "problem": "The note says path strings use f32::INFINITY and bounded numbers use sliders, but omits that non-path String fields use a fixed desired_width(400.0). The enumeration of widget-width cases is incomplete.",
+      "fix": "Add 'non-path string fields use a fixed 400.0 width' so all three width cases are covered; the column-start alignment argument then applies to each explicitly."
+    },
+    {
+      "id": 4,
+      "severity": "NIT",
+      "title": "Line-count citation off by one",
+      "where": "02-design.md 'What exists today' and D9",
+      "problem": "States the #[cfg(test)] module starts at line 298 and ~297 non-test lines; actual is line 297 and ~296 non-test (407 total). Immaterial to the headroom argument.",
+      "fix": "Change to 'line 297 ... ~296 non-test lines' (or just '~296 non-test, ~100 lines of headroom')."
+    }
+  ]
+}

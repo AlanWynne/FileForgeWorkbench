@@ -1,0 +1,6 @@
+15434d0 Merge CR-CH-069 command-environment placement fix
+ae2faa6 fix(cmdenv): correct command placement - AUTONUM/NUM to FFEDIT, relocate af SOEK->FIND, fix EDIT doc-comment (CR-CH-069)
+81f064a Merge CR-CH-068 ISPF Alias Editor redesign
+68668dc docs(cmdcfg): CR-CH-068 TCR rows covered and Task 8 marked done with resolved OPEN DECISIONS
+4400924 feat(cmdcfg): ISPF Alias Editor redesign CR-CH-068 Req 5.13-5.24
+f751a4f docs(cmdcfg): bring CR-CH-068 Gate-2 spec baseline into worktree (Req 5.13-5.24, design 9.10, Task 8, TCR)

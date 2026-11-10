@@ -1,0 +1,14 @@
+# Standalone: keep this out of the parent FileForgeWorkbench cargo workspace.
+[workspace]
+
+[package]
+name = "toml-tree"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "toml-tree"
+path = "src/main.rs"
+
+[dependencies]
+toml = { version = "0.8", features = ["preserve_order"] }

@@ -1,0 +1,18 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "NIT",
+      "summary": "Governing user-space steering file .kiro/steering/documentation-charset.md is absent from the workspace checkout; its Scope does not yet exempt the whole help/ tree + per-locale i18n DATA. Outside the editable scope of this workspace gate and correctly surfaced to the owner (CR-CH-064 Affects NOTE).",
+      "location": ".kiro/steering/documentation-charset.md (not in workspace)",
+      "fix": "Owner, post-approval, user-space edit: add a Scope bullet exempting the entire help/ tree and per-locale i18n DATA as rendered product content, a class distinct from the existing runtime-UI-strings exception; no English-base-in-scope wording."
+    },
+    {
+      "severity": "NIT",
+      "summary": "The gate is framed DOCS-ONLY but also ratifies one owner-requested ff-help test relaxation that has already landed (Option B reconciliation). Docs are internally consistent; only a terminological residual remains.",
+      "location": "docs/status/change-log.md CR-CH-064; docs/specs/context-help/tasks.md Task 23",
+      "fix": "Optional/none required: the change-log already scopes it correctly (single ff-help TEST relaxation landed; remainder docs-only)."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\l10n-ascii-gate\\design-review-r2.md"
+}

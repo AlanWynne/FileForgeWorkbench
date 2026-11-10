@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Reset bare rebuild: add aliases/ to ARCHIVED_ITEMS and, after archiving, rebuild pom/settings/scrm + the FFCMD X->EXIT seed from the Recovery_Source via the shared FEAT-001 helper (RebuildOverwrite), keeping the non-destructive archive-move. Depends on FEAT-001 (and benefits from FEAT-002's hook being present, but is independent of it).",
+  "status": "pending",
+  "steps": [
+    "Read context.json, this file, and FEAT-001.json findings FIRST. Read crates/ff-desktop/src/shell/reset_bare.rs fully, and alias_editor.rs refresh_alias_store_in_place / active_locale / user_alias_override_base.",
+    "TDD: add a failing test asserting ARCHIVED_ITEMS contains \"aliases\" (mirror archived_items_includes_workspace_kinds). Validates: configuration-system Requirement 19.16, command-configurator Requirement 8.4.",
+    "Add \"aliases\" to the ARCHIVED_ITEMS slice.",
+    "In execute_reset_bare, after archive_config(udd) returns Ok for a profile, call write_builtin_defaults(menus_dir, scrm_dir, alias_base, locale, RebuildOverwrite) resolving the seams for THAT profile: for the active/running profile use self.menus_dir()/self.scrm_dir()/self.user_alias_override_base() and self active locale; for a non-active targeted profile build the menus/scrm/aliases paths under that profile's udd using the same path rules the loaders use (udd.join(\"menus\") etc.), so a targeted non-active profile is also rebuilt on disk. Keep the best-effort, non-destructive archive-move behaviour unchanged.",
+    "For the active profile, after the rebuild call self.refresh_alias_store_in_place() so the live resolver picks up the rebuilt X->EXIT without a restart; reset_in_memory_to_baseline continues to reopen the POM, which now reads the rebuilt pom.toml.",
+    "TDD (shell suite, isolated seams): a user alias SS->SNAPSHOT present before Reset bare is archived and GONE from the live/override store afterwards, AND X->EXIT is restored in aliases/<locale>/FFCMD.toml (Validates: configuration-system Requirement 19.16/19.17, command-configurator Requirement 8.4); menus/pom.toml, settings.toml, scrm.toml exist on disk after Reset bare with Complete content (Validates: configuration-system Requirement 19.17, screen-snapshot-scrm Requirement 22.8/25.5); after reset the reopened POM + reloaded alias store read the just-written files (Validates: configuration-system Requirement 19.18).",
+    "Update the two existing reset_bare tests that enumerate ARCHIVED_ITEMS / assert the archived set, to include aliases. List each changed test and why in findings.",
+    "Run the scoped checks and cargo test -p ff-desktop reset_bare; read output; fix clippy/fmt. Keep reset_bare.rs under 400 non-test lines (split tests to a sibling if needed)."
+  ],
+  "acceptance_criteria": [
+    "ARCHIVED_ITEMS includes aliases and a present aliases/ dir is moved into config-archive/<timestamp>/ (non-destructive).",
+    "After a confirmed Reset bare, pom/settings/scrm and aliases/<locale>/FFCMD.toml are rebuilt on disk from the Recovery_Source via the shared helper, and a prior user alias (e.g. SS->SNAPSHOT) is gone while X->EXIT is restored.",
+    "When the reset targets the running profile, the live alias store and reopened POM read the rebuilt files.",
+    "Existing reset_bare archive tests updated for the new ARCHIVED_ITEMS; no pre-existing reset behaviour broken.",
+    "cargo clippy -p ff-desktop -- -D warnings clean; cargo fmt -p ff-desktop -- --check passes."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop reset_bare\"; read output.",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo clippy -p ff-desktop -- -D warnings\"",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo fmt -p ff-desktop -- --check\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

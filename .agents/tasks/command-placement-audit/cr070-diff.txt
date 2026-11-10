@@ -1,0 +1,623 @@
+diff --git a/crates/ff-desktop/src/command_config/mod.rs b/crates/ff-desktop/src/command_config/mod.rs
+index 9b60ed4..36bd7b9 100644
+--- a/crates/ff-desktop/src/command_config/mod.rs
++++ b/crates/ff-desktop/src/command_config/mod.rs
+@@ -106,7 +106,7 @@ impl TargetResolver for UserCommandStore<'_> {
+ ///    id resolves to a `Function` target (command-framework Requirement 8.3).
+ ///
+ /// `builtin_workspace_target` classifies the CustomWorkspace / navigation family
+-/// (B080, Step 2): the in-scope verbs FILES / =FILES, FILE CATALOGS / CATALOGS,
++/// (B080, Step 2): the in-scope verbs FILES, FILE CATALOGS / CATALOGS,
+ /// CONFIG [<ns>], COMMANDS, LOG, PLUGINS, MACROS, GSEARCH / SEARCH, KEYS [<kind>],
+ /// KINDS, MENUS, and bare THEME resolve to `CommandTarget::CustomWorkspace` so the
+ /// TYPED path reaches the SAME classification the key/menu path uses (one front
+@@ -158,14 +158,19 @@ const BUILTIN_MENU_NAMES: &[&str] = &["pom", "settings"];
+ /// identity row for each so a bare root always self-resolves to `Root` under the
+ /// unified resolver (Req 11.6 branch 1.2.1), rather than falling to `Unknown`.
+ ///
+-/// Uppercased; `FILE CATALOGS` is the one two-word verb; `=FILES` is the fastpath
+-/// single token. The menu-option roots (SETTINGS, CATALOGS, FILES, HELP, X,
+-/// CONFIG, THEME, MENUS, KEYS, KINDS, RESET BARE) are seeded separately from the
+-/// built-in menus; this list covers the NON-menu-option roots plus the overlap.
++/// Uppercased; `FILE CATALOGS` is the one two-word verb. The menu-option roots
++/// (SETTINGS, CATALOGS, FILES, HELP, X, CONFIG, THEME, MENUS, KEYS, KINDS,
++/// RESET BARE) are seeded separately from the built-in menus; this list covers
++/// the NON-menu-option roots plus the overlap.
+ ///
+-/// Validates: localization Requirement 11.3
++/// `=FILES` is NOT a standalone root (CR-CH-070, command-environments Req 22.1):
++/// `=` is the ISPF JUMP PREFIX handled once at the front door
++/// (`dispatch_command_string`), which strips the `=`, reinitialises the active
++/// tab to the POM, then re-dispatches the remainder FILES through the generic
++/// bare-FILES classifier arm. The literal would only pollute the FFCMD root set.
++///
++/// Validates: localization Requirement 11.3, command-environments Requirement 22.1
+ pub(crate) const BUILTIN_WORKSPACE_VERB_ROOTS: &[&str] = &[
+-    "=FILES",
+     "FILE CATALOGS",
+     "CONFIG",
+     "KEYS",
+@@ -271,10 +276,12 @@ pub(crate) fn builtin_workspace_target_for(input: &str) -> Option<CommandTarget>
+     // Case-insensitive verb comparison helper.
+     let is = |name: &str| verb.eq_ignore_ascii_case(name);
+ 
+-    // =FILES is a single token (no whitespace), so it arrives as the verb.
+-    if is("=FILES") {
+-        return custom("file_explorer");
+-    }
++    // CR-CH-070 (command-environments Req 22.1/22.3): `=FILES` is NOT classified
++    // here. `=` is the ISPF JUMP PREFIX handled once at the front door
++    // (`dispatch_command_string`): it strips the `=`, reinitialises the active
++    // tab to the POM, then re-dispatches the remainder FILES through the generic
++    // bare `is("FILES")` arm below. The former literal `=FILES` arm was redundant
++    // and only polluted the FFCMD root set.
+     // FILE CATALOGS is the ONLY two-word in-scope verb.
+     if is("FILE") && arg.eq_ignore_ascii_case("CATALOGS") {
+         return custom("files");
+@@ -526,14 +533,11 @@ command_id = "file.save"
+             "KEYS <kind> preserves the argument case"
+         );
+ 
+-        // =FILES single token and FILE CATALOGS two-word verb.
+-        assert_eq!(
+-            builtin_workspace_target_for("=FILES"),
+-            Some(CommandTarget::CustomWorkspace {
+-                workspace_kind: "file_explorer".to_string(),
+-                params: TargetParams::new(),
+-            })
+-        );
++        // CR-CH-070 (Req 22.1): `=FILES` is NO LONGER a classifier verb -- the
++        // `=` jump prefix is handled at the front door, which re-dispatches the
++        // remainder FILES. The classifier must NOT claim the literal `=FILES`.
++        assert_eq!(builtin_workspace_target_for("=FILES"), None);
++        // FILE CATALOGS two-word verb still classifies (Req 22.4 -- unchanged).
+         assert_eq!(
+             builtin_workspace_target_for("FILE CATALOGS"),
+             Some(CommandTarget::CustomWorkspace {
+@@ -603,6 +607,55 @@ command_id = "file.save"
+         }
+     }
+ 
++    // Validates: command-environments Requirement 22.1 -- the malformed `=FILES`
++    // literal is NOT a standalone root: it is absent from
++    // BUILTIN_WORKSPACE_VERB_ROOTS and its dedicated classifier arm is removed, so
++    // `builtin_workspace_target_for("=FILES")` returns None (the `=` jump prefix
++    // is handled at the front door, which re-dispatches the remainder FILES).
++    #[test]
++    fn equals_files_is_not_a_standalone_root_token() {
++        assert!(
++            !BUILTIN_WORKSPACE_VERB_ROOTS
++                .iter()
++                .any(|v| v.eq_ignore_ascii_case("=FILES")),
++            "=FILES must NOT be a standalone FFCMD verb root (CR-CH-070 Req 22.1)"
++        );
++        assert_eq!(
++            builtin_workspace_target_for("=FILES"),
++            None,
++            "the classifier must NOT claim the literal =FILES (CR-CH-070 Req 22.1)"
++        );
++    }
++
++    // Validates: command-environments Requirement 22.2 -- the bare FILES verb
++    // still classifies to the File Explorer workspace, unchanged by CR-CH-070.
++    #[test]
++    fn bare_files_still_opens_file_explorer_after_equals_files_removal() {
++        assert_eq!(
++            builtin_workspace_target_for("FILES"),
++            Some(CommandTarget::CustomWorkspace {
++                workspace_kind: "file_explorer".to_string(),
++                params: TargetParams::new(),
++            }),
++            "bare FILES must still resolve to file_explorer (CR-CH-070 Req 22.2)"
++        );
++    }
++
++    // Validates: command-environments Requirement 22.4 -- the legitimate two-word
++    // verb FILE CATALOGS is LEFT UNCHANGED (it is not malformed; only =FILES is
++    // removed).
++    #[test]
++    fn file_catalogs_two_word_verb_left_unchanged_after_equals_files_removal() {
++        assert_eq!(
++            builtin_workspace_target_for("FILE CATALOGS"),
++            Some(CommandTarget::CustomWorkspace {
++                workspace_kind: "files".to_string(),
++                params: TargetParams::new(),
++            }),
++            "FILE CATALOGS must stay a classified two-word verb (CR-CH-070 Req 22.4)"
++        );
++    }
++
+     // Validates: command-framework Requirement 8.3 (stage 2) -- a full
+     // ShellTargetResolver classifies FILES through resolve_target (proving the
+     // former None stub no longer wins).
+diff --git a/crates/ff-desktop/src/shell/commands_ladder_b.rs b/crates/ff-desktop/src/shell/commands_ladder_b.rs
+index 9cb1840..0a0a974 100644
+--- a/crates/ff-desktop/src/shell/commands_ladder_b.rs
++++ b/crates/ff-desktop/src/shell/commands_ladder_b.rs
+@@ -20,7 +20,7 @@ impl WorkbenchShell {
+     pub(super) fn try_commands_b1(&mut self, cmd: &str, upper: &str) -> bool {
+         // DELETED-ARM NOTE (CR-CH-052, B080 Step 2 follow-up): the CustomWorkspace
+         // / navigation verbs that used to live in this segment -- CONFIG,
+-        // FILES/=FILES, GSEARCH/SEARCH, COMMANDS, MENUS, LOG, FILE CATALOGS/
++        // FILES, GSEARCH/SEARCH, COMMANDS, MENUS, LOG, FILE CATALOGS/
+         // CATALOGS, PLUGINS, MACROS -- are now resolved by
+         // `builtin_workspace_target` through the front door's `resolve_target`
+         // BEFORE this ladder is reached (the CustomWorkspace dispatch arm calls
+diff --git a/crates/ff-desktop/src/shell/environment_registry.rs b/crates/ff-desktop/src/shell/environment_registry.rs
+index 5a31ccf..457f806 100644
+--- a/crates/ff-desktop/src/shell/environment_registry.rs
++++ b/crates/ff-desktop/src/shell/environment_registry.rs
+@@ -462,12 +462,14 @@ mod tests {
+ 
+     // === Root-command enumeration tests (CR-CH-067, Req 20) ================
+ 
+-    /// Validates: command-environments Requirement 20.1, 20.3 -- `root_commands`
+-    /// for FFCMD returns the COMPLETE built-in canonical root set: the built-in
+-    /// menu-option roots (CONFIG, THEME, FILES, CATALOGS, ...) unioned with
+-    /// BUILTIN_WORKSPACE_VERB_ROOTS (COMMANDS, LOG, PLUGINS, MACROS, SEARCH,
+-    /// GSEARCH, KINDS, MENUS, ALIASES, KEYS). A user-menu-only root (never in the
+-    /// two code-only built-in menus nor the verb list) is intentionally EXCLUDED.
++    /// Validates: command-environments Requirement 20.1, 20.3, and Requirement
++    /// 22.1 -- `root_commands` for FFCMD returns the COMPLETE built-in canonical
++    /// root set: the built-in menu-option roots (CONFIG, THEME, FILES, CATALOGS,
++    /// ...) unioned with BUILTIN_WORKSPACE_VERB_ROOTS (COMMANDS, LOG, PLUGINS,
++    /// MACROS, SEARCH, GSEARCH, KINDS, MENUS, ALIASES, KEYS). A user-menu-only
++    /// root (never in the two code-only built-in menus nor the verb list) is
++    /// intentionally EXCLUDED. CR-CH-070 update: FILES is a root and the malformed
++    /// `=FILES` literal is NOT -- the latter was removed from the FFCMD root set.
+     #[test]
+     fn root_commands_ffcmd_returns_complete_builtin_root_set() {
+         let roots = EnvironmentRegistry::root_commands(FFCMD_NAME);
+@@ -483,6 +485,12 @@ mod tests {
+                 "FFCMD roots must contain built-in root {expected}, got {roots:?}"
+             );
+         }
++        // CR-CH-070 Req 22.1: the malformed `=FILES` literal is NO LONGER a
++        // standalone FFCMD root -- `=` is the jump prefix, FILES is the root.
++        assert!(
++            !roots.iter().any(|r| r.eq_ignore_ascii_case("=FILES")),
++            "the malformed =FILES literal must NOT be an FFCMD root, got {roots:?}"
++        );
+         // A root reachable ONLY via a user menus/*.toml override is NOT a built-in
+         // canonical root and must not appear (the documented completeness posture).
+         assert!(
+@@ -491,6 +499,21 @@ mod tests {
+         );
+     }
+ 
++    /// Validates: command-environments Requirement 22.1 -- `contains_root` agrees
++    /// with the cleaned FFCMD root set: FILES is a root, the malformed `=FILES`
++    /// literal is NOT.
++    #[test]
++    fn contains_root_ffcmd_files_true_equals_files_false() {
++        assert!(
++            EnvironmentRegistry::contains_root(FFCMD_NAME, "FILES"),
++            "FILES is a legitimate FFCMD root (CR-CH-070 Req 22.1/22.2)"
++        );
++        assert!(
++            !EnvironmentRegistry::contains_root(FFCMD_NAME, "=FILES"),
++            "=FILES must NOT be an FFCMD root after CR-CH-070 (Req 22.1)"
++        );
++    }
++
+     /// Validates: command-environments Requirement 20.1 -- `root_commands` for
+     /// FFEDIT returns the canonical editor verbs sourced from
+     /// `AliasTable::ffedit_english().canonical_verbs_owned()`.
+diff --git a/crates/ff-desktop/src/shell/locale_resolver.rs b/crates/ff-desktop/src/shell/locale_resolver.rs
+index d60919f..562358e 100644
+--- a/crates/ff-desktop/src/shell/locale_resolver.rs
++++ b/crates/ff-desktop/src/shell/locale_resolver.rs
+@@ -314,9 +314,11 @@ mod tests {
+     /// root resolves to itself via its synthesised identity row, NOT just the two
+     /// built-in menus' option roots. A built-in workspace verb that is NOT a
+     /// POM/Settings option root (COMMANDS, LOG, PLUGINS, MACROS, SEARCH, GSEARCH,
+-    /// =FILES, FILE CATALOGS) must still return Root(verb), so Req 11.6 branch
+-    /// 1.2.1 holds for every root a typed/selected verb can legitimately carry
+-    /// and that root can carry a localised surface in a menu.
++    /// FILE CATALOGS) must still return Root(verb), so Req 11.6 branch 1.2.1 holds
++    /// for every root a typed/selected verb can legitimately carry and that root
++    /// can carry a localised surface in a menu. CR-CH-070: `=FILES` is NO LONGER a
++    /// seeded root (the `=` jump prefix is handled at the front door), so it is no
++    /// longer asserted here.
+     #[test]
+     fn every_registered_ffcmd_root_resolves_to_itself() {
+         let shell = make_shell();
+@@ -331,16 +333,14 @@ mod tests {
+                 "a legitimate FFCMD root ('{root}') must self-resolve (Req 11.6 branch 1.2.1)"
+             );
+         }
+-        // The two-word verb FILE CATALOGS and the =FILES fastpath are also
+-        // legitimate roots the seed must carry.
++        // The two-word verb FILE CATALOGS is a legitimate root the seed carries.
+         assert_eq!(
+             shell.resolve_locale_verb("FILE CATALOGS", FFCMD_NAME),
+             LocaleResolveOutcome::Root("FILE CATALOGS".to_string())
+         );
+-        assert_eq!(
+-            shell.resolve_locale_verb("=FILES", FFCMD_NAME),
+-            LocaleResolveOutcome::Root("=FILES".to_string())
+-        );
++        // CR-CH-070 (Req 22.1): `=FILES` is NO LONGER a seeded FFCMD root -- `=`
++        // is the jump prefix handled at the front door, FILES is the real root.
++        // So the former `=FILES` self-resolve assertion is intentionally removed.
+         // And the menu-option roots still resolve (regression guard).
+         assert_eq!(
+             shell.resolve_locale_verb("CATALOGS", FFCMD_NAME),
+diff --git a/crates/ff-desktop/src/shell/tests_nav.rs b/crates/ff-desktop/src/shell/tests_nav.rs
+index 6ff40fa..6aab6ef 100644
+--- a/crates/ff-desktop/src/shell/tests_nav.rs
++++ b/crates/ff-desktop/src/shell/tests_nav.rs
+@@ -225,6 +225,43 @@ fn file_explorer_panel_end_command_returns_to_pom() {
+     assert!(mgr.active_tab().is_home);
+ }
+ 
++/// Validates: command-environments Requirement 22.3 (CR-CH-070) -- typing
++/// `=FILES` is PRESERVED after the literal `=FILES` root token was removed. The
++/// front-door `=` jump step strips the `=`, reinitialises the active tab to the
++/// POM, then re-dispatches the remainder FILES through the generic bare-FILES
++/// classifier arm, transforming the tab to the File Explorer workspace. From a
++/// NON-POM Context (Keys), this proves the jump-then-FILES path still works.
++#[test]
++fn equals_files_jump_path_still_opens_file_explorer() {
++    use crate::tab_state::KindTag;
++    let mut shell = make_shell();
++    // Move away from the POM first so the `=` jump has to reinitialise to POM.
++    shell.dispatch_command_string("KEYS");
++    assert_eq!(shell.tabs.active_tab().kind.tag(), KindTag::KeysEditor);
++    // `=FILES` must still resolve to the File Explorer workspace via the `=`
++    // jump prefix (jump to POM, then run FILES) -- behaviour preserved.
++    shell.dispatch_command_string("=FILES");
++    assert_eq!(
++        shell.tabs.active_tab().kind.tag(),
++        KindTag::FileExplorerPanel,
++        "=FILES must still open the File Explorer via the `=` jump path"
++    );
++}
++
++/// Validates: command-environments Requirement 22.2 (CR-CH-070) -- the bare FILES
++/// command still opens the File Explorer workspace, unchanged.
++#[test]
++fn bare_files_still_opens_file_explorer_via_front_door() {
++    use crate::tab_state::KindTag;
++    let mut shell = make_shell();
++    shell.dispatch_command_string("FILES");
++    assert_eq!(
++        shell.tabs.active_tab().kind.tag(),
++        KindTag::FileExplorerPanel,
++        "bare FILES must open the File Explorer workspace (Req 22.2)"
++    );
++}
++
+ /// Validates: Requirement 19.4 -- fastpath dotted notation navigates to option.
+ #[test]
+ fn fastpath_notation_navigates_to_option() {
+diff --git a/docs/project-management/ROADMAP.md b/docs/project-management/ROADMAP.md
+index 375cbbf..446b645 100644
+--- a/docs/project-management/ROADMAP.md
++++ b/docs/project-management/ROADMAP.md
+@@ -300,6 +300,28 @@ localisation-aware and avoids re-touching new UI and merge collisions.
+      Task 30. See command-environments Req 21, change-log CR-CH-069,
+      command-semantics Req 12, CR-CH-067 (the validation safety net), and the
+      deferred `docs/specs/sequence-numbers/` NUMBER engine.
++   - **CR-CH-070 (remove the malformed `=FILES` literal root token: FILES is the
++     root, `=` is the ISPF jump prefix)** GATE AUTHORED / PENDING OWNER APPROVAL.
++     The deferred audit item D that CR-CH-069 split out as its own change request.
++     `=FILES` was registered as a standalone root in `BUILTIN_WORKSPACE_VERB_ROOTS`
++     + a dedicated `is("=FILES")` classifier arm, even though `=` is the ISPF JUMP
++     PREFIX (already handled at the single front door `dispatch_command_string`,
++     CR-CH-052: strip `=`, reinitialise the tab to the POM, re-dispatch the
++     remainder) and FILES is the real root. The literal is redundant AND pollutes
++     the FFCMD root set `root_commands("FFCMD")` enumerates (CR-CH-067 Req 20), so
++     the Gate 2 Alias Editor Root dropdown and `contains_root` validation would
++     offer/accept the malformed `=FILES`. SCOPED outcomes: (1) `root_commands("FFCMD")`
++     returns FILES and NOT `=FILES`; (2) bare FILES still opens the File Explorer
++     workspace, unchanged; (3) typing `=FILES` STILL works via the generic `=` jump
++     (jump-to-POM then FILES) -- behaviour PRESERVED. VERIFIED: removing the literal
++     does NOT break the `=FILES` jump (the generic `=` step already covers it); the
++     legitimate two-word verb `FILE CATALOGS` is LEFT UNCHANGED. Lands AFTER
++     CR-CH-069 and BEFORE the Afrikaans alias-data authoring. NOT a framework change
++     (builds ON the existing `=` front-door step + the bare FILES arm; removes a
++     redundant literal). Governing plan:
++     `docs/specs/command-environments/tasks.md` Phase (eqfiles-fix) Task 31. See
++     command-environments Req 22, change-log CR-CH-070, command-framework Req 10.2/14
++     (the `=` jump step), and CR-CH-067 Req 20 (the root set the fix cleans).
+ 2. **Volume UI** (CR-CH-057/CR-NR-105 VM.6-VM.8 / RC.C.10): Volume management
+    WorkspaceContext (VTOC/report), Define_Volume_Dialog, DEFINE VOLUME / vary /
+    ALTER actions via the single command path, volume picker in catalog creation,
+diff --git a/docs/quality/TCR.md b/docs/quality/TCR.md
+index b27fb94..9422c77 100644
+--- a/docs/quality/TCR.md
++++ b/docs/quality/TCR.md
+@@ -4148,6 +4148,32 @@ suite PASS. -->
+ | `ff-desktop` | Γ£à | `shell::environment_registry::tests::contains_root_reflects_autonum_num_find_moved_to_ffedit` + `contains_root_false_for_bogus_or_unknown` | command-environments Req 21.4: `contains_root("FFCMD", "FIND"/"AUTONUM"/"NUM")` is FALSE and `contains_root("FFEDIT", "FIND"/"AUTONUM"/"NUM")` is TRUE (an FFCMD-anchored row for these is invalid-in-environment, consistent with CR-CH-067 Req 20.4/20.7/20.8) |
+ | `ff-desktop` | Γ£à | `shell::alias_editor::tests::validate_accepts_root_valid_in_declared_environment` (doc-comment corrected alongside) | command-environments Req 21.5: the `user_aliases.rs` doc-comment states FFCMD for an editor-verb root such as EDIT (ECOB->EDIT is an FFCMD alias), correcting the stale FFEDIT text; documentation-only |
+ 
++### Phase (eqfiles-fix) -- CR-CH-070 (remove the malformed `=FILES` literal root token: FILES is the root, `=` is the jump prefix)
++
++> The `=FILES` root-token fix CR-CH-069 deferred (audit item D). `=FILES` was a
++> LITERAL root token in `BUILTIN_WORKSPACE_VERB_ROOTS` + a dedicated `is("=FILES")`
++> classifier arm, even though `=` is the ISPF JUMP PREFIX (already handled at the
++> single front door `dispatch_command_string`, CR-CH-052) and FILES is the real
++> root. Removing the literal cleans the FFCMD root set `root_commands("FFCMD")`
++> enumerates (CR-CH-067 Req 20) while typing `=FILES` keeps working via the generic
++> `=` jump. The legitimate two-word verb `FILE CATALOGS` is LEFT UNCHANGED.
++> IMPLEMENTED + AGENT-VERIFIED (CR-CH-070): the literal was removed and the
++> proving tests were authored. Scoped `cargo check -p ff-desktop` and
++> `cargo clippy -p ff-desktop -- -D warnings` both finished CLEAN this session,
++> and `cargo fmt -p ff-desktop` rewrote nothing (format clean, verified by effect).
++> VERIFICATION CAVEAT: the test-profile run (`cargo test -p ff-desktop`) could NOT
++> be observed -- the machine's terminal entered the known dead-output state during
++> the heavier test build. The authoritative scoped `cargo test -p ff-desktop` run
++> and the full `cargo gate` are the OWNER's manual run (testing.md execution
++> split). Criteria from docs/specs/command-environments/requirements.md Req 22.
++
++| Crate | Status | Test | Criterion |
++|-------|--------|------|-----------|
++| `ff-desktop` | ≡ƒƒó | `command_config::tests::{equals_files_is_not_a_standalone_root_token, builtin_workspace_target_classifies_nav_verb, builtin_workspace_verb_roots_list_matches_the_classifier}`; `shell::environment_registry::tests::{root_commands_ffcmd_returns_complete_builtin_root_set, contains_root_ffcmd_files_true_equals_files_false}` | command-environments Req 22.1: `=FILES` removed from `BUILTIN_WORKSPACE_VERB_ROOTS` and its `is("=FILES")` classifier arm; `root_commands("FFCMD")` contains FILES and NOT `=FILES`; `contains_root("FFCMD", "=FILES")` is FALSE |
++| `ff-desktop` | ≡ƒƒó | `command_config::tests::bare_files_still_opens_file_explorer_after_equals_files_removal`; `shell::tests_nav::bare_files_still_opens_file_explorer_via_front_door` | command-environments Req 22.2: the bare `FILES` classifier arm still resolves to `CustomWorkspace { workspace_kind: "file_explorer" }` (File Explorer), unchanged |
++| `ff-desktop` | ≡ƒƒó | `shell::tests_nav::equals_files_jump_path_still_opens_file_explorer` | command-environments Req 22.3: typing `=FILES` is preserved as the `=` jump prefix then FILES -- the front-door `=` step reinitialises the tab to the POM (FFCMD_Root) and dispatches FILES to the File Explorer workspace (command-framework Req 10.2/14, CR-CH-052) |
++| `ff-desktop` | ≡ƒƒó | `command_config::tests::file_catalogs_two_word_verb_left_unchanged_after_equals_files_removal` | command-environments Req 22.4: the legitimate two-word verb `FILE CATALOGS` (`is("FILE") && arg == "CATALOGS"` -> the `files` workspace) is left unchanged; only `=FILES` is removed |
++
+ ### Phase (find-search-split) -- CR-NR-110 (FIND=FFEDIT in-buffer; SEARCH=FFCMD canonical cross-backend; GREP alias; engine deferred)
+ 
+ > Verb split: FIND is the FFEDIT (editor) in-buffer search verb; SEARCH is the FFCMD
+diff --git a/docs/specs/command-environments/design.md b/docs/specs/command-environments/design.md
+index 0305f66..58d28da 100644
+--- a/docs/specs/command-environments/design.md
++++ b/docs/specs/command-environments/design.md
+@@ -1140,3 +1140,98 @@ stack, no new persistence format, no reshape of a public framework type. The mov
+ edits the existing root SOURCES (`BUILTIN_FFCMD_LADDER_VERB_ROOTS` /
+ `ffedit_english`) and routes AUTONUM/NUM through the existing FFEDIT active-wins
+ claim path; it introduces nothing new.
++
++## Remove the malformed `=FILES` literal root token (CR-CH-070, Requirement 22)
++
++Design delta for CR-CH-070, the `=FILES` root-token fix that CR-CH-069 explicitly
++deferred as a separate change request (audit item D). `=FILES` was registered as a
++LITERAL root token, but `=` is the ISPF JUMP PREFIX and the real root command is
++FILES. The literal is redundant with the generic `=` handling AND pollutes the
++FFCMD root set the alias-anchoring model reads, so it is removed.
++
++### The bug
++
++Two co-located source sites carried the malformed token
++(`crates/ff-desktop/src/command_config/mod.rs`):
++
++1. `BUILTIN_WORKSPACE_VERB_ROOTS` listed `"=FILES"` as its first entry (described
++   in the doc-comment as "the fastpath single token").
++2. `builtin_workspace_target_for` had a dedicated arm:
++   `if is("=FILES") { return custom("file_explorer"); }`, placed before the
++   two-word `FILE CATALOGS` arm and the bare `FILES` arm.
++
++Because `BUILTIN_WORKSPACE_VERB_ROOTS` is one of the three sources
++`builtin_ffcmd_roots()` unions into the FFCMD root set (Requirement 20.1), the
++malformed `=FILES` flowed straight into `EnvironmentRegistry::root_commands("FFCMD")`
++and was therefore accepted by `contains_root("FFCMD", "=FILES")`. The Gate 2 Alias
++Editor Root dropdown (populated by `root_commands`) and the CR-CH-067 load/save
++alias-anchoring validation (keyed on `contains_root`) would then OFFER and ACCEPT
++`=FILES` as if it were a legitimate anchorable root -- it is not.
++
++### Why removing the literal is SAFE (the `=` jump already covers it)
++
++The `=` prefix is handled EXACTLY ONCE at the single front door
++(`shell/dispatch.rs::dispatch_command_string`, CR-CH-052, command-framework
++Requirement 10 criterion 10.2 / criterion 14). That step runs BEFORE the prelude
++and `resolve_target`:
++
++```
++if let Some(rest) = raw.trim_start().strip_prefix('=') {
++    let rest = rest.trim().to_string();
++    self.reinitialise_active_tab_to_pom();   // jump to the POM (FFCMD_Root)
++    self.dispatch_command_string(&rest);     // re-dispatch the remainder
++    return;
++}
++```
++
++So typing `=FILES` strips the `=`, reinitialises the active tab to the POM, and
++RECURSIVELY dispatches `FILES` through the normal front door, where the generic
++bare arm `_ if is("FILES") => custom("file_explorer")` classifies it. The literal
++`=FILES` classifier arm is therefore NEVER the thing that makes `=FILES` work --
++the generic `=` step already covers it. Removing the literal preserves the
++`=FILES` jump path verbatim (Requirement 22.3).
++
++### The correction
++
++- REMOVE `"=FILES"` from `BUILTIN_WORKSPACE_VERB_ROOTS` so
++  `root_commands("FFCMD")` returns FILES and NO LONGER returns `=FILES`
++  (Requirement 22.1).
++- REMOVE the dedicated `is("=FILES")` arm from `builtin_workspace_target_for`. The
++  bare `is("FILES") => custom("file_explorer")` arm is retained unchanged and
++  continues to open the File Explorer workspace (Requirement 22.2).
++- Update the `BUILTIN_WORKSPACE_VERB_ROOTS` doc-comment to drop the "`=FILES` is
++  the fastpath single token" sentence.
++
++### FILE CATALOGS finding (verified, LEFT UNCHANGED)
++
++The audit flagged `FILE CATALOGS` as a two-word classifier entry to check.
++Verification at this gate confirms it is a LEGITIMATE two-word verb:
++`builtin_workspace_target_for` has `if is("FILE") && arg.eq_ignore_ascii_case("CATALOGS")
++{ return custom("files"); }`, which opens the `files` workspace. It is a genuine
++command surface, not a jump-prefix artefact, and it is NOT polluting the root set
++in the malformed way `=FILES` was. It is therefore LEFT UNCHANGED (Requirement
++22.4); only `=FILES` is fixed.
++
++### Interaction with CR-CH-067 (the validation safety net)
++
++Removing `=FILES` directly changes what `root_commands("FFCMD")` and
++`contains_root` return: `root_commands("FFCMD")` loses `=FILES` and keeps FILES, so
++`contains_root("FFCMD", "=FILES")` becomes FALSE (Requirement 22.1). This cleans the
++FFCMD root set the CR-CH-067 Gate 1 validation and the future Gate 2 Alias Editor
++dropdown consume, ahead of the Afrikaans alias-data authoring (which anchors against
++this root set).
++
++### Sequencing
++
++Lands AFTER CR-CH-069 (the AUTONUM/NUM + af SOEK->FIND placement correction) and
++BEFORE the Afrikaans FFCMD alias-data authoring, consistent with the audit's
++"correct the (environment, root) sets before authoring localisation data against
++them" ordering.
++
++### Framework conformance
++
++Builds ON the existing single `=` jump-prefix front-door step (command-framework
++Requirement 10 criterion 10.2 / criterion 14, CR-CH-052) and the existing bare
++`FILES` classifier arm. It REMOVES a redundant, malformed literal; it adds no
++dispatcher, no navigation stack, no persistence format, and reshapes no public
++framework type. NOT a framework change.
+diff --git a/docs/specs/command-environments/requirements.md b/docs/specs/command-environments/requirements.md
+index a2e1e0e..1276ff1 100644
+--- a/docs/specs/command-environments/requirements.md
++++ b/docs/specs/command-environments/requirements.md
+@@ -1154,3 +1154,72 @@ stack, no new persistence format, no reshape of a public framework type.
+    file-open root, owner-confirmed, so `ECOB -> EDIT` is an FFCMD alias), correcting
+    the stale text that says FFEDIT. This is a documentation-only correction with no
+    behaviour change. [CR-CH-069]
++
++### Requirement 22: Remove the malformed `=FILES` literal root token -- FILES is the root, `=` is the jump prefix (CR-CH-070)
++
++**User Story:** As a maintainer (and as a user of the Alias Editor Root dropdown),
++I want `=FILES` NOT to appear as a standalone FFCMD root command, so that the FFCMD
++root set `root_commands("FFCMD")` enumerates (CR-CH-067 Requirement 20) is clean --
++it offers and accepts the real root FILES and never the malformed `=FILES` -- while
++typing `=FILES` on the command line continues to work via the existing `=` jump
++prefix (jump to the POM, then run FILES).
++
++**Source:** [CR-CH-070]. Grounded in the command-environment placement audit
++(`.agents/tasks/command-placement-audit/command-environment-audit.md`, audit item
++D), which CR-CH-069 explicitly deferred as "its own change request". `=FILES` was
++registered as a LITERAL root token in `BUILTIN_WORKSPACE_VERB_ROOTS` and classified
++by a dedicated `is("=FILES")` arm in `builtin_workspace_target_for`
++(`crates/ff-desktop/src/command_config/mod.rs`), even though `=` is the ISPF JUMP
++PREFIX and the real root command is FILES. The `=` prefix is already handled at the
++single front door (`shell/dispatch.rs::dispatch_command_string`, CR-CH-052): it
++reinitialises the active tab's Navigation_Stack to the POM (FFCMD_Root) and then
++re-dispatches the stripped remainder against FFCMD. So `=FILES` already resolves as
++`=` (jump) THEN FILES through the generic step; the literal `=FILES` token is
++redundant AND pollutes the FFCMD root set that CR-CH-067's `root_commands("FFCMD")`
++and `contains_root` read, so the Alias Editor Root dropdown and alias-anchoring
++validation would offer/accept the malformed `=FILES`.
++
++**Investigation finding (verified at the gate):** removing the literal `=FILES`
++classifier entry does NOT break the `=FILES` jump path. The front-door `=` step
++(`dispatch_command_string`) strips the leading `=`, reinitialises the tab to the
++POM, and recursively dispatches the remainder `FILES`, which the generic bare
++`is("FILES") => custom("file_explorer")` arm classifies. The `=FILES` literal is
++therefore NOT the thing that makes `=FILES` work; the generic `=` step already
++covers it (command-framework Requirement 10 criterion 10.2 and criterion 14,
++CR-CH-052). The two-word verb `FILE CATALOGS` (`is("FILE") && arg == "CATALOGS"`)
++is a LEGITIMATE two-word classifier entry (it opens the `files` workspace) and is
++NOT malformed; it is LEFT UNCHANGED by this requirement.
++
++**Marking:** CLASSIFICATION correction / bug fix. Removes a redundant, malformed
++literal root token. No framework change: it builds ON the existing single `=`
++jump-prefix front-door step (command-framework Requirement 10/14) and the existing
++bare-FILES classifier arm. No second dispatcher, no second navigation stack, no new
++persistence format, no reshape of a public framework type.
++
++#### Acceptance Criteria
++
++22.1 THE token `=FILES` SHALL NOT be a standalone FFCMD root command: it SHALL be
++   REMOVED from `command_config::BUILTIN_WORKSPACE_VERB_ROOTS` and its dedicated
++   `is("=FILES")` classifier arm in `builtin_workspace_target_for` SHALL be
++   REMOVED, so that `EnvironmentRegistry::root_commands("FFCMD")` CONTAINS FILES and
++   does NOT contain `=FILES`, and `contains_root("FFCMD", "=FILES")` SHALL return
++   FALSE. [CR-CH-070]
++
++22.2 WHEN the bare command FILES is submitted, THE FFCMD classifier
++   (`builtin_workspace_target_for`) SHALL continue to resolve it to the
++   File Explorer workspace (`CustomWorkspace { workspace_kind: "file_explorer" }`)
++   via the existing bare `is("FILES")` arm, UNCHANGED by this requirement. [CR-CH-070]
++
++22.3 WHEN `=FILES` is typed on the command line, THE front door SHALL continue to
++   handle it as the `=` JUMP PREFIX followed by FILES: the `=` step
++   (`dispatch_command_string`, command-framework Requirement 10 criterion 10.2 /
++   criterion 14, CR-CH-052) SHALL reinitialise the active tab's Navigation_Stack to
++   the POM (FFCMD_Root), THEN dispatch the stripped remainder FILES against FFCMD,
++   which resolves to the File Explorer workspace (criterion 22.2). This behaviour
++   SHALL be PRESERVED -- removing the literal `=FILES` token SHALL NOT change it.
++   [CR-CH-070]
++
++22.4 THE legitimate two-word verb `FILE CATALOGS`
++   (`is("FILE") && arg == "CATALOGS"` -> the `files` workspace) SHALL be LEFT
++   UNCHANGED: it is NOT a malformed token and is OUT OF SCOPE for this correction.
++   [CR-CH-070]
+diff --git a/docs/specs/command-environments/tasks.md b/docs/specs/command-environments/tasks.md
+index 992e75c..95fe970 100644
+--- a/docs/specs/command-environments/tasks.md
++++ b/docs/specs/command-environments/tasks.md
+@@ -690,3 +690,53 @@ before any code. `[ ]` only.
+ | Req 21: af SOEK->FIND in the FFEDIT catalogue + POC test | 21.3 | 30.3, 30.4 |
+ | Req 21: FFCMD-anchored FIND/AUTONUM/NUM invalid-in-environment | 21.4 | 30.1, 30.6 |
+ | Req 21: EDIT doc-comment corrected to FFCMD | 21.5 | 30.5 |
++
++### Phase (eqfiles-fix) -- CR-CH-070 (remove the malformed `=FILES` literal root token) -- Requirement 22
++
++> The `=FILES` root-token fix CR-CH-069 explicitly deferred (audit item D). `=` is
++> the ISPF JUMP PREFIX and FILES is the real root; the `=` prefix is already handled
++> at the single front door (`dispatch_command_string`, CR-CH-052), so the literal
++> `=FILES` token is redundant AND pollutes the FFCMD root set `root_commands("FFCMD")`
++> enumerates (CR-CH-067). Remove it so the root set is clean while typing `=FILES`
++> keeps working via the generic `=` jump. The legitimate two-word verb `FILE CATALOGS`
++> is LEFT UNCHANGED. TDD per `testing.md`; agent verification is compile/clippy/fmt
++> clean + scoped `-p ff-desktop` tests, the owner runs the authoritative full gate.
++> `[ ]` only.
++
++- [ ] 31. Remove the malformed `=FILES` literal root token (FILES is the root, `=` is the jump prefix)
++  - [ ] 31.1 Remove `=FILES` from the FFCMD root set (enumeration): delete the
++        `"=FILES"` entry from `BUILTIN_WORKSPACE_VERB_ROOTS`
++        (`crates/ff-desktop/src/command_config/mod.rs`) and delete its dedicated
++        `is("=FILES")` arm from `builtin_workspace_target_for`. Test FIRST (red
++        before green): `EnvironmentRegistry::root_commands("FFCMD")` contains FILES
++        and does NOT contain `=FILES`, and `contains_root("FFCMD", "=FILES")` is
++        FALSE. Validates: Requirement 22.1.
++  - [ ] 31.2 Confirm the bare FILES classifier is unchanged: assert the bare
++        `is("FILES")` arm still resolves FILES to
++        `CustomWorkspace { workspace_kind: "file_explorer" }` (the File Explorer
++        workspace). Validates: Requirement 22.2.
++  - [ ] 31.3 Confirm the `=FILES` jump path is preserved: a dispatch test that
++        typing `=FILES` reinitialises the active tab to the POM (FFCMD_Root) via the
++        front-door `=` step and then resolves FILES to the File Explorer workspace
++        (behaviour unchanged by the literal's removal). Validates: Requirement 22.3.
++  - [ ] 31.4 Leave `FILE CATALOGS` untouched: assert the two-word
++        `is("FILE") && arg == "CATALOGS"` arm still resolves to the `files`
++        workspace (the legitimate two-word verb is NOT a jump-prefix artefact and is
++        out of scope). Validates: Requirement 22.4.
++  - [ ] 31.5 Update the `BUILTIN_WORKSPACE_VERB_ROOTS` doc-comment to drop the
++        "`=FILES` is the fastpath single token" sentence so the comment matches the
++        corrected list. Documentation-only, no behaviour change. Validates:
++        Requirement 22.1.
++  - [ ] 31.6 Scoped verification: `cargo fmt`, `cargo check -p ff-desktop`,
++        `cargo clippy -p ff-desktop -- -D warnings`, and the scoped Req-22 tests
++        (`-p ff-desktop`). The authoritative full `cargo gate` is the owner's manual
++        run. Validates: Requirement 22.1, 22.2, 22.3, 22.4.
++
++### Acceptance Criteria Coverage (CR-CH-070)
++
++| Requirement | Criteria | Covered by Task(s) |
++|-------------|----------|---------------------|
++| Req 22: `=FILES` removed from the FFCMD root set | 22.1 | 31.1, 31.5 |
++| Req 22: bare FILES still opens File Explorer | 22.2 | 31.2 |
++| Req 22: `=FILES` jump path (jump-to-POM then FILES) preserved | 22.3 | 31.3 |
++| Req 22: legitimate `FILE CATALOGS` left unchanged | 22.4 | 31.4 |
+diff --git a/docs/status/change-log.md b/docs/status/change-log.md
+index 0012cf8..215000f 100644
+--- a/docs/status/change-log.md
++++ b/docs/status/change-log.md
+@@ -457,6 +457,17 @@ New capabilities that did not previously exist.
+ 
+ Modifications to existing behaviour that already works.
+ 
++### CR-CH-070 -- Remove the malformed `=FILES` literal root token: FILES is the root, `=` is the ISPF jump prefix (already handled at the front door)
++- **Date/Phase**: Phase (eqfiles-fix) -- GATE AUTHORED / PENDING OWNER APPROVAL (classification correction / bug fix; the deferred audit item D that CR-CH-069 split out as its own change request)
++- **Prompt**: (follow-on to the command-environment placement audit, audit item D) fix the `=FILES` root-token bug so the FFCMD root set is clean ahead of the Afrikaans alias-data authoring.
++- **Description**: Remove the malformed `=FILES` literal root token. `=FILES` was registered as a standalone root in `BUILTIN_WORKSPACE_VERB_ROOTS` and classified by a dedicated `is("=FILES")` arm in `builtin_workspace_target_for` (`crates/ff-desktop/src/command_config/mod.rs`), even though `=` is the ISPF JUMP PREFIX and the real root command is FILES. The `=` prefix is already handled at the single front door (`shell/dispatch.rs::dispatch_command_string`, CR-CH-052): it strips the `=`, reinitialises the active tab's Navigation_Stack to the POM (FFCMD_Root), then re-dispatches the stripped remainder against FFCMD. So `=FILES` already resolves as `=` (jump) THEN FILES through the generic step, making the literal `=FILES` token redundant. The bug is that the literal POLLUTES the FFCMD root set `root_commands("FFCMD")` enumerates (CR-CH-067 Req 20): so the Gate 2 Alias Editor Root dropdown and the alias-anchoring validation (`contains_root`) would offer and accept the malformed `=FILES`. THREE outcomes, SCOPED exactly: (1) `root_commands("FFCMD")` returns FILES and NO LONGER returns `=FILES` (and `contains_root("FFCMD", "=FILES")` is FALSE); (2) the bare FILES command still opens the File Explorer workspace, unchanged; (3) typing `=FILES` STILL works via the existing `=` jump-prefix handling (jump to the POM then run FILES) -- behaviour PRESERVED.
++- **INVESTIGATION FINDING (verified at the gate)**: removing the literal `=FILES` classifier entry does NOT break the `=FILES` jump path. The front-door `=` step strips the leading `=`, reinitialises the tab to the POM, and recursively dispatches the remainder FILES, which the generic bare `is("FILES") => custom("file_explorer")` arm classifies. The literal is therefore NOT what makes `=FILES` work; the generic `=` step already covers it (command-framework Req 10 criterion 10.2 / criterion 14, CR-CH-052). The two-word verb `FILE CATALOGS` (`is("FILE") && arg == "CATALOGS"` -> the `files` workspace) is a LEGITIMATE two-word classifier entry, NOT malformed, and is LEFT UNCHANGED.
++- **SEQUENCING**: lands AFTER CR-CH-069 (the AUTONUM/NUM + af SOEK->FIND placement correction) and BEFORE the Afrikaans FFCMD alias-data authoring, consistent with the audit's "correct the (environment, root) sets before authoring localisation data against them" ordering. CR-CH-069 explicitly deferred this fix as "its own change request" -- this is it.
++- **FRAMEWORK-CONFORMANCE stance**: builds ON the existing single `=` jump-prefix front-door step (command-framework Req 10/14, CR-CH-052) and the existing bare `FILES` classifier arm. It REMOVES a redundant, malformed literal; no second dispatcher, no second navigation stack, no new persistence format, no reshape of a public framework type. NOT a framework change.
++- **Affects (docs only, this gate)**: `docs/specs/command-environments/requirements.md` (NEW Requirement 22 -- `=FILES` removed from the FFCMD root set; bare FILES still opens File Explorer; the `=FILES` jump path preserved; `FILE CATALOGS` left unchanged), `docs/specs/command-environments/design.md` (NEW section -- the bug, why removal is safe, the FILE CATALOGS finding, CR-CH-067 interaction, sequencing), `docs/specs/command-environments/tasks.md` (NEW Task 31 group), `docs/quality/TCR.md` (NOT-COVERED rows for Req 22.1-22.4), `docs/project-management/ROADMAP.md` (CR-CH-070 entry). Follow-on code (NOT this gate): `crates/ff-desktop/src/command_config/mod.rs` (remove `"=FILES"` from `BUILTIN_WORKSPACE_VERB_ROOTS` and the `is("=FILES")` classifier arm; update the doc-comment), plus the Req-22 tests in `command_config` / `environment_registry` / a dispatch test.
++- **Status**: GATE AUTHORED / PENDING OWNER APPROVAL -- docs-first, NO source `.rs` edits in this gate. The implementation step lands the docs + code together per increment.
++- **Linked spec**: `docs/specs/command-environments/requirements.md` (NEW Requirement 22; CR-CH-053 owns the Command Environment model + the `EnvironmentRegistry`, Req 13/Req 20). Cross-references `docs/specs/command-framework/requirements.md` Req 10 criterion 10.2 / criterion 14 (the single `=` jump-prefix front-door step, CR-CH-052), CR-CH-067 Req 20 (the `root_commands`/`contains_root` enumeration the fix cleans), CR-CH-069 (which deferred this fix), the Afrikaans alias-data authoring (the downstream consumer of the corrected root set), and `.agents/tasks/command-placement-audit/command-environment-audit.md` (audit item D, the grounding audit).
++
+ ### CR-CH-069 -- Correct editor command-environment placement: move AUTONUM/NUM from FFCMD to FFEDIT (in-buffer verbs), relocate the mis-placed af SOEK->FIND alias to the FFEDIT per-locale catalogue, and fix the stale EDIT doc-comment
+ - **Date/Phase**: Phase (command-placement-audit) -- GATE AUTHORED / PENDING OWNER APPROVAL (classification/semantics correction feeding the alias-anchoring model; the single gated change the command-environment placement audit recommends)
+ - **Prompt**: "i think some of these commands are misplaced ... for instance the AUTONUM command should be in the FFEDIT not FFCMD? We will need a plan of action on fixing the incorrectly placed commands.." / "Proceed with recommendations"

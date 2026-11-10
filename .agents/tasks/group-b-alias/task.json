@@ -1,0 +1,7 @@
+{
+  "task_id": "task-group-b-alias",
+  "task_description": "Group B editor redesign: build the shared ISPF-style table-editor component (crates/ff-desktop/src/shell/ispf_table_editor/ with an IspfTableHost trait, reusing ff-line-commands and generalising the Alias mini line-command flow) and rebuild the ALIAS editor on it -- adding a persisted optional description column, I/D/C + SORT line commands, auto-sort-on-save plus a manual SORT (uppercased-surface per-environment ordering), with the alias resolver left UNCHANGED. Preserve the CR-CH-071 ISPF explicit-commit save seam and the WorkspaceContext/InteriorFocus focus contract; ship the full-shell first-Tab egui_kittest test and handler/effect unit tests. Scope is the shared component + Alias editor only (Menu and Kinds are later runs). STOP before merge.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

@@ -1,0 +1,14 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "A1: Theme provider reads real hex from the working palette (token.get(palette).to_hex()), falling back to the active palette; no blank values and no colour-name column. Test theme_screen_model_has_real_hex_values_not_blank pins it. (confirmed)",
+    "A2: Theme/Alias/Menu/Keys/Kinds providers populate model.tables via ff_screen_model::Table with the editors' real columns and current values, read from each panel's own state (logical-model-first, no egui). Menu Command column holds a root verb or alias per the owner's clarification. (confirmed)",
+    "A3: Config provider captures the real visible settings tree as a [Setting, Value, State] table, reusing config_panel::visible_rows with the live filter and collapsed map so expand/collapse and filter are honoured; staged edits marked unsaved via the shared config_key_display_value. (confirmed)",
+    "Config SNAPSHOT side-effect fix and its regression test (command_submit_does_not_collapse_focused_config_tree_node) are present and intact on main (the branch base), not in this branch's diff. The fix consumes the Enter on submit (consume_key). (confirmed, no action)",
+    "No renderer change: all four renderers (text/html/markdown/yaml) already iterate model.tables; the diff touches no file under ff-screen-model. (confirmed)",
+    "Single dispatch reused (dispatch_command_string front door); no new dispatch mechanism, no egui pixel grab. (confirmed)",
+    "Constraints met: screen_providers.rs 323 lines, screen_providers_config.rs 148, screen_providers_tables.rs 238 -- all under 400; new files ASCII-only; no new deps; all new tests carry Validates annotations. (confirmed)",
+    "Pre-existing em-dash mojibake in render_command_line.rs comments on main; out of scope for this change. (confirmed, no action)"
+  ],
+  "reviewDoc": "c:/workspace/apps/FileForgeWorkbench/.agents/tasks/group-a-capture-fidelity/review.md"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Display-time short-description inheritance for the Alias Editor Description column and the command configurator / palette listings (command-configurator Req 9; context-help Req 22.3-22.7). An empty alias Description DISPLAYS its canonical root's one-liner via short_description, but the inheritance is NOT persisted (the stored Description stays the user's own value). Depends on FEAT-001 (short_description) and FEAT-003 (so cmd:EXIT etc. topics exist to inherit from).",
+  "status": "pending",
+  "steps": [
+    "Add a shell helper e.g. `fn effective_alias_description(&self, canonical: &str, stored: &str) -> String` in crates/ff-desktop/src/shell/alias_editor.rs: if `stored` is non-empty return it (user value wins, Req 9.1); else return self.help.registry.short_description(&ff_help::TopicKey::command(&canonical.to_uppercase())).unwrap_or_default() (None -> empty, Req 9.4). A chained alias inherits its CANONICAL root's one-liner because `canonical` is the resolved root (Req 22.5).",
+    "Do NOT change load_effective_alias_rows to fill the stored description -- it feeds the editable working copy that SAVE serialises, and Req 9.2/22.7 require display-time-only inheritance. Keep AliasRowEdit.description = the stored (possibly empty) value.",
+    "TDD: write FAILING ff-desktop tests FIRST (extend shell/tests_alias_editor.rs or a new module): an empty-description row for `X -> EXIT` DISPLAYS the cmd:EXIT one-liner via effective_alias_description; a NON-empty user description wins; a root with no loaded topic shows empty (no panic); `SS -> SNAPSHOT` inherits SNAPSHOT's one-liner; and the PERSISTED row keeps its empty stored description (assert the working row's `description` field / the save serialisation is unchanged). Annotate `// Validates: command-configurator Requirement 9.1`/`9.2`/`9.5`.",
+    "Apply the effective value at the egui display seam crates/ff-desktop/src/alias_editor_panel/rows.rs::render_data_row: when row.description is empty, set the Description TextEdit's hint_text to the inherited one-liner (computed and passed in from the host/render which has shell access) so the shown placeholder is the inherited text while row.description stays empty (so SAVE persists empty). If render_data_row cannot reach the registry, thread the effective string in via the panel host render (where the shell/registry is available) -- follow the existing alias_editor_panel host/render wiring; do NOT mutate the shell from render (return/compute, pending_action pattern).",
+    "Apply the effective value at the capture/display seam crates/ff-desktop/src/shell/screen_providers.rs: in alias_editor_screen_model / alias_table() fill the Description column with effective_alias_description for each row; and in command_configurator_screen_model wire the listing description for home-grown FFCMD roots through the SAME short_description lookup (Req 9.3) rather than a duplicated literal.",
+    "Keep every touched file <= 400 non-test lines; split tests near ~200 lines. ASCII-only."
+  ],
+  "acceptance_criteria": [
+    "An Alias Editor row with an empty Description DISPLAYS its canonical root's cmd:<ROOT> one-liner (e.g. X->EXIT shows cmd:EXIT's one-liner); a non-empty user Description takes precedence (command-configurator Req 9.1/9.5).",
+    "The inheritance is DISPLAY-ONLY: the stored/persisted Description is unchanged (empty for the seed), so the seed write / Reset-bare rebuild do not depend on help-registry readiness (Req 9.2/22.7).",
+    "When short_description returns None (no topic / out-of-scope command), the displayed description falls back to empty without failing or panicking (Req 9.4).",
+    "The command configurator / palette listing descriptions for home-grown FFCMD roots come through the same short_description lookup, not a duplicated literal (Req 9.3).",
+    "Running `cargo test -p ff-desktop <alias_description_tests>` passes; clippy clean with -D warnings."
+  ],
+  "verification": [
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo test -p ff-desktop alias_description\"  (chosen names; read proxy result; expect pass)",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo clippy -p ff-desktop -- -D warnings\"  (expect clean)",
+    "C:\\tools\\powershell7\\pwsh.exe -NoProfile -NonInteractive -Command \"cargo fmt -p ff-desktop -- --check\"  (expect no diff)"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

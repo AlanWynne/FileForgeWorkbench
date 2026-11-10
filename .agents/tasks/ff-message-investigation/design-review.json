@@ -1,0 +1,30 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "severity": "NIT",
+      "title": "Inaccurate VfsError em-dash justification",
+      "location": "requirements.md Out of Scope bullet; design.md 'Optional MessageId on thiserror enums'",
+      "problem": "Both docs assert VfsError and CommandError carry pre-existing non-ASCII em-dashes in their #[error(...)] strings. Verified against source: only CommandError (InvalidId, HistoryIo) does; VfsError's #[error(...)] strings are plain ASCII. The scope decision (leave both untouched) is correct, but the stated justification is factually wrong for VfsError.",
+      "fix": "Narrow the parenthetical to CommandError only (variants InvalidId and HistoryIo). Do not change the scope decision."
+    },
+    {
+      "id": 2,
+      "severity": "NIT",
+      "title": "MessageArgs Send+Sync asserted, could read as an explicit derive",
+      "location": "design.md 'The structured message' / 'Decisions summary'",
+      "problem": "The claim that MessageArgs is Clone + Send + Sync is correct, but MessageArgs derives only Debug, Default, Clone; Send + Sync are auto-traits inferred from its owned String/f64 fields. A reader could misread the text as claiming an explicit derive.",
+      "fix": "Clarify that Send + Sync are auto-derived (auto-traits) from the owned fields, not an explicit derive, and that StructuredMessage gets them automatically."
+    },
+    {
+      "id": 3,
+      "severity": "NIT",
+      "title": "MessageClass::new_static framed as 'infallible' but returns Result, and is untasked",
+      "location": "design.md 'Identity'",
+      "problem": "The prose calls new_static 'an infallible ... path' in the same sentence that says it returns Result (self-contradictory). It is also not referenced by any task (tasks 3.1/3.2 only cover try_new), so its in-scope status is ambiguous.",
+      "fix": "Prefer dropping new_static for this gate (nothing needs it). If kept, remove the word 'infallible', frame it as a &'static str convenience constructor that still validates and returns Result, and add a sub-note to task 3.2 that it is implemented and tested."
+    }
+  ],
+  "reviewDoc": "c:\\workspace\\apps\\FileForgeWorkbench\\.agents\\tasks\\ff-message-investigation\\design-review.md"
+}
