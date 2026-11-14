@@ -34,6 +34,7 @@ mod actions;
 mod alias_description;
 mod alias_editor;
 mod alias_editor_line_commands;
+mod alias_entry;
 mod alias_overlay;
 pub(crate) mod alias_reader;
 mod alias_template;

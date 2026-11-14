@@ -384,14 +384,18 @@ fn save_validation_failure_leaves_file_unchanged() {
     );
 }
 
-// Validates: localization Requirement 13.7; command-configurator Requirement 6.4
-// -- after a SAVE, the MENU render surface for the edited root reflects the new
-// surface: editing an FFCMD menu-root alias (KAT -> CATALOGS) and saving makes
-// the live store's display_surface_for_canonical("CATALOGS") return "KAT", which
-// is exactly the active-locale surface the menu command column reads
-// (menu_option_command_surfaces -> display_surface_for_canonical). No restart.
+// Validates: command-resolution-model Requirement 5.4 (SUPERSEDES localization
+// Req 13.7 for the USER-shorthand case) -- after a SAVE, a USER shorthand does
+// NOT drive the MENU command surface: editing an FFCMD menu-root alias
+// (KAT -> CATALOGS) and saving leaves the live store's
+// display_surface_for_canonical("CATALOGS") as the CANONICAL "CATALOGS" (the menu
+// shows the canonical root, never a user shorthand, Req 5.4). The saved alias is
+// still typeable (canonical_verb resolves KAT) and still listed in the Alias
+// Editor; only the MENU display column ignores it. (A LOCALE translation would
+// still drive the menu surface; see
+// environment::locale_seed_drives_menu_display_surface.)
 #[test]
-fn save_makes_menu_render_surface_reflect_the_edited_alias() {
+fn save_user_alias_does_not_change_menu_render_surface() {
     let mut shell = make_shell();
     let _dir = point_user_aliases_at_temp(&mut shell);
     shell.dispatch_command_string("ALIASES");
@@ -399,14 +403,20 @@ fn save_makes_menu_render_surface_reflect_the_edited_alias() {
     shell.alias_editor_panel.rows = vec![row("KAT", "CATALOGS", AliasEnvironment::Ffcmd, "")];
     save(&mut shell);
     assert!(shell.alias_editor_panel.error.is_none());
-    // The live store's per-root display surface (what the menu column renders) is
-    // now the edited surface KAT (Req 13.7 / 6.4).
     let store = shell.i18n.alias_store.lock().expect("alias store lock");
     let table = store.table_for("FFCMD").expect("FFCMD table");
+    // CR-NR-121 Req 5.4: the menu command surface for CATALOGS stays the
+    // CANONICAL root, NOT the user shorthand KAT.
     assert_eq!(
         table.display_surface_for_canonical("CATALOGS"),
-        Some("KAT".to_string()),
-        "after save the menu render surface for CATALOGS reflects the edited alias (Req 13.7)"
+        Some("CATALOGS".to_string()),
+        "a user shorthand must not drive the menu command surface (Req 5.4)"
+    );
+    // The saved alias is still typeable (resolution is unchanged by Stage B).
+    assert_eq!(
+        table.canonical_verb("KAT"),
+        Some("CATALOGS"),
+        "the saved user alias is still typeable and resolves to its root"
     );
 }
 

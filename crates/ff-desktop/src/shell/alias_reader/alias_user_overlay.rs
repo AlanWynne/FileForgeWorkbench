@@ -110,10 +110,14 @@ impl LocaleAliasStore {
             };
             // Apply ONE row: a same-root surface REPLACES the seed row (user wins,
             // Req 13.5); a DIFFERENT-root clash is rejected (seed wins) with a
-            // WARN; the overlay seam carries the discipline.
-            if let Err(e) =
-                table.apply_locale_overlay_keyed(env_name, &[(surface, canonical, template)])
-            {
+            // WARN; the overlay seam carries the discipline. CR-NR-121: stamp
+            // `UserOverride` so a user shorthand never drives the menu display
+            // surface (command-resolution-model Req 5.4).
+            if let Err(e) = table.apply_locale_overlay_keyed(
+                env_name,
+                &[(surface, canonical, template)],
+                super::super::environment::AliasOrigin::UserOverride,
+            ) {
                 ff_logging::log_warn!(
                     "[aliases] user override row rejected ({}) -- the shipped seed surface wins",
                     e

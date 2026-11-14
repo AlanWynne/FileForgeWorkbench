@@ -15,7 +15,7 @@
 │ 0 SETTINGS : FFWB Settings and Client Parameters    November 2026                                                                         │
 │ 3 HELP     : Help -- workbench help and topics       Su  Mo  Tu  We  Th  Fr  Sa                                                           │
 │ S SCRM     : Screen Capture and Recording             1   2   3 * 4   5   6   7                                                           │
-│ X X        : Exit -- terminate the workbench          8   9  10  11  12  13  14                                                           │
+│ X EXIT     : Exit -- terminate the workbench          8   9  10  11  12  13  14                                                           │
 │                                                      15  16  17  18  19  20  21                                                           │
 │                                                      22  23  24  25  26  27  28                                                           │
 │                                                      29  30                                                                               │
@@ -35,4 +35,4 @@
 | 0 | SETTINGS | FFWB Settings and Client Parameters |
 | 3 | HELP | Help -- workbench help and topics |
 | S | SCRM | Screen Capture and Recording |
-| X | X | Exit -- terminate the workbench |
+| X | EXIT | Exit -- terminate the workbench |

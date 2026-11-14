@@ -366,6 +366,9 @@ impl LocaleAliasStore {
                         canonical.to_uppercase(),
                         template.map(str::to_string),
                     )],
+                    // CR-NR-121: this helper simulates an ACTIVE-LOCALE alias
+                    // (a localised surface), so stamp `LocaleSeed`.
+                    super::environment::AliasOrigin::LocaleSeed,
                 )
                 .expect("test overlay row must not collide");
         }
@@ -715,13 +718,19 @@ canonical = "CATALOGS"
         let ffedit = store.table_for(FFEDIT_NAME).expect("FFEDIT table");
         // Seed surface still resolves (the chain is cumulative, both reach FIND).
         assert_eq!(ffedit.canonical_verb("SOEK"), Some("FIND"));
-        // The user override surface VIND resolves to the same root and is the
-        // preferred display surface for FIND (override wins, Req 13.5).
+        // The user override surface VIND resolves to the same root and is
+        // typeable (override still participates in RESOLUTION, Req 13.5).
         assert_eq!(ffedit.canonical_verb("VIND"), Some("FIND"));
+        // CR-NR-121 Stage B (command-resolution-model Req 5.4) SUPERSEDES the
+        // former Req 13.5 MENU-display assertion: the MENU command surface shows
+        // a LOCALE translation (the shipped SEED surface SOEK), NEVER a USER
+        // shorthand (VIND). The user override still WINS RESOLUTION (asserted
+        // above), but it does not drive the menu display column.
         assert_eq!(
             ffedit.display_surface_for_canonical("FIND"),
-            Some("VIND".to_string()),
-            "the user override surface wins the display for the shared root (Req 13.5)"
+            Some("SOEK".to_string()),
+            "CR-NR-121 Req 5.4: the LocaleSeed translation drives the menu display, \
+             not the user shorthand"
         );
         // The FFCMD user-override-only row is present.
         let ffcmd = store.table_for(FFCMD_NAME).expect("FFCMD table");

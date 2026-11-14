@@ -48,7 +48,7 @@
 //!
 //! See docs/specs/localization/{requirements,design}.md.
 
-use super::environment::AliasTable;
+use super::environment::{AliasOrigin, AliasTable};
 
 /// One KEYED overlay row:
 /// `(surface-UPPERCASED, canonical, command_template?)`
@@ -195,6 +195,8 @@ impl AliasCatalogue {
         table: &mut AliasTable,
     ) -> Result<(), AliasOverlayError> {
         match self.rows_for(environment_name) {
+            // CR-NR-121: a catalogue models a SHIPPED locale seed, so its rows
+            // are `LocaleSeed` origin (`apply_locale_overlay` stamps that).
             Some(rows) => table.apply_locale_overlay(environment_name, rows),
             None => Ok(()),
         }
@@ -214,7 +216,13 @@ impl AliasCatalogue {
         table: &mut AliasTable,
     ) -> Result<(), AliasOverlayError> {
         match self.keyed_rows_for(environment_name) {
-            Some(rows) => table.apply_locale_overlay_keyed(environment_name, rows),
+            // CR-NR-121: the catalogue reader parses the SHIPPED per-locale seed
+            // (`i18n/<locale>/aliases/<ENV>.toml`), so these rows are
+            // `LocaleSeed` origin. The USER override store takes a separate path
+            // (`apply_user_rows_for_env`) that stamps `UserOverride`.
+            Some(rows) => {
+                table.apply_locale_overlay_keyed(environment_name, rows, AliasOrigin::LocaleSeed)
+            }
             None => Ok(()),
         }
     }
