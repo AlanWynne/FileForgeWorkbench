@@ -335,16 +335,17 @@ impl WorkbenchShell {
         };
 
         // CR-CH-116 first-run write hook (startup-and-session Req 23): write any
-        // ABSENT built-in menu file (pom/settings/scrm) and the absent FFCMD
-        // X -> EXIT alias seed so the app runs from on-disk config thereafter.
-        // Skips in Degraded_Mode; non-blocking on error.
+        // ABSENT built-in menu file (pom/settings/scrm) and the absent five-row
+        // FFCMD alias seed (CR-NR-120) so the app runs from on-disk config
+        // thereafter. Skips in Degraded_Mode; non-blocking on error.
         shell.first_run_write_builtin_config();
 
         // CR-CH-116 / FEAT-004: the alias store above was seeded+overlaid BEFORE
         // the first-run write, so on a genuine first run it did not yet see the
-        // just-written FFCMD X -> EXIT seed. Refresh it in place so X resolves to
-        // EXIT on the first launch too (not only after a restart). On a later
-        // launch the overlay already carried the seed, so this is a no-op.
+        // just-written FFCMD alias seed. Refresh it in place so the seed aliases
+        // (X, SS, CS, CT, CR) resolve on the first launch too (not only after a
+        // restart). On a later launch the overlay already carried the seed, so
+        // this is a no-op.
         shell.refresh_alias_store_in_place();
 
         shell

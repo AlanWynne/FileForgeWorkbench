@@ -909,13 +909,15 @@ fn execute_reset_bare_reopens_home_context() {
 }
 
 // Validates: configuration-system Req 19.16, 19.17, 19.18; command-configurator
-// Req 8.4 (CR-CH-116) -- RESET BARE on the active profile rebuilds the FFCMD
-// X -> EXIT seed and the built-in menus from the Recovery_Source, and the live
-// alias store picks up X -> EXIT while a prior user alias (SS -> SNAPSHOT) is
-// gone. The target points at a TEMP udd (safe archive); the active-profile
-// rebuild writes through the shell's isolated menus/alias seams.
+// Req 8.4 (CR-CH-116); configuration-system Req 24.1, 24.3, 24.5 (CR-NR-120) --
+// RESET BARE on the active profile rebuilds the built-in menus and the FFCMD
+// alias seed from the Recovery_Source. Under CR-NR-120 that seed is the FIVE
+// rows X -> EXIT, SS -> SNAPSHOT, CS/CT/CR -> CAPTURE START/STOP/REPLAY (Option A
+// templates), so a prior user SS -> SNAPSHOT alias is RESTORED (not wiped): SS is
+// itself a seed row. The target points at a TEMP udd (safe archive); the
+// active-profile rebuild writes through the shell's isolated menus/alias seams.
 #[test]
-fn reset_bare_active_profile_rebuilds_menus_and_x_exit_seed() {
+fn reset_bare_active_profile_rebuilds_menus_and_five_row_alias_seed() {
     use super::reset_bare::ResetBareTarget;
     use super::user_aliases;
 
@@ -947,18 +949,39 @@ fn reset_bare_active_profile_rebuilds_menus_and_x_exit_seed() {
     let target = ResetBareTarget::single("(default)".to_string(), udd.path().to_path_buf(), true);
     shell.execute_reset_bare(&target);
 
-    // The rebuilt FFCMD override now carries X -> EXIT and NOT SS -> SNAPSHOT.
+    // The rebuilt FFCMD override carries EXACTLY the five CR-NR-120 seed rows:
+    // X -> EXIT, SS -> SNAPSHOT, and CS/CT/CR -> CAPTURE with Option A templates
+    // START/STOP/REPLAY, every row with an empty stored description. SS is a
+    // seed row, so Reset bare RESTORES it rather than wiping it.
     let rebuilt = std::fs::read_to_string(&ffcmd_file).expect("read rebuilt FFCMD");
     let rows = user_aliases::parse_user_alias_toml(&rebuilt).expect("parse rebuilt");
-    assert!(
-        rows.iter()
-            .any(|r| r.surface == "X" && r.canonical == "EXIT"),
-        "rebuilt FFCMD seed carries X -> EXIT: {rows:?}"
+    let expected = [
+        ("X", "EXIT", ""),
+        ("SS", "SNAPSHOT", ""),
+        ("CS", "CAPTURE", "START"),
+        ("CT", "CAPTURE", "STOP"),
+        ("CR", "CAPTURE", "REPLAY"),
+    ];
+    assert_eq!(
+        rows.len(),
+        expected.len(),
+        "rebuilt FFCMD seed carries exactly the five CR-NR-120 rows: {rows:?}"
     );
-    assert!(
-        !rows.iter().any(|r| r.surface == "SS"),
-        "the prior SS -> SNAPSHOT user alias is gone after rebuild: {rows:?}"
-    );
+    for (surface, canonical, template) in expected {
+        let row = rows
+            .iter()
+            .find(|r| r.surface == surface)
+            .unwrap_or_else(|| panic!("rebuilt seed is missing surface {surface}: {rows:?}"));
+        assert_eq!(row.canonical, canonical, "seed canonical for {surface}");
+        assert_eq!(
+            row.command_template, template,
+            "Option A CAPTURE template for {surface}"
+        );
+        assert_eq!(
+            row.description, "",
+            "seed description is empty for {surface}"
+        );
+    }
 
     // The built-in menus were rebuilt on disk (Complete content).
     assert!(menus.path().join("pom.toml").exists(), "pom.toml rebuilt");

@@ -12,7 +12,7 @@
 ├─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Command ===> __________________________________________________________________________________________ │
 ├─────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ S  SNAPSHOT       : Snapshot -- copy the current screen to the clipboard    November 2026               │
+│ S  SS             : Snapshot -- copy the current screen to the clipboard    November 2026               │
 │ CS CAPTURE START  : Capture start -- begin recording a capture session       Su  Mo  Tu  We  Th  Fr  Sa │
 │ CT CAPTURE STOP   : Capture stop -- stop and save the capture session         1   2   3 * 4   5   6   7 │
 │ CR CAPTURE REPLAY : Capture replay -- open a saved capture session            8   9  10  11  12  13  14 │
@@ -28,7 +28,7 @@
 
 | Option | Command | Description |
 |------|------|------|
-| S | SNAPSHOT | Snapshot -- copy the current screen to the clipboard |
+| S | SS | Snapshot -- copy the current screen to the clipboard |
 | CS | CAPTURE START | Capture start -- begin recording a capture session |
 | CT | CAPTURE STOP | Capture stop -- stop and save the capture session |
 | CR | CAPTURE REPLAY | Capture replay -- open a saved capture session |
