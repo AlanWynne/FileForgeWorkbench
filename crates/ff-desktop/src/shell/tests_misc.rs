@@ -139,6 +139,139 @@ fn chained_fastpath_equals_zero_dot_k_opens_keys_workspace() {
     );
 }
 
+// === CR-NR-121 Stage A -- lifecycle-first chain recognition ================
+//
+// Stage A widens try_chained_fastpath so a BARE (non-=) chain whose first
+// segment is a lifecycle lead verb {END, RETURN, CANCEL} is recognised and
+// split, instead of erroring as one unknown token. EXIT is deliberately
+// EXCLUDED (it terminates the app, so nothing after it in a chain can run).
+// Only recognition is widened; the downstream per-segment dispatch loop and the
+// nav_end / nav_return landings are unchanged.
+
+/// Validates: command-resolution-model Requirement 4.1, 4.2 -- a bare `END;Z`
+/// chain is recognised as a chain and split into segments (returns Some(true)),
+/// where previously a non-digit, non-`=` first segment returned None.
+#[test]
+fn lifecycle_chain_end_is_recognised_as_chain() {
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.try_chained_fastpath("END;Z"),
+        Some(true),
+        "a bare END-led chain must be recognised and handled as a chain"
+    );
+}
+
+/// Validates: command-resolution-model Requirement 4.1, 4.2 -- a bare `RETURN;Z`
+/// chain is recognised and split.
+#[test]
+fn lifecycle_chain_return_is_recognised_as_chain() {
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.try_chained_fastpath("RETURN;Z"),
+        Some(true),
+        "a bare RETURN-led chain must be recognised and handled as a chain"
+    );
+}
+
+/// Validates: command-resolution-model Requirement 4.1, 4.2 -- a bare `CANCEL;Z`
+/// chain is recognised and split.
+#[test]
+fn lifecycle_chain_cancel_is_recognised_as_chain() {
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.try_chained_fastpath("CANCEL;Z"),
+        Some(true),
+        "a bare CANCEL-led chain must be recognised and handled as a chain"
+    );
+}
+
+/// Validates: command-resolution-model Requirement 4.3 -- ordinary dotted text
+/// (a DSN-like `abc.def`) whose first segment is NOT a lifecycle lead verb is
+/// still NOT hijacked as a chain (returns None). Proves the closed set does not
+/// admit arbitrary alpha-first text.
+#[test]
+fn non_lifecycle_dotted_text_is_not_a_chain() {
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.try_chained_fastpath("ABC.DEF"),
+        None,
+        "a DSN-like dotted path must not be treated as a lifecycle chain"
+    );
+    assert_eq!(
+        shell.try_chained_fastpath("FOO;BAR"),
+        None,
+        "a bare non-lifecycle alpha-first chain must not be recognised"
+    );
+}
+
+/// Validates: command-resolution-model Requirement 4.2, 4.5 -- EXIT is EXCLUDED
+/// from the closed lead-verb set, so a bare `EXIT;Z` is NOT given the new
+/// lifecycle-chain treatment. It behaves exactly as before this change: a
+/// non-digit, non-`=` first segment is not recognised as a chain (returns None).
+#[test]
+fn exit_led_chain_is_not_recognised_as_lifecycle_chain() {
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.try_chained_fastpath("EXIT;Z"),
+        None,
+        "EXIT is excluded from the lifecycle lead set -- EXIT;Z must not be a chain"
+    );
+}
+
+/// Validates: command-resolution-model Requirement 4.1, 4.2, 4.4 (and
+/// Requirement 3.4/3.5 late-bound re-resolution) -- end-to-end: open the Keys
+/// editor UNDER the Settings menu via `=0.K`, then a bare `END;T` pops back to
+/// Settings (END) and the follow-on `T` resolves against THE SETTINGS menu
+/// (Settings option T = Theme), landing on the Theme editor.
+#[test]
+fn lifecycle_chain_end_then_option_resolves_against_revealed_menu() {
+    use crate::tab_state::KindTag;
+    let mut shell = make_shell();
+    // Open Keys under Settings: POM opt 0 = Settings, then K = KEYS.
+    shell.handle_command("=0.K");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::KeysEditor,
+        "precondition: =0.K must land on the Keys editor under Settings"
+    );
+    // Bare lifecycle-led chain: END pops to Settings, then T opens Theme.
+    shell.handle_command("END;T");
+    assert_eq!(
+        shell.tabs.active_tab().kind.tag(),
+        KindTag::ThemeEditor,
+        "END must reveal Settings and the follow-on T must open Theme from it"
+    );
+    let err = shell.open_error.as_deref().unwrap_or("");
+    assert!(
+        !err.to_lowercase().contains("not yet implemented"),
+        "lifecycle chain must not fall through to the not-implemented stub, got: {err:?}"
+    );
+}
+
+/// Validates: menu-workspace Requirement 19.4 (regression) -- the pre-existing
+/// digit-first bare fastpath recognition still works after the Stage A widening.
+#[test]
+fn digit_first_bare_chain_still_recognised() {
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.try_chained_fastpath("3.1"),
+        Some(true),
+        "a digit-first bare chain must still be recognised"
+    );
+}
+
+/// Validates: menu-workspace Requirement 5.7 (regression) -- the pre-existing
+/// `=`-origin chain recognition still works after the Stage A widening.
+#[test]
+fn equals_origin_chain_still_recognised() {
+    let mut shell = make_shell();
+    assert_eq!(
+        shell.try_chained_fastpath("=0.K"),
+        Some(true),
+        "an =-origin chain must still be recognised"
+    );
+}
+
 /// Validates: multi-tab-editor Req 18.7/18.9 (CR-CH-031) -- bare SWAP with no
 /// split toggles to the previously active workspace, and repeated bare SWAP
 /// ping-pongs between the two most-recent tabs (does NOT open the picker).

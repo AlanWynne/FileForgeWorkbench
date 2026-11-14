@@ -8,6 +8,17 @@
 
 use super::WorkbenchShell;
 
+/// CR-NR-121 Stage A -- the CLOSED set of lifecycle lead verbs that make a bare
+/// (non-`=`) chain recognisable as a chain. Each is an FFCMD ladder root
+/// (`shell/commands_ladder_a.rs`), so after the chain is split the first segment
+/// actually dispatches and takes effect before the follow-on segment re-resolves.
+///
+/// EXIT is DELIBERATELY EXCLUDED (command-resolution-model Req 4.5): EXIT
+/// terminates the application, so no segment after it in a chain could ever run;
+/// including it would be cosmetic only. The set is short and closed so ordinary
+/// dotted / semicolon text (a DSN-like `abc.def`) is never hijacked as a chain.
+const LIFECYCLE_LEAD_VERBS: [&str; 3] = ["END", "RETURN", "CANCEL"];
+
 impl WorkbenchShell {
     /// Ensure the active Home tab carries a loaded `MenuWorkspaceState` backed
     /// by `menus/pom.toml`, loading it lazily on first render. After CR-CH-042 the
@@ -66,7 +77,12 @@ impl WorkbenchShell {
     /// - A bare dotted path (no `=`) resolves its first segment against the
     ///   CURRENT menu (the legacy `3.1` behaviour, Requirement 19.4). To avoid
     ///   hijacking ordinary dotted input (dataset names, `abc.def`), a bare path
-    ///   is only treated as a fastpath when its first segment is a single digit.
+    ///   is only treated as a fastpath when its first segment is a single digit
+    ///   OR -- per CR-NR-121 Stage A -- a lifecycle lead verb in the closed set
+    ///   {END, RETURN, CANCEL} (so `END;Z`, `RETURN;Z`, `CANCEL;Z` are recognised
+    ///   and split; EXIT is excluded). The downstream per-segment dispatch loop
+    ///   and the `nav_end` / `nav_return` landings are UNCHANGED, so the follow-on
+    ///   segment late-binds against whichever Context the lifecycle verb reveals.
     /// - Each segment is dispatched as an Option_Key through `handle_command`,
     ///   which opens the target sub-menu and activates the option (the same code
     ///   path `MENU <name> <key>` and the single-segment fastpath use).
@@ -76,7 +92,8 @@ impl WorkbenchShell {
     /// (the caller must return), `Some(false)`/`None` when the input is NOT a
     /// chained path and the caller should fall through to the rest of the chain.
     ///
-    /// Validates: menu-workspace Requirement 5.1, 5.2, 5.4, 5.7; Requirement 19.4
+    /// Validates: menu-workspace Requirement 5.1, 5.2, 5.4, 5.7; Requirement 19.4;
+    /// command-resolution-model Requirement 4.1, 4.2, 4.3, 4.4
     pub(super) fn try_chained_fastpath(&mut self, upper: &str) -> Option<bool> {
         let has_sep = upper.contains('.') || upper.contains(';');
         let is_origin = upper.starts_with('=');
@@ -104,10 +121,18 @@ impl WorkbenchShell {
         }
 
         // A bare dotted path (no `=`) is only a fastpath when the first segment
-        // is a single digit -- otherwise ordinary dotted text (`abc.def`, DSNs)
-        // would be hijacked. An `=`-origin path is always a fastpath.
+        // is a single digit (the legacy `3.1` case) OR, per CR-NR-121 Stage A, a
+        // lifecycle lead verb in the CLOSED set {END, RETURN, CANCEL}. Otherwise
+        // ordinary dotted text (`abc.def`, DSNs) would be hijacked. An `=`-origin
+        // path is always a fastpath. The lead-verb match is on the EXACT first
+        // segment token (case-insensitive), not a prefix, so `abc.def` and other
+        // alpha-first text are unaffected.
         let first = segments[0];
-        if !is_origin && !(first.len() == 1 && first.chars().all(|c| c.is_ascii_digit())) {
+        let is_digit_first = first.len() == 1 && first.chars().all(|c| c.is_ascii_digit());
+        let is_lifecycle_lead = LIFECYCLE_LEAD_VERBS
+            .iter()
+            .any(|verb| first.eq_ignore_ascii_case(verb));
+        if !is_origin && !is_digit_first && !is_lifecycle_lead {
             return None;
         }
 
